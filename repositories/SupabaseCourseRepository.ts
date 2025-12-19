@@ -10,10 +10,10 @@ export class SupabaseCourseRepository implements ICourseRepository {
   async getCourseById(id: string): Promise<Course> {
     if (id !== 'course-1') throw new NotFoundError('Course', id);
 
+    // Mock de dados para o estudo de caso
     const lessonsData: ILessonData[] = [
       { id: 'lesson-1', title: 'Introdução à POO', videoUrl: 'https://www.w3schools.com/html/mov_bbb.mp4', durationSeconds: 60, watchedSeconds: 0, isCompleted: false },
       { id: 'lesson-2', title: 'Encapsulamento e Modificadores', videoUrl: 'https://www.w3schools.com/html/movie.mp4', durationSeconds: 45, watchedSeconds: 0, isCompleted: false },
-      { id: 'lesson-3', title: 'Herança e Polimorfismo', videoUrl: 'https://www.w3schools.com/html/mov_bbb.mp4', durationSeconds: 120, watchedSeconds: 0, isCompleted: false },
     ];
 
     const lessons = lessonsData.map(l => {
@@ -26,8 +26,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
     });
 
     const modules = [
-      new Module('mod-1', 'Módulo 1: Fundamentos de ADS', lessons.slice(0, 2)),
-      new Module('mod-2', 'Módulo 2: Arquitetura de Software', lessons.slice(2, 3)),
+      new Module('mod-1', 'Módulo 1: Fundamentos de ADS', lessons),
     ];
 
     return new Course('course-1', 'Engenharia de Software Moderna', 'Estudo de caso POO/ADS.', modules);
@@ -36,6 +35,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
   async updateLessonProgress(userId: string, lessonId: string, watchedSeconds: number, isCompleted: boolean): Promise<void> {
     const progress = new UserProgress(userId, lessonId, watchedSeconds, isCompleted);
     this._mockProgress.set(lessonId, progress);
+    console.log(`[Mock DB] Progresso atualizado: Aula ${lessonId}, Status: ${isCompleted ? 'Concluída' : 'Em andamento'}`);
   }
 
   async getAllCourses(): Promise<Course[]> {
@@ -50,15 +50,14 @@ export class SupabaseCourseRepository implements ICourseRepository {
   async getUserById(userId: string): Promise<User> {
     let user = this._mockUsers.get(userId);
     if (!user) {
-      user = new User(userId, 'Usuário de Teste', 'teste@ads.edu.br', 'STUDENT');
+      user = new User(userId, 'Estudante ADS', 'aluno@estudo.br', 'STUDENT');
       this._mockUsers.set(userId, user);
     }
     return user;
   }
 
   async updateUserGamification(userId: string, xp: number, level: number, achievements: Achievement[]): Promise<void> {
-    const user = await this.getUserById(userId);
-    // Em uma implementação real, o Supabase faria o update aqui
-    console.log(`[Supabase DB] Persisting Gamification for ${userId}: XP=${xp}, Level=${level}`);
+    console.log(`[Mock DB] Persistindo Gamificação: User ${userId} | XP: ${xp} | Level: ${level} | Achievements: ${achievements.length}`);
+    // No Supabase real: await supabase.from('users').update({ xp, level, achievements }).eq('id', userId);
   }
 }

@@ -7,7 +7,7 @@ export interface ICourseRepository {
   getAllCourses(): Promise<Course[]>;
   getUserProgress(userId: string, courseId: string): Promise<UserProgress[]>;
   
-  // Novos métodos de Gamificação
+  // Métodos de Gamificação
   getUserById(userId: string): Promise<User>;
   updateUserGamification(userId: string, xp: number, level: number, achievements: Achievement[]): Promise<void>;
 }
