@@ -18,7 +18,6 @@ export interface Achievement {
   icon?: string;
 }
 
-// Fixed: Added missing UserProgress entity used by repositories
 export class UserProgress {
   constructor(
     public readonly userId: string,
@@ -57,7 +56,7 @@ export class Lesson {
     this._watchedSeconds = Math.min(watched, this._durationSeconds);
     const progressPercentage = (this._watchedSeconds / this._durationSeconds) * 100;
     
-    // Regra de Negócio: Aula concluída com 90%
+    // Regra: Aula marcada como concluída com 90% assistido
     if (progressPercentage >= 90) {
       this._isCompleted = true;
     }
@@ -79,8 +78,7 @@ export class User {
   ) {
     this._xp = xp;
     this._achievements = achievements;
-    this._level = 1;
-    this.recalculateLevel();
+    this._level = Math.floor(xp / 1000) + 1;
   }
 
   get xp(): number { return this._xp; }
@@ -88,35 +86,27 @@ export class User {
   get achievements(): Achievement[] { return [...this._achievements]; }
 
   /**
-   * Adiciona XP e recalcula o nível baseado na progressão aritmética.
-   * Regra: Lvl 2 = 1000 total, Lvl 3 = 3000 total, Lvl 4 = 6000 total.
+   * Adiciona XP e recalcula o nível.
+   * Regra: Nível 1 (0-999), Nível 2 (1000-1999), etc.
    */
   public addXp(amount: number): void {
     if (amount < 0) throw new ValidationError("A quantidade de XP deve ser positiva.");
     this._xp += amount;
-    this.recalculateLevel();
+    this._level = Math.floor(this._xp / 1000) + 1;
   }
 
-  private recalculateLevel(): void {
-    // Threshold para nível n = 1000 * (n * (n-1) / 2)
-    while (this._xp >= this.getXpThresholdForLevel(this._level + 1)) {
-      this._level++;
-    }
-  }
-
-  public getXpThresholdForLevel(level: number): number {
-    if (level <= 1) return 0;
-    const n = level - 1;
-    return 1000 * (n * (n + 1) / 2);
-  }
-
-  public unlockAchievement(achievement: Achievement): boolean {
-    const alreadyUnlocked = this._achievements.some(a => a.id === achievement.id);
-    if (!alreadyUnlocked) {
-      this._achievements.push(achievement);
-      return true;
-    }
-    return false;
+  /**
+   * Clona a instância para garantir reatividade no estado do React
+   */
+  public clone(): User {
+    return new User(
+      this.id, 
+      this.name, 
+      this.email, 
+      this.role, 
+      this._xp, 
+      [...this._achievements]
+    );
   }
 }
 
@@ -139,8 +129,4 @@ export class Course {
     public readonly description: string,
     public readonly modules: Module[]
   ) {}
-
-  public isFullyCompleted(): boolean {
-    return this.modules.length > 0 && this.modules.every(m => m.isFullyCompleted());
-  }
 }

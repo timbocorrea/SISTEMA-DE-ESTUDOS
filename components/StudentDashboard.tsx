@@ -7,74 +7,87 @@ interface StudentDashboardProps {
   onCourseClick: (id: string) => void;
 }
 
-const GamificationHeader: React.FC<{ user: User }> = ({ user }) => {
-  const currentLevelXp = user.getXpThresholdForLevel(user.level);
-  const nextLevelXp = user.getXpThresholdForLevel(user.level + 1);
-  const xpInLevel = user.xp - currentLevelXp;
-  const xpRequiredForNext = nextLevelXp - currentLevelXp;
-  const progressPercent = Math.min((xpInLevel / xpRequiredForNext) * 100, 100);
+const GamificationStats: React.FC<{ user: User }> = ({ user }) => {
+  // Cálculo do progresso no nível atual (0-999)
+  const xpInLevel = user.xp % 1000;
+  const progressPercent = (xpInLevel / 1000) * 100;
+  const xpRemaining = 1000 - xpInLevel;
 
   return (
-    <div className="bg-gradient-to-br from-indigo-900 via-slate-900 to-black rounded-3xl p-8 text-white relative overflow-hidden shadow-2xl border border-indigo-500/30 group">
-      {/* Decorative Glows */}
-      <div className="absolute -top-24 -right-24 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl group-hover:bg-indigo-500/30 transition-all duration-700"></div>
-      <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl"></div>
-
-      <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
-        {/* Level Badge */}
-        <div className="flex-shrink-0 relative">
-          <div className="w-24 h-24 bg-indigo-600 rounded-2xl rotate-3 flex items-center justify-center border-2 border-indigo-400 shadow-lg shadow-indigo-500/40">
-            <span className="text-4xl font-black rotate-[-3deg]">{user.level}</span>
+    <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col md:flex-row items-center gap-8 mb-8 transition-all hover:shadow-md">
+      {/* Badge Circular de Nível */}
+      <div className="relative flex-shrink-0">
+        <div className="w-24 h-24 rounded-full bg-gradient-to-br from-indigo-600 to-violet-500 flex items-center justify-center shadow-xl shadow-indigo-500/30 border-4 border-white dark:border-slate-800">
+          <div className="text-center">
+            <span className="block text-3xl font-black text-white leading-none">{user.level}</span>
+            <span className="text-[10px] font-bold text-indigo-100 uppercase tracking-tighter">Nível</span>
           </div>
-          <div className="absolute -bottom-2 -right-2 bg-cyan-400 text-slate-900 text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-tighter">
-            Nível
+        </div>
+        {/* Decorative Ring */}
+        <svg className="absolute top-0 left-0 w-24 h-24 -rotate-90 pointer-events-none overflow-visible">
+          <circle
+            cx="48"
+            cy="48"
+            r="50"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            className="text-indigo-500/20"
+          />
+          <circle
+            cx="48"
+            cy="48"
+            r="50"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="3"
+            strokeDasharray="314.159"
+            strokeDashoffset={314.159 - (314.159 * progressPercent) / 100}
+            strokeLinecap="round"
+            className="text-indigo-500 drop-shadow-[0_0_8px_rgba(99,102,241,0.5)]"
+          />
+        </svg>
+      </div>
+
+      {/* Info de Experiência */}
+      <div className="flex-1 w-full space-y-4">
+        <div className="flex justify-between items-end">
+          <div className="space-y-1">
+            <h3 className="text-xl font-extrabold text-slate-800 dark:text-white flex items-center gap-2">
+              <i className="fas fa-bolt text-yellow-500"></i>
+              Seu Progresso de ADS
+            </h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium tracking-tight">
+              Total Acumulado: <span className="text-indigo-600 dark:text-indigo-400 font-bold">{user.xp.toLocaleString()} XP</span>
+            </p>
+          </div>
+          <div className="text-right">
+            <div className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">
+              Faltam {xpRemaining} XP para o Lvl {user.level + 1}
+            </div>
+            <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">{Math.floor(progressPercent)}%</span>
           </div>
         </div>
 
-        {/* Info & Progress */}
-        <div className="flex-1 space-y-4 w-full">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-2">
-            <div>
-              <h2 className="text-2xl font-bold tracking-tight">Status do Aluno: {user.name}</h2>
-              <p className="text-indigo-300 text-sm font-medium">ADS Case Study | Engenharia de Software</p>
-            </div>
-            <div className="text-right">
-              <span className="text-3xl font-black text-white">{user.xp}</span>
-              <span className="text-indigo-400 text-xs font-bold uppercase ml-2 tracking-widest">XP Total</span>
-            </div>
-          </div>
-
-          {/* Progress Bar Container */}
-          <div className="space-y-2">
-            <div className="flex justify-between text-[10px] font-bold text-indigo-300 uppercase tracking-widest">
-              <span>Progresso do Nível</span>
-              <span>{Math.floor(xpInLevel)} / {xpRequiredForNext} XP para Lvl {user.level + 1}</span>
-            </div>
-            <div className="h-4 bg-white/5 rounded-full p-1 border border-white/10 backdrop-blur-sm">
-              <div 
-                className="h-full bg-gradient-to-r from-indigo-500 via-indigo-400 to-cyan-400 rounded-full transition-all duration-1000 ease-out shadow-[0_0_15px_rgba(99,102,241,0.5)]"
-                style={{ width: `${progressPercent}%` }}
-              ></div>
-            </div>
-          </div>
+        {/* Barra de Progresso */}
+        <div className="relative w-full h-5 bg-slate-100 dark:bg-slate-800 rounded-2xl overflow-hidden p-1 border border-slate-200 dark:border-slate-700 shadow-inner">
+          <div 
+            className="h-full bg-gradient-to-r from-indigo-600 via-indigo-500 to-cyan-400 rounded-xl transition-all duration-1000 ease-out shadow-[0_0_15px_rgba(99,102,241,0.4)]"
+            style={{ width: `${progressPercent}%` }}
+          />
         </div>
+      </div>
 
-        {/* Quick Stats */}
-        <div className="hidden lg:flex flex-col gap-2">
-           <div className="bg-white/5 p-3 rounded-2xl border border-white/10 flex items-center gap-3">
-              <i className="fas fa-trophy text-yellow-500 text-lg"></i>
-              <div>
-                <p className="text-[10px] text-slate-400 font-bold uppercase">Conquistas</p>
-                <p className="text-sm font-bold">{user.achievements.length}</p>
-              </div>
-           </div>
-           <div className="bg-white/5 p-3 rounded-2xl border border-white/10 flex items-center gap-3">
-              <i className="fas fa-fire text-orange-500 text-lg"></i>
-              <div>
-                <p className="text-[10px] text-slate-400 font-bold uppercase">Ofensiva</p>
-                <p className="text-sm font-bold">5 Dias</p>
-              </div>
-           </div>
+      {/* Estatísticas Rápidas */}
+      <div className="hidden lg:grid grid-cols-1 gap-3">
+        <div className="bg-slate-50 dark:bg-slate-800/50 px-5 py-3 rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center gap-4">
+          <div className="w-10 h-10 bg-orange-500/10 rounded-xl flex items-center justify-center text-orange-500">
+            <i className="fas fa-fire"></i>
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Ofensiva</p>
+            <p className="text-sm font-black text-slate-700 dark:text-slate-200">5 Dias</p>
+          </div>
         </div>
       </div>
     </div>
@@ -107,11 +120,18 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, onCourseClick
 
   return (
     <div className="p-8 space-y-8 max-w-7xl mx-auto">
-      <GamificationHeader user={user} />
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-4xl font-black text-slate-800 dark:text-white tracking-tighter">Painel de Estudos</h2>
+          <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium">Bom retorno, {user.name.split(' ')[0]}! Sua evolução não para.</p>
+        </div>
+      </div>
+
+      <GamificationStats user={user} />
 
       <div className="space-y-6">
         <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
-          <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-3">
+          <h3 className="text-xl font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-3">
             <i className="fas fa-book-reader text-indigo-500"></i>
             Seus Cursos de ADS
           </h3>
@@ -128,34 +148,30 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, onCourseClick
                 </div>
               </div>
               <div className="p-6 flex-1 flex flex-col space-y-4">
-                <span className="bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest w-fit">
+                <span className="bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest w-fit">
                   {course.category}
                 </span>
-                <h4 className="font-bold text-slate-800 dark:text-white text-lg leading-tight group-hover:text-indigo-600 transition-colors">{course.title}</h4>
+                <h4 className="font-extrabold text-slate-800 dark:text-white text-lg leading-tight group-hover:text-indigo-600 transition-colors">{course.title}</h4>
                 
                 <div className="flex items-center gap-3 py-2">
                   <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${course.instructor}`} className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700" alt={course.instructor} />
-                  <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Instrutor: {course.instructor}</span>
+                  <span className="text-xs font-bold text-slate-600 dark:text-slate-400">Instrutor: {course.instructor}</span>
                 </div>
 
                 <div className="space-y-1.5 mt-auto">
-                  <div className="flex justify-between text-[10px] font-bold text-slate-400">
+                  <div className="flex justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest">
                     <span>Progresso: {course.progress}%</span>
                   </div>
-                  <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                  <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                     <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${course.progress}%` }}></div>
                   </div>
                 </div>
 
                 <button 
                   onClick={() => onCourseClick(course.id)}
-                  className={`w-full py-3 mt-4 rounded-2xl font-bold transition-all shadow-lg active:scale-95 ${
-                    course.progress > 0 
-                      ? 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 shadow-none' 
-                      : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-indigo-500/20'
-                  }`}
+                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-4 mt-4 rounded-2xl font-black transition-all shadow-lg shadow-indigo-500/20 active:scale-95 text-sm uppercase tracking-wider"
                 >
-                  {course.progress > 0 ? 'Continuar Estudando' : 'Iniciar Aula +150 XP'}
+                  Continuar Aula
                 </button>
               </div>
             </div>

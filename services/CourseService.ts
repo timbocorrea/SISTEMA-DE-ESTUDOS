@@ -1,6 +1,6 @@
 
 import { ICourseRepository } from '../repositories/ICourseRepository';
-import { Course, Lesson, User } from '../domain/entities';
+import { Course, Lesson, User, Module } from '../domain/entities';
 
 export class CourseService {
   constructor(private courseRepository: ICourseRepository) {}
@@ -10,18 +10,12 @@ export class CourseService {
   }
 
   /**
-   * Atualiza progresso e retorna o objeto User atualizado para refletir no estado local
+   * Atualiza progresso e aplica regras de gamificação em memória
    */
-  public async updateUserProgress(user: User, lesson: Lesson): Promise<User> {
-    // 1. Carregar curso para verificar bônus de módulo
-    const course = await this.courseRepository.getCourseById('course-1'); // Mock ID
+  public async updateUserProgress(user: User, lesson: Lesson, course: Course): Promise<void> {
+    const wasCompletedBefore = lesson.isCompleted;
     
-    // 2. Verificar se a aula foi concluída agora
-    // No estado local, a instância da lesson já vem com o novo watchedSeconds
-    const wasCompletedBefore = lesson.watchedSeconds < (lesson.durationSeconds * 0.9);
-    const isNowCompleted = lesson.isCompleted;
-
-    // 3. Persistir no repositório (Mock ou Supabase)
+    // 1. Atualiza progresso técnico via repositório (simulado)
     await this.courseRepository.updateLessonProgress(
       user.id,
       lesson.id,
@@ -29,18 +23,19 @@ export class CourseService {
       lesson.isCompleted
     );
 
-    // 4. Lógica de Gamificação
-    if (isNowCompleted && wasCompletedBefore) {
-      // Bônus de Aula
+    // 2. Lógica de Gamificação
+    // Só concede bônus se a aula não estava concluída e agora está
+    if (lesson.isCompleted && !wasCompletedBefore) {
+      // Bônus de Aula: 150 XP
       user.addXp(150);
 
-      // Bônus de Módulo
+      // Bônus de Módulo: 500 XP se for a última aula do módulo
       const module = course.modules.find(m => m.lessons.some(l => l.id === lesson.id));
       if (module && module.isFullyCompleted()) {
         user.addXp(500);
       }
 
-      // 5. Persistir gamificação
+      // Persiste gamificação (simulado)
       await this.courseRepository.updateUserGamification(
         user.id,
         user.xp,
@@ -48,8 +43,6 @@ export class CourseService {
         user.achievements
       );
     }
-
-    return user;
   }
 
   public async fetchAvailableCourses(): Promise<Course[]> {
