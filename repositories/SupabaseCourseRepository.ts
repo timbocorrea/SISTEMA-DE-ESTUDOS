@@ -10,7 +10,6 @@ export class SupabaseCourseRepository implements ICourseRepository {
   async getCourseById(id: string): Promise<Course> {
     if (id !== 'course-1') throw new NotFoundError('Course', id);
 
-    // Mock de dados para o estudo de caso
     const lessonsData: ILessonData[] = [
       { id: 'lesson-1', title: 'Introdução à POO', videoUrl: 'https://www.w3schools.com/html/mov_bbb.mp4', durationSeconds: 60, watchedSeconds: 0, isCompleted: false },
       { id: 'lesson-2', title: 'Encapsulamento e Modificadores', videoUrl: 'https://www.w3schools.com/html/movie.mp4', durationSeconds: 45, watchedSeconds: 0, isCompleted: false },
@@ -35,7 +34,6 @@ export class SupabaseCourseRepository implements ICourseRepository {
   async updateLessonProgress(userId: string, lessonId: string, watchedSeconds: number, isCompleted: boolean): Promise<void> {
     const progress = new UserProgress(userId, lessonId, watchedSeconds, isCompleted);
     this._mockProgress.set(lessonId, progress);
-    console.log(`[Mock DB] Progresso atualizado: Aula ${lessonId}, Status: ${isCompleted ? 'Concluída' : 'Em andamento'}`);
   }
 
   async getAllCourses(): Promise<Course[]> {
@@ -50,14 +48,15 @@ export class SupabaseCourseRepository implements ICourseRepository {
   async getUserById(userId: string): Promise<User> {
     let user = this._mockUsers.get(userId);
     if (!user) {
-      user = new User(userId, 'Estudante ADS', 'aluno@estudo.br', 'STUDENT');
+      // Criando usuário mock caso não exista
+      user = new User(userId, 'Estudante ADS', 'aluno@ads.edu.br', 'STUDENT');
       this._mockUsers.set(userId, user);
     }
     return user;
   }
 
   async updateUserGamification(userId: string, xp: number, level: number, achievements: Achievement[]): Promise<void> {
-    console.log(`[Mock DB] Persistindo Gamificação: User ${userId} | XP: ${xp} | Level: ${level} | Achievements: ${achievements.length}`);
-    // No Supabase real: await supabase.from('users').update({ xp, level, achievements }).eq('id', userId);
+    console.log(`[Mock DB] Persistindo Gamificação para ${userId}: XP=${xp}, Nível=${level}, Conquistas=${achievements.length}`);
+    // Em produção, aqui seria o update via Supabase Client
   }
 }

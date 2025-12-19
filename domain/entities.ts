@@ -82,15 +82,17 @@ export class User {
     this._level = this.calculateLevel(this._xp);
   }
 
-  public unlockAchievement(achievement: Achievement): void {
+  public unlockAchievement(achievement: Achievement): boolean {
     const alreadyUnlocked = this._achievements.some(a => a.id === achievement.id);
     if (!alreadyUnlocked) {
       this._achievements.push(achievement);
+      return true;
     }
+    return false;
   }
 
   private calculateLevel(xp: number): number {
-    // Nível = XP / 1000 (Base 1)
+    // Regra: Level = XP / 1000 + 1 (Base 1)
     return Math.floor(xp / 1000) + 1;
   }
 }
