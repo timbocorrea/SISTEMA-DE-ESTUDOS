@@ -92,7 +92,7 @@ export class User {
   }
 
   private calculateLevel(xp: number): number {
-    // Regra: Level = XP / 1000 + 1 (Base 1)
+    // Regra ADS: Level = floor(XP / 1000) + 1
     return Math.floor(xp / 1000) + 1;
   }
 }
