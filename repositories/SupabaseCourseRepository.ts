@@ -1,10 +1,11 @@
 
 import { ICourseRepository } from './ICourseRepository';
-import { Course, Module, Lesson, ILessonData, UserProgress } from '../domain/entities';
+import { Course, Module, Lesson, ILessonData, UserProgress, User, Achievement } from '../domain/entities';
 import { NotFoundError } from '../domain/errors';
 
 export class SupabaseCourseRepository implements ICourseRepository {
   private _mockProgress: Map<string, UserProgress> = new Map();
+  private _mockUsers: Map<string, User> = new Map();
 
   async getCourseById(id: string): Promise<Course> {
     if (id !== 'course-1') throw new NotFoundError('Course', id);
@@ -15,7 +16,6 @@ export class SupabaseCourseRepository implements ICourseRepository {
       { id: 'lesson-3', title: 'Herança e Polimorfismo', videoUrl: 'https://www.w3schools.com/html/mov_bbb.mp4', durationSeconds: 120, watchedSeconds: 0, isCompleted: false },
     ];
 
-    // Merge with persisted progress
     const lessons = lessonsData.map(l => {
       const progress = this._mockProgress.get(l.id);
       return new Lesson({
@@ -36,7 +36,6 @@ export class SupabaseCourseRepository implements ICourseRepository {
   async updateLessonProgress(userId: string, lessonId: string, watchedSeconds: number, isCompleted: boolean): Promise<void> {
     const progress = new UserProgress(userId, lessonId, watchedSeconds, isCompleted);
     this._mockProgress.set(lessonId, progress);
-    console.log(`[Supabase Progress] Updated ${lessonId} for ${userId}`);
   }
 
   async getAllCourses(): Promise<Course[]> {
@@ -46,5 +45,20 @@ export class SupabaseCourseRepository implements ICourseRepository {
 
   async getUserProgress(userId: string, courseId: string): Promise<UserProgress[]> {
     return Array.from(this._mockProgress.values()).filter(p => p.userId === userId);
+  }
+
+  async getUserById(userId: string): Promise<User> {
+    let user = this._mockUsers.get(userId);
+    if (!user) {
+      user = new User(userId, 'Usuário de Teste', 'teste@ads.edu.br', 'STUDENT');
+      this._mockUsers.set(userId, user);
+    }
+    return user;
+  }
+
+  async updateUserGamification(userId: string, xp: number, level: number, achievements: Achievement[]): Promise<void> {
+    const user = await this.getUserById(userId);
+    // Em uma implementação real, o Supabase faria o update aqui
+    console.log(`[Supabase DB] Persisting Gamification for ${userId}: XP=${xp}, Level=${level}`);
   }
 }
