@@ -1,24 +1,87 @@
 
 import React from 'react';
-import { IUserSession } from '../domain/auth';
+import { User } from '../domain/entities';
 
 interface StudentDashboardProps {
-  session: IUserSession;
+  user: User;
   onCourseClick: (id: string) => void;
 }
 
-const StudentDashboard: React.FC<StudentDashboardProps> = ({ session, onCourseClick }) => {
-  // Mock data for the case study
-  const userStats = {
-    xp: 2450,
-    level: 3,
-    xpToNext: 3000,
-    achievements: [
-      { id: '1', title: 'Primeiro Código', icon: 'fas fa-code' },
-      { id: '2', title: 'Mestre POO', icon: 'fas fa-cube' },
-    ]
-  };
+const GamificationHeader: React.FC<{ user: User }> = ({ user }) => {
+  const currentLevelXp = user.getXpThresholdForLevel(user.level);
+  const nextLevelXp = user.getXpThresholdForLevel(user.level + 1);
+  const xpInLevel = user.xp - currentLevelXp;
+  const xpRequiredForNext = nextLevelXp - currentLevelXp;
+  const progressPercent = Math.min((xpInLevel / xpRequiredForNext) * 100, 100);
 
+  return (
+    <div className="bg-gradient-to-br from-indigo-900 via-slate-900 to-black rounded-3xl p-8 text-white relative overflow-hidden shadow-2xl border border-indigo-500/30 group">
+      {/* Decorative Glows */}
+      <div className="absolute -top-24 -right-24 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl group-hover:bg-indigo-500/30 transition-all duration-700"></div>
+      <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl"></div>
+
+      <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
+        {/* Level Badge */}
+        <div className="flex-shrink-0 relative">
+          <div className="w-24 h-24 bg-indigo-600 rounded-2xl rotate-3 flex items-center justify-center border-2 border-indigo-400 shadow-lg shadow-indigo-500/40">
+            <span className="text-4xl font-black rotate-[-3deg]">{user.level}</span>
+          </div>
+          <div className="absolute -bottom-2 -right-2 bg-cyan-400 text-slate-900 text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-tighter">
+            Nível
+          </div>
+        </div>
+
+        {/* Info & Progress */}
+        <div className="flex-1 space-y-4 w-full">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-2">
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight">Status do Aluno: {user.name}</h2>
+              <p className="text-indigo-300 text-sm font-medium">ADS Case Study | Engenharia de Software</p>
+            </div>
+            <div className="text-right">
+              <span className="text-3xl font-black text-white">{user.xp}</span>
+              <span className="text-indigo-400 text-xs font-bold uppercase ml-2 tracking-widest">XP Total</span>
+            </div>
+          </div>
+
+          {/* Progress Bar Container */}
+          <div className="space-y-2">
+            <div className="flex justify-between text-[10px] font-bold text-indigo-300 uppercase tracking-widest">
+              <span>Progresso do Nível</span>
+              <span>{Math.floor(xpInLevel)} / {xpRequiredForNext} XP para Lvl {user.level + 1}</span>
+            </div>
+            <div className="h-4 bg-white/5 rounded-full p-1 border border-white/10 backdrop-blur-sm">
+              <div 
+                className="h-full bg-gradient-to-r from-indigo-500 via-indigo-400 to-cyan-400 rounded-full transition-all duration-1000 ease-out shadow-[0_0_15px_rgba(99,102,241,0.5)]"
+                style={{ width: `${progressPercent}%` }}
+              ></div>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Stats */}
+        <div className="hidden lg:flex flex-col gap-2">
+           <div className="bg-white/5 p-3 rounded-2xl border border-white/10 flex items-center gap-3">
+              <i className="fas fa-trophy text-yellow-500 text-lg"></i>
+              <div>
+                <p className="text-[10px] text-slate-400 font-bold uppercase">Conquistas</p>
+                <p className="text-sm font-bold">{user.achievements.length}</p>
+              </div>
+           </div>
+           <div className="bg-white/5 p-3 rounded-2xl border border-white/10 flex items-center gap-3">
+              <i className="fas fa-fire text-orange-500 text-lg"></i>
+              <div>
+                <p className="text-[10px] text-slate-400 font-bold uppercase">Ofensiva</p>
+                <p className="text-sm font-bold">5 Dias</p>
+              </div>
+           </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, onCourseClick }) => {
   const courses = [
     { 
       id: 'course-1', 
@@ -42,48 +105,17 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ session, onCourseCl
     }
   ];
 
-  const xpProgress = ((userStats.xp % 1000) / 1000) * 100;
-
   return (
     <div className="p-8 space-y-8 max-w-7xl mx-auto">
-      {/* Gamified Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-10 text-white relative overflow-hidden shadow-2xl border border-indigo-500/20 transition-all">
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
-          <div className="space-y-4">
-            <h2 className="text-3xl font-extrabold tracking-tight">Bem-vindo, {session.user.name.split(' ')[0]}!</h2>
-            <p className="text-slate-300 text-lg max-w-xl">Sua jornada rumo à senioridade continua. Você está quase no nível {userStats.level + 1}.</p>
-            
-            <div className="flex items-center gap-4">
-              {userStats.achievements.map(ach => (
-                <div key={ach.id} className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center border border-white/20 hover:scale-110 transition-transform cursor-help" title={ach.title}>
-                  <i className={`${ach.icon} text-indigo-400`}></i>
-                </div>
-              ))}
-            </div>
-          </div>
+      <GamificationHeader user={user} />
 
-          <div className="bg-white/5 backdrop-blur-md p-6 rounded-2xl border border-white/10 w-full md:w-80">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-indigo-300 uppercase tracking-widest">Nível {userStats.level}</span>
-              <span className="text-xs font-bold text-slate-400">{userStats.xp} / {userStats.xpToNext} XP</span>
-            </div>
-            <div className="w-full h-3 bg-slate-800 rounded-full overflow-hidden mb-4 border border-white/5">
-              <div 
-                className="h-full bg-gradient-to-r from-indigo-500 to-cyan-400 rounded-full transition-all duration-1000" 
-                style={{ width: `${xpProgress}%` }}
-              ></div>
-            </div>
-            <p className="text-[10px] text-slate-400 text-center font-medium italic">Faltam {userStats.xpToNext - userStats.xp} XP para subir de nível!</p>
-          </div>
-        </div>
-        
-        <div className="absolute right-[-10%] top-[-50%] w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl"></div>
-      </div>
-
-      {/* Course Selection */}
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">Seus Cursos de ADS</h3>
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+          <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-3">
+            <i className="fas fa-book-reader text-indigo-500"></i>
+            Seus Cursos de ADS
+          </h3>
+          <button className="text-indigo-500 text-sm font-bold hover:underline">Ver catálogo completo</button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -99,33 +131,31 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ session, onCourseCl
                 <span className="bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest w-fit">
                   {course.category}
                 </span>
-                <h4 className="font-bold text-slate-800 dark:text-white text-lg leading-tight">{course.title}</h4>
+                <h4 className="font-bold text-slate-800 dark:text-white text-lg leading-tight group-hover:text-indigo-600 transition-colors">{course.title}</h4>
                 
                 <div className="flex items-center gap-3 py-2">
                   <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${course.instructor}`} className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700" alt={course.instructor} />
                   <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Instrutor: {course.instructor}</span>
                 </div>
 
-                {course.progress > 0 && (
-                   <div className="space-y-1.5">
-                      <div className="flex justify-between text-[10px] font-bold text-slate-400">
-                         <span>{course.progress}% Concluído</span>
-                      </div>
-                      <div className="w-full h-1 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                         <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${course.progress}%` }}></div>
-                      </div>
-                   </div>
-                )}
+                <div className="space-y-1.5 mt-auto">
+                  <div className="flex justify-between text-[10px] font-bold text-slate-400">
+                    <span>Progresso: {course.progress}%</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                    <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${course.progress}%` }}></div>
+                  </div>
+                </div>
 
                 <button 
                   onClick={() => onCourseClick(course.id)}
-                  className={`w-full py-3 mt-auto rounded-2xl font-bold transition-all shadow-lg active:scale-95 ${
+                  className={`w-full py-3 mt-4 rounded-2xl font-bold transition-all shadow-lg active:scale-95 ${
                     course.progress > 0 
                       ? 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 shadow-none' 
                       : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-indigo-500/20'
                   }`}
                 >
-                  {course.progress > 0 ? 'Continuar Estudando' : 'Iniciar Aula +100 XP'}
+                  {course.progress > 0 ? 'Continuar Estudando' : 'Iniciar Aula +150 XP'}
                 </button>
               </div>
             </div>

@@ -15,6 +15,17 @@ export interface Achievement {
   title: string;
   description: string;
   dateEarned: Date;
+  icon?: string;
+}
+
+// Fixed: Added missing UserProgress entity used by repositories
+export class UserProgress {
+  constructor(
+    public readonly userId: string,
+    public readonly lessonId: string,
+    public readonly watchedSeconds: number,
+    public readonly isCompleted: boolean
+  ) {}
 }
 
 export class Lesson {
@@ -68,18 +79,35 @@ export class User {
   ) {
     this._xp = xp;
     this._achievements = achievements;
-    this._level = this.calculateLevel(xp);
+    this._level = 1;
+    this.recalculateLevel();
   }
 
   get xp(): number { return this._xp; }
   get level(): number { return this._level; }
   get achievements(): Achievement[] { return [...this._achievements]; }
 
+  /**
+   * Adiciona XP e recalcula o nível baseado na progressão aritmética.
+   * Regra: Lvl 2 = 1000 total, Lvl 3 = 3000 total, Lvl 4 = 6000 total.
+   */
   public addXp(amount: number): void {
     if (amount < 0) throw new ValidationError("A quantidade de XP deve ser positiva.");
-    
     this._xp += amount;
-    this._level = this.calculateLevel(this._xp);
+    this.recalculateLevel();
+  }
+
+  private recalculateLevel(): void {
+    // Threshold para nível n = 1000 * (n * (n-1) / 2)
+    while (this._xp >= this.getXpThresholdForLevel(this._level + 1)) {
+      this._level++;
+    }
+  }
+
+  public getXpThresholdForLevel(level: number): number {
+    if (level <= 1) return 0;
+    const n = level - 1;
+    return 1000 * (n * (n + 1) / 2);
   }
 
   public unlockAchievement(achievement: Achievement): boolean {
@@ -90,20 +118,6 @@ export class User {
     }
     return false;
   }
-
-  private calculateLevel(xp: number): number {
-    // Regra ADS: Level = floor(XP / 1000) + 1
-    return Math.floor(xp / 1000) + 1;
-  }
-}
-
-export class UserProgress {
-  constructor(
-    public readonly userId: string,
-    public readonly lessonId: string,
-    public readonly watchedSeconds: number,
-    public readonly isCompleted: boolean
-  ) {}
 }
 
 export class Module {

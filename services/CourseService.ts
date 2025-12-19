@@ -1,6 +1,6 @@
 
 import { ICourseRepository } from '../repositories/ICourseRepository';
-import { Course, Lesson, Achievement } from '../domain/entities';
+import { Course, Lesson, User } from '../domain/entities';
 
 export class CourseService {
   constructor(private courseRepository: ICourseRepository) {}
@@ -9,52 +9,38 @@ export class CourseService {
     return this.courseRepository.getCourseById(id);
   }
 
-  public async updateUserProgress(userId: string, lesson: Lesson): Promise<void> {
-    // 1. Obter estado atual do domínio
+  /**
+   * Atualiza progresso e retorna o objeto User atualizado para refletir no estado local
+   */
+  public async updateUserProgress(user: User, lesson: Lesson): Promise<User> {
+    // 1. Carregar curso para verificar bônus de módulo
     const course = await this.courseRepository.getCourseById('course-1'); // Mock ID
-    const user = await this.courseRepository.getUserById(userId);
     
-    // 2. Verificar idempotência (XP só é dado na primeira conclusão)
-    const previousProgress = await this.courseRepository.getUserProgress(userId, course.id);
-    const wasCompleted = previousProgress.find(p => p.lessonId === lesson.id)?.isCompleted || false;
+    // 2. Verificar se a aula foi concluída agora
+    // No estado local, a instância da lesson já vem com o novo watchedSeconds
+    const wasCompletedBefore = lesson.watchedSeconds < (lesson.durationSeconds * 0.9);
+    const isNowCompleted = lesson.isCompleted;
 
-    // 3. Persistir o progresso técnico
+    // 3. Persistir no repositório (Mock ou Supabase)
     await this.courseRepository.updateLessonProgress(
-      userId,
+      user.id,
       lesson.id,
       lesson.watchedSeconds,
       lesson.isCompleted
     );
 
-    // 4. Lógica de Gamificação (Triggered apenas na conclusão)
-    if (!wasCompleted && lesson.isCompleted) {
-      // Regra 1: Concluir aula = 100 XP
-      user.addXp(100);
+    // 4. Lógica de Gamificação
+    if (isNowCompleted && wasCompletedBefore) {
+      // Bônus de Aula
+      user.addXp(150);
 
-      // Regra 2: Concluir módulo = 500 XP Bônus
+      // Bônus de Módulo
       const module = course.modules.find(m => m.lessons.some(l => l.id === lesson.id));
       if (module && module.isFullyCompleted()) {
         user.addXp(500);
-        user.unlockAchievement({
-          id: `ach-mod-${module.id}`,
-          title: 'Explorador de Módulo',
-          description: `Concluiu todas as aulas de: ${module.title}`,
-          dateEarned: new Date()
-        });
       }
 
-      // Regra 3: Concluir curso = 1000 XP Bônus
-      if (course.isFullyCompleted()) {
-        user.addXp(1000);
-        user.unlockAchievement({
-          id: `ach-course-${course.id}`,
-          title: 'Arquiteto de Software ADS',
-          description: `Concluiu o curso completo: ${course.title}`,
-          dateEarned: new Date()
-        });
-      }
-
-      // 5. Persistir o estado atualizado do domínio do usuário
+      // 5. Persistir gamificação
       await this.courseRepository.updateUserGamification(
         user.id,
         user.xp,
@@ -62,6 +48,8 @@ export class CourseService {
         user.achievements
       );
     }
+
+    return user;
   }
 
   public async fetchAvailableCourses(): Promise<Course[]> {
