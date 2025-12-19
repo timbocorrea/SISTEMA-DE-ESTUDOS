@@ -8,7 +8,7 @@ interface StudentDashboardProps {
 }
 
 const GamificationStats: React.FC<{ user: User }> = ({ user }) => {
-  // Cálculo do progresso no nível atual (0-999)
+  // Cálculo do progresso no ciclo de 1000 XP do nível atual
   const xpInLevel = user.xp % 1000;
   const progressPercent = (xpInLevel / 1000) * 100;
   const xpRemaining = 1000 - xpInLevel;
@@ -23,7 +23,7 @@ const GamificationStats: React.FC<{ user: User }> = ({ user }) => {
             <span className="text-[10px] font-bold text-indigo-100 uppercase tracking-tighter">Nível</span>
           </div>
         </div>
-        {/* Decorative Ring */}
+        {/* Anel de Progresso Circular */}
         <svg className="absolute top-0 left-0 w-24 h-24 -rotate-90 pointer-events-none overflow-visible">
           <circle
             cx="48"
@@ -32,7 +32,7 @@ const GamificationStats: React.FC<{ user: User }> = ({ user }) => {
             fill="none"
             stroke="currentColor"
             strokeWidth="2"
-            className="text-indigo-500/20"
+            className="text-indigo-500/10"
           />
           <circle
             cx="48"
@@ -44,7 +44,7 @@ const GamificationStats: React.FC<{ user: User }> = ({ user }) => {
             strokeDasharray="314.159"
             strokeDashoffset={314.159 - (314.159 * progressPercent) / 100}
             strokeLinecap="round"
-            className="text-indigo-500 drop-shadow-[0_0_8px_rgba(99,102,241,0.5)]"
+            className="text-indigo-500 drop-shadow-[0_0_8px_rgba(99,102,241,0.5)] transition-all duration-1000"
           />
         </svg>
       </div>
@@ -55,21 +55,21 @@ const GamificationStats: React.FC<{ user: User }> = ({ user }) => {
           <div className="space-y-1">
             <h3 className="text-xl font-extrabold text-slate-800 dark:text-white flex items-center gap-2">
               <i className="fas fa-bolt text-yellow-500"></i>
-              Seu Progresso de ADS
+              Sua Progressão Acadêmica
             </h3>
             <p className="text-sm text-slate-500 dark:text-slate-400 font-medium tracking-tight">
-              Total Acumulado: <span className="text-indigo-600 dark:text-indigo-400 font-bold">{user.xp.toLocaleString()} XP</span>
+              XP Total: <span className="text-indigo-600 dark:text-indigo-400 font-bold">{user.xp.toLocaleString()}</span>
             </p>
           </div>
           <div className="text-right">
             <div className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">
-              Faltam {xpRemaining} XP para o Lvl {user.level + 1}
+              Próximo Nível: {xpRemaining} XP
             </div>
             <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">{Math.floor(progressPercent)}%</span>
           </div>
         </div>
 
-        {/* Barra de Progresso */}
+        {/* Barra de Progresso Horizontal */}
         <div className="relative w-full h-5 bg-slate-100 dark:bg-slate-800 rounded-2xl overflow-hidden p-1 border border-slate-200 dark:border-slate-700 shadow-inner">
           <div 
             className="h-full bg-gradient-to-r from-indigo-600 via-indigo-500 to-cyan-400 rounded-xl transition-all duration-1000 ease-out shadow-[0_0_15px_rgba(99,102,241,0.4)]"
@@ -122,8 +122,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, onCourseClick
     <div className="p-8 space-y-8 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-4xl font-black text-slate-800 dark:text-white tracking-tighter">Painel de Estudos</h2>
-          <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium">Bom retorno, {user.name.split(' ')[0]}! Sua evolução não para.</p>
+          <h2 className="text-4xl font-black text-slate-800 dark:text-white tracking-tighter">Dashboard de ADS</h2>
+          <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium">Bem-vindo de volta, {user.name.split(' ')[0]}!</p>
         </div>
       </div>
 
@@ -132,10 +132,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, onCourseClick
       <div className="space-y-6">
         <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
           <h3 className="text-xl font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-3">
-            <i className="fas fa-book-reader text-indigo-500"></i>
-            Seus Cursos de ADS
+            <i className="fas fa-graduation-cap text-indigo-500"></i>
+            Meus Cursos Ativos
           </h3>
-          <button className="text-indigo-500 text-sm font-bold hover:underline">Ver catálogo completo</button>
+          <button className="text-indigo-500 text-sm font-bold hover:underline">Explorar mais</button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -171,7 +171,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, onCourseClick
                   onClick={() => onCourseClick(course.id)}
                   className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-4 mt-4 rounded-2xl font-black transition-all shadow-lg shadow-indigo-500/20 active:scale-95 text-sm uppercase tracking-wider"
                 >
-                  Continuar Aula
+                  Continuar Aprendizado
                 </button>
               </div>
             </div>

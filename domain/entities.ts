@@ -56,7 +56,6 @@ export class Lesson {
     this._watchedSeconds = Math.min(watched, this._durationSeconds);
     const progressPercentage = (this._watchedSeconds / this._durationSeconds) * 100;
     
-    // Regra: Aula marcada como concluída com 90% assistido
     if (progressPercentage >= 90) {
       this._isCompleted = true;
     }
@@ -86,8 +85,10 @@ export class User {
   get achievements(): Achievement[] { return [...this._achievements]; }
 
   /**
-   * Adiciona XP e recalcula o nível.
-   * Regra: Nível 1 (0-999), Nível 2 (1000-1999), etc.
+   * Adiciona XP e processa subida de nível.
+   * Regra: Cada nível requer 1000 XP acumulado.
+   * Nível 1: 0-999 XP
+   * Nível 2: 1000-1999 XP
    */
   public addXp(amount: number): void {
     if (amount < 0) throw new ValidationError("A quantidade de XP deve ser positiva.");
@@ -96,7 +97,7 @@ export class User {
   }
 
   /**
-   * Clona a instância para garantir reatividade no estado do React
+   * Clona a instância para garantir imutabilidade de referência no React
    */
   public clone(): User {
     return new User(
