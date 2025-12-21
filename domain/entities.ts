@@ -15,7 +15,7 @@ export interface Achievement {
   title: string;
   description: string;
   dateEarned: Date;
-  icon?: string;
+  icon: string;
 }
 
 export class UserProgress {
@@ -84,12 +84,6 @@ export class User {
   get level(): number { return this._level; }
   get achievements(): Achievement[] { return [...this._achievements]; }
 
-  /**
-   * Adiciona XP e processa subida de nível.
-   * Regra: Cada nível requer 1000 XP acumulado.
-   * Nível 1: 0-999 XP
-   * Nível 2: 1000-1999 XP
-   */
   public addXp(amount: number): void {
     if (amount < 0) throw new ValidationError("A quantidade de XP deve ser positiva.");
     this._xp += amount;
@@ -97,8 +91,42 @@ export class User {
   }
 
   /**
-   * Clona a instância para garantir imutabilidade de referência no React
+   * Verifica se o usuário atingiu critérios para novas conquistas.
    */
+  public checkAndAddAchievements(type: 'LESSON' | 'LEVEL'): Achievement | null {
+    let newlyUnlocked: Achievement | null = null;
+
+    if (type === 'LESSON') {
+      const hasFirstLesson = this._achievements.some(a => a.id === 'first-lesson');
+      if (!hasFirstLesson) {
+        newlyUnlocked = {
+          id: 'first-lesson',
+          title: 'Primeiro Passo',
+          description: 'Você concluiu sua primeira aula no sistema!',
+          dateEarned: new Date(),
+          icon: 'fa-rocket'
+        };
+        this._achievements.push(newlyUnlocked);
+      }
+    }
+
+    if (type === 'LEVEL') {
+      const hasLevel5 = this._achievements.some(a => a.id === 'level-5');
+      if (this._level >= 5 && !hasLevel5) {
+        newlyUnlocked = {
+          id: 'level-5',
+          title: 'Mestre do Conhecimento',
+          description: 'Respeito! Você atingiu o Nível 5.',
+          dateEarned: new Date(),
+          icon: 'fa-brain'
+        };
+        this._achievements.push(newlyUnlocked);
+      }
+    }
+
+    return newlyUnlocked;
+  }
+
   public clone(): User {
     return new User(
       this.id, 

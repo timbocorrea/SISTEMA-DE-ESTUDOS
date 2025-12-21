@@ -1,6 +1,6 @@
 
 import { ICourseRepository } from '../repositories/ICourseRepository';
-import { Course, Lesson, User, Module } from '../domain/entities';
+import { Course, Lesson, User, Module, Achievement } from '../domain/entities';
 
 export class CourseService {
   constructor(private courseRepository: ICourseRepository) {}
@@ -10,13 +10,13 @@ export class CourseService {
   }
 
   /**
-   * Atualiza progresso e aplica regras de gamificação.
-   * Injeta a regra de negócio de recompensa por conclusão.
+   * Atualiza progresso e verifica conquistas de aula e nível.
    */
-  public async updateUserProgress(user: User, lesson: Lesson, course: Course): Promise<void> {
+  public async updateUserProgress(user: User, lesson: Lesson, course: Course): Promise<Achievement | null> {
     const wasCompletedBefore = lesson.isCompleted;
+    let unlocked: Achievement | null = null;
     
-    // 1. Persistência técnica via repositório
+    // 1. Persistência técnica
     await this.courseRepository.updateLessonProgress(
       user.id,
       lesson.id,
@@ -24,19 +24,24 @@ export class CourseService {
       lesson.isCompleted
     );
 
-    // 2. Lógica de Gamificação Orquestrada
-    // Se a aula foi concluída neste ciclo de atualização
+    // 2. Lógica de Gamificação
     if (lesson.isCompleted && !wasCompletedBefore) {
-      // Regra de Negócio: Recompensa de 150 XP por aula concluída
       user.addXp(150);
+      
+      // Verifica conquistas de aula
+      unlocked = user.checkAndAddAchievements('LESSON');
 
-      // Regra Adicional: Bônus de Módulo (500 XP se todas as aulas do módulo forem concluídas)
+      // Verifica bônus de módulo (sem conquista atrelada por agora, apenas XP)
       const parentModule = course.modules.find(m => m.lessons.some(l => l.id === lesson.id));
       if (parentModule && parentModule.isFullyCompleted()) {
         user.addXp(500);
       }
 
-      // 3. Sincroniza estado de gamificação no repositório
+      // Verifica conquistas de nível (ex: Level 5)
+      const levelAch = user.checkAndAddAchievements('LEVEL');
+      if (!unlocked) unlocked = levelAch;
+
+      // 3. Sincroniza com repositório
       await this.courseRepository.updateUserGamification(
         user.id,
         user.xp,
@@ -44,6 +49,8 @@ export class CourseService {
         user.achievements
       );
     }
+
+    return unlocked;
   }
 
   public async fetchAvailableCourses(): Promise<Course[]> {

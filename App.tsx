@@ -4,7 +4,7 @@ import { SupabaseCourseRepository } from './repositories/SupabaseCourseRepositor
 import { SupabaseAuthRepository } from './repositories/SupabaseAuthRepository';
 import { CourseService } from './services/CourseService';
 import { AuthService } from './services/AuthService';
-import { Course, Lesson, User } from './domain/entities';
+import { Course, Lesson, User, Achievement } from './domain/entities';
 import { IUserSession } from './domain/auth';
 import Sidebar from './components/Sidebar';
 import VideoPlayer from './components/VideoPlayer';
@@ -21,6 +21,7 @@ const App: React.FC = () => {
   const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
   const [activeView, setActiveView] = useState('dashboard');
   const [isLoading, setIsLoading] = useState(true);
+  const [unlockedAchievement, setUnlockedAchievement] = useState<Achievement | null>(null);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const saved = localStorage.getItem('theme');
     return (saved as 'light' | 'dark') || 'light';
@@ -45,17 +46,24 @@ const App: React.FC = () => {
     localStorage.setItem('theme', theme);
   }, [theme]);
 
+  // Limpa a notificação após 5 segundos
+  useEffect(() => {
+    if (unlockedAchievement) {
+      const timer = setTimeout(() => setUnlockedAchievement(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [unlockedAchievement]);
+
   useEffect(() => {
     const existingSession = authService.getCurrentSession();
     if (existingSession) {
       setSession(existingSession);
-      // Inicializa a entidade User do domínio com XP simulado para teste
       const user = new User(
         existingSession.user.id,
         existingSession.user.name,
         existingSession.user.email,
         existingSession.user.role,
-        1500 // Inicia no Nível 2
+        850 // XP inicial para teste (perto do nível 2)
       );
       setCurrentUser(user);
     }
@@ -69,7 +77,7 @@ const App: React.FC = () => {
         const data = await courseService.loadCourseDetails('course-1');
         setCourse(data);
       } catch (err) {
-        console.error("Failed to load data", err);
+        console.error("Failed to load course", err);
       }
     };
     loadData();
@@ -77,24 +85,20 @@ const App: React.FC = () => {
 
   const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
 
-  /**
-   * Função vital para a reatividade da Gamificação:
-   * Altera a instância do User, clona e atualiza o estado do React.
-   */
   const handleProgressUpdate = async (watchedSeconds: number) => {
     if (!currentLesson || !course || !currentUser) return;
     
-    // 1. POO: Atualiza o estado interno da aula
     currentLesson.updateProgress(watchedSeconds);
     
-    // 2. Serviço: Processa gamificação e bônus em memória
-    // Nota: O CourseService atualiza o objeto currentUser via referência
-    await courseService.updateUserProgress(currentUser, currentLesson, course);
+    // Captura conquista via serviço
+    const achievement = await courseService.updateUserProgress(currentUser, currentLesson, course);
     
-    // 3. React: Força re-renderização com clone para imutabilidade da UI
+    if (achievement) {
+      setUnlockedAchievement(achievement);
+    }
+    
+    // Atualiza estado local mantendo imutabilidade
     setCurrentUser(currentUser.clone());
-    
-    // Opcional: Persistir no Course para manter consistência das aulas marcadas
     setCourse(new Course(course.id, course.title, course.description, [...course.modules]));
   };
 
@@ -125,10 +129,6 @@ const App: React.FC = () => {
     switch (activeView) {
       case 'dashboard':
         return <StudentDashboard user={currentUser} onCourseClick={() => setActiveView('lesson')} />;
-      case 'content':
-        return session.user.role === 'INSTRUCTOR' ? <AdminContentManagement /> : <StudentDashboard user={currentUser} onCourseClick={() => setActiveView('lesson')} />;
-      case 'users':
-        return session.user.role === 'INSTRUCTOR' ? <UserManagement /> : <StudentDashboard user={currentUser} onCourseClick={() => setActiveView('lesson')} />;
       case 'lesson':
         if (!course) return <div className="p-8">Carregando curso...</div>;
         const lessonToPlay = currentLesson || course.modules[0].lessons[0];
@@ -143,18 +143,18 @@ const App: React.FC = () => {
                <VideoPlayer lesson={lessonToPlay} onProgress={handleProgressUpdate} />
                <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
                  <h2 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight">{lessonToPlay.title}</h2>
-                 <p className="text-slate-500 dark:text-slate-400 font-medium">Curso de Engenharia de Software • Módulo 1</p>
+                 <p className="text-slate-500 dark:text-slate-400 font-medium">Estudos Acadêmicos de ADS • Engenharia de Software</p>
                  <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                       <div className={`w-3 h-3 rounded-full animate-pulse ${lessonToPlay.isCompleted ? 'bg-green-500' : 'bg-indigo-500'}`}></div>
+                       <div className={`w-3 h-3 rounded-full ${lessonToPlay.isCompleted ? 'bg-green-500' : 'bg-indigo-500 animate-pulse'}`}></div>
                        <span className="text-xs font-black uppercase tracking-widest text-slate-400">
-                          {lessonToPlay.isCompleted ? 'Aula Concluída' : 'Assistindo'}
+                          {lessonToPlay.isCompleted ? 'Aula Concluída' : 'Em progresso'}
                        </span>
                     </div>
                     {lessonToPlay.isCompleted && (
                       <div className="flex items-center gap-2 text-green-600 dark:text-green-400 font-black text-xs uppercase animate-bounce">
                         <i className="fas fa-check-circle"></i>
-                        <span>+150 XP GANHOS!</span>
+                        <span>+150 XP CREDITADOS!</span>
                       </div>
                     )}
                  </div>
@@ -179,10 +179,42 @@ const App: React.FC = () => {
         onLogout={handleLogout}
         theme={theme}
         onToggleTheme={toggleTheme}
+        user={currentUser}
       />
-      <main className="flex-1 overflow-y-auto bg-slate-50/50 dark:bg-transparent scroll-smooth">
+      <main className="flex-1 overflow-y-auto bg-slate-50/50 dark:bg-transparent scroll-smooth relative">
         {renderContent()}
+
+        {/* Feedback de Conquista (Achievement Toast) */}
+        {unlockedAchievement && (
+          <div className="fixed bottom-8 right-8 z-[100] animate-in slide-in-from-bottom-10 duration-500">
+            <div className="bg-gradient-to-r from-indigo-600 to-violet-700 p-[2px] rounded-3xl shadow-[0_20px_50px_rgba(79,70,229,0.3)]">
+              <div className="bg-slate-950 px-6 py-5 rounded-[22px] flex items-center gap-5 min-w-[340px]">
+                <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center text-yellow-400 text-2xl border border-white/10 shadow-inner">
+                  <i className={`fas ${unlockedAchievement.icon}`}></i>
+                </div>
+                <div className="flex-1">
+                  <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] block mb-1">Medalha Desbloqueada!</span>
+                  <h4 className="text-lg font-black text-white leading-tight tracking-tight">{unlockedAchievement.title}</h4>
+                  <p className="text-[11px] text-slate-400 font-medium leading-relaxed">{unlockedAchievement.description}</p>
+                </div>
+                <button onClick={() => setUnlockedAchievement(null)} className="p-2 text-slate-500 hover:text-white transition-colors">
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes slide-up {
+          from { transform: translateY(100%); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+        .animate-in {
+          animation: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+      `}} />
     </div>
   );
 };
