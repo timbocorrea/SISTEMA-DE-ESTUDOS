@@ -11,6 +11,7 @@ import LessonMaterialsSidebar from './components/LessonMaterialsSidebar';
 import CourseEnrollmentModal from './components/CourseEnrollmentModal';
 import Breadcrumb from './components/Breadcrumb';
 import LessonContentEditorPage from './components/LessonContentEditorPage';
+import LessonViewer from './components/LessonViewer';
 import { IUserSession } from './domain/auth';
 import { LessonRecord } from './domain/admin';
 import { Achievement, Course, Lesson, Module, User } from './domain/entities';
@@ -211,11 +212,11 @@ const App: React.FC = () => {
     });
   };
 
-  const handleProgressUpdate = async (watchedSeconds: number) => {
+  const handleProgressUpdate = async (watchedSeconds: number, lastBlockId?: string) => {
     if (!currentLesson || !course || !currentUser) return;
 
     const becameCompleted = currentLesson.updateProgress(watchedSeconds);
-    const achievements = await courseService.updateUserProgress(currentUser, currentLesson, course, becameCompleted);
+    const achievements = await courseService.updateUserProgress(currentUser, currentLesson, course, becameCompleted, lastBlockId);
     enqueueAchievements(achievements);
 
     setCurrentUser(currentUser.clone());
@@ -243,9 +244,7 @@ const App: React.FC = () => {
     setLessonSidebarTab('materials');
   };
 
-  const handleSelectLesson = (lessonId: string) => {
-    if (!activeModule) return;
-    const lesson = activeModule.lessons.find(l => l.id === lessonId) || null;
+  const handleSelectLesson = (lesson: Lesson) => {
     setCurrentLesson(lesson);
     setLessonSidebarTab('materials');
   };
@@ -322,6 +321,7 @@ const App: React.FC = () => {
           image_url: lesson.imageUrl,
           duration_seconds: lesson.durationSeconds,
           position: lesson.position ?? 0,
+          content_blocks: lesson.contentBlocks,
           created_at: new Date().toISOString() // Placeholder, não crítico para edição
         };
 
@@ -444,7 +444,8 @@ const App: React.FC = () => {
                 videoUrl: metadata?.video_url ?? editingLesson.video_url,
                 imageUrl: metadata?.image_url ?? editingLesson.image_url,
                 durationSeconds: metadata?.duration_seconds ?? editingLesson.duration_seconds,
-                position: editingLesson.position
+                position: editingLesson.position,
+                contentBlocks: metadata?.content_blocks ?? editingLesson.content_blocks
               });
               // Voltar para gerenciamento de conteúdo
               setEditingLesson(null);
@@ -513,7 +514,7 @@ const App: React.FC = () => {
                     <div
                       key={lesson.id}
                       className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 hover:border-indigo-400 transition cursor-pointer flex items-center justify-between"
-                      onClick={() => handleSelectLesson(lesson.id)}
+                      onClick={() => handleSelectLesson(lesson)}
                     >
                       <div>
                         <p className="text-sm font-black text-slate-800 dark:text-white">{lesson.title}</p>
@@ -536,109 +537,22 @@ const App: React.FC = () => {
         if (!lessonToPlay) return <div className="p-8">Nenhuma aula disponível.</div>;
 
         return (
-          <div className="max-w-[1800px] mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
-            <div className="lg:col-span-9 space-y-6">
-              <button
-                onClick={() => {
-                  setCurrentLesson(null);
-                }}
-                className="text-slate-500 dark:text-slate-400 text-sm font-black flex items-center gap-2 hover:text-indigo-500 transition uppercase tracking-wider"
-              >
-                <i className="fas fa-arrow-left"></i> Voltar às aulas
-              </button>
-
-              <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-                <h2 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight">{lessonToPlay.title}</h2>
-                <div className="flex items-center justify-between">
-                  <p className="text-slate-500 dark:text-slate-400 font-medium">
-                    Estudos Acadêmicos de ADS · Engenharia de Software
-                  </p>
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-3 h-3 rounded-full ${lessonToPlay.isCompleted ? 'bg-green-500' : 'bg-indigo-500 animate-pulse'
-                        }`}
-                    ></div>
-                    <span className="text-xs font-black uppercase tracking-widest text-slate-400">
-                      {lessonToPlay.isCompleted ? 'Aula Concluída' : 'Em progresso'}
-                    </span>
-                    {lessonToPlay.isCompleted && (
-                      <div className="flex items-center gap-2 text-green-600 dark:text-green-400 font-black text-xs uppercase animate-bounce ml-4">
-                        <i className="fas fa-check-circle"></i>
-                        <span>+150 XP CREDITADOS!</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <VideoPlayer lesson={lessonToPlay} onProgress={handleProgressUpdate} />
-
-              {/* Conteúdo da Matéria (Texto) */}
-              {lessonToPlay.content && (
-                <div className={`p-8 rounded-3xl border shadow-sm transition-colors ${contentTheme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-white border-slate-200'}`}>
-                  <div className={`flex items-center justify-between mb-6 pb-4 border-b ${contentTheme === 'dark' ? 'border-slate-800' : 'border-slate-200'}`}>
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${contentTheme === 'dark' ? 'bg-indigo-900/30' : 'bg-indigo-100'}`}>
-                        <i className={`fas fa-book-open ${contentTheme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'}`}></i>
-                      </div>
-                      <div>
-                        <h3 className={`text-lg font-black ${contentTheme === 'dark' ? 'text-white' : 'text-slate-800'}`}>Conteúdo da Aula</h3>
-                        <p className={`text-xs ${contentTheme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>Material de apoio e orientações</p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => setContentTheme(prev => prev === 'light' ? 'dark' : 'light')}
-                      className={`px-4 py-2 rounded-xl flex items-center justify-center gap-2 border transition-all duration-300 font-bold text-xs uppercase tracking-wider shadow-sm hover:shadow-md ${contentTheme === 'dark'
-                        ? 'bg-slate-800 border-slate-700 text-yellow-400 hover:bg-slate-700 hover:text-yellow-300'
-                        : 'bg-indigo-50 border-indigo-200 text-indigo-600 hover:bg-indigo-100'
-                        }`}
-                      title={contentTheme === 'dark' ? 'Mudar para modo claro' : 'Mudar para modo escuro'}
-                    >
-                      <i className={`fas ${contentTheme === 'dark' ? 'fa-sun' : 'fa-moon'}`}></i>
-                      <span>{contentTheme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}</span>
-                    </button>
-                  </div>
-                  <div
-                    className={`leading-relaxed lesson-content-view ${contentTheme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}
-                    style={{
-                      fontSize: '15px',
-                      lineHeight: '1.8'
-                    }}
-                    dangerouslySetInnerHTML={{ __html: lessonToPlay.content }}
-                  />
-                </div>
-              )}
-
-
-            </div>
-            <div className="lg:col-span-3 space-y-6 sticky top-8 h-fit self-start">
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-1 flex">
-                <button
-                  onClick={() => setLessonSidebarTab('materials')}
-                  className={`flex-1 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition ${lessonSidebarTab === 'materials'
-                    ? 'bg-indigo-600 text-white'
-                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/40'
-                    }`}
-                >
-                  Materiais
-                </button>
-                <button
-                  onClick={() => setLessonSidebarTab('buddy')}
-                  className={`flex-1 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition ${lessonSidebarTab === 'buddy'
-                    ? 'bg-indigo-600 text-white'
-                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/40'
-                    }`}
-                >
-                  Buddy AI
-                </button>
-              </div>
-
-              {lessonSidebarTab === 'materials' ? (
-                <LessonMaterialsSidebar lesson={lessonToPlay} />
-              ) : (
-                <GeminiBuddy currentContext={`${course.title} - ${lessonToPlay.title}`} />
-              )}
-            </div>
-          </div>
+          <LessonViewer
+            course={course}
+            lesson={lessonToPlay}
+            user={currentUser}
+            onLessonSelect={handleSelectLesson}
+            onProgressUpdate={handleProgressUpdate}
+            onBackToLessons={() => setCurrentLesson(null)}
+            onBackToModules={() => {
+              setActiveModule(null);
+              setCurrentLesson(null);
+            }}
+            contentTheme={contentTheme}
+            setContentTheme={setContentTheme}
+            sidebarTab={lessonSidebarTab}
+            setSidebarTab={setLessonSidebarTab}
+          />
         );
       }
       default:

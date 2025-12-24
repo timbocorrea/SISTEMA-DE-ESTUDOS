@@ -12,6 +12,14 @@ export interface ILessonData {
   watchedSeconds: number;
   isCompleted: boolean;
   position: number;
+  lastAccessedBlockId?: string | null;
+  contentBlocks?: IContentBlock[];
+}
+
+export interface IContentBlock {
+  id: string;
+  text: string;
+  audioUrl?: string;
 }
 
 export type LessonResourceType = 'PDF' | 'AUDIO' | 'IMAGE' | 'LINK' | 'FILE';
@@ -37,7 +45,8 @@ export class UserProgress {
     public readonly userId: string,
     public readonly lessonId: string,
     public readonly watchedSeconds: number,
-    public readonly isCompleted: boolean
+    public readonly isCompleted: boolean,
+    public readonly lastAccessedBlockId: string | null = null
   ) { }
 }
 
@@ -53,6 +62,8 @@ export class Lesson {
   private _watchedSeconds: number;
   private _isCompleted: boolean;
   private _position: number;
+  private _lastAccessedBlockId: string | null;
+  private _contentBlocks: IContentBlock[];
 
   constructor(data: ILessonData) {
     this._id = data.id;
@@ -66,6 +77,8 @@ export class Lesson {
     this._watchedSeconds = data.watchedSeconds || 0;
     this._isCompleted = data.isCompleted || false;
     this._position = data.position || 0;
+    this._lastAccessedBlockId = data.lastAccessedBlockId || null;
+    this._contentBlocks = data.contentBlocks ? [...data.contentBlocks] : [];
   }
 
   get id(): string { return this._id; }
@@ -79,6 +92,8 @@ export class Lesson {
   get watchedSeconds(): number { return this._watchedSeconds; }
   get isCompleted(): boolean { return this._isCompleted; }
   get position(): number { return this._position; }
+  get lastAccessedBlockId(): string | null { return this._lastAccessedBlockId; }
+  get contentBlocks(): IContentBlock[] { return [...this._contentBlocks]; }
 
   public updateProgress(watched: number): boolean {
     if (watched < 0) throw new ValidationError('O tempo assistido não pode ser negativo.');

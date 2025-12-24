@@ -38,7 +38,12 @@ export const lessonSchema = z.object({
         .number()
         .int('Posição deve ser um número inteiro')
         .min(0, 'Posição não pode ser negativa')
-        .optional()
+        .optional(),
+    contentBlocks: z.array(z.object({
+        id: z.string(),
+        text: z.string().min(1, 'Texto do bloco não pode ser vazio'),
+        audioUrl: z.string().url('URL de áudio inválida').optional().or(z.literal(''))
+    })).optional()
 });
 
 /**
@@ -49,9 +54,7 @@ export const lessonResourceSchema = z.object({
         .string()
         .min(2, 'Título deve ter no mínimo 2 caracteres')
         .max(200, 'Título muito longo'),
-    resourceType: z.enum(['PDF', 'AUDIO', 'IMAGE', 'LINK', 'FILE'], {
-        errorMap: () => ({ message: 'Tipo de recurso inválido' })
-    }),
+    resourceType: z.enum(['PDF', 'AUDIO', 'IMAGE', 'LINK', 'FILE']),
     url: z
         .string()
         .url('URL do recurso inválida'),

@@ -2,7 +2,7 @@ import { Course, UserProgress, User, Achievement } from '../domain/entities';
 
 export interface ICourseRepository {
   getCourseById(id: string, userId?: string): Promise<Course>;
-  updateLessonProgress(userId: string, lessonId: string, watchedSeconds: number, isCompleted: boolean): Promise<void>;
+  updateLessonProgress(userId: string, lessonId: string, watchedSeconds: number, isCompleted: boolean, lastBlockId?: string): Promise<void>;
   getAllCourses(userId?: string): Promise<Course[]>;
   getUserProgress(userId: string): Promise<UserProgress[]>;
 

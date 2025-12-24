@@ -34,6 +34,7 @@ export interface IAdminRepository {
       imageUrl?: string | null;
       durationSeconds?: number | null;
       position?: number | null;
+      contentBlocks?: any[] | null;
     }
   ): Promise<LessonRecord>;
   deleteLesson(id: string): Promise<void>;

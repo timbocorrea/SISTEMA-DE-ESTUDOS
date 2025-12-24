@@ -12,7 +12,8 @@ export class CourseService {
     user: User,
     lesson: Lesson,
     course: Course,
-    becameCompleted: boolean
+    becameCompleted: boolean,
+    lastBlockId?: string
   ): Promise<Achievement[]> {
     const unlocked: Achievement[] = [];
 
@@ -20,7 +21,8 @@ export class CourseService {
       user.id,
       lesson.id,
       lesson.watchedSeconds,
-      lesson.isCompleted
+      lesson.isCompleted,
+      lastBlockId
     );
 
     if (!becameCompleted) return unlocked;

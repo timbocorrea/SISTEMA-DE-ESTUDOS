@@ -65,6 +65,7 @@ export class AdminService {
       imageUrl?: string | null;
       durationSeconds?: number | null;
       position?: number | null;
+      contentBlocks?: any[] | null;
     }
   ): Promise<LessonRecord> {
     return this.adminRepository.updateLesson(id, patch);

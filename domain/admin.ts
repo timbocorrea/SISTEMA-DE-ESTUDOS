@@ -24,6 +24,7 @@ export type LessonRecord = {
   image_url: string | null;
   duration_seconds: number | null;
   position: number | null;
+  content_blocks?: any[] | null;
   created_at?: string;
 };
 

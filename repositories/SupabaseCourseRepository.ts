@@ -8,6 +8,7 @@ type LessonProgressRow = {
   lesson_id: string;
   watched_seconds: number;
   is_completed: boolean;
+  last_accessed_block_id: string | null;
 };
 
 export class SupabaseCourseRepository implements ICourseRepository {
@@ -22,7 +23,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
 
     const { data, error } = await this.client
       .from('lesson_progress')
-      .select('lesson_id, watched_seconds, is_completed')
+      .select('lesson_id, watched_seconds, is_completed, last_accessed_block_id')
       .eq('user_id', userId);
 
     if (error) {
@@ -50,7 +51,9 @@ export class SupabaseCourseRepository implements ICourseRepository {
       durationSeconds: row.duration_seconds || 0,
       watchedSeconds: progress?.watched_seconds || 0,
       isCompleted: progress?.is_completed || false,
-      position: row.position || 0
+      position: row.position || 0,
+      lastAccessedBlockId: progress?.last_accessed_block_id || null,
+      contentBlocks: row.content_blocks || []
     };
     return new Lesson(payload);
   }
@@ -115,6 +118,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
               image_url,
               duration_seconds,
               position,
+              content_blocks,
               resources:lesson_resources (
                 id,
                 title,
@@ -146,7 +150,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
   /**
    * Salva o progresso técnico da aula.
    */
-  async updateLessonProgress(userId: string, lessonId: string, watchedSeconds: number, isCompleted: boolean): Promise<void> {
+  async updateLessonProgress(userId: string, lessonId: string, watchedSeconds: number, isCompleted: boolean, lastBlockId?: string): Promise<void> {
     const { error } = await this.client
       .from('lesson_progress')
       .upsert(
@@ -155,6 +159,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
           lesson_id: lessonId,
           watched_seconds: watchedSeconds,
           is_completed: isCompleted,
+          last_accessed_block_id: lastBlockId || null,
           updated_at: new Date().toISOString()
         },
         { onConflict: 'user_id,lesson_id' }
@@ -177,7 +182,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
   async getUserProgress(userId: string): Promise<UserProgress[]> {
     const { data, error } = await this.client
       .from('lesson_progress')
-      .select('user_id, lesson_id, watched_seconds, is_completed')
+      .select('user_id, lesson_id, watched_seconds, is_completed, last_accessed_block_id')
       .eq('user_id', userId);
 
     if (error) {
@@ -186,7 +191,13 @@ export class SupabaseCourseRepository implements ICourseRepository {
 
     return (data || []).map(
       (p: any) =>
-        new UserProgress(p.user_id, p.lesson_id, p.watched_seconds || 0, p.is_completed || false)
+        new UserProgress(
+          p.user_id,
+          p.lesson_id,
+          p.watched_seconds || 0,
+          p.is_completed || false,
+          p.last_accessed_block_id || null
+        )
     );
   }
 

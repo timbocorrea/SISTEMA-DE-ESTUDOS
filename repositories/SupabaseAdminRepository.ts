@@ -107,7 +107,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
   async listLessons(moduleId: string): Promise<LessonRecord[]> {
     const { data, error } = await this.client
       .from('lessons')
-      .select('id,module_id,title,content,video_url,audio_url,image_url,duration_seconds,position,created_at')
+      .select('id,module_id,title,content,video_url,audio_url,image_url,duration_seconds,position,content_blocks,created_at')
       .eq('module_id', moduleId)
       .order('position', { ascending: true });
 
@@ -156,6 +156,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
       imageUrl?: string | null;
       durationSeconds?: number | null;
       position?: number | null;
+      contentBlocks?: any[] | null;
     }
   ): Promise<LessonRecord> {
     const updates: Record<string, unknown> = {};
@@ -166,12 +167,13 @@ export class SupabaseAdminRepository implements IAdminRepository {
     if (patch.imageUrl !== undefined) updates.image_url = patch.imageUrl;
     if (patch.durationSeconds !== undefined) updates.duration_seconds = patch.durationSeconds;
     if (patch.position !== undefined) updates.position = patch.position;
+    if (patch.contentBlocks !== undefined) updates.content_blocks = patch.contentBlocks;
 
     const { data, error } = await this.client
       .from('lessons')
       .update(updates)
       .eq('id', id)
-      .select('id,module_id,title,content,video_url,audio_url,image_url,duration_seconds,position,created_at')
+      .select('id,module_id,title,content,video_url,audio_url,image_url,duration_seconds,position,content_blocks,created_at')
       .single();
 
     if (error || !data) throw new DomainError(`Falha ao atualizar aula: ${error?.message || 'dados inválidos'}`);
