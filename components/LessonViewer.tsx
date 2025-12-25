@@ -243,54 +243,60 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                     {/* Rendering Logic: If has blocks, render blocks. Else render rich text. */}
                     {lesson.contentBlocks && lesson.contentBlocks.length > 0 ? (
                         <div>
-                            {lesson.contentBlocks.map((block, index) => (
-                                <div
-                                    key={block.id}
-                                    ref={el => { blockRefs.current[block.id] = el; }}
-                                    className={`relative p-4 rounded-2xl border transition-all duration-500 group cursor-pointer mb-${(block as any).spacing ?? 2} ${activeBlockId === block.id
-                                        ? 'bg-indigo-50/50 dark:bg-indigo-900/20 border-indigo-500 shadow-lg shadow-indigo-500/10 audio-block-active'
-                                        : lastAccessedId === block.id
-                                            ? 'bg-slate-50/50 dark:bg-slate-800/30 border-slate-300 dark:border-slate-700'
-                                            : 'border-transparent'
-                                        }`}
-                                    onClick={() => playBlock(index)}
-                                >
-                                    <div className="flex items-start gap-4">
-                                        <div className="flex-1">
-                                            <div
-                                                className={`leading-relaxed transition-colors font-medium ${activeBlockId === block.id
-                                                    ? (contentTheme === 'light' ? 'text-slate-900' : 'text-indigo-100') // Cor quando tocando (Ativo)
-                                                    : (contentTheme === 'light' ? 'text-slate-700' : 'text-slate-300') // Cor normal (Inativo)
-                                                    }`}
-                                                dangerouslySetInnerHTML={{ __html: block.text }}
-                                            />
-                                        </div>
-                                    </div>
+                            {lesson.contentBlocks.map((block, index) => {
+                                // Calcular o espaçamento usando a mesma lógica do editor
+                                const spacing = block.spacing !== undefined ? block.spacing : 8;
+                                const spacingClass = spacing === 0 ? 'mb-0' : spacing === 4 ? 'mb-4' : spacing === 8 ? 'mb-8' : spacing === 12 ? 'mb-12' : spacing === 16 ? 'mb-16' : spacing === 24 ? 'mb-24' : 'mb-8';
 
-                                    {/* Barra de Progresso do Áudio Interativa */}
-                                    {activeBlockId === block.id && (
-                                        <div
-                                            className="mt-4 w-full cursor-pointer group py-2 select-none"
-                                            onClick={handleSeek}
-                                            title="Clique para alterar a posição"
-                                        >
-                                            <div className="h-1 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden relative">
+                                return (
+                                    <div
+                                        key={block.id}
+                                        ref={el => { blockRefs.current[block.id] = el; }}
+                                        className={`relative p-4 rounded-2xl border transition-all duration-500 group cursor-pointer ${spacingClass} ${activeBlockId === block.id
+                                            ? 'bg-indigo-50/50 dark:bg-indigo-900/20 border-indigo-500 shadow-lg shadow-indigo-500/10 audio-block-active'
+                                            : lastAccessedId === block.id
+                                                ? 'bg-slate-50/50 dark:bg-slate-800/30 border-slate-300 dark:border-slate-700'
+                                                : 'border-transparent'
+                                            }`}
+                                        onClick={() => playBlock(index)}
+                                    >
+                                        <div className="flex items-start gap-4">
+                                            <div className="flex-1">
                                                 <div
-                                                    className="h-full bg-indigo-600 dark:bg-indigo-500 transition-all duration-75 ease-linear relative"
-                                                    style={{ width: `${audioProgress}%` }}
-                                                >
-                                                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-indigo-600 dark:bg-indigo-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-md translate-x-1/2 pointer-events-none"></div>
-                                                </div>
+                                                    className={`leading-relaxed transition-colors font-medium ${activeBlockId === block.id
+                                                        ? (contentTheme === 'light' ? 'text-slate-900' : 'text-indigo-100') // Cor quando tocando (Ativo)
+                                                        : (contentTheme === 'light' ? 'text-slate-700' : 'text-slate-300') // Cor normal (Inativo)
+                                                        }`}
+                                                    dangerouslySetInnerHTML={{ __html: block.text }}
+                                                />
                                             </div>
                                         </div>
-                                    )}
 
-                                    {/* Indicador de última posição */}
-                                    {lastAccessedId === block.id && activeBlockId !== block.id && (
-                                        <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-8 bg-indigo-500 rounded-full"></div>
-                                    )}
-                                </div>
-                            ))}
+                                        {/* Barra de Progresso do Áudio Interativa */}
+                                        {activeBlockId === block.id && (
+                                            <div
+                                                className="mt-4 w-full cursor-pointer group py-2 select-none"
+                                                onClick={handleSeek}
+                                                title="Clique para alterar a posição"
+                                            >
+                                                <div className="h-1 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden relative">
+                                                    <div
+                                                        className="h-full bg-indigo-600 dark:bg-indigo-500 transition-all duration-75 ease-linear relative"
+                                                        style={{ width: `${audioProgress}%` }}
+                                                    >
+                                                        <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-indigo-600 dark:bg-indigo-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-md translate-x-1/2 pointer-events-none"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Indicador de última posição */}
+                                        {lastAccessedId === block.id && activeBlockId !== block.id && (
+                                            <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-8 bg-indigo-500 rounded-full"></div>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
                     ) : (
                         <div

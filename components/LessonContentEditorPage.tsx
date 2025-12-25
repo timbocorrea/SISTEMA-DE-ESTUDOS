@@ -3,7 +3,7 @@ import { createSupabaseClient } from '../services/supabaseClient';
 import { LessonRecord } from '../domain/admin';
 
 // Componente para gerenciar edição de bloco individual
-const EditableBlock: React.FC<{ text: string; onUpdate: (newText: string) => void; onFocus?: (element: HTMLDivElement) => void }> = ({ text, onUpdate, onFocus }) => {
+const EditableBlock: React.FC<{ text: string; onUpdate: (newText: string) => void; onFocus?: (element: HTMLDivElement) => void; blockId?: string }> = ({ text, onUpdate, onFocus, blockId }) => {
     const divRef = useRef<HTMLDivElement>(null);
     const isUpdatingRef = useRef(false);
     const initialTextRef = useRef(text); // Guarda o texto inicial
@@ -54,6 +54,7 @@ const EditableBlock: React.FC<{ text: string; onUpdate: (newText: string) => voi
             onFocus={() => divRef.current && onFocus?.(divRef.current)}
             className="w-full bg-transparent border-none focus:ring-0 focus:outline-none p-0 text-slate-700 dark:text-slate-200 placeholder:text-slate-400 min-h-[60px] leading-relaxed text-sm font-medium"
             data-placeholder="Digite o conteúdo deste parágrafo..."
+            data-block-id={blockId}
             style={{ minHeight: '60px' }}
         />
     );
@@ -79,7 +80,30 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
     const [activeFormats, setActiveFormats] = useState<string[]>([]);
     const [zoom, setZoom] = useState(100);
     const [forceLightMode, setForceLightMode] = useState(false);
+    const [previewTheme, setPreviewTheme] = useState<'light' | 'dark'>('light'); // Tema da prévia
     const [showMetadata, setShowMetadata] = useState(false);
+
+    // Multimedia Modals State
+    const [showImageModal, setShowImageModal] = useState(false);
+    const [showTableModal, setShowTableModal] = useState(false);
+    const [showVideoModal, setShowVideoModal] = useState(false);
+    const [imageMode, setImageMode] = useState<'upload' | 'url'>('url');
+    const [mediaUrl, setMediaUrl] = useState('');
+    const [uploadingMedia, setUploadingMedia] = useState(false);
+    const [tableRows, setTableRows] = useState(3);
+    const [tableCols, setTableCols] = useState(3);
+
+    // Menu flutuante entre blocos
+    const [hoveredBlockIndex, setHoveredBlockIndex] = useState<number | null>(null);
+    const [showMediaMenu, setShowMediaMenu] = useState(false);
+    const [mediaMenuIndex, setMediaMenuIndex] = useState<number | null>(null);
+
+    // Controle de tamanho de mídia
+    const [selectedMedia, setSelectedMedia] = useState<HTMLElement | null>(null);
+    const [mediaSize, setMediaSize] = useState<string>('100%');
+
+    // Controle de expansão de blocos
+    const [expandedBlockId, setExpandedBlockId] = useState<string | null>(null);
 
     // Metadata State
     const [title, setTitle] = useState(lesson.title);
@@ -158,6 +182,106 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
         setDurationSeconds(lesson.duration_seconds || 0);
         setImageUrl(lesson.image_url || '');
     }, [lesson.id]); // APENAS quando lesson.id mudar (lição diferente)
+
+    // Detectar cliques em imagens e vídeos nos blocos
+    useEffect(() => {
+        const handleMediaClick = (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+
+            // Verificar se clicou em uma imagem
+            if (target.tagName === 'IMG') {
+                e.stopPropagation();
+                setSelectedMedia(target);
+                const currentWidth = target.style.maxWidth || '100%';
+                setMediaSize(currentWidth);
+                return;
+            }
+
+            // Verificar se clicou em um vídeo wrapper
+            if (target.closest('.video-wrapper')) {
+                e.stopPropagation();
+                const wrapper = target.closest('.video-wrapper') as HTMLElement;
+                setSelectedMedia(wrapper);
+                const currentWidth = wrapper.style.maxWidth || '100%';
+                setMediaSize(currentWidth);
+                return;
+            }
+
+            // NÃO desselecionar se clicou na toolbar de mídia
+            if (target.closest('.media-toolbar')) {
+                return;
+            }
+
+            // Desselecionar se clicou fora
+            setSelectedMedia(null);
+        };
+
+        document.addEventListener('click', handleMediaClick);
+        return () => document.removeEventListener('click', handleMediaClick);
+    }, []);
+
+    // Função para redimensionar mídia
+    const resizeMedia = (size: string) => {
+        if (!selectedMedia) return;
+
+        if (selectedMedia.tagName === 'IMG') {
+            selectedMedia.style.maxWidth = size;
+            selectedMedia.style.width = size === '100%' ? '100%' : 'auto';
+        } else if (selectedMedia.classList.contains('video-wrapper')) {
+            selectedMedia.style.maxWidth = size;
+        }
+
+        setMediaSize(size);
+
+        // Forçar atualização visual imediata
+        selectedMedia.style.display = 'none';
+        void selectedMedia.offsetHeight; // Trigger reflow
+        selectedMedia.style.display = '';
+    };
+
+    // Função para alinhar mídia
+    const alignMedia = (alignment: 'left' | 'center' | 'right') => {
+        if (!selectedMedia) return;
+
+        // Resetar estilos
+        selectedMedia.style.marginLeft = '';
+        selectedMedia.style.marginRight = '';
+        selectedMedia.style.display = 'block';
+
+        if (alignment === 'left') {
+            selectedMedia.style.marginLeft = '0';
+            selectedMedia.style.marginRight = 'auto';
+        } else if (alignment === 'center') {
+            selectedMedia.style.marginLeft = 'auto';
+            selectedMedia.style.marginRight = 'auto';
+        } else if (alignment === 'right') {
+            selectedMedia.style.marginLeft = 'auto';
+            selectedMedia.style.marginRight = '0';
+        }
+    };
+
+    // Função para aplicar mudanças e atualizar o bloco
+    const applyMediaChanges = () => {
+        if (!selectedMedia) return;
+
+        // Encontrar o contenteditable pai que contém a mídia
+        let editableParent = selectedMedia.closest('[contenteditable="true"]');
+        if (!editableParent) return;
+
+        // Pegar o block-id do elemento editável
+        const blockId = editableParent.getAttribute('data-block-id');
+        if (!blockId) return;
+
+        // Pegar o HTML atualizado
+        const updatedHTML = editableParent.innerHTML;
+
+        // Atualizar o bloco usando o ID correto
+        updateBlock(blockId, { text: updatedHTML });
+
+        // Desselecionar
+        setSelectedMedia(null);
+    };
+
 
     useEffect(() => {
         if (editorRef.current) {
@@ -534,6 +658,172 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
         }
     };
 
+    // ========== MULTIMEDIA FUNCTIONS ==========
+
+    // Upload de imagem para Supabase Storage
+    const handleImageUpload = async (file: File) => {
+        try {
+            setUploadingMedia(true);
+            const supabase = createSupabaseClient();
+
+            const timestamp = Date.now();
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${timestamp}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+            const filePath = `content-images/${fileName}`;
+
+            const { data, error } = await supabase.storage
+                .from('content-images')
+                .upload(filePath, file, {
+                    cacheControl: '3600',
+                    upsert: false
+                });
+
+            if (error) {
+                console.error('Erro no upload da imagem:', error);
+                alert(`Erro ao fazer upload: ${error.message}`);
+                setUploadingMedia(false);
+                return null;
+            }
+
+            const { data: urlData } = supabase.storage
+                .from('content-images')
+                .getPublicUrl(filePath);
+
+            setUploadingMedia(false);
+            return urlData.publicUrl;
+
+        } catch (err) {
+            console.error('Erro inesperado no upload:', err);
+            alert('Erro inesperado ao fazer upload.');
+            setUploadingMedia(false);
+            return null;
+        }
+    };
+
+    // Inserir imagem como novo bloco
+    const insertImage = (url: string, atIndex?: number) => {
+        if (!url) return;
+
+        const newBlock = {
+            id: Math.random().toString(36).substring(2) + Date.now().toString(36),
+            text: `<img src="${url}" style="max-width: 100%; height: auto; margin: 10px 0; border-radius: 8px;" alt="Imagem do conteúdo" />`,
+            audioUrl: '',
+            spacing: 8
+        };
+
+        if (atIndex !== undefined) {
+            const newBlocks = [...blocks];
+            newBlocks.splice(atIndex + 1, 0, newBlock);
+            setBlocks(newBlocks);
+        } else {
+            setBlocks([...blocks, newBlock]);
+        }
+
+        setShowImageModal(false);
+        setMediaUrl('');
+        setImageMode('url');
+        setShowMediaMenu(false);
+    };
+
+    // Inserir tabela como novo bloco
+    const insertTable = (atIndex?: number) => {
+        let html = '<table border="1" style="border-collapse: collapse; width: 100%; margin: 20px 0; border: 1px solid #cbd5e1;"><thead><tr>';
+        for (let j = 0; j < tableCols; j++) {
+            html += `<th style="padding: 12px; background-color: #f1f5f9; border: 1px solid #cbd5e1; font-weight: 600;">Cabeçalho ${j + 1}</th>`;
+        }
+        html += '</tr></thead><tbody>';
+        for (let i = 0; i < tableRows - 1; i++) {
+            html += '<tr>';
+            for (let j = 0; j < tableCols; j++) {
+                html += '<td style="padding: 12px; border: 1px solid #cbd5e1;">Linha ' + (i + 1) + '</td>';
+            }
+            html += '</tr>';
+        }
+        html += '</tbody></table>';
+
+        const newBlock = {
+            id: Math.random().toString(36).substring(2) + Date.now().toString(36),
+            text: html,
+            audioUrl: '',
+            spacing: 8
+        };
+
+        if (atIndex !== undefined) {
+            const newBlocks = [...blocks];
+            newBlocks.splice(atIndex + 1, 0, newBlock);
+            setBlocks(newBlocks);
+        } else {
+            setBlocks([...blocks, newBlock]);
+        }
+
+        setShowTableModal(false);
+        setTableRows(3);
+        setTableCols(3);
+        setShowMediaMenu(false);
+    };
+
+    // Inserir vídeo como novo bloco
+    const insertVideoEmbed = (atIndex?: number) => {
+        if (!mediaUrl) return;
+        let videoId = '';
+        let embedUrl = '';
+        if (mediaUrl.includes('youtube.com') || mediaUrl.includes('youtu.be')) {
+            const match = mediaUrl.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
+            videoId = match ? match[1] : '';
+            embedUrl = `https://www.youtube.com/embed/${videoId}`;
+        } else if (mediaUrl.includes('vimeo.com')) {
+            const match = mediaUrl.match(/vimeo\.com\/(\d+)/);
+            videoId = match ? match[1] : '';
+            embedUrl = `https://player.vimeo.com/video/${videoId}`;
+        }
+        if (!embedUrl) {
+            alert('URL de vídeo inválida. Use YouTube ou Vimeo.');
+            return;
+        }
+
+        const html = `<div class="video-wrapper" style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; margin: 20px 0; border-radius: 12px;"><div class="video-overlay"></div><iframe src="${embedUrl}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;" frameborder="0" allowfullscreen></iframe></div>`;
+
+        const newBlock = {
+            id: Math.random().toString(36).substring(2) + Date.now().toString(36),
+            text: html,
+            audioUrl: '',
+            spacing: 8
+        };
+
+        if (atIndex !== undefined) {
+            const newBlocks = [...blocks];
+            newBlocks.splice(atIndex + 1, 0, newBlock);
+            setBlocks(newBlocks);
+        } else {
+            setBlocks([...blocks, newBlock]);
+        }
+
+        setShowVideoModal(false);
+        setMediaUrl('');
+        setShowMediaMenu(false);
+    };
+
+    // Inserir citação
+    const insertQuote = () => {
+        const targetElement = activeEditableElement || editorRef.current;
+        if (targetElement) {
+            targetElement.focus();
+            document.execCommand('formatBlock', false, 'blockquote');
+            if (activeEditableElement) {
+                const event = new Event('input', { bubbles: true });
+                activeEditableElement.dispatchEvent(event);
+            } else {
+                handleInput();
+            }
+        }
+    };
+
+    // Inserir lista não ordenada
+    const insertUnorderedList = () => execCommand('insertUnorderedList');
+
+    // Inserir lista ordenada
+    const insertOrderedList = () => execCommand('insertOrderedList');
+
     // Helper to count words/chars stripping HTML
     const getTextStats = () => {
         const tempDiv = document.createElement('div');
@@ -672,7 +962,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
     );
 
     return (
-        <div className="min-h-screen bg-white dark:bg-slate-950 flex flex-col">
+        <div className="h-screen bg-white dark:bg-slate-950 flex flex-col overflow-hidden">
             {/* Header fixo */}
             <div className="sticky top-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 shadow-sm relative">
                 <div className="px-8 py-3">
@@ -904,20 +1194,31 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                 if (url) execCommand('createLink', url);
                             }}
                         />
-                        <ToolbarButton
-                            icon="fab fa-youtube"
-                            command="insertYoutube"
-                            title="Inserir Vídeo do YouTube"
-                            onClick={insertYoutubeVideo}
-                        />
+
+                        {/* Multimedia Buttons */}
                         <ToolbarButton
                             icon="image"
-                            command="insertImage"
-                            title="Inserir Imagem (URL)"
-                            onClick={() => {
-                                const url = prompt('Digite a URL da imagem:');
-                                if (url) execCommand('insertImage', url);
-                            }}
+                            command=""
+                            title="Inserir Imagem"
+                            onClick={() => setShowImageModal(true)}
+                        />
+                        <ToolbarButton
+                            icon="table"
+                            command=""
+                            title="Inserir Tabela"
+                            onClick={() => setShowTableModal(true)}
+                        />
+                        <ToolbarButton
+                            icon="video"
+                            command=""
+                            title="Inserir Vídeo (YouTube/Vimeo)"
+                            onClick={() => setShowVideoModal(true)}
+                        />
+                        <ToolbarButton
+                            icon="quote-left"
+                            command=""
+                            title="Inserir Citação"
+                            onClick={insertQuote}
                         />
                         <ToolbarButton icon="remove-format" command="removeFormat" title="Limpar formatação" />
                     </div>
@@ -970,32 +1271,48 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
             <div className={`flex-1 flex flex-col overflow-hidden ${forceLightMode ? 'bg-slate-100' : 'bg-slate-100 dark:bg-black/20'}`}>
                 <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 p-6 overflow-hidden">
                     {/* Coluna Esquerda: Prévia para Alunos */}
-                    <div className="flex flex-col h-full">
+                    <div className="flex flex-col h-full min-h-0">
                         {/* Header Fixo */}
                         <div className="mb-4 px-2 flex-shrink-0">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <h2 className="text-xl font-black text-slate-800 dark:text-white tracking-tight flex items-center gap-2">
+                                    <h2 className={`text-xl font-black tracking-tight flex items-center gap-2 ${forceLightMode ? 'text-slate-900' : 'text-slate-900 dark:text-white'}`}>
                                         <i className="fas fa-eye text-indigo-500"></i>
                                         Prévia para Alunos
                                     </h2>
                                     <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Como os alunos verão o conteúdo</p>
                                 </div>
+
+                                {/* Toggle de Tema da Prévia */}
+                                <button
+                                    onClick={() => setPreviewTheme(previewTheme === 'light' ? 'dark' : 'light')}
+                                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                                    title={`Mudar para tema ${previewTheme === 'light' ? 'escuro' : 'claro'}`}
+                                >
+                                    <i className={`fas ${previewTheme === 'light' ? 'fa-moon' : 'fa-sun'} text-sm ${previewTheme === 'light' ? 'text-indigo-600' : 'text-yellow-500'}`}></i>
+                                    <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                                        {previewTheme === 'light' ? 'Claro' : 'Escuro'}
+                                    </span>
+                                </button>
                             </div>
                         </div>
 
                         {/* Conteúdo com Scroll Independente */}
-                        <div className={`flex-1 overflow-auto p-8 rounded-2xl border shadow-sm scrollbar-thin ${forceLightMode
+                        <div className={`flex-1 overflow-y-auto p-8 rounded-2xl border shadow-sm scrollbar-thin ${previewTheme === 'light'
                             ? 'bg-white border-slate-200'
-                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
+                            : 'bg-slate-900 border-slate-800'
                             }`}>
                             {blocks.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center h-full text-center py-20">
-                                    <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-6">
-                                        <i className="fas fa-layer-group text-3xl text-slate-300 dark:text-slate-600"></i>
+                                    <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-6 ${previewTheme === 'light' ? 'bg-slate-100' : 'bg-slate-800'
+                                        }`}>
+                                        <i className={`fas fa-layer-group text-3xl ${previewTheme === 'light' ? 'text-slate-300' : 'text-slate-600'
+                                            }`}></i>
                                     </div>
-                                    <p className="text-lg font-bold text-slate-800 dark:text-white mb-2">Nenhum Bloco Criado</p>
-                                    <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md">
+                                    <p className={`text-lg font-bold mb-2 ${previewTheme === 'light' ? 'text-slate-800' : 'text-white'
+                                        }`}>Nenhum Bloco Criado</p>
+                                    <p className={`text-sm max-w-md ${previewTheme === 'light' ? 'text-slate-500' : 'text-slate-400'
+                                        }`}>
                                         Adicione blocos no gerenciador ao lado para visualizar como aparecerão para os alunos.
                                     </p>
                                 </div>
@@ -1010,7 +1327,8 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                     const spacingClass = spacing === 0 ? 'mb-0' : spacing === 2 ? 'mb-2' : spacing === 4 ? 'mb-4' : spacing === 6 ? 'mb-6' : spacing === 8 ? 'mb-8' : spacing === 12 ? 'mb-12' : spacing === 16 ? 'mb-16' : 'mb-8';
 
                                     return (
-                                        <div key={block.id || index} className={`${spacingClass} text-sm text-slate-700 dark:text-slate-200`}>
+                                        <div key={block.id || index} className={`${spacingClass} text-sm ${previewTheme === 'light' ? 'text-slate-700' : 'text-slate-200'
+                                            }`}>
                                             {text && <div className="w-full" dangerouslySetInnerHTML={{ __html: text }} />}
                                         </div>
                                     );
@@ -1020,11 +1338,11 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                     </div>
 
                     {/* Coluna Direita: Gerenciador de Blocos */}
-                    <div className="flex flex-col h-full">
+                    <div className="flex flex-col h-full min-h-0">
                         {/* Header Fixo com Botões */}
                         <div className="flex items-center justify-between mb-4 px-2 flex-shrink-0">
                             <div>
-                                <h2 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">Gerenciador de Blocos</h2>
+                                <h2 className={`text-2xl font-black tracking-tight ${forceLightMode ? 'text-slate-900' : 'text-slate-900 dark:text-white'}`}>Gerenciador de Blocos</h2>
                                 <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Sincronize parágrafos e áudios com precisão.</p>
                             </div>
                             <div className="flex gap-2">
@@ -1053,7 +1371,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                         </div>
 
                         {/* Conteúdo com Scroll Independente */}
-                        <div className="flex-1 overflow-auto pr-4 space-y-6 pb-20 scrollbar-thin">
+                        <div className="flex-1 overflow-y-auto pr-4 space-y-6 pb-20 scrollbar-thin">
 
                             {blocks.length === 0 ? (
                                 <div className="bg-white dark:bg-slate-900 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl p-20 text-center flex flex-col items-center gap-6">
@@ -1078,100 +1396,176 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                     const text = block.text || '';
 
                                     return (
-                                        <div
-                                            key={block.id || index}
-                                            className="group relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-12 shadow-sm hover:shadow-xl hover:shadow-indigo-500/5 hover:border-indigo-400/50 dark:hover:border-indigo-500/50 transition-all duration-300"
-                                        >
-                                            {/* Badge de Ordem */}
-                                            <div className="absolute -left-3 top-8 w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-[10px] font-black text-slate-400 z-10 shadow-sm group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-500 transition-all">
-                                                {String(index + 1).padStart(2, '0')}
-                                            </div>
+                                        <div key={block.id || index}>
+                                            {/* Botão "+" flutuante que aparece ao hover */}
+                                            <div
+                                                className="relative h-8 group/add flex items-center justify-center"
+                                                onMouseEnter={() => setHoveredBlockIndex(index)}
+                                                onMouseLeave={() => setHoveredBlockIndex(null)}
+                                            >
+                                                <div className="absolute inset-x-0 h-px bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-700 to-transparent opacity-0 group-hover/add:opacity-100 transition-opacity"></div>
 
-                                            {/* Controles de Movimentação Flutuantes */}
-                                            <div className="absolute -right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0 z-20">
+                                                {/* Bot\u00e3o \"+\" */}
                                                 <button
-                                                    onClick={() => moveBlock(index, 'up')}
-                                                    disabled={index === 0}
-                                                    className="w-10 h-10 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:scale-110 disabled:opacity-30 transition-all"
+                                                    onClick={() => {
+                                                        setMediaMenuIndex(index);
+                                                        setShowMediaMenu(!showMediaMenu);
+                                                    }}
+                                                    className={`relative z-10 w-8 h-8 rounded-full bg-white dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 text-slate-400 dark:text-slate-500 hover:border-indigo-500 hover:text-indigo-600 hover:scale-110 shadow-lg transition-all duration-200 ${hoveredBlockIndex === index ? 'opacity-100 scale-100' : 'opacity-0 scale-75 pointer-events-none'
+                                                        }`}
                                                 >
-                                                    <i className="fas fa-chevron-up text-xs"></i>
+                                                    <i className="fas fa-plus text-xs"></i>
                                                 </button>
-                                                <button
-                                                    onClick={() => moveBlock(index, 'down')}
-                                                    disabled={index === blocks.length - 1}
-                                                    className="w-10 h-10 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:scale-110 disabled:opacity-30 transition-all"
-                                                >
-                                                    <i className="fas fa-chevron-down text-xs"></i>
-                                                </button>
-                                            </div>
 
-                                            <div className="flex flex-col md:flex-row items-start gap-6">
-                                                <div className="flex-1 relative">
-                                                    <EditableBlock
-                                                        text={text}
-                                                        onUpdate={(newText) => updateBlock(block.id, { text: newText })}
-                                                        onFocus={(element) => setActiveEditableElement(element)}
-                                                    />
-                                                    {/* Indicador visual de texto */}
-                                                    <div className="mt-4 flex items-center gap-4 border-t border-slate-50 dark:border-slate-800 pt-4">
-                                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                                                            <i className="fas fa-align-left text-[9px]"></i>
-                                                            {text.replace(/<[^>]*>/g, '').length} caracteres
-                                                        </span>
-                                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                                                            <i className="fas fa-clock text-[9px]"></i>
-                                                            ~{Math.ceil(text.replace(/<[^>]*>/g, '').length / 15)}s de áudio
-                                                        </span>
+                                                {/* Menu Popup */}
+                                                {showMediaMenu && mediaMenuIndex === index && (
+                                                    <div className="absolute top-10 left-1/2 -translate-x-1/2 z-50 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 p-2 min-w-[200px] animate-in fade-in slide-in-from-top-2 duration-200">
+                                                        <button
+                                                            onClick={() => {
+                                                                setMediaMenuIndex(index);
+                                                                setShowImageModal(true);
+                                                                setShowMediaMenu(false);
+                                                            }}
+                                                            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 transition-colors"
+                                                        >
+                                                            <i className="fas fa-image w-4"></i>
+                                                            <span>Inserir Imagem</span>
+                                                        </button>
+                                                        <button
+                                                            onClick={() => {
+                                                                setMediaMenuIndex(index);
+                                                                setShowTableModal(true);
+                                                                setShowMediaMenu(false);
+                                                            }}
+                                                            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 transition-colors"
+                                                        >
+                                                            <i className="fas fa-table w-4"></i>
+                                                            <span>Inserir Tabela</span>
+                                                        </button>
+                                                        <button
+                                                            onClick={() => {
+                                                                setMediaMenuIndex(index);
+                                                                setShowVideoModal(true);
+                                                                setShowMediaMenu(false);
+                                                            }}
+                                                            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 transition-colors"
+                                                        >
+                                                            <i className="fas fa-video w-4"></i>
+                                                            <span>Inserir Vídeo</span>
+                                                        </button>
                                                     </div>
+                                                )}
+                                            </div>
+
+                                            <div
+                                                key={block.id || index}
+                                                onClick={() => setExpandedBlockId(expandedBlockId === block.id ? null : block.id)}
+                                                className={`group relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm hover:shadow-xl hover:shadow-indigo-500/5 hover:border-indigo-400/50 dark:hover:border-indigo-500/50 transition-all duration-300 cursor-pointer ${expandedBlockId === block.id ? 'p-12' : 'p-6'
+                                                    }`}
+                                            >
+                                                {/* Badge de Ordem */}
+                                                <div className={`absolute -left-3 w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-[10px] font-black text-slate-400 z-10 shadow-sm group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-500 transition-all ${expandedBlockId === block.id ? 'top-8' : 'top-4'
+                                                    }`}>
+                                                    {String(index + 1).padStart(2, '0')}
                                                 </div>
 
-                                                <div className="flex md:flex-col items-start justify-start gap-3 border-l border-slate-100 dark:border-slate-800 pl-6 min-w-[120px]">
-                                                    <button
-                                                        onClick={() => openAudioModal(block)}
-                                                        className={`w-full h-12 rounded-2xl flex items-center justify-center gap-2 px-4 transition-all duration-300 font-bold text-[10px] uppercase tracking-widest ${block.audioUrl
-                                                            ? 'bg-green-50 text-green-600 border border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800/50'
-                                                            : 'bg-slate-50 text-slate-400 border border-slate-200 dark:bg-slate-800/50 dark:text-slate-500 dark:border-slate-700 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 dark:hover:bg-indigo-900/30'
-                                                            }`}
-                                                    >
-                                                        <i className={`fas ${block.audioUrl ? 'fa-microphone' : 'fa-microphone-slash'} text-xs`}></i>
-                                                        <span>{block.audioUrl ? 'Áudio' : 'Sem Áudio'}</span>
-                                                    </button>
-
-                                                    {/* Controle de Espaçamento Individual */}
-                                                    <div className="w-full relative group/spacing">
-                                                        <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                                                            <i className="fas fa-arrows-alt-v text-xs text-slate-400"></i>
-                                                        </div>
-                                                        <select
-                                                            value={block.spacing !== undefined ? block.spacing : 2}
-                                                            onChange={(e) => updateBlock(block.id, { spacing: Number(e.target.value) })}
-                                                            className="w-full h-10 pl-9 pr-2 appearance-none bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-[10px] font-bold uppercase tracking-widest text-slate-500 hover:border-indigo-300 focus:outline-none focus:border-indigo-500 transition-all cursor-pointer"
-                                                            title="Espaçamento abaixo deste bloco"
+                                                {/* Controles de Movimentação Flutuantes - só aparecem quando expandido */}
+                                                {expandedBlockId === block.id && (
+                                                    <div className="absolute -right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0 z-20">
+                                                        <button
+                                                            onClick={() => moveBlock(index, 'up')}
+                                                            disabled={index === 0}
+                                                            className="w-10 h-10 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:scale-110 disabled:opacity-30 transition-all"
                                                         >
-                                                            <option value={0}>Sem Espaço</option>
-                                                            <option value={4}>Pequeno</option>
-                                                            <option value={8}>Normal</option>
-                                                            <option value={12}>Médio</option>
-                                                            <option value={16}>Grande</option>
-                                                            <option value={24}>Enorme</option>
-                                                        </select>
+                                                            <i className="fas fa-chevron-up text-xs"></i>
+                                                        </button>
+                                                        <button
+                                                            onClick={() => moveBlock(index, 'down')}
+                                                            disabled={index === blocks.length - 1}
+                                                            className="w-10 h-10 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:scale-110 disabled:opacity-30 transition-all"
+                                                        >
+                                                            <i className="fas fa-chevron-down text-xs"></i>
+                                                        </button>
+                                                    </div>
+                                                )}
+
+                                                <div className="flex flex-col md:flex-row items-start gap-6">
+                                                    <div
+                                                        className="flex-1 relative"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                        <EditableBlock
+                                                            text={text}
+                                                            onUpdate={(newText) => updateBlock(block.id, { text: newText })}
+                                                            onFocus={(element) => setActiveEditableElement(element)}
+                                                            blockId={block.id}
+                                                        />
+
+                                                        {/* Indicador visual de texto - só aparece quando expandido */}
+                                                        {expandedBlockId === block.id && (
+                                                            <div className="mt-4 flex items-center gap-4 border-t border-slate-50 dark:border-slate-800 pt-4">
+                                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                                                                    <i className="fas fa-align-left text-[9px]"></i>
+                                                                    {text.replace(/<[^>]*>/g, '').length} caracteres
+                                                                </span>
+                                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                                                                    <i className="fas fa-clock text-[9px]"></i>
+                                                                    ~{Math.ceil(text.replace(/<[^>]*>/g, '').length / 15)}s de áudio
+                                                                </span>
+                                                            </div>
+                                                        )}
                                                     </div>
 
-                                                    <button
-                                                        onClick={() => removeBlock(block.id)}
-                                                        className="w-full h-10 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-red-50 hover:text-red-500 hover:border-red-200 dark:hover:bg-red-900/20 dark:hover:border-red-900/40 text-slate-300 transition-all flex items-center justify-center gap-2"
-                                                        title="Remover Bloco"
-                                                    >
-                                                        <i className="fas fa-trash-alt text-xs"></i>
-                                                        <span className="text-[10px] font-bold uppercase tracking-widest">Excluir</span>
-                                                    </button>
+                                                    {/* Controles laterais - só aparecem quando expandido */}
+                                                    {expandedBlockId === block.id && (
+                                                        <div className="flex md:flex-col items-start justify-start gap-3 border-l border-slate-100 dark:border-slate-800 pl-6 min-w-[120px]">
+                                                            <button
+                                                                onClick={() => openAudioModal(block)}
+                                                                className={`w-full h-12 rounded-2xl flex items-center justify-center gap-2 px-4 transition-all duration-300 font-bold text-[10px] uppercase tracking-widest ${block.audioUrl
+                                                                    ? 'bg-green-50 text-green-600 border border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800/50'
+                                                                    : 'bg-slate-50 text-slate-400 border border-slate-200 dark:bg-slate-800/50 dark:text-slate-500 dark:border-slate-700 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 dark:hover:bg-indigo-900/30'
+                                                                    }`}
+                                                            >
+                                                                <i className={`fas ${block.audioUrl ? 'fa-microphone' : 'fa-microphone-slash'} text-xs`}></i>
+                                                                <span>{block.audioUrl ? 'Áudio' : 'Sem Áudio'}</span>
+                                                            </button>
+
+                                                            {/* Controle de Espaçamento Individual */}
+                                                            <div className="w-full relative group/spacing">
+                                                                <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                                                                    <i className="fas fa-arrows-alt-v text-xs text-slate-400"></i>
+                                                                </div>
+                                                                <select
+                                                                    value={block.spacing !== undefined ? block.spacing : 2}
+                                                                    onChange={(e) => updateBlock(block.id, { spacing: Number(e.target.value) })}
+                                                                    className="w-full h-10 pl-9 pr-2 appearance-none bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-[10px] font-bold uppercase tracking-widest text-slate-500 hover:border-indigo-300 focus:outline-none focus:border-indigo-500 transition-all cursor-pointer"
+                                                                    title="Espaçamento abaixo deste bloco"
+                                                                >
+                                                                    <option value={0}>Sem Espaço</option>
+                                                                    <option value={4}>Pequeno</option>
+                                                                    <option value={8}>Normal</option>
+                                                                    <option value={12}>Médio</option>
+                                                                    <option value={16}>Grande</option>
+                                                                    <option value={24}>Enorme</option>
+                                                                </select>
+                                                            </div>
+
+                                                            <button
+                                                                onClick={() => removeBlock(block.id)}
+                                                                className="w-full h-10 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-red-50 hover:text-red-500 hover:border-red-200 dark:hover:bg-red-900/20 dark:hover:border-red-900/40 text-slate-300 transition-all flex items-center justify-center gap-2"
+                                                                title="Remover Bloco"
+                                                            >
+                                                                <i className="fas fa-trash-alt text-xs"></i>
+                                                                <span className="text-[10px] font-bold uppercase tracking-widest">Excluir</span>
+                                                            </button>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
                                     );
                                 })
-                            )
-                            }
+                            )}
                         </div>
                     </div>
                 </div>
@@ -1568,6 +1962,291 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
           .editor-content { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; box-shadow: none; border: none; }
         }
       `}</style>
+
+            {/* === MODALS DE MÍDIA === */}
+
+            {/* Modal: Inserir Imagem */}
+            {
+                showImageModal && (
+                    <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4" onClick={() => setShowImageModal(false)}>
+                        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg p-6" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-xl font-bold text-slate-900 dark:text-white">Inserir Imagem</h3>
+                                <button onClick={() => setShowImageModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                                    <i className=" fas fa-times text-xl"></i>
+                                </button>
+                            </div>
+
+                            {/* Tabs: Upload vs URL */}
+                            <div className="flex gap-2 mb-6">
+                                <button
+                                    onClick={() => setImageMode('url')}
+                                    className={`flex-1 py-2 px-4 rounded-lg text-sm font-semibold transition-colors ${imageMode === 'url'
+                                        ? 'bg-indigo-600 text-white'
+                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                                        }`}
+                                >
+                                    <i className="fas fa-link mr-2"></i>
+                                    URL
+                                </button>
+                                <button
+                                    onClick={() => setImageMode('upload')}
+                                    className={`flex-1 py-2 px-4 rounded-lg text-sm font-semibold transition-colors ${imageMode === 'upload'
+                                        ? 'bg-indigo-600 text-white'
+                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                                        }`}
+                                >
+                                    <i className="fas fa-upload mr-2"></i>
+                                    Upload
+                                </button>
+                            </div>
+
+                            {imageMode === 'url' ? (
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                        URL da Imagem
+                                    </label>
+                                    <input
+                                        type="url"
+                                        value={mediaUrl}
+                                        onChange={(e) => setMediaUrl(e.target.value)}
+                                        placeholder="https://exemplo.com/imagem.jpg"
+                                        className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                    />
+                                    <button
+                                        onClick={() => insertImage(mediaUrl, mediaMenuIndex !== null ? mediaMenuIndex : undefined)}
+                                        disabled={!mediaUrl}
+                                        className="w-full mt-4 py-3 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white font-semibold rounded-lg transition-colors disabled:cursor-not-allowed"
+                                    >
+                                        Inserir Imagem
+                                    </button>
+                                </div>
+                            ) : (
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                        Selecione uma imagem
+                                    </label>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={async (e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) {
+                                                const url = await handleImageUpload(file);
+                                                if (url) insertImage(url, mediaMenuIndex !== null ? mediaMenuIndex : undefined);
+                                            }
+                                        }}
+                                        className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-indigo-50 dark:file:bg-indigo-900/20 file:text-indigo-600 dark:file:text-indigo-400 file:font-semibold hover:file:bg-indigo-100 dark:hover:file:bg-indigo-900/30"
+                                    />
+                                    {uploadingMedia && (
+                                        <div className="mt-4 flex items-center justify-center gap-3 text-indigo-600 dark:text-indigo-400">
+                                            <i className="fas fa-spinner fa-spin"></i>
+                                            <span>Fazendo upload...</span>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )
+            }
+
+            {/* Modal: Inserir Tabela */}
+            {
+                showTableModal && (
+                    <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4" onClick={() => setShowTableModal(false)}>
+                        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-xl font-bold text-slate-900 dark:text-white">Inserir Tabela</h3>
+                                <button onClick={() => setShowTableModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                                    <i className="fas fa-times text-xl"></i>
+                                </button>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                        Número de Linhas
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="2"
+                                        max="20"
+                                        value={tableRows}
+                                        onChange={(e) => setTableRows(Number(e.target.value))}
+                                        className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                        Número de Colunas
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="2"
+                                        max="10"
+                                        value={tableCols}
+                                        onChange={(e) => setTableCols(Number(e.target.value))}
+                                        className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                    />
+                                </div>
+
+                                <button
+                                    onClick={() => insertTable(mediaMenuIndex !== null ? mediaMenuIndex : undefined)}
+                                    className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg transition-colors"
+                                >
+                                    Criar Tabela {tableRows}x{tableCols}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
+            {/* Modal: Inserir Vídeo */}
+            {
+                showVideoModal && (
+                    <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4" onClick={() => setShowVideoModal(false)}>
+                        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg p-6" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-xl font-bold text-slate-900 dark:text-white">Inserir Vídeo</h3>
+                                <button onClick={() => setShowVideoModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                                    <i className="fas fa-times text-xl"></i>
+                                </button>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                    URL do Vídeo (YouTube ou Vimeo)
+                                </label>
+                                <input
+                                    type="url"
+                                    value={mediaUrl}
+                                    onChange={(e) => setMediaUrl(e.target.value)}
+                                    placeholder="https://www.youtube.com/watch?v=..."
+                                    className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                />
+                                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                                    Cole o link completo do YouTube ou Vimeo
+                                </p>
+                                <button
+                                    onClick={() => insertVideoEmbed(mediaMenuIndex !== null ? mediaMenuIndex : undefined)}
+                                    dis
+
+                                    abled={!mediaUrl}
+                                    className="w-full mt-4 py-3 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white font-semibold rounded-lg transition-colors disabled:cursor-not-allowed"
+                                >
+                                    Inserir Vídeo
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
+            {/* Toolbar Flutuante para Redimensionar Mídia */}
+            {
+                selectedMedia && (
+                    <div
+                        className="media-toolbar fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 p-3 animate-in fade-in slide-in-from-bottom-4 duration-200"
+                        style={{ maxWidth: '90vw' }}
+                    >
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 px-2">Tamanho:</span>
+
+                            <button
+                                onClick={() => resizeMedia('33%')}
+                                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-colors ${mediaSize === '33%'
+                                    ? 'bg-indigo-600 text-white'
+                                    : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-slate-600'
+                                    }`}
+                            >
+                                Pequeno
+                            </button>
+
+                            <button
+                                onClick={() => resizeMedia('50%')}
+                                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-colors ${mediaSize === '50%'
+                                    ? 'bg-indigo-600 text-white'
+                                    : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-slate-600'
+                                    }`}
+                            >
+                                Médio
+                            </button>
+
+                            <button
+                                onClick={() => resizeMedia('75%')}
+                                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-colors ${mediaSize === '75%'
+                                    ? 'bg-indigo-600 text-white'
+                                    : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-slate-600'
+                                    }`}
+                            >
+                                Grande
+                            </button>
+
+                            <button
+                                onClick={() => resizeMedia('100%')}
+                                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-colors ${mediaSize === '100%'
+                                    ? 'bg-indigo-600 text-white'
+                                    : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-slate-600'
+                                    }`}
+                            >
+                                Original
+                            </button>
+
+                            <div className="w-px h-6 bg-slate-200 dark:bg-slate-600 mx-2"></div>
+
+                            <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 px-2">Alinhamento:</span>
+
+                            <button
+                                onClick={() => alignMedia('left')}
+                                className="px-3 py-2 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-slate-600 transition-colors"
+                                title="Alinhar à esquerda"
+                            >
+                                <i className="fas fa-align-left"></i>
+                            </button>
+
+                            <button
+                                onClick={() => alignMedia('center')}
+                                className="px-3 py-2 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-slate-600 transition-colors"
+                                title="Centralizar"
+                            >
+                                <i className="fas fa-align-center"></i>
+                            </button>
+
+                            <button
+                                onClick={() => alignMedia('right')}
+                                className="px-3 py-2 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-slate-600 transition-colors"
+                                title="Alinhar à direita"
+                            >
+                                <i className="fas fa-align-right"></i>
+                            </button>
+
+                            <div className="w-px h-6 bg-slate-200 dark:bg-slate-600 mx-2"></div>
+
+                            <button
+                                onClick={applyMediaChanges}
+                                className="px-4 py-2 rounded-lg text-xs font-bold bg-green-600 hover:bg-green-500 text-white transition-colors shadow-lg"
+                                title="Aplicar mudanças na prévia"
+                            >
+                                <i className="fas fa-check mr-2"></i>
+                                Aplicar
+                            </button>
+
+                            <div className="w-px h-6 bg-slate-200 dark:bg-slate-600 mx-2"></div>
+
+                            <button
+                                onClick={() => setSelectedMedia(null)}
+                                className="px-3 py-2 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 transition-colors"
+                            >
+                                <i className="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                )
+            }
+
         </div >
     );
 };

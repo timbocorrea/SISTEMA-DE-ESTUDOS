@@ -18,7 +18,8 @@ export const lessonSchema = z.object({
         .url('URL de vídeo inválida')
         .optional()
         .or(z.literal('')),
-    audioUrl: z
+    audioUrl: z,
+        spacing: z.number().int('Espacamento deve ser um numero inteiro').min(0).optional()
         .string()
         .url('URL de áudio inválida')
         .optional()
@@ -42,7 +43,8 @@ export const lessonSchema = z.object({
     contentBlocks: z.array(z.object({
         id: z.string(),
         text: z.string().min(1, 'Texto do bloco não pode ser vazio'),
-        audioUrl: z.string().url('URL de áudio inválida').optional().or(z.literal(''))
+        audioUrl: z.string().url('URL de áudio inválida').optional().or(z.literal('')),
+        spacing: z.number().int('Espacamento deve ser um numero inteiro').min(0).optional()
     })).optional()
 });
 

@@ -437,19 +437,26 @@ const App: React.FC = () => {
           <LessonContentEditorPage
             lesson={editingLesson}
             onSave={async (newContent, metadata) => {
-              // Atualizar aula no backend
-              await adminService.updateLesson(editingLesson.id, {
-                title: metadata?.title || editingLesson.title,
-                content: newContent,
-                videoUrl: metadata?.video_url ?? editingLesson.video_url,
-                imageUrl: metadata?.image_url ?? editingLesson.image_url,
-                durationSeconds: metadata?.duration_seconds ?? editingLesson.duration_seconds,
-                position: editingLesson.position,
-                contentBlocks: metadata?.content_blocks ?? editingLesson.content_blocks
-              });
-              // Voltar para gerenciamento de conteúdo
-              setEditingLesson(null);
-              setActiveView('content');
+              try {
+                // Atualizar aula no backend
+                const updatedLesson = await adminService.updateLesson(editingLesson.id, {
+                  title: metadata?.title || editingLesson.title,
+                  content: newContent,
+                  videoUrl: metadata?.video_url ?? editingLesson.video_url,
+                  imageUrl: metadata?.image_url ?? editingLesson.image_url,
+                  durationSeconds: metadata?.duration_seconds ?? editingLesson.duration_seconds,
+                  position: editingLesson.position,
+                  contentBlocks: metadata?.content_blocks ?? editingLesson.content_blocks
+                });
+
+                // Atualizar o editingLesson com os dados frescos do banco
+                setEditingLesson(updatedLesson);
+
+                console.log('✅ Aula atualizada e recarregada com sucesso!');
+              } catch (error) {
+                console.error('❌ Erro ao salvar aula:', error);
+                alert('Erro ao salvar a aula. Verifique o console para mais detalhes.');
+              }
             }}
             onCancel={() => {
               setEditingLesson(null);

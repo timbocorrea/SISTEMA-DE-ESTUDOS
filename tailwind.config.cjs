@@ -18,5 +18,16 @@ module.exports = {
       }
     }
   },
+  safelist: [
+    // Classes de espaçamento para blocos de conteúdo
+    'mb-0',
+    'mb-2',
+    'mb-4',
+    'mb-6',
+    'mb-8',
+    'mb-12',
+    'mb-16',
+    'mb-24'
+  ],
   plugins: []
 };
