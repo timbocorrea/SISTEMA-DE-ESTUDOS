@@ -36,6 +36,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 }) => {
     const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
     const [lastAccessedId, setLastAccessedId] = useState<string | null>(null);
+    const [audioProgress, setAudioProgress] = useState<number>(0);
+    const [playbackSpeed, setPlaybackSpeed] = useState<number>(1.0); // Velocidade de reprodução
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const blockRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
@@ -58,6 +60,15 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
         }
     }, [lesson.id]);
 
+    // Update playback rate dynamically
+    useEffect(() => {
+        if (audioRef.current) {
+            audioRef.current.playbackRate = playbackSpeed;
+        }
+    }, [playbackSpeed]);
+
+
+
     const playBlock = (index: number) => {
         const blocks = lesson.contentBlocks;
         if (!blocks || index < 0 || index >= blocks.length) return;
@@ -68,12 +79,21 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
             return;
         }
 
+        // Se clicar no bloco que está tocando, pausar
+        if (activeBlockId === block.id && audioRef.current) {
+            audioRef.current.pause();
+            setActiveBlockId(null);
+            setAudioProgress(0);
+            return;
+        }
+
         // Cleanup previous audio
         if (audioRef.current) {
             audioRef.current.pause();
         }
 
         setActiveBlockId(block.id);
+        setAudioProgress(0);
 
         // Save progress (Resume point)
         onProgressUpdate(lesson.watchedSeconds, block.id);
@@ -81,7 +101,19 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
         const audio = new Audio(block.audioUrl);
         audioRef.current = audio;
 
+        // Aplicar velocidade de reprodução
+        audio.playbackRate = playbackSpeed;
+
+        // Atualizar progresso do áudio
+        audio.ontimeupdate = () => {
+            if (audio.duration) {
+                const progress = (audio.currentTime / audio.duration) * 100;
+                setAudioProgress(progress);
+            }
+        };
+
         audio.onended = () => {
+            setAudioProgress(0);
             // Auto-advance
             const nextIndex = index + 1;
             if (nextIndex < blocks.length && blocks[nextIndex].audioUrl) {
@@ -103,6 +135,26 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
             }
         };
     }, []);
+
+    // Seek Functionality
+    const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (!audioRef.current) return;
+        e.stopPropagation();
+
+        const progressBar = e.currentTarget;
+        const rect = progressBar.getBoundingClientRect();
+        const offsetX = e.clientX - rect.left;
+        const width = rect.width;
+
+        if (width > 0) {
+            const percentage = Math.max(0, Math.min(100, (offsetX / width) * 100));
+            if (Number.isFinite(audioRef.current.duration)) {
+                const newTime = (audioRef.current.duration * percentage) / 100;
+                audioRef.current.currentTime = newTime;
+                setAudioProgress(percentage);
+            }
+        }
+    };
 
     return (
         <div className="max-w-[1800px] mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -150,54 +202,88 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                 </p>
                             </div>
                         </div>
-                        <button
-                            onClick={() => setContentTheme(contentTheme === 'light' ? 'dark' : 'light')}
-                            className={`px-4 py-2 rounded-xl flex items-center justify-center gap-2 border transition-all duration-300 font-bold text-xs uppercase tracking-wider shadow-sm hover:shadow-md ${contentTheme === 'dark'
-                                ? 'bg-slate-800 border-slate-700 text-yellow-400 hover:bg-slate-700 hover:text-yellow-300'
-                                : 'bg-indigo-50 border-indigo-200 text-indigo-600 hover:bg-indigo-100'
-                                }`}
-                        >
-                            <i className={`fas ${contentTheme === 'dark' ? 'fa-sun' : 'fa-moon'}`}></i>
-                            <span>{contentTheme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}</span>
-                        </button>
+                        <div className="flex items-center gap-3">
+                            {/* Controle de Velocidade - Apenas para blocos de áudio */}
+                            {lesson.contentBlocks && lesson.contentBlocks.length > 0 && (
+                                <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border ${contentTheme === 'dark'
+                                    ? 'bg-slate-800 border-slate-700'
+                                    : 'bg-slate-50 border-slate-200'
+                                    }`}>
+                                    <i className={`fas fa-tachometer-alt text-xs ${contentTheme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}></i>
+                                    <select
+                                        value={playbackSpeed}
+                                        onChange={(e) => setPlaybackSpeed(Number(e.target.value))}
+                                        className={`bg-transparent text-xs font-bold uppercase tracking-wider focus:outline-none cursor-pointer ${contentTheme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}
+                                        title="Velocidade de reprodução"
+                                    >
+                                        <option value={0.5}>0.5x</option>
+                                        <option value={0.75}>0.75x</option>
+                                        <option value={1.0}>Normal</option>
+                                        <option value={1.25}>1.25x</option>
+                                        <option value={1.5}>1.5x</option>
+                                        <option value={1.75}>1.75x</option>
+                                        <option value={2.0}>2.0x</option>
+                                    </select>
+                                </div>
+                            )}
+
+                            <button
+                                onClick={() => setContentTheme(contentTheme === 'light' ? 'dark' : 'light')}
+                                className={`px-4 py-2 rounded-xl flex items-center justify-center gap-2 border transition-all duration-300 font-bold text-xs uppercase tracking-wider shadow-sm hover:shadow-md ${contentTheme === 'dark'
+                                    ? 'bg-slate-800 border-slate-700 text-yellow-400 hover:bg-slate-700 hover:text-yellow-300'
+                                    : 'bg-indigo-50 border-indigo-200 text-indigo-600 hover:bg-indigo-100'
+                                    }`}
+                            >
+                                <i className={`fas ${contentTheme === 'dark' ? 'fa-sun' : 'fa-moon'}`}></i>
+                                <span>{contentTheme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}</span>
+                            </button>
+                        </div>
                     </div>
 
                     {/* Rendering Logic: If has blocks, render blocks. Else render rich text. */}
                     {lesson.contentBlocks && lesson.contentBlocks.length > 0 ? (
-                        <div className="space-y-4">
+                        <div>
                             {lesson.contentBlocks.map((block, index) => (
                                 <div
                                     key={block.id}
                                     ref={el => { blockRefs.current[block.id] = el; }}
-                                    className={`relative p-6 rounded-2xl border transition-all duration-500 group cursor-pointer ${activeBlockId === block.id
-                                        ? 'bg-indigo-50/50 dark:bg-indigo-900/20 border-indigo-500 shadow-lg shadow-indigo-500/10'
+                                    className={`relative p-4 rounded-2xl border transition-all duration-500 group cursor-pointer mb-${(block as any).spacing ?? 2} ${activeBlockId === block.id
+                                        ? 'bg-indigo-50/50 dark:bg-indigo-900/20 border-indigo-500 shadow-lg shadow-indigo-500/10 audio-block-active'
                                         : lastAccessedId === block.id
                                             ? 'bg-slate-50/50 dark:bg-slate-800/30 border-slate-300 dark:border-slate-700'
-                                            : 'border-transparent hover:bg-slate-50 dark:hover:bg-slate-900/40'
+                                            : 'border-transparent'
                                         }`}
                                     onClick={() => playBlock(index)}
                                 >
                                     <div className="flex items-start gap-4">
-                                        <div className={`mt-1 w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-colors ${activeBlockId === block.id
-                                            ? 'bg-indigo-600 text-white'
-                                            : 'bg-slate-100 dark:bg-slate-800 text-slate-400 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/40 group-hover:text-indigo-600'
-                                            }`}>
-                                            <i className={`fas ${activeBlockId === block.id ? 'fa-pause' : 'fa-play'} text-[10px]`}></i>
-                                        </div>
                                         <div className="flex-1">
-                                            <p className={`leading-relaxed transition-colors ${activeBlockId === block.id
-                                                ? 'text-indigo-900 dark:text-indigo-100 font-medium'
-                                                : contentTheme === 'dark' ? 'text-slate-300' : 'text-slate-700'
-                                                }`}>
-                                                {block.text}
-                                            </p>
+                                            <div
+                                                className={`leading-relaxed transition-colors font-medium ${activeBlockId === block.id
+                                                    ? (contentTheme === 'light' ? 'text-slate-900' : 'text-indigo-100') // Cor quando tocando (Ativo)
+                                                    : (contentTheme === 'light' ? 'text-slate-700' : 'text-slate-300') // Cor normal (Inativo)
+                                                    }`}
+                                                dangerouslySetInnerHTML={{ __html: block.text }}
+                                            />
                                         </div>
-                                        {block.audioUrl && (
-                                            <div className="text-[10px] uppercase tracking-widest font-black text-slate-400 mt-2 opacity-50">
-                                                Áudio disponível
-                                            </div>
-                                        )}
                                     </div>
+
+                                    {/* Barra de Progresso do Áudio Interativa */}
+                                    {activeBlockId === block.id && (
+                                        <div
+                                            className="mt-4 w-full cursor-pointer group py-2 select-none"
+                                            onClick={handleSeek}
+                                            title="Clique para alterar a posição"
+                                        >
+                                            <div className="h-1 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden relative">
+                                                <div
+                                                    className="h-full bg-indigo-600 dark:bg-indigo-500 transition-all duration-75 ease-linear relative"
+                                                    style={{ width: `${audioProgress}%` }}
+                                                >
+                                                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-indigo-600 dark:bg-indigo-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-md translate-x-1/2 pointer-events-none"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
 
                                     {/* Indicador de última posição */}
                                     {lastAccessedId === block.id && activeBlockId !== block.id && (

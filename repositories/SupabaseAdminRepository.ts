@@ -169,12 +169,20 @@ export class SupabaseAdminRepository implements IAdminRepository {
     if (patch.position !== undefined) updates.position = patch.position;
     if (patch.contentBlocks !== undefined) updates.content_blocks = patch.contentBlocks;
 
+    console.log('🗄️ SUPABASE - Enviando para DB:', JSON.stringify(updates, null, 2));
+
     const { data, error } = await this.client
       .from('lessons')
       .update(updates)
       .eq('id', id)
       .select('id,module_id,title,content,video_url,audio_url,image_url,duration_seconds,position,content_blocks,created_at')
       .single();
+
+    if (error) {
+      console.error('❌ SUPABASE - ERRO ao atualizar:', error);
+    }
+
+    console.log('🗄️ SUPABASE - Retornado do DB:', JSON.stringify(data, null, 2));
 
     if (error || !data) throw new DomainError(`Falha ao atualizar aula: ${error?.message || 'dados inválidos'}`);
     return data as LessonRecord;
