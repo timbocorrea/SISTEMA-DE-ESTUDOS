@@ -42,9 +42,11 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     const [audioProgress, setAudioProgress] = useState<number>(0);
     const [playbackSpeed, setPlaybackSpeed] = useState<number>(1.0); // Velocidade de reprodução
     const [audioEnabled, setAudioEnabled] = useState<boolean>(true); // Controle para ativar/desativar áudio
+    const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState<boolean>(false);
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const playbackSpeedRef = useRef<number>(playbackSpeed); // Ref para manter valor atualizado nos callbacks
     const blockRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+    const optionsMenuRef = useRef<HTMLDivElement | null>(null);
 
     // Estado para o widget flutuante do Buddy AI
     // const [isBuddyOpen, setIsBuddyOpen] = useState(false); // Removed: Global Buddy used
@@ -150,6 +152,25 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
         };
     }, []);
 
+    // Fechar menu de opções ao clicar fora
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (optionsMenuRef.current && !optionsMenuRef.current.contains(event.target as Node)) {
+                setIsOptionsMenuOpen(false);
+            }
+        };
+
+        if (isOptionsMenuOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        } else {
+            document.removeEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isOptionsMenuOpen]);
+
     // Seek Functionality
     const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
         if (!audioRef.current) return;
@@ -171,7 +192,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     };
 
     return (
-        <div className="max-w-[1920px] mx-auto px-4 md:px-6 py-4 md:py-8 flex flex-col lg:flex-row gap-6">
+        <div className="w-full max-w-[1920px] mx-auto px-4 md:px-6 py-4 md:py-8 flex flex-col lg:flex-row gap-8">
             {/* Coluna Esquerda: Conteúdo da Aula */}
             <div className="flex-1 min-w-0 space-y-6">
                 <button
@@ -217,60 +238,86 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                 </p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                            {/* Controle de Velocidade - Apenas para blocos de áudio */}
-                            {lesson.contentBlocks && lesson.contentBlocks.length > 0 && (
-                                <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border ${contentTheme === 'dark'
-                                    ? 'bg-slate-800 border-slate-700'
-                                    : 'bg-slate-50 border-slate-200'
-                                    }`}>
-                                    <i className={`fas fa-tachometer-alt text-xs ${contentTheme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}></i>
-                                    <select
-                                        value={playbackSpeed}
-                                        onChange={(e) => setPlaybackSpeed(Number(e.target.value))}
-                                        className={`bg-transparent text-xs font-bold uppercase tracking-wider focus:outline-none cursor-pointer ${contentTheme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}
-                                        title="Velocidade de reprodução"
-                                    >
-                                        <option value={0.5}>0.5x</option>
-                                        <option value={0.75}>0.75x</option>
-                                        <option value={1.0}>Normal</option>
-                                        <option value={1.25}>1.25x</option>
-                                        <option value={1.5}>1.5x</option>
-                                        <option value={1.75}>1.75x</option>
-                                        <option value={2.0}>2.0x</option>
-                                    </select>
-                                </div>
-                            )}
-
-                            {/* Controle de Ativar/Desativar Áudio */}
-                            {lesson.contentBlocks && lesson.contentBlocks.length > 0 && (
-                                <button
-                                    onClick={() => setAudioEnabled(!audioEnabled)}
-                                    className={`px-4 py-2 rounded-xl flex items-center justify-center gap-2 border transition-all duration-300 font-bold text-xs uppercase tracking-wider shadow-sm hover:shadow-md ${audioEnabled
-                                        ? (contentTheme === 'dark'
-                                            ? 'bg-green-800 border-green-700 text-green-300 hover:bg-green-700'
-                                            : 'bg-green-50 border-green-200 text-green-600 hover:bg-green-100')
-                                        : (contentTheme === 'dark'
-                                            ? 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'
-                                            : 'bg-slate-100 border-slate-300 text-slate-600 hover:bg-slate-200')
-                                        }`}
-                                    title={audioEnabled ? 'Desativar áudio (permitir seleção de texto)' : 'Ativar áudio'}
-                                >
-                                    <i className={`fas ${audioEnabled ? 'fa-volume-up' : 'fa-volume-mute'}`}></i>
-                                    <span>{audioEnabled ? 'Áudio On' : 'Áudio Off'}</span>
-                                </button>
-                            )}
-
+                        <div className="relative" ref={optionsMenuRef}>
                             <button
-                                onClick={() => setContentTheme(contentTheme === 'light' ? 'dark' : 'light')}
-                                className={`px-4 py-2 rounded-xl flex items-center justify-center gap-2 border transition-all duration-300 font-bold text-xs uppercase tracking-wider shadow-sm hover:shadow-md ${contentTheme === 'dark'
-                                    ? 'bg-slate-800 border-slate-700 text-yellow-400 hover:bg-slate-700 hover:text-yellow-300'
-                                    : 'bg-indigo-50 border-indigo-200 text-indigo-600 hover:bg-indigo-100'
+                                onClick={() => setIsOptionsMenuOpen(!isOptionsMenuOpen)}
+                                className={`px-4 py-2 rounded-xl flex items-center justify-center gap-2 border transition-all duration-300 font-bold text-xs uppercase tracking-wider shadow-sm hover:shadow-md ${isOptionsMenuOpen
+                                    ? 'bg-indigo-600 border-indigo-500 text-white'
+                                    : (contentTheme === 'dark'
+                                        ? 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
+                                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50')
                                     }`}
                             >
-                                <i className={`fas ${contentTheme === 'dark' ? 'fa-sun' : 'fa-moon'}`}></i>
-                                <span>{contentTheme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}</span>
+                                <i className={`fas fa-cog transition-transform duration-500 ${isOptionsMenuOpen ? 'rotate-90' : ''}`}></i>
+                                <span>Opções</span>
                             </button>
+
+                            {/* Dropdown Menu */}
+                            {isOptionsMenuOpen && (
+                                <div className={`absolute right-0 mt-3 w-64 rounded-2xl border shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 ${contentTheme === 'dark'
+                                    ? 'bg-slate-900 border-slate-800'
+                                    : 'bg-white border-slate-100'
+                                    }`}>
+                                    <div className="p-3 space-y-2">
+                                        <p className={`px-3 py-2 text-[10px] font-black uppercase tracking-widest ${contentTheme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>Visualização e Áudio</p>
+
+                                        {/* Velocidade */}
+                                        <div className={`flex flex-col gap-2 p-3 rounded-xl ${contentTheme === 'dark' ? 'bg-slate-800/50' : 'bg-slate-50'}`}>
+                                            <div className="flex items-center gap-2">
+                                                <i className={`fas fa-tachometer-alt text-xs ${contentTheme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'}`}></i>
+                                                <span className={`text-[11px] font-bold uppercase tracking-wider ${contentTheme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>Velocidade</span>
+                                            </div>
+                                            <div className="grid grid-cols-4 gap-1">
+                                                {[0.5, 1.0, 1.5, 2.0].map(speed => (
+                                                    <button
+                                                        key={speed}
+                                                        onClick={() => setPlaybackSpeed(speed)}
+                                                        className={`py-1 text-[10px] font-bold rounded-lg transition-all ${playbackSpeed === speed
+                                                            ? 'bg-indigo-600 text-white'
+                                                            : (contentTheme === 'dark' ? 'bg-slate-700 text-slate-400 hover:bg-slate-600' : 'bg-white text-slate-500 hover:bg-indigo-50 border border-slate-100')
+                                                            }`}
+                                                    >
+                                                        {speed === 1.0 ? '1x' : `${speed}x`}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* Audio Toggle */}
+                                        {lesson.contentBlocks && lesson.contentBlocks.length > 0 && (
+                                            <button
+                                                onClick={() => setAudioEnabled(!audioEnabled)}
+                                                className={`w-full px-4 py-3 rounded-xl flex items-center justify-between transition-all ${audioEnabled
+                                                    ? (contentTheme === 'dark' ? 'bg-green-900/20 text-green-400' : 'bg-green-50 text-green-600')
+                                                    : (contentTheme === 'dark' ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500')
+                                                    }`}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <i className={`fas ${audioEnabled ? 'fa-volume-up' : 'fa-volume-mute'}`}></i>
+                                                    <span className="text-xs font-bold uppercase tracking-wider">Leitura por Áudio</span>
+                                                </div>
+                                                <div className={`w-8 h-4 rounded-full relative transition-colors ${audioEnabled ? 'bg-green-500' : 'bg-slate-400'}`}>
+                                                    <div className={`absolute top-1 w-2 h-2 bg-white rounded-full transition-all ${audioEnabled ? 'right-1' : 'left-1'}`}></div>
+                                                </div>
+                                            </button>
+                                        )}
+
+                                        {/* Theme Toggle */}
+                                        <button
+                                            onClick={() => setContentTheme(contentTheme === 'light' ? 'dark' : 'light')}
+                                            className={`w-full px-4 py-3 rounded-xl flex items-center justify-between transition-all ${contentTheme === 'dark'
+                                                ? 'bg-indigo-900/20 text-indigo-400'
+                                                : 'bg-indigo-50 text-indigo-600'
+                                                }`}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <i className={`fas ${contentTheme === 'dark' ? 'fa-sun' : 'fa-moon'}`}></i>
+                                                <span className="text-xs font-bold uppercase tracking-wider">{contentTheme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}</span>
+                                            </div>
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -297,7 +344,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                         <div className="flex items-start gap-4">
                                             <div className="flex-1">
                                                 <div
-                                                    className={`leading-relaxed transition-colors font-medium ${activeBlockId === block.id
+                                                    className={`leading-relaxed transition-colors font-medium break-words overflow-hidden lesson-block-content ${activeBlockId === block.id
                                                         ? (contentTheme === 'light' ? 'text-slate-900' : 'text-indigo-100') // Cor quando tocando (Ativo)
                                                         : (contentTheme === 'light' ? 'text-slate-700' : 'text-slate-300') // Cor normal (Inativo)
                                                         }`}
@@ -334,7 +381,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                         </div>
                     ) : (
                         <div
-                            className={`leading-relaxed lesson-content-view ${contentTheme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}
+                            className={`leading-relaxed lesson-content-view break-words overflow-hidden ${contentTheme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}
                             style={{ fontSize: '15px', lineHeight: '1.8' }}
                             dangerouslySetInnerHTML={{ __html: lesson.content }}
                         />
@@ -343,7 +390,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
             </div>
 
             {/* Coluna Direita: Materials/Buddy/Notes */}
-            <div className="w-[340px] flex-shrink-0 hidden lg:block">
+            <div className="w-full lg:w-[340px] flex-shrink-0">
                 <div className="sticky top-8 space-y-6 h-fit self-start">
                     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-1 flex">
                         <button

@@ -94,3 +94,15 @@ body {
 .dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
   background: #64748b;
 }
+
+/* Reset de indentação para telas mobile */
+@media (max-width: 1024px) {
+  .lesson-content-view *, 
+  .lesson-block-content * {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    text-indent: 0 !important;
+  }
+}
