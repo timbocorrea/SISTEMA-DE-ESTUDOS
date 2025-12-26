@@ -18,8 +18,9 @@ const GamificationStats: React.FC<{ user: User }> = ({ user }) => {
   const xpRemaining = 1000 - xpInLevel;
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col md:flex-row items-center gap-8 mb-8 transition-all hover:shadow-md">
-      <div className="relative flex-shrink-0">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl md:rounded-3xl p-4 md:p-6 shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col md:flex-row items-center gap-4 md:gap-8 mb-8 transition-all hover:shadow-md">
+      {/* Círculo de Nível - Escondido no Mobile, mostrado no Desktop */}
+      <div className="relative flex-shrink-0 hidden md:block">
         <div className="w-24 h-24 rounded-full bg-gradient-to-br from-indigo-600 to-violet-500 flex items-center justify-center shadow-xl shadow-indigo-500/30 border-4 border-white dark:border-slate-800">
           <div className="text-center">
             <span className="block text-3xl font-black text-white leading-none">{user.level}</span>
@@ -43,26 +44,30 @@ const GamificationStats: React.FC<{ user: User }> = ({ user }) => {
         </svg>
       </div>
 
-      <div className="flex-1 w-full space-y-4">
-        <div className="flex justify-between items-end">
+      <div className="flex-1 w-full space-y-3 md:space-y-4">
+        <div className="flex justify-between items-center md:items-end">
           <div className="space-y-1">
-            <h3 className="text-xl font-extrabold text-slate-800 dark:text-white flex items-center gap-2">
+            <h3 className="text-lg md:text-xl font-extrabold text-slate-800 dark:text-white flex items-center gap-2">
               <i className="fas fa-bolt text-yellow-500"></i>
-              Sua Progressão Acadêmica
+              <span className="hidden md:inline">Sua Progressão Acadêmica</span>
+              <span className="md:hidden">Progresso Acadêmico</span>
             </h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium tracking-tight">
-              XP Total: <span className="text-indigo-600 dark:text-indigo-400 font-bold">{user.xp.toLocaleString()}</span>
-            </p>
+            <div className="flex items-center gap-2">
+              <span className="md:hidden bg-indigo-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase">Nv. {user.level}</span>
+              <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 font-medium tracking-tight">
+                XP Total: <span className="text-indigo-600 dark:text-indigo-400 font-bold">{user.xp.toLocaleString()}</span>
+              </p>
+            </div>
           </div>
           <div className="text-right">
             <div className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">
-              Próximo nível: {xpRemaining} XP
+              {xpRemaining} XP para o próximo
             </div>
             <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">{Math.floor(progressPercent)}%</span>
           </div>
         </div>
 
-        <div className="relative w-full h-5 bg-slate-100 dark:bg-slate-800 rounded-2xl overflow-hidden p-1 border border-slate-200 dark:border-slate-700 shadow-inner">
+        <div className="relative w-full h-3 md:h-5 bg-slate-100 dark:bg-slate-800 rounded-2xl overflow-hidden p-0.5 md:p-1 border border-slate-200 dark:border-slate-700 shadow-inner">
           <div
             className="h-full bg-gradient-to-r from-indigo-600 via-indigo-500 to-cyan-400 rounded-xl transition-all duration-1000 ease-out shadow-[0_0_15px_rgba(99,102,241,0.4)]"
             style={{ width: `${progressPercent}%` }}

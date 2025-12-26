@@ -523,6 +523,24 @@ const App: React.FC = () => {
     setActiveView('content');
   };
 
+  const handleSelectLessonDetailed = (courseId: string, moduleId: string, lessonId: string) => {
+    const targetCourse = availableCourses.find(c => c.id === courseId);
+    if (!targetCourse) return;
+
+    const module = targetCourse.modules.find(m => m.id === moduleId);
+    const lesson = module?.lessons.find(l => l.id === lessonId);
+
+    if (lesson && module) {
+      setCourse(targetCourse);
+      setActiveModule(module);
+      setCurrentLesson(lesson);
+      setActiveView('lesson');
+      setLessonSidebarTab('materials');
+      setIsMobileMenuOpen(false);
+      addToHistory(`Abriu a aula "${lesson.title}" [ID_CURSO:${targetCourse.id}|ID_AULA:${lesson.id}]`);
+    }
+  };
+
   const handleLogout = async () => {
     await authService.logout();
     setSession(null);
@@ -862,6 +880,7 @@ const App: React.FC = () => {
         user={currentUser}
         courses={availableCourses}
         onOpenContent={handleOpenContentFromSidebar}
+        onSelectLesson={handleSelectLessonDetailed}
         isMobileOpen={isMobileMenuOpen}
         onCloseMobile={() => setIsMobileMenuOpen(false)}
       />

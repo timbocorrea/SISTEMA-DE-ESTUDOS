@@ -11,6 +11,7 @@ interface SidebarProps {
   onToggleTheme: () => void;
   courses?: Course[];
   onOpenContent?: (courseId: string, moduleId?: string, lessonId?: string) => void;
+  onSelectLesson?: (courseId: string, moduleId: string, lessonId: string) => void;
   user?: User | null;
   isMobileOpen?: boolean;
   onCloseMobile?: () => void;
@@ -26,6 +27,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   user,
   courses = [],
   onOpenContent,
+  onSelectLesson,
   isMobileOpen = false,
   onCloseMobile
 }) => {
@@ -45,14 +47,16 @@ const Sidebar: React.FC<SidebarProps> = ({
   }, [isCollapsed]);
 
   const [contentMenuOpen, setContentMenuOpen] = useState(activeView === 'content');
+  const [coursesMenuOpen, setCoursesMenuOpen] = useState(activeView === 'courses');
   const [expandedCourseId, setExpandedCourseId] = useState<string>('');
   const [expandedModuleId, setExpandedModuleId] = useState<string>('');
 
   useEffect(() => {
     if (activeView === 'content') {
       setContentMenuOpen(true);
-      // Se necessário, pode-se expandir a sidebar automaticamente aqui
-      // if (isCollapsed) setIsCollapsed(false);
+    }
+    if (activeView === 'courses') {
+      setCoursesMenuOpen(true);
     }
   }, [activeView]);
 
@@ -63,7 +67,6 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: 'fas fa-th-large' },
-    { id: 'courses', label: 'Meus Cursos', icon: 'fas fa-graduation-cap' },
     { id: 'achievements', label: 'Conquistas', icon: 'fas fa-trophy' },
     { id: 'history', label: 'Histórico', icon: 'fas fa-history' }
   ];
@@ -138,6 +141,107 @@ const Sidebar: React.FC<SidebarProps> = ({
 
       <nav className="flex-1 space-y-1 overflow-y-auto scrollbar-hide overflow-x-hidden">
         {!isCollapsed && <p className="px-3 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 opacity-50 whitespace-nowrap">Menu Principal</p>}
+
+        <button
+          onClick={() => onViewChange('dashboard')}
+          className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight group relative ${activeView === 'dashboard'
+            ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
+            : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200'
+            } ${isCollapsed ? 'justify-center' : ''}`}
+          title={isCollapsed ? "Dashboard" : ''}
+        >
+          <i className="fas fa-th-large w-5 text-center"></i>
+          <span className={`transition-all duration-300 whitespace-nowrap ${isCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
+            Dashboard
+          </span>
+        </button>
+
+        {/* Meus Cursos com Submenu */}
+        <div className={`${isCollapsed ? 'mt-1 pt-1' : ''}`}>
+          <button
+            onClick={() => {
+              setCoursesMenuOpen(open => !open);
+              onViewChange('courses');
+              if (isCollapsed) setIsCollapsed(false);
+            }}
+            className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight mb-1 ${activeView === 'courses'
+              ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
+              : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200'
+              } ${isCollapsed ? 'justify-center' : ''}`}
+            title="Meus Cursos"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <i className="fas fa-graduation-cap w-5 text-center"></i>
+              <span className={`truncate transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>Meus Cursos</span>
+            </div>
+            {!isCollapsed && <i className={`fas fa-chevron-down text-xs transition-transform ${coursesMenuOpen ? 'rotate-180' : ''}`}></i>}
+          </button>
+
+          {!isCollapsed && coursesMenuOpen && (
+            <div className="ml-7 pl-3 border-l border-slate-200 dark:border-slate-800 space-y-1 mb-2 animate-in slide-in-from-top-2 duration-200">
+              {courses.map(course => {
+                const isCourseOpen = expandedCourseId === course.id;
+                const modules = course.modules || [];
+                return (
+                  <div key={course.id} className="space-y-1">
+                    <button
+                      onClick={() => {
+                        setExpandedCourseId(isCourseOpen ? '' : course.id);
+                        setExpandedModuleId('');
+                      }}
+                      className={`w-full text-left px-3 py-2 rounded-lg transition-all text-xs font-black uppercase tracking-widest truncate ${isCourseOpen
+                        ? 'bg-indigo-600/10 text-indigo-600 dark:text-indigo-300'
+                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        }`}
+                    >
+                      {course.title}
+                    </button>
+
+                    {isCourseOpen && (
+                      <div className="ml-3 pl-3 border-l border-slate-200/70 dark:border-slate-800/70 space-y-1">
+                        {modules.map(module => {
+                          const isModuleOpen = expandedModuleId === module.id;
+                          const lessons = module.lessons || [];
+                          return (
+                            <div key={module.id} className="space-y-1">
+                              <button
+                                onClick={() => {
+                                  setExpandedModuleId(isModuleOpen ? '' : module.id);
+                                }}
+                                className={`w-full text-left px-3 py-2 rounded-lg transition-all text-[11px] font-bold tracking-tight truncate ${isModuleOpen
+                                  ? 'bg-cyan-600/10 text-cyan-600 dark:text-cyan-300'
+                                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                  }`}
+                              >
+                                {module.title}
+                              </button>
+
+                              {isModuleOpen && lessons.length > 0 && (
+                                <div className="ml-3 pl-3 border-l border-slate-200/70 dark:border-slate-800/70 space-y-1">
+                                  {lessons.map(lesson => (
+                                    <button
+                                      key={lesson.id}
+                                      onClick={() => {
+                                        onSelectLesson?.(course.id, module.id, lesson.id);
+                                      }}
+                                      className="w-full text-left px-3 py-2 rounded-lg transition-all text-[11px] font-medium tracking-tight text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 truncate"
+                                    >
+                                      {lesson.title}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         {menuItems.map(item => (
           <button
