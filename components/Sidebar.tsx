@@ -66,7 +66,6 @@ const Sidebar: React.FC<SidebarProps> = ({
   const progressPercent = (xpInLevel / 1000) * 100;
 
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: 'fas fa-th-large' },
     { id: 'achievements', label: 'Conquistas', icon: 'fas fa-trophy' },
     { id: 'history', label: 'Histórico', icon: 'fas fa-history' }
   ];
