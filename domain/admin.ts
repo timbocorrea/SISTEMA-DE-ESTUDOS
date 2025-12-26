@@ -45,6 +45,7 @@ export type ProfileRecord = {
   role: 'STUDENT' | 'INSTRUCTOR';
   xp_total: number | null;
   current_level: number | null;
+  gemini_api_key?: string | null;
   updated_at?: string;
 };
 

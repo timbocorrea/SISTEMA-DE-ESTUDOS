@@ -3,7 +3,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Course, Lesson, User, UserProgress } from '../domain/entities';
 import VideoPlayer from './VideoPlayer';
 import LessonMaterialsSidebar from './LessonMaterialsSidebar';
-import GeminiBuddy from './GeminiBuddy';
+// import GeminiBuddy from './GeminiBuddy'; // Removed: Uses global now
+import NotesPanelPrototype from './NotesPanelPrototype';
 
 interface LessonViewerProps {
     course: Course;
@@ -15,9 +16,10 @@ interface LessonViewerProps {
     onBackToModules: () => void;
     contentTheme: 'light' | 'dark';
     setContentTheme: (theme: 'light' | 'dark') => void;
-    sidebarTab: 'materials' | 'buddy';
-    setSidebarTab: (tab: 'materials' | 'buddy') => void;
+    sidebarTab: 'materials' | 'notes';
+    setSidebarTab: (tab: 'materials' | 'notes') => void;
     userProgress?: UserProgress[];
+    onTrackAction?: (action: string) => void;
 }
 
 const LessonViewer: React.FC<LessonViewerProps> = ({
@@ -32,14 +34,20 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     setContentTheme,
     sidebarTab,
     setSidebarTab,
-    userProgress = []
+    userProgress = [],
+    onTrackAction
 }) => {
     const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
     const [lastAccessedId, setLastAccessedId] = useState<string | null>(null);
     const [audioProgress, setAudioProgress] = useState<number>(0);
     const [playbackSpeed, setPlaybackSpeed] = useState<number>(1.0); // Velocidade de reprodução
+    const [audioEnabled, setAudioEnabled] = useState<boolean>(true); // Controle para ativar/desativar áudio
     const audioRef = useRef<HTMLAudioElement | null>(null);
+    const playbackSpeedRef = useRef<number>(playbackSpeed); // Ref para manter valor atualizado nos callbacks
     const blockRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+
+    // Estado para o widget flutuante do Buddy AI
+    // const [isBuddyOpen, setIsBuddyOpen] = useState(false); // Removed: Global Buddy used
 
     // Find progress for this lesson
     const lessonProgress = userProgress.find(p => p.lessonId === lesson.id);
@@ -62,6 +70,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
     // Update playback rate dynamically
     useEffect(() => {
+        playbackSpeedRef.current = playbackSpeed; // Atualizar ref
         if (audioRef.current) {
             audioRef.current.playbackRate = playbackSpeed;
         }
@@ -84,6 +93,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
             audioRef.current.pause();
             setActiveBlockId(null);
             setAudioProgress(0);
+            onTrackAction?.(`Pausou o áudio no bloco de texto`);
             return;
         }
 
@@ -102,7 +112,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
         audioRef.current = audio;
 
         // Aplicar velocidade de reprodução
-        audio.playbackRate = playbackSpeed;
+        audio.playbackRate = playbackSpeedRef.current;
 
         // Atualizar progresso do áudio
         audio.ontimeupdate = () => {
@@ -124,6 +134,10 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
         };
 
         audio.play().catch(err => console.error("Audio playback failed", err));
+
+        // Track the interaction
+        const blockPreview = block.text.replace(/<[^>]*>/g, '').substring(0, 50); // Strip HTML and get first 50 chars
+        onTrackAction?.(`Ativou áudio no bloco: "${blockPreview}..."`);
     };
 
     // Cleanup on unmount
@@ -157,8 +171,9 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     };
 
     return (
-        <div className="max-w-[1800px] mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
-            <div className="lg:col-span-9 space-y-6">
+        <div className="max-w-[1920px] mx-auto px-6 py-8 flex gap-6">
+            {/* Coluna Esquerda: Conteúdo da Aula */}
+            <div className="flex-1 min-w-0 space-y-6">
                 <button
                     onClick={onBackToLessons}
                     className="text-slate-500 dark:text-slate-400 text-sm font-black flex items-center gap-2 hover:text-indigo-500 transition uppercase tracking-wider"
@@ -227,6 +242,25 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                 </div>
                             )}
 
+                            {/* Controle de Ativar/Desativar Áudio */}
+                            {lesson.contentBlocks && lesson.contentBlocks.length > 0 && (
+                                <button
+                                    onClick={() => setAudioEnabled(!audioEnabled)}
+                                    className={`px-4 py-2 rounded-xl flex items-center justify-center gap-2 border transition-all duration-300 font-bold text-xs uppercase tracking-wider shadow-sm hover:shadow-md ${audioEnabled
+                                        ? (contentTheme === 'dark'
+                                            ? 'bg-green-800 border-green-700 text-green-300 hover:bg-green-700'
+                                            : 'bg-green-50 border-green-200 text-green-600 hover:bg-green-100')
+                                        : (contentTheme === 'dark'
+                                            ? 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'
+                                            : 'bg-slate-100 border-slate-300 text-slate-600 hover:bg-slate-200')
+                                        }`}
+                                    title={audioEnabled ? 'Desativar áudio (permitir seleção de texto)' : 'Ativar áudio'}
+                                >
+                                    <i className={`fas ${audioEnabled ? 'fa-volume-up' : 'fa-volume-mute'}`}></i>
+                                    <span>{audioEnabled ? 'Áudio On' : 'Áudio Off'}</span>
+                                </button>
+                            )}
+
                             <button
                                 onClick={() => setContentTheme(contentTheme === 'light' ? 'dark' : 'light')}
                                 className={`px-4 py-2 rounded-xl flex items-center justify-center gap-2 border transition-all duration-300 font-bold text-xs uppercase tracking-wider shadow-sm hover:shadow-md ${contentTheme === 'dark'
@@ -252,13 +286,13 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                     <div
                                         key={block.id}
                                         ref={el => { blockRefs.current[block.id] = el; }}
-                                        className={`relative p-4 rounded-2xl border transition-all duration-500 group cursor-pointer ${spacingClass} ${activeBlockId === block.id
+                                        className={`relative p-4 rounded-2xl border transition-all duration-500 group ${audioEnabled ? 'cursor-pointer' : 'cursor-text'} ${spacingClass} ${activeBlockId === block.id
                                             ? 'bg-indigo-50/50 dark:bg-indigo-900/20 border-indigo-500 shadow-lg shadow-indigo-500/10 audio-block-active'
                                             : lastAccessedId === block.id
                                                 ? 'bg-slate-50/50 dark:bg-slate-800/30 border-slate-300 dark:border-slate-700'
                                                 : 'border-transparent'
                                             }`}
-                                        onClick={() => playBlock(index)}
+                                        onClick={() => audioEnabled && playBlock(index)}
                                     >
                                         <div className="flex items-start gap-4">
                                             <div className="flex-1">
@@ -308,33 +342,44 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                 </div>
             </div>
 
-            <div className="lg:col-span-3 space-y-6 sticky top-8 h-fit self-start">
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-1 flex">
-                    <button
-                        onClick={() => setSidebarTab('materials')}
-                        className={`flex-1 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition ${sidebarTab === 'materials'
-                            ? 'bg-indigo-600 text-white'
-                            : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/40'
-                            }`}
-                    >
-                        Materiais
-                    </button>
-                    <button
-                        onClick={() => setSidebarTab('buddy')}
-                        className={`flex-1 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition ${sidebarTab === 'buddy'
-                            ? 'bg-indigo-600 text-white'
-                            : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/40'
-                            }`}
-                    >
-                        Buddy AI
-                    </button>
-                </div>
+            {/* Coluna Direita: Materials/Buddy/Notes */}
+            <div className="w-[340px] flex-shrink-0 hidden lg:block">
+                <div className="sticky top-8 space-y-6 h-fit self-start">
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-1 flex">
+                        <button
+                            onClick={() => {
+                                setSidebarTab('materials');
+                                onTrackAction?.('Acessou os Materiais da aula');
+                            }}
+                            className={`flex-1 px-3 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition ${sidebarTab === 'materials'
+                                ? 'bg-indigo-600 text-white'
+                                : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/40'
+                                }`}
+                        >
+                            Materiais
+                        </button>
+                        {/* Tutor IA Button Removed - Global Widget Active */}
+                        <button
+                            onClick={() => {
+                                setSidebarTab('notes');
+                                onTrackAction?.('Acessou Minhas Notas');
+                            }}
+                            className={`flex-1 px-3 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition ${sidebarTab === 'notes'
+                                ? 'bg-indigo-600 text-white'
+                                : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/40'
+                                }`}
+                        >
+                            Minhas Notas
+                        </button>
+                    </div>
 
-                {sidebarTab === 'materials' ? (
-                    <LessonMaterialsSidebar lesson={lesson} />
-                ) : (
-                    <GeminiBuddy currentContext={`${course.title} - ${lesson.title}`} />
-                )}
+                    {sidebarTab === 'materials' ? (
+                        <LessonMaterialsSidebar lesson={lesson} />
+                    ) : (
+                        <NotesPanelPrototype userId={user.id} lessonId={lesson.id} refreshTrigger={activeBlockId} />
+                    )}
+
+                </div>
             </div>
         </div>
     );

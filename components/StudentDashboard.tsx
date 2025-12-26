@@ -99,7 +99,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
         <div>
           <h2 className="text-4xl font-black text-slate-800 dark:text-white tracking-tighter">Dashboard de ADS</h2>
           <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium">
-            Bem-vindo de volta, {user.name.split(' ')[0]}!
+            Olá, {user.name.split(' ')[0]}! 👋 Vamos aprender algo novo hoje?
           </p>
         </div>
         {user.role === 'INSTRUCTOR' && (
@@ -167,7 +167,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     key={course.id}
                     className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all group flex items-center gap-6"
                   >
-                    <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-slate-800 relative">
+                    <div
+                      onClick={() => onCourseClick(course.id)}
+                      className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-slate-800 relative cursor-pointer hover:opacity-80 transition-opacity"
+                    >
                       {course.imageUrl ? (
                         <img src={course.imageUrl} alt="" className="w-full h-full object-cover" />
                       ) : (
@@ -211,8 +214,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                       <button
                         onClick={() => onCourseClick(course.id)}
                         className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${showEnrollButton && !isEnrolled
-                            ? 'bg-green-100 text-green-600 hover:bg-green-200 dark:bg-green-900/20 dark:text-green-400'
-                            : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-400'
+                          ? 'bg-green-100 text-green-600 hover:bg-green-200 dark:bg-green-900/20 dark:text-green-400'
+                          : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-400'
                           }`}
                       >
                         <i className={`fas ${showEnrollButton && !isEnrolled ? 'fa-plus' : 'fa-play'}`}></i>
@@ -232,8 +235,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-sm ${isEnrolled
-                          ? 'bg-indigo-600 text-white shadow-indigo-500/20'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                        ? 'bg-indigo-600 text-white shadow-indigo-500/20'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
                         }`}>
                         <i className="fas fa-book-open"></i>
                       </div>
@@ -267,7 +270,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   key={course.id}
                   className="bg-white dark:bg-slate-900 rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl dark:hover:border-slate-700 transition-all group flex flex-col"
                 >
-                  <div className="relative aspect-video bg-slate-900 overflow-hidden">
+                  <div
+                    onClick={() => onCourseClick(course.id)}
+                    className="relative aspect-video bg-slate-900 overflow-hidden cursor-pointer"
+                  >
                     {course.imageUrl ? (
                       <img
                         src={course.imageUrl}

@@ -2132,9 +2132,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                 </p>
                                 <button
                                     onClick={() => insertVideoEmbed(mediaMenuIndex !== null ? mediaMenuIndex : undefined)}
-                                    dis
-
-                                    abled={!mediaUrl}
+                                    disabled={!mediaUrl}
                                     className="w-full mt-4 py-3 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white font-semibold rounded-lg transition-colors disabled:cursor-not-allowed"
                                 >
                                     Inserir Vídeo

@@ -269,7 +269,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
   async listProfiles(): Promise<ProfileRecord[]> {
     const { data, error } = await this.client
       .from('profiles')
-      .select('id,email,name,role,xp_total,current_level,updated_at')
+      .select('id,email,name,role,xp_total,current_level,gemini_api_key,updated_at')
       .order('updated_at', { ascending: false });
 
     if (error) throw new DomainError(`Falha ao listar usuários: ${error.message}`);
@@ -277,11 +277,15 @@ export class SupabaseAdminRepository implements IAdminRepository {
   }
 
   async updateProfileRole(profileId: string, role: 'STUDENT' | 'INSTRUCTOR'): Promise<void> {
-    const { error } = await this.client
-      .from('profiles')
-      .update({ role, updated_at: new Date().toISOString() })
-      .eq('id', profileId);
+    return this.updateProfile(profileId, { role });
+  }
 
-    if (error) throw new DomainError(`Falha ao atualizar role: ${error.message}`);
+  async updateProfile(id: string, patch: { role?: 'STUDENT' | 'INSTRUCTOR'; geminiApiKey?: string | null }): Promise<void> {
+    const updates: any = { updated_at: new Date().toISOString() };
+    if (patch.role) updates.role = patch.role;
+    if (patch.geminiApiKey !== undefined) updates.gemini_api_key = patch.geminiApiKey;
+
+    const { error } = await this.client.from('profiles').update(updates).eq('id', id);
+    if (error) throw new DomainError(`Falha ao atualizar perfil: ${error.message}`);
   }
 }

@@ -60,7 +60,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: 'fas fa-th-large' },
     { id: 'courses', label: 'Meus Cursos', icon: 'fas fa-graduation-cap' },
-    { id: 'achievements', label: 'Conquistas', icon: 'fas fa-trophy' }
+    { id: 'achievements', label: 'Conquistas', icon: 'fas fa-trophy' },
+    { id: 'history', label: 'Histórico', icon: 'fas fa-history' }
   ];
 
   return (

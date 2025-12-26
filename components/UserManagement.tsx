@@ -12,6 +12,8 @@ const UserManagement: React.FC<Props> = ({ adminService }) => {
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('');
   const [busyId, setBusyId] = useState<string>('');
+  const [editingUser, setEditingUser] = useState<{ id: string; name: string; email: string; role: 'STUDENT' | 'INSTRUCTOR'; apiKey: string } | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const loadUsers = async () => {
     setError('');
@@ -54,6 +56,35 @@ const UserManagement: React.FC<Props> = ({ adminService }) => {
       setError((e as Error).message);
     } finally {
       setBusyId('');
+    }
+  };
+
+  const handleEditClick = (user: ProfileRecord) => {
+    setEditingUser({
+      id: user.id,
+      name: user.name || '',
+      email: user.email,
+      role: user.role,
+      apiKey: user.gemini_api_key || ''
+    });
+  };
+
+  const handleSaveUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+
+    try {
+      setIsSaving(true);
+      await adminService.updateProfile(editingUser.id, {
+        role: editingUser.role,
+        geminiApiKey: editingUser.apiKey?.trim() || null
+      });
+      setEditingUser(null);
+      await loadUsers();
+    } catch (e) {
+      alert(`Erro ao salvar: ${(e as Error).message}`);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -154,11 +185,10 @@ const UserManagement: React.FC<Props> = ({ adminService }) => {
                     </td>
                     <td className="px-6 py-5 text-center">
                       <span
-                        className={`text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-widest ${
-                          u.role === 'INSTRUCTOR'
-                            ? 'bg-cyan-600 text-white'
-                            : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200'
-                        }`}
+                        className={`text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-widest ${u.role === 'INSTRUCTOR'
+                          ? 'bg-cyan-600 text-white'
+                          : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200'
+                          }`}
                       >
                         {u.role === 'INSTRUCTOR' ? 'Admin' : 'Student'}
                       </span>
@@ -176,22 +206,11 @@ const UserManagement: React.FC<Props> = ({ adminService }) => {
                     <td className="px-6 py-5 text-center">
                       <div className="inline-flex items-center gap-2">
                         <button
-                          disabled={busyId === u.id}
-                          onClick={() => updateRole(u.id, u.role === 'INSTRUCTOR' ? 'STUDENT' : 'INSTRUCTOR')}
-                          className={`px-3 py-2 rounded-xl text-xs font-black transition-all active:scale-95 disabled:opacity-50 ${
-                            u.role === 'INSTRUCTOR'
-                              ? 'bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700'
-                              : 'bg-cyan-600 text-white hover:bg-cyan-500'
-                          }`}
-                          title="Alternar role"
+                          onClick={() => handleEditClick(u)}
+                          className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors"
+                          title="Configurar Usuário"
                         >
-                          {busyId === u.id ? (
-                            <i className="fas fa-circle-notch animate-spin"></i>
-                          ) : u.role === 'INSTRUCTOR' ? (
-                            'Remover Admin'
-                          ) : (
-                            'Tornar Admin'
-                          )}
+                          <i className="fas fa-cog"></i>
                         </button>
                       </div>
                     </td>
@@ -205,6 +224,132 @@ const UserManagement: React.FC<Props> = ({ adminService }) => {
       <div className="text-[11px] text-slate-500 dark:text-slate-400">
         Se der erro de permissão, crie policies RLS para INSTRUCTOR ler/atualizar `profiles`.
       </div>
+
+      {/* Modal de Edição */}
+      {editingUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+              <h3 className="text-xl font-black text-slate-800 dark:text-white">Gerenciar Usuário</h3>
+              <button
+                onClick={() => setEditingUser(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white flex items-center justify-center transition-colors"
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveUser} className="p-6 space-y-6">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-12 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xl">
+                  <i className="fas fa-user-circle"></i>
+                </div>
+                <div>
+                  <h4 className="font-bold text-slate-800 dark:text-white">{editingUser.name || 'Sem nome'}</h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{editingUser.email}</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">
+                    Tipo de Acesso
+                  </label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (editingUser) {
+                          setEditingUser({
+                            id: editingUser.id,
+                            name: editingUser.name,
+                            email: editingUser.email,
+                            apiKey: editingUser.apiKey,
+                            role: 'STUDENT'
+                          });
+                        }
+                      }}
+                      className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold border transition-all ${editingUser.role === 'STUDENT'
+                        ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-900/20 dark:border-indigo-800 dark:text-indigo-300'
+                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-400'
+                        }`}
+                    >
+                      <i className="fas fa-user-graduate mr-2"></i> Estudante
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (editingUser) {
+                          setEditingUser({
+                            id: editingUser.id,
+                            name: editingUser.name,
+                            email: editingUser.email,
+                            apiKey: editingUser.apiKey,
+                            role: 'INSTRUCTOR'
+                          });
+                        }
+                      }}
+                      className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold border transition-all ${editingUser.role === 'INSTRUCTOR'
+                        ? 'bg-cyan-50 border-cyan-200 text-cyan-700 dark:bg-cyan-900/20 dark:border-cyan-800 dark:text-cyan-300'
+                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-400'
+                        }`}
+                    >
+                      <i className="fas fa-chalkboard-teacher mr-2"></i> Admin / Instrutor
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">
+                    AI API Key (Google / OpenAI / Z.ai / Groq)
+                  </label>
+                  <div className="relative">
+                    <i className="fas fa-key absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input
+                      type="text"
+                      value={editingUser.apiKey}
+                      onChange={e => {
+                        if (editingUser) {
+                          setEditingUser({
+                            id: editingUser.id,
+                            name: editingUser.name,
+                            email: editingUser.email,
+                            role: editingUser.role,
+                            apiKey: e.target.value
+                          });
+                        }
+                      }}
+                      placeholder="AIza... | sk... | gsk... | id.secret"
+                      className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-mono text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                    />
+                  </div>
+                  <p className="mt-2 text-[10px] text-slate-500">
+                    Suporte: Google Gemini, OpenAI, Zhipu AI e Groq (Grátis: Llama 3).
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-4 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setEditingUser(null)}
+                  className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="flex-1 py-3 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-500 shadow-lg shadow-indigo-600/20 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isSaving && <i className="fas fa-circle-notch animate-spin"></i>}
+                  Salvar Alterações
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

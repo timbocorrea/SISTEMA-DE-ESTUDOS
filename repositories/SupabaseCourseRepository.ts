@@ -207,7 +207,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
   async getUserById(userId: string): Promise<User> {
     const { data, error } = await this.client
       .from('profiles')
-      .select('id, name, email, role, xp_total, current_level, achievements')
+      .select('id, name, email, role, xp_total, current_level, achievements, gemini_api_key')
       .eq('id', userId)
       .single();
 
@@ -219,7 +219,8 @@ export class SupabaseCourseRepository implements ICourseRepository {
       data.email,
       data.role || 'STUDENT',
       data.xp_total || 0,
-      this.mapAchievements(data.achievements || [])
+      this.mapAchievements(data.achievements || []),
+      data.gemini_api_key || null
     );
   }
 

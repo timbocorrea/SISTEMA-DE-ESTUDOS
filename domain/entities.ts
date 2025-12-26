@@ -129,7 +129,8 @@ export class User {
     public readonly email: string,
     public readonly role: 'STUDENT' | 'INSTRUCTOR',
     xp: number = 0,
-    achievements: Achievement[] = []
+    achievements: Achievement[] = [],
+    public readonly geminiApiKey: string | null = null
   ) {
     this._xp = xp;
     this._achievements = achievements;
@@ -228,7 +229,7 @@ export class User {
   }
 
   public clone(): User {
-    return new User(this.id, this.name, this.email, this.role, this._xp, [...this._achievements]);
+    return new User(this.id, this.name, this.email, this.role, this._xp, [...this._achievements], this.geminiApiKey);
   }
 }
 

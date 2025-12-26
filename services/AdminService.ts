@@ -104,4 +104,8 @@ export class AdminService {
   updateProfileRole(profileId: string, role: 'STUDENT' | 'INSTRUCTOR'): Promise<void> {
     return this.adminRepository.updateProfileRole(profileId, role);
   }
+
+  updateProfile(id: string, patch: { role?: 'STUDENT' | 'INSTRUCTOR'; geminiApiKey?: string | null }): Promise<void> {
+    return this.adminRepository.updateProfile(id, patch);
+  }
 }

@@ -45,7 +45,22 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadMethod, setUploadMethod] = useState<'url' | 'file'>('file'); // Padão: upload de arquivo
+  const [uploadMethod, setUploadMethod] = useState<'url' | 'file'>('file'); // Padrão: upload de arquivo
+
+  // Estados para edição de recursos
+  const [editingResourceId, setEditingResourceId] = useState<string | null>(null);
+  const [editingResourceTitle, setEditingResourceTitle] = useState('');
+
+  // Estados para modos de visualização
+  type ViewMode = 'list' | 'grid' | 'minimal';
+  const [moduleViewMode, setModuleViewMode] = useState<ViewMode>(() => {
+    const saved = localStorage.getItem('moduleViewMode');
+    return (saved as ViewMode) || 'list';
+  });
+  const [lessonViewMode, setLessonViewMode] = useState<ViewMode>(() => {
+    const saved = localStorage.getItem('lessonViewMode');
+    return (saved as ViewMode) || 'list';
+  });
 
   const stats = useMemo(() => {
     const totalModules = Object.values(modulesByCourse).reduce((acc, list) => acc + list.length, 0);
@@ -355,11 +370,81 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
     }
   };
 
+  const handleUpdateResource = async (resourceId: string, lessonId: string) => {
+    if (!editingResourceTitle.trim()) {
+      setError('Título não pode estar vazio');
+      return;
+    }
+    try {
+      setBusy(true);
+      await adminService.updateLessonResource(resourceId, {
+        title: editingResourceTitle.trim()
+      });
+      setEditingResourceId(null);
+      setEditingResourceTitle('');
+      await refreshLessonResources(lessonId);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const openLessonDetail = async (lesson: LessonRecord) => {
     setActiveLessonId(lesson.id);
     setActiveLesson({ ...lesson });
     await refreshLessonResources(lesson.id);
   };
+
+  // Funções para alternar modos de visualização
+  const toggleModuleViewMode = (mode: ViewMode) => {
+    setModuleViewMode(mode);
+    localStorage.setItem('moduleViewMode', mode);
+  };
+
+  const toggleLessonViewMode = (mode: ViewMode) => {
+    setLessonViewMode(mode);
+    localStorage.setItem('lessonViewMode', mode);
+  };
+
+  // Componente de toggle de visualização
+  const ViewModeToggle: React.FC<{ current: ViewMode; onChange: (mode: ViewMode) => void; label: string }> = ({ current, onChange, label }) => (
+    <div className="flex items-center gap-2">
+      <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{label}:</span>
+      <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
+        <button
+          onClick={() => onChange('list')}
+          className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${current === 'list'
+            ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
+            : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+            }`}
+          title="Lista"
+        >
+          <i className="fas fa-list"></i>
+        </button>
+        <button
+          onClick={() => onChange('grid')}
+          className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${current === 'grid'
+            ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
+            : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+            }`}
+          title="Grade"
+        >
+          <i className="fas fa-th"></i>
+        </button>
+        <button
+          onClick={() => onChange('minimal')}
+          className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${current === 'minimal'
+            ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
+            : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+            }`}
+          title="Minimalista"
+        >
+          <i className="fas fa-square"></i>
+        </button>
+      </div>
+    </div>
+  );
   const renderLessonList = (module: ModuleRecord) => {
     const lessons = getLessons(module.id);
     const isExpanded = expandedModuleId === module.id;
@@ -548,27 +633,87 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
                         />
 
                         <div className="space-y-2">
-                          {(lessonResources[lesson.id] || []).map(resource => (
-                            <div
-                              key={resource.id}
-                              className="flex items-center justify-between px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm text-slate-700 dark:text-slate-200"
-                            >
-                              <div className="min-w-0">
-                                <p className="font-semibold truncate">{resource.title}</p>
-                                <p className="text-[10px] text-slate-500 uppercase tracking-widest">
-                                  {resource.resource_type} • Posicao: {resource.position ?? 0}
-                                </p>
-                                <p className="text-[10px] text-slate-500 truncate">URL: {resource.url}</p>
-                              </div>
-                              <button
-                                onClick={() => handleDeleteResource(lesson.id, resource.id)}
-                                className="p-2 text-slate-400 hover:text-red-500 transition-colors"
-                                title="Excluir material"
+                          {(lessonResources[lesson.id] || []).map(resource => {
+                            const isEditing = editingResourceId === resource.id;
+
+                            return (
+                              <div
+                                key={resource.id}
+                                className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm text-slate-700 dark:text-slate-200"
                               >
-                                <i className="fas fa-trash"></i>
-                              </button>
-                            </div>
-                          ))}
+                                <div className="min-w-0 flex-1">
+                                  {isEditing ? (
+                                    <input
+                                      value={editingResourceTitle}
+                                      onChange={e => setEditingResourceTitle(e.target.value)}
+                                      onKeyDown={e => {
+                                        if (e.key === 'Enter') {
+                                          handleUpdateResource(resource.id, lesson.id);
+                                        } else if (e.key === 'Escape') {
+                                          setEditingResourceId(null);
+                                          setEditingResourceTitle('');
+                                        }
+                                      }}
+                                      autoFocus
+                                      className="w-full bg-white dark:bg-[#0a0e14] border border-indigo-300 dark:border-indigo-700 rounded-lg px-2 py-1 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500"
+                                      placeholder="Nome do material"
+                                    />
+                                  ) : (
+                                    <p className="font-semibold truncate">{resource.title}</p>
+                                  )}
+                                  <p className="text-[10px] text-slate-500 uppercase tracking-widest">
+                                    {resource.resource_type} • Posicao: {resource.position ?? 0}
+                                  </p>
+                                  <p className="text-[10px] text-slate-500 truncate">URL: {resource.url}</p>
+                                </div>
+
+                                <div className="flex items-center gap-1 flex-shrink-0">
+                                  {isEditing ? (
+                                    <>
+                                      <button
+                                        onClick={() => handleUpdateResource(resource.id, lesson.id)}
+                                        disabled={busy}
+                                        className="p-2 text-green-500 hover:text-green-600 disabled:opacity-50 transition-colors"
+                                        title="Salvar"
+                                      >
+                                        <i className="fas fa-check"></i>
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          setEditingResourceId(null);
+                                          setEditingResourceTitle('');
+                                        }}
+                                        className="p-2 text-slate-400 hover:text-slate-600 transition-colors"
+                                        title="Cancelar"
+                                      >
+                                        <i className="fas fa-times"></i>
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <button
+                                        onClick={() => {
+                                          setEditingResourceId(resource.id);
+                                          setEditingResourceTitle(resource.title);
+                                        }}
+                                        className="p-2 text-slate-400 hover:text-indigo-500 transition-colors"
+                                        title="Editar nome"
+                                      >
+                                        <i className="fas fa-pen"></i>
+                                      </button>
+                                      <button
+                                        onClick={() => handleDeleteResource(lesson.id, resource.id)}
+                                        className="p-2 text-slate-400 hover:text-red-500 transition-colors"
+                                        title="Excluir material"
+                                      >
+                                        <i className="fas fa-trash"></i>
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
                           {(lessonResources[lesson.id] || []).length === 0 && (
                             <div className="text-[12px] text-slate-400 text-center py-2">Nenhum material adicionado.</div>
                           )}
@@ -589,6 +734,86 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
     const modules = getModules(course.id);
     const isExpanded = expandedCourseId === course.id;
 
+    // Modo Grade
+    if (moduleViewMode === 'grid') {
+      return (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {modules.map(m => (
+            <div key={m.id} className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 hover:border-cyan-400 dark:hover:border-cyan-500 transition-all">
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="min-w-0 flex-1">
+                  <h5 className="text-sm font-black text-slate-800 dark:text-white truncate">{m.title}</h5>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Posição: {m.position ?? 0}</p>
+                </div>
+                <div className="flex gap-1 flex-shrink-0">
+                  <button
+                    onClick={() => setEditingModule({ ...m })}
+                    className="p-1.5 text-slate-400 hover:text-cyan-500 transition-colors"
+                    title="Editar">
+                    <i className="fas fa-pen text-xs"></i>
+                  </button>
+                  <button
+                    onClick={() => handleDeleteModule(m.course_id, m.id)}
+                    className="p-1.5 text-slate-400 hover:text-red-500 transition-colors"
+                    title="Excluir">
+                    <i className="fas fa-trash text-xs"></i>
+                  </button>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setExpandedModuleId(expandedModuleId === m.id ? '' : m.id);
+                  if (!getLessons(m.id).length) refreshLessons(m.id);
+                }}
+                className="w-full bg-cyan-50 dark:bg-cyan-900/20 hover:bg-cyan-100 dark:hover:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400 px-3 py-2 rounded-lg text-xs font-bold transition-all">
+                <i className="fas fa-layer-group mr-2"></i>
+                {expandedModuleId === m.id ? 'Ocultar Aulas' : 'Ver Aulas'}
+              </button>
+            </div>
+          ))}
+          {modules.length === 0 && <div className="col-span-full p-6 text-center text-sm text-slate-400">{isExpanded ? 'Nenhum modulo' : ''}</div>}
+        </div>
+      );
+    }
+
+    // Modo Minimalista
+    if (moduleViewMode === 'minimal') {
+      return (
+        <div className="space-y-2">
+          {modules.map(m => (
+            <div
+              key={m.id}
+              onClick={() => {
+                setExpandedModuleId(expandedModuleId === m.id ? '' : m.id);
+                if (!getLessons(m.id).length) refreshLessons(m.id);
+              }}
+              className={`flex items-center justify-between gap-3 px-4 py-3 rounded-lg cursor-pointer transition-all ${expandedModuleId === m.id
+                ? 'bg-cyan-50 dark:bg-cyan-900/20 border border-cyan-200 dark:border-cyan-800'
+                : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-cyan-300 dark:hover:border-cyan-700'
+                }`}>
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${expandedModuleId === m.id ? 'bg-cyan-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                  }`}>
+                  <i className="fas fa-layer-group text-xs"></i>
+                </div>
+                <span className="text-sm font-bold text-slate-800 dark:text-white truncate">{m.title}</span>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
+                <button onClick={() => setEditingModule({ ...m })} className="p-1.5 text-slate-400 hover:text-cyan-500 transition" title="Editar">
+                  <i className="fas fa-pen text-xs"></i>
+                </button>
+                <button onClick={() => handleDeleteModule(m.course_id, m.id)} className="p-1.5 text-slate-400 hover:text-red-500 transition" title="Excluir">
+                  <i className="fas fa-trash text-xs"></i>
+                </button>
+              </div>
+            </div>
+          ))}
+          {modules.length === 0 && <div className="p-6 text-center text-sm text-slate-400">{isExpanded ? 'Nenhum modulo' : ''}</div>}
+        </div>
+      );
+    }
+
+    // Modo Lista (padrão/atual)
     return (
       <div className="divide-y divide-slate-100 dark:divide-slate-800 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
         {modules.map(m => (
@@ -716,6 +941,7 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
                       <div className="flex items-center justify-between gap-4 mb-4">
                         <h4 className="text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest">Modulos</h4>
                         <div className="flex items-center gap-3">
+                          <ViewModeToggle current={moduleViewMode} onChange={toggleModuleViewMode} label="Visualização" />
                           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{modules.length}</span>
                           <button
                             disabled={busy}
