@@ -112,7 +112,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
         <div className={`overflow-hidden transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100'}`}>
           <h1 className="font-black text-slate-800 dark:text-slate-100 text-lg leading-tight tracking-tighter uppercase whitespace-nowrap">StudySystem</h1>
-          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest whitespace-nowrap">Case Study ADS</p>
+          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest whitespace-nowrap">Sistema de Estudos</p>
         </div>
       </div>
 

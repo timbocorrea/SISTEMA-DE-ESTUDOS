@@ -102,7 +102,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     <div className="p-4 md:p-8 space-y-8 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-4xl font-black text-slate-800 dark:text-white tracking-tighter">Dashboard de ADS</h2>
+          <h2 className="text-4xl font-black text-slate-800 dark:text-white tracking-tighter">Meu Dashboard</h2>
           <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium">
             Olá, {user.name.split(' ')[0]}! 👋 Vamos aprender algo novo hoje?
           </p>

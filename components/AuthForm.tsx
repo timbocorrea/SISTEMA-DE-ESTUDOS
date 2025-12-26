@@ -67,7 +67,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ authService, onSuccess }) => {
             <i className="fas fa-graduation-cap text-white text-2xl"></i>
           </div>
           <h1 className="text-3xl font-extrabold text-white tracking-tight">StudySystem</h1>
-          <p className="text-slate-400 mt-2">Plataforma Acadêmica de ADS</p>
+          <p className="text-slate-400 mt-2">Plataforma de Estudos</p>
         </div>
 
         <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 p-8 rounded-3xl shadow-2xl">
@@ -108,7 +108,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ authService, onSuccess }) => {
                 {...register('email')}
                 className={`w-full bg-slate-800/50 border ${errors.email ? 'border-red-500' : 'border-slate-700'
                   } rounded-xl px-4 py-3 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition`}
-                placeholder="exemplo@ads.edu.br"
+                placeholder="exemplo@email.com"
               />
               {errors.email && (
                 <p className="text-red-400 text-xs mt-1 flex items-center gap-1">
