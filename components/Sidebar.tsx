@@ -12,6 +12,8 @@ interface SidebarProps {
   courses?: Course[];
   onOpenContent?: (courseId: string, moduleId?: string, lessonId?: string) => void;
   user?: User | null;
+  isMobileOpen?: boolean;
+  onCloseMobile?: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -23,7 +25,9 @@ const Sidebar: React.FC<SidebarProps> = ({
   onToggleTheme,
   user,
   courses = [],
-  onOpenContent
+  onOpenContent,
+  isMobileOpen = false,
+  onCloseMobile
 }) => {
   const isAdmin = session.user.role === 'INSTRUCTOR';
 
@@ -65,7 +69,15 @@ const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   return (
-    <aside className={`${isCollapsed ? 'w-20' : 'w-72'} h-full bg-[#f8fafc] dark:bg-[#111827] border-r border-slate-200 dark:border-slate-800 flex flex-col p-4 transition-all duration-300 relative group`}>
+    <aside className={`fixed lg:relative inset-y-0 left-0 z-[60] lg:z-0 transform ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} ${isCollapsed ? 'lg:w-20' : 'lg:w-72'} w-72 h-full bg-[#f8fafc] dark:bg-[#111827] border-r border-slate-200 dark:border-slate-800 flex flex-col p-4 transition-all duration-300 relative group`}>
+
+      {/* Close Button Mobile */}
+      <button
+        onClick={onCloseMobile}
+        className="absolute right-4 top-4 lg:hidden w-10 h-10 flex items-center justify-center text-slate-400"
+      >
+        <i className="fas fa-times text-xl"></i>
+      </button>
 
       {/* Toggle Button */}
       <button

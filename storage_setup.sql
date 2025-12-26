@@ -7,18 +7,21 @@ values ('lesson-resources', 'lesson-resources', true)
 on conflict (id) do nothing;
 
 -- 2. Permitir uploads autenticados
+drop policy if exists "Authenticated users can upload lesson resources" on storage.objects;
 create policy "Authenticated users can upload lesson resources"
 on storage.objects for insert
 to authenticated
 with check (bucket_id = 'lesson-resources');
 
 -- 3. Permitir leitura pública (para alunos acessarem)
+drop policy if exists "Public can view lesson resources" on storage.objects;
 create policy "Public can view lesson resources"
 on storage.objects for select
 to public
 using (bucket_id = 'lesson-resources');
 
 -- 4. Permitir deletar apenas próprios arquivos ou se for instrutor
+drop policy if exists "Users can delete own lesson resources" on storage.objects;
 create policy "Users can delete own lesson resources"
 on storage.objects for delete
 to authenticated

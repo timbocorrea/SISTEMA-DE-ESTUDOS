@@ -94,7 +94,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const [viewMode, setViewMode] = React.useState<'cards' | 'minimal' | 'list'>('cards');
 
   return (
-    <div className="p-8 space-y-8 max-w-7xl mx-auto">
+    <div className="p-4 md:p-8 space-y-8 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-4xl font-black text-slate-800 dark:text-white tracking-tighter">Dashboard de ADS</h2>

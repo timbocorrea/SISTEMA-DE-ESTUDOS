@@ -39,6 +39,7 @@ const App: React.FC = () => {
   const [adminSelection, setAdminSelection] = useState<{ courseId?: string; moduleId?: string; lessonId?: string } | null>(null);
   const [editingLesson, setEditingLesson] = useState<LessonRecord | null>(null); // Estado para editor de conteúdo
   const [contentTheme, setContentTheme] = useState<'light' | 'dark'>('light'); // Estado para tema do conteúdo da aula
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // Estado para menu mobile
 
   // Estados do modal de inscrição
   const [selectedCourseForEnrollment, setSelectedCourseForEnrollment] = useState<Course | null>(null);
@@ -816,17 +817,45 @@ const App: React.FC = () => {
       <Sidebar
         session={session}
         activeView={activeView}
-        onViewChange={setActiveView}
+        onViewChange={(view) => {
+          setActiveView(view);
+          setIsMobileMenuOpen(false);
+        }}
         onLogout={handleLogout}
         theme={theme}
         onToggleTheme={toggleTheme}
         user={currentUser}
         courses={availableCourses}
         onOpenContent={handleOpenContentFromSidebar}
+        isMobileOpen={isMobileMenuOpen}
+        onCloseMobile={() => setIsMobileMenuOpen(false)}
       />
 
-      {/* Breadcrumb Navigation */}
+      {/* Mobile Overlay */}
+      {isMobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[55] lg:hidden animate-in fade-in duration-300"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Breadcrumb Navigation / Header */}
       <div className="flex-1 flex flex-col overflow-hidden">
+        <header className="flex items-center gap-4 px-4 py-3 bg-white dark:bg-[#0a0e14] border-b border-slate-200 dark:border-slate-800 lg:hidden">
+          <button
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="w-10 h-10 flex items-center justify-center text-slate-500 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          >
+            <i className="fas fa-bars text-lg"></i>
+          </button>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white text-xs rotate-3">
+              <i className="fas fa-graduation-cap"></i>
+            </div>
+            <h1 className="font-black text-slate-800 dark:text-slate-100 text-sm uppercase tracking-tighter">StudySystem</h1>
+          </div>
+        </header>
+
         <Breadcrumb items={getBreadcrumbItems()} />
 
         <main className="flex-1 overflow-y-auto bg-slate-50/50 dark:bg-transparent scroll-smooth relative">

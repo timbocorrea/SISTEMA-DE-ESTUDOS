@@ -157,12 +157,12 @@ stable
 security definer
 set search_path = public
 as $$
-  exists (
+  select exists (
     select 1
     from public.profiles p
     where p.id = auth.uid()
       and p.role = 'INSTRUCTOR'
-  )
+  );
 $$;
 
 -- Courses: INSERT/UPDATE/DELETE apenas para instrutores

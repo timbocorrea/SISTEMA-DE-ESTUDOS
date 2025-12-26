@@ -315,7 +315,7 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
       </button>
 
       {/* Chat Window */}
-      <div className={`fixed bottom-24 right-6 z-[9998] w-[380px] max-w-[calc(100vw-3rem)] bg-slate-900 border border-slate-700/50 rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 origin-bottom-right ${isOpen ? 'opacity-100 scale-100 translate-y-0 h-[500px]' : 'opacity-0 scale-90 translate-y-10 pointer-events-none h-0'
+      <div className={`fixed bottom-20 md:bottom-24 right-4 md:right-6 z-[9998] w-full max-w-[calc(100vw-2rem)] md:w-[380px] bg-slate-900 border border-slate-700/50 rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 origin-bottom-right ${isOpen ? 'opacity-100 scale-100 translate-y-0 h-[450px] md:h-[500px]' : 'opacity-0 scale-90 translate-y-10 pointer-events-none h-0'
         }`}>
         {/* Header */}
         <div className="p-4 bg-slate-800 border-b border-slate-700 flex items-center gap-3 shadow-lg">

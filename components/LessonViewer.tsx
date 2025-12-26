@@ -171,7 +171,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     };
 
     return (
-        <div className="max-w-[1920px] mx-auto px-6 py-8 flex gap-6">
+        <div className="max-w-[1920px] mx-auto px-4 md:px-6 py-4 md:py-8 flex flex-col lg:flex-row gap-6">
             {/* Coluna Esquerda: Conteúdo da Aula */}
             <div className="flex-1 min-w-0 space-y-6">
                 <button
