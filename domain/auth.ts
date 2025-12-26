@@ -8,6 +8,7 @@ export interface IUserSession {
     level?: number;
   };
   token: string;
+  sessionId: string;
 }
 
 export interface AuthResponse {

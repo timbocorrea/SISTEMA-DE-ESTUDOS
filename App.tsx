@@ -141,6 +141,41 @@ const App: React.FC = () => {
     loadSessionAndProfile();
   }, [authService, courseService]);
 
+  // Controle de Sessão Simultânea (Realtime)
+  useEffect(() => {
+    if (!session || !currentUser) return;
+
+    const supabase = (authService as any).client; // Acessando o cliente para o realtime
+    if (!supabase) return;
+
+    const channel = supabase
+      .channel(`profile_session_${currentUser.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${currentUser.id}`
+        },
+        async (payload: any) => {
+          const newSessionId = payload.new.last_session_id;
+
+          // Se o last_session_id no banco mudou e não é o ID da nossa sessão atual
+          if (newSessionId && newSessionId !== session.sessionId) {
+            console.warn('⚠️ Nova sessão detectada em outro dispositivo. Deslogando...');
+            alert('Sua conta foi acessada em outro dispositivo. Esta sessão será encerrada.');
+            handleLogout();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session, currentUser, authService]);
+
   useEffect(() => {
     if (!session || !currentUser) return;
 
@@ -813,7 +848,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-white dark:bg-[#0a0e14] text-slate-900 dark:text-slate-100 transition-colors duration-300 font-lexend">
+    <div className="flex flex-col lg:flex-row lg:h-screen w-full bg-white dark:bg-[#0a0e14] text-slate-900 dark:text-slate-100 transition-colors duration-300 font-lexend relative overflow-x-hidden">
       <Sidebar
         session={session}
         activeView={activeView}
@@ -840,7 +875,7 @@ const App: React.FC = () => {
       )}
 
       {/* Breadcrumb Navigation / Header */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col min-h-0 w-full overflow-hidden h-full">
         <header className="flex items-center gap-4 px-4 py-3 bg-white dark:bg-[#0a0e14] border-b border-slate-200 dark:border-slate-800 lg:hidden">
           <button
             onClick={() => setIsMobileMenuOpen(true)}

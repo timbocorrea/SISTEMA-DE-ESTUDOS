@@ -14,7 +14,7 @@ type ProfileRow = {
 };
 
 export class SupabaseAuthRepository implements IAuthRepository {
-  private client = createSupabaseClient();
+  public client = createSupabaseClient();
 
   private buildSession(
     userId: string,
@@ -22,6 +22,7 @@ export class SupabaseAuthRepository implements IAuthRepository {
     name: string,
     role: 'STUDENT' | 'INSTRUCTOR',
     token: string,
+    sessionId: string,
     xp?: number | null,
     level?: number | null
   ): IUserSession {
@@ -34,11 +35,12 @@ export class SupabaseAuthRepository implements IAuthRepository {
         xp: xp ?? undefined,
         level: level ?? undefined
       },
-      token
+      token,
+      sessionId
     };
   }
 
-  private async upsertProfile(userId: string, email: string, name?: string): Promise<ProfileRow> {
+  private async upsertProfile(userId: string, email: string, name?: string): Promise<ProfileRow & { last_session_id: string | null }> {
     const { data, error } = await this.client
       .from('profiles')
       .upsert(
@@ -54,20 +56,20 @@ export class SupabaseAuthRepository implements IAuthRepository {
         },
         { onConflict: 'id' }
       )
-      .select('id, name, email, role, xp_total, current_level, achievements')
+      .select('id, name, email, role, xp_total, current_level, achievements, last_session_id')
       .single();
 
     if (error || !data) {
       throw new DomainError(`Erro ao sincronizar perfil: ${error?.message || 'perfil não encontrado'}`);
     }
 
-    return data as ProfileRow;
+    return data as ProfileRow & { last_session_id: string | null };
   }
 
-  private async fetchProfile(userId: string, email: string, name?: string): Promise<ProfileRow> {
+  private async fetchProfile(userId: string, email: string, name?: string): Promise<ProfileRow & { last_session_id: string | null }> {
     const { data, error } = await this.client
       .from('profiles')
-      .select('id, name, email, role, xp_total, current_level, achievements')
+      .select('id, name, email, role, xp_total, current_level, achievements, last_session_id')
       .eq('id', userId)
       .maybeSingle();
 
@@ -79,7 +81,11 @@ export class SupabaseAuthRepository implements IAuthRepository {
       return this.upsertProfile(userId, email, name);
     }
 
-    return data as ProfileRow;
+    return data as ProfileRow & { last_session_id: string | null };
+  }
+
+  private generateSessionId(): string {
+    return crypto.randomUUID();
   }
 
   async login(email: string, password: string): Promise<AuthResponse> {
@@ -88,6 +94,14 @@ export class SupabaseAuthRepository implements IAuthRepository {
     if (error || !data?.session || !data.user) {
       return { success: false, message: error?.message || 'Credenciais inválidas.' };
     }
+
+    const sessionId = this.generateSessionId();
+
+    // Atualizar last_session_id no login
+    await this.client
+      .from('profiles')
+      .update({ last_session_id: sessionId })
+      .eq('id', data.user.id);
 
     const profile = await this.fetchProfile(data.user.id, data.user.email || email, data.user.user_metadata?.name);
 
@@ -99,6 +113,7 @@ export class SupabaseAuthRepository implements IAuthRepository {
         profile.name || data.user.email || email,
         profile.role || 'STUDENT',
         data.session.access_token,
+        sessionId,
         profile.xp_total,
         profile.current_level
       )
@@ -136,7 +151,14 @@ export class SupabaseAuthRepository implements IAuthRepository {
       };
     }
 
+    const sessionId = this.generateSessionId();
     const profile = await this.upsertProfile(data.user.id, email, name);
+
+    // Atualizar no registro também se logar automático
+    await this.client
+      .from('profiles')
+      .update({ last_session_id: sessionId })
+      .eq('id', data.user.id);
 
     return {
       success: true,
@@ -146,6 +168,7 @@ export class SupabaseAuthRepository implements IAuthRepository {
         profile.name || name || email,
         profile.role || 'STUDENT',
         data.session.access_token,
+        sessionId,
         profile.xp_total,
         profile.current_level
       )
@@ -163,18 +186,29 @@ export class SupabaseAuthRepository implements IAuthRepository {
       supabaseUser.user_metadata?.name
     );
 
+    // No getCurrentSession, não geramos novo ID, usamos o que está no perfil ou assumimos o local
+    // (A lógica de validação Realtime no App.tsx cuidará da expulsão se o ID mudar)
     return this.buildSession(
       supabaseUser.id,
       profile.email || supabaseUser.email || '',
       profile.name || supabaseUser.email || '',
       profile.role || 'STUDENT',
       data.session.access_token,
+      profile.last_session_id || '', // Se for a primeira vez após migração, pode estar vazio
       profile.xp_total,
       profile.current_level
     );
   }
 
   async logout(): Promise<void> {
+    const { data: { user } } = await this.client.auth.getUser();
+    if (user) {
+      // Limpar session id no logout (opcional, mas bom para consistência)
+      await this.client
+        .from('profiles')
+        .update({ last_session_id: null })
+        .eq('id', user.id);
+    }
     await this.client.auth.signOut();
   }
 }

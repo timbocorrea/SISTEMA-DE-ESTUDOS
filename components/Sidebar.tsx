@@ -69,7 +69,21 @@ const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   return (
-    <aside className={`fixed lg:relative inset-y-0 left-0 z-[60] lg:z-0 transform ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} ${isCollapsed ? 'lg:w-20' : 'lg:w-72'} w-72 h-full bg-[#f8fafc] dark:bg-[#111827] border-r border-slate-200 dark:border-slate-800 flex flex-col p-4 transition-all duration-300 relative group`}>
+    <aside className={`
+      ${isMobileOpen ? 'flex fixed' : 'hidden'} 
+      lg:flex lg:relative 
+      flex-col
+      inset-y-0 left-0 
+      z-[70] lg:z-0 
+      ${isCollapsed ? 'lg:w-20' : 'lg:w-72'} 
+      w-72 h-full 
+      bg-[#f8fafc] dark:bg-[#111827] 
+      border-r border-slate-200 dark:border-slate-800 
+      p-4 
+      transition-all duration-300 
+      group
+      shadow-2xl lg:shadow-none
+    `}>
 
       {/* Close Button Mobile */}
       <button
