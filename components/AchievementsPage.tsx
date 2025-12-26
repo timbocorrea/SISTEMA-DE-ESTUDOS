@@ -210,3 +210,4 @@ const AchievementsPage: React.FC<{ user: User; course?: Course | null }> = ({ us
 
 export default AchievementsPage;
 
+//
