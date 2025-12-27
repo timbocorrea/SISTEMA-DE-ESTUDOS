@@ -1469,6 +1469,11 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                                     {String(index + 1).padStart(2, '0')}
                                                 </div>
 
+                                                {/* Indicador de Configurações - Mostra que há ferramentas disponíveis */}
+                                                <div className={`absolute right-4 top-4 text-slate-300 dark:text-slate-600 transition-all duration-300 ${expandedBlockId === block.id ? 'rotate-90 text-indigo-500 dark:text-indigo-400' : 'group-hover:text-slate-400 dark:group-hover:text-slate-500'}`}>
+                                                    <i className="fas fa-cog"></i>
+                                                </div>
+
                                                 {/* Controles de Movimentação Flutuantes - só aparecem quando expandido */}
                                                 {expandedBlockId === block.id && (
                                                     <div className="absolute -right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0 z-20">
@@ -1518,7 +1523,10 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
                                                     {/* Controles laterais - só aparecem quando expandido */}
                                                     {expandedBlockId === block.id && (
-                                                        <div className="flex md:flex-col items-start justify-start gap-3 border-l border-slate-100 dark:border-slate-800 pl-6 min-w-[120px]">
+                                                        <div
+                                                            className="flex md:flex-col items-start justify-start gap-3 border-l border-slate-100 dark:border-slate-800 pl-6 min-w-[120px]"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        >
                                                             <button
                                                                 onClick={() => openAudioModal(block)}
                                                                 className={`w-full h-12 rounded-2xl flex items-center justify-center gap-2 px-4 transition-all duration-300 font-bold text-[10px] uppercase tracking-widest ${block.audioUrl
