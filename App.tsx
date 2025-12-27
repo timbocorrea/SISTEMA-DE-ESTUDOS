@@ -870,9 +870,9 @@ const App: React.FC = () => {
       <Sidebar
         session={session}
         activeView={activeView}
-        onViewChange={(view) => {
+        onViewChange={(view, keepMobileOpen = false) => {
           setActiveView(view);
-          setIsMobileMenuOpen(false);
+          if (!keepMobileOpen) setIsMobileMenuOpen(false);
         }}
         onLogout={handleLogout}
         theme={theme}
@@ -910,7 +910,9 @@ const App: React.FC = () => {
           </div>
         </header>
 
-        <Breadcrumb items={getBreadcrumbItems()} />
+        <div className="hidden lg:block">
+          <Breadcrumb items={getBreadcrumbItems()} />
+        </div>
 
         <main className="flex-1 overflow-y-auto bg-slate-50/50 dark:bg-transparent scroll-smooth relative">
           {renderContent()}

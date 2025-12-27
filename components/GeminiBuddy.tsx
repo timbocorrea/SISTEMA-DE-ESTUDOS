@@ -36,8 +36,19 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
     scrollToBottom();
   }, [messages, isOpen]);
 
+  const [isDelayed, setIsDelayed] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsDelayed(false);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Handle Initial Message with Action Parsing
   useEffect(() => {
+    if (isDelayed) return; // Wait for delay
+
     if (initialMessage && messages.length === 0) {
       // Regex to find [[RESUME:courseId:lessonId]]
       const actionMatch = initialMessage.match(/\[\[RESUME:(.+?):(.+?)\]\]/);
@@ -56,7 +67,7 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
       setIsOpen(true); // Auto-open for ANY initial message (Welcome or Resume)
       setMessages([{ role: 'ai', text, action }]);
     }
-  }, [initialMessage]);
+  }, [initialMessage, isDelayed]);
 
   // Detect Provider and Model
   useEffect(() => {
@@ -301,6 +312,8 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
       setIsLoading(false);
     }
   };
+
+  if (isDelayed) return null;
 
   // Render Floating Widget
   return (

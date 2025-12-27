@@ -96,7 +96,12 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
   enrolledCourseIds = [],
   sectionTitle = "Cursos da Plataforma"
 }) => {
-  const [viewMode, setViewMode] = React.useState<'cards' | 'minimal' | 'list'>('cards');
+  const [viewMode, setViewMode] = React.useState<'cards' | 'minimal' | 'list'>(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      return 'minimal';
+    }
+    return 'cards';
+  });
 
   return (
     <div className="p-4 md:p-8 space-y-8 max-w-7xl mx-auto">

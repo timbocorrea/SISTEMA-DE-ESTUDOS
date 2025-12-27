@@ -20,8 +20,8 @@ const AuthForm: React.FC<AuthFormProps> = ({ authService, onSuccess }) => {
     handleSubmit,
     formState: { errors },
     reset
-  } = useForm<LoginFormData | SignupFormData>({
-    resolver: zodResolver(isLogin ? loginSchema : signupSchema),
+  } = useForm<SignupFormData>({
+    resolver: zodResolver(isLogin ? loginSchema : signupSchema) as any,
     mode: 'onBlur' // Valida quando perde o foco
   });
 
@@ -32,17 +32,17 @@ const AuthForm: React.FC<AuthFormProps> = ({ authService, onSuccess }) => {
     reset(); // Limpa o formulário
   };
 
-  const onSubmit = async (data: LoginFormData | SignupFormData) => {
+  const onSubmit = async (data: SignupFormData) => {
     setLoading(true);
     setError('');
 
     try {
       const res = isLogin
-        ? await authService.login(data.email, (data as LoginFormData).password)
+        ? await authService.login(data.email, data.password)
         : await authService.register(
-          (data as SignupFormData).name,
+          data.name!,
           data.email,
-          (data as SignupFormData).password
+          data.password
         );
 
       if (res.success) {
@@ -84,7 +84,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ authService, onSuccess }) => {
                 <input
                   id="name"
                   type="text"
-                  {...register('name' as any)}
+                  {...register('name')}
                   className={`w-full bg-slate-800/50 border ${errors.name ? 'border-red-500' : 'border-slate-700'
                     } rounded-xl px-4 py-3 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition`}
                   placeholder="Seu nome"
@@ -146,7 +146,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ authService, onSuccess }) => {
                 <input
                   id="confirmPassword"
                   type="password"
-                  {...register('confirmPassword' as any)}
+                  {...register('confirmPassword')}
                   className={`w-full bg-slate-800/50 border ${errors.confirmPassword ? 'border-red-500' : 'border-slate-700'
                     } rounded-xl px-4 py-3 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition`}
                   placeholder="••••••••"
