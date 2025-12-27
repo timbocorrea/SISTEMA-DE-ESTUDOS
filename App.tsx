@@ -991,7 +991,11 @@ const App: React.FC = () => {
                 : "O aluno está no Painel Principal. Aqui ele vê seus cursos e conquistas."}
           `}
           currentContext={
-            activeView === 'lesson' && currentLesson ? currentLesson.content : undefined
+            activeView === 'lesson' && currentLesson
+              ? (currentLesson.contentBlocks && currentLesson.contentBlocks.length > 0
+                ? currentLesson.contentBlocks.map(b => b.text).join('\n\n')
+                : currentLesson.content)
+              : undefined
           }
           initialMessage={initialBuddyMessage}
           onNavigate={handleBuddyNavigate}
