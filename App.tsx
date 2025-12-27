@@ -878,8 +878,16 @@ const App: React.FC = () => {
         theme={theme}
         onToggleTheme={toggleTheme}
         user={currentUser}
-        courses={availableCourses}
-        onOpenContent={handleOpenContentFromSidebar}
+        courses={enrolledCourses}
+        onOpenContent={(courseId, moduleId, lessonId) => {
+          // Security Check: Verify enrollment
+          const isEnrolled = enrolledCourses.some(c => c.id === courseId);
+          if (!isEnrolled) {
+            alert("Você precisa se inscrever neste curso para acessar o conteúdo.");
+            return;
+          }
+          handleOpenContentFromSidebar(courseId, moduleId, lessonId);
+        }}
         onSelectLesson={handleSelectLessonDetailed}
         isMobileOpen={isMobileMenuOpen}
         onCloseMobile={() => setIsMobileMenuOpen(false)}
