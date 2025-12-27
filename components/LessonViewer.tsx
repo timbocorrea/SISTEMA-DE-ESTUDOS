@@ -42,6 +42,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     const [audioProgress, setAudioProgress] = useState<number>(0);
     const [playbackSpeed, setPlaybackSpeed] = useState<number>(1.0); // Velocidade de reprodução
     const [audioEnabled, setAudioEnabled] = useState<boolean>(true); // Controle para ativar/desativar áudio
+    const [fontSize, setFontSize] = useState<number>(100); // Tamanho da fonte em % (100 = padrão)
     const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState<boolean>(false);
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const playbackSpeedRef = useRef<number>(playbackSpeed); // Ref para manter valor atualizado nos callbacks
@@ -283,6 +284,33 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                             </div>
                                         </div>
 
+                                        {/* Tamanho da Fonte */}
+                                        <div className={`flex flex-col gap-2 p-3 rounded-xl ${contentTheme === 'dark' ? 'bg-slate-800/50' : 'bg-slate-50'}`}>
+                                            <div className="flex items-center gap-2">
+                                                <i className={`fas fa-text-height text-xs ${contentTheme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'}`}></i>
+                                                <span className={`text-[11px] font-bold uppercase tracking-wider ${contentTheme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>Tamanho da Fonte</span>
+                                            </div>
+                                            <div className="flex items-center justify-between gap-2">
+                                                <button
+                                                    onClick={() => setFontSize(prev => Math.max(80, prev - 10))}
+                                                    disabled={fontSize <= 80}
+                                                    className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${contentTheme === 'dark' ? 'bg-slate-700 text-slate-300 hover:bg-slate-600 disabled:opacity-30' : 'bg-white text-slate-600 hover:bg-indigo-50 border border-slate-100 disabled:opacity-30'}`}
+                                                >
+                                                    <i className="fas fa-minus"></i>
+                                                </button>
+                                                <span className={`text-xs font-bold px-3 ${contentTheme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'}`}>
+                                                    {fontSize}%
+                                                </span>
+                                                <button
+                                                    onClick={() => setFontSize(prev => Math.min(150, prev + 10))}
+                                                    disabled={fontSize >= 150}
+                                                    className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${contentTheme === 'dark' ? 'bg-slate-700 text-slate-300 hover:bg-slate-600 disabled:opacity-30' : 'bg-white text-slate-600 hover:bg-indigo-50 border border-slate-100 disabled:opacity-30'}`}
+                                                >
+                                                    <i className="fas fa-plus"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+
                                         {/* Audio Toggle */}
                                         {lesson.contentBlocks && lesson.contentBlocks.length > 0 && (
                                             <button
@@ -347,7 +375,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                                     className={`leading-relaxed transition-colors font-medium break-words overflow-hidden lesson-block-content ${activeBlockId === block.id
                                                         ? (contentTheme === 'light' ? 'text-slate-900' : 'text-indigo-100') // Cor quando tocando (Ativo)
                                                         : (contentTheme === 'light' ? 'text-slate-700' : 'text-slate-300') // Cor normal (Inativo)
-                                                        }`}
+                                                        } [&_p]:!text-[1em] [&_span]:!text-[1em] [&_li]:!text-[1em] [&_strong]:!text-[1em] [&_em]:!text-[1em]`}
+                                                    style={{ fontSize: `${fontSize}%`, lineHeight: '1.6' }}
                                                     dangerouslySetInnerHTML={{ __html: block.text }}
                                                 />
                                             </div>
@@ -381,8 +410,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                         </div>
                     ) : (
                         <div
-                            className={`leading-relaxed lesson-content-view break-words overflow-hidden ${contentTheme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}
-                            style={{ fontSize: '15px', lineHeight: '1.8' }}
+                            className={`leading-relaxed lesson-content-view break-words overflow-hidden ${contentTheme === 'dark' ? 'text-slate-300' : 'text-slate-700'} [&_p]:!text-[1em] [&_span]:!text-[1em] [&_li]:!text-[1em] [&_strong]:!text-[1em] [&_em]:!text-[1em]`}
+                            style={{ fontSize: `${fontSize}%`, lineHeight: '1.6' }}
                             dangerouslySetInnerHTML={{ __html: lesson.content }}
                         />
                     )}
