@@ -192,7 +192,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     };
 
     return (
-        <div className="w-full max-w-[1920px] mx-auto px-4 md:px-6 py-4 md:py-8 flex flex-col lg:flex-row gap-8">
+        <div className="w-full max-w-[1920px] mx-auto px-2 md:px-6 py-4 md:py-8 flex flex-col lg:flex-row gap-8">
             {/* Coluna Esquerda: Conteúdo da Aula */}
             <div className="flex-1 min-w-0 space-y-6">
                 <button
@@ -225,7 +225,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                 )}
 
                 {/* Conteúdo da Matéria (Texto Rico OU Blocos de Áudio) */}
-                <div className={`p-8 rounded-3xl border shadow-sm transition-colors ${contentTheme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-white border-slate-200'}`}>
+                <div className={`p-4 md:p-8 rounded-3xl border shadow-sm transition-colors ${contentTheme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-white border-slate-200'}`}>
                     <div className={`flex items-center justify-between mb-6 pb-4 border-b ${contentTheme === 'dark' ? 'border-slate-800' : 'border-slate-200'}`}>
                         <div className="flex items-center gap-3">
                             <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${contentTheme === 'dark' ? 'bg-indigo-900/30' : 'bg-indigo-100'}`}>
@@ -333,7 +333,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                     <div
                                         key={block.id}
                                         ref={el => { blockRefs.current[block.id] = el; }}
-                                        className={`relative p-4 rounded-2xl border transition-all duration-500 group ${audioEnabled ? 'cursor-pointer' : 'cursor-text'} ${spacingClass} ${activeBlockId === block.id
+                                        className={`relative p-2 md:p-4 rounded-2xl border transition-all duration-500 group ${audioEnabled ? 'cursor-pointer' : 'cursor-text'} ${spacingClass} ${activeBlockId === block.id
                                             ? 'bg-indigo-50/50 dark:bg-indigo-900/20 border-indigo-500 shadow-lg shadow-indigo-500/10 audio-block-active'
                                             : lastAccessedId === block.id
                                                 ? 'bg-slate-50/50 dark:bg-slate-800/30 border-slate-300 dark:border-slate-700'
