@@ -973,7 +973,7 @@ const App: React.FC = () => {
       {session && currentUser && (
         <GeminiBuddy
           key={currentUser.id} // Forces complete reset when user changes
-          apiKey={currentUser.geminiApiKey}
+          apiKey={currentUser.geminiApiKey || import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_API_KEY}
           userName={currentUser.name}
           systemContext={`
             Estatísticas do Sistema (Dados em tempo real):
