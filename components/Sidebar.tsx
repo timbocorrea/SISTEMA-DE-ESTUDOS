@@ -15,6 +15,7 @@ interface SidebarProps {
   user?: User | null;
   isMobileOpen?: boolean;
   onCloseMobile?: () => void;
+  activeLessonId?: string; // ID da aula sendo editada no Content Editor
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -29,7 +30,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   onOpenContent,
   onSelectLesson,
   isMobileOpen = false,
-  onCloseMobile
+  onCloseMobile,
+  activeLessonId
 }) => {
   const isAdmin = session.user.role === 'INSTRUCTOR';
 
@@ -324,17 +326,24 @@ const Sidebar: React.FC<SidebarProps> = ({
 
                                   {isModuleOpen && lessons.length > 0 && (
                                     <div className="ml-3 pl-3 border-l border-slate-200/70 dark:border-slate-800/70 space-y-1">
-                                      {lessons.map(lesson => (
-                                        <button
-                                          key={lesson.id}
-                                          onClick={() => {
-                                            onOpenContent?.(course.id, module.id, lesson.id);
-                                          }}
-                                          className="w-full text-left px-3 py-2 rounded-lg transition-all text-[11px] font-medium tracking-tight text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 truncate"
-                                        >
-                                          {lesson.title}
-                                        </button>
-                                      ))}
+                                      {lessons.map(lesson => {
+                                        const isActiveLesson = activeLessonId === lesson.id;
+                                        return (
+                                          <button
+                                            key={lesson.id}
+                                            onClick={() => {
+                                              onOpenContent?.(course.id, module.id, lesson.id);
+                                            }}
+                                            className={`w-full text-left px-3 py-2 rounded-lg transition-all text-[11px] font-medium tracking-tight truncate ${isActiveLesson
+                                                ? 'bg-emerald-600/20 text-emerald-700 dark:text-emerald-300 font-bold shadow-sm border border-emerald-600/30'
+                                                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                              }`}
+                                          >
+                                            {isActiveLesson && <i className="fas fa-pencil-alt mr-2 text-emerald-600 dark:text-emerald-400"></i>}
+                                            {lesson.title}
+                                          </button>
+                                        );
+                                      })}
                                     </div>
                                   )}
 

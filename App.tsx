@@ -891,6 +891,7 @@ const App: React.FC = () => {
         onSelectLesson={handleSelectLessonDetailed}
         isMobileOpen={isMobileMenuOpen}
         onCloseMobile={() => setIsMobileMenuOpen(false)}
+        activeLessonId={editingLesson?.id} // Destaca a aula sendo editada
       />
 
       {/* Mobile Overlay */}
