@@ -1,6 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createSupabaseClient } from '../services/supabaseClient';
 import { LessonRecord } from '../domain/admin';
+import { LessonResource } from '../domain/entities';
+import QuizEditor from './QuizEditor';
+import { LessonRequirementsEditor } from './LessonRequirementsEditor';
+import { Quiz, QuizQuestion, QuizOption } from '../domain/quiz-entities';
+import { SupabaseCourseRepository } from '../repositories/SupabaseCourseRepository'; // Ajuste conforme necessário recuperando do context
+
 
 // Componente para gerenciar edição de bloco individual
 const EditableBlock: React.FC<{ text: string; onUpdate: (newText: string) => void; onFocus?: (element: HTMLDivElement) => void; blockId?: string }> = ({ text, onUpdate, onFocus, blockId }) => {
@@ -70,12 +76,14 @@ interface Block {
 
 interface LessonContentEditorPageProps {
     lesson: LessonRecord;
+    apiKey?: string;
     onSave: (content: string, metadata?: Partial<LessonRecord>) => Promise<void>;
     onCancel: () => void;
 }
 
 const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
     lesson,
+    apiKey,
     onSave,
     onCancel
 }) => {
@@ -88,6 +96,8 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
     const [activeFormats, setActiveFormats] = useState<string[]>([]);
     const [zoom, setZoom] = useState(100);
     const [forceLightMode, setForceLightMode] = useState(false);
+    const [activeEditableElement, setActiveEditableElement] = useState<HTMLElement | null>(null);
+    const [toolbarPosition, setToolbarPosition] = useState<{ top: number; left: number } | null>(null);
     const [previewTheme, setPreviewTheme] = useState<'light' | 'dark'>('light'); // Tema da prévia
     const [showMetadata, setShowMetadata] = useState(false);
 
@@ -134,15 +144,190 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
     const [uploadingAudio, setUploadingAudio] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
 
-    const [selectedElement, setSelectedElement] = useState<HTMLElement | null>(null);
-    const [activeEditableElement, setActiveEditableElement] = useState<HTMLElement | null>(null); // Rastreia qual bloco está focado
-    const savedSelectionRef = useRef<Range | null>(null); // Salva a seleção antes de perder foco
+    // Quiz State
+    const [showQuizEditor, setShowQuizEditor] = useState(false);
+    const [existingQuiz, setExistingQuiz] = useState<Quiz | null>(null);
+    const [loadingQuiz, setLoadingQuiz] = useState(false);
+    const [isTogglingRelease, setIsTogglingRelease] = useState(false);
+
+    // Lesson Requirements State
+    const [showRequirementsEditor, setShowRequirementsEditor] = useState(false);
+    const [lessonRequirements, setLessonRequirements] = useState<import('../domain/lesson-requirements').LessonProgressRequirements | null>(null);
+    const [loadingRequirements, setLoadingRequirements] = useState(false);
 
     // Bulk Creation State
     const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
     const [bulkCount, setBulkCount] = useState(3);
-    const [bulkData, setBulkData] = useState<Array<{ id: string; text: string; audioFile: File | null; audioUrl: string; spacing: number }>>([]);
-    const [isBulkUploading, setIsBulkUploading] = useState(false);
+
+    // Carregar quiz existente ao montar componente
+    useEffect(() => {
+        async function loadExistingQuiz() {
+            setExistingQuiz(null); // ⚡ CRITICAL: Limpar quiz anterior ao trocar de aula
+            setLoadingQuiz(true);
+
+            console.log('🔍 [QUIZ DEBUG] Iniciando busca de quiz para aula:', lesson.id);
+
+            try {
+                const supabase = createSupabaseClient();
+                const courseRepo = new SupabaseCourseRepository(supabase);
+
+                const quiz = await courseRepo.getQuizByLessonId(lesson.id);
+
+                if (quiz) {
+                    setExistingQuiz(quiz);
+                    console.log('✅ Quiz carregado:', quiz.title, '| ID:', quiz.id, '| Liberado:', quiz.isManuallyReleased);
+                } else {
+                    console.log('⚠️ Nenhum quiz encontrado para aula:', lesson.id);
+                }
+            } catch (error) {
+                console.error('❌ Erro ao carregar quiz:', error);
+            } finally {
+                setLoadingQuiz(false);
+            }
+        }
+        loadExistingQuiz();
+    }, [lesson.id]);
+
+    // Carregar requisitos da aula
+    useEffect(() => {
+        async function loadRequirements() {
+            setLoadingRequirements(true);
+            try {
+                const supabase = createSupabaseClient();
+                const courseRepo = new SupabaseCourseRepository(supabase);
+                const reqs = await courseRepo.getLessonRequirements(lesson.id);
+                setLessonRequirements(reqs);
+                console.log('✅ Requisitos carregados:', reqs);
+            } catch (error) {
+                console.error('❌ Erro ao carregar requisitos:', error);
+            } finally {
+                setLoadingRequirements(false);
+            }
+        }
+        loadRequirements();
+    }, [lesson.id]);
+
+    const handleCreateQuiz = async (quizData: any) => {
+        try {
+            const supabase = createSupabaseClient();
+            const courseRepo = new SupabaseCourseRepository(supabase);
+
+            const quiz = new Quiz(
+                existingQuiz?.id || (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2)),
+                lesson.id,
+                quizData.title,
+                quizData.description,
+                quizData.passingScore,
+                quizData.questions.map((q: any, idx: number) =>
+                    new QuizQuestion(
+                        crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2),
+                        'temp-quiz-id', // ID temporário, será substituído no backend
+                        q.questionText,
+                        q.questionType,
+                        idx,
+                        q.points,
+                        q.options.map((o: any, oIdx: number) =>
+                            new QuizOption(
+                                crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2),
+                                'temp-q-id',
+                                o.optionText,
+                                o.isCorrect,
+                                oIdx
+                            )
+                        )
+                    )
+                )
+            );
+
+            // UPDATE se já existe, CREATE se novo
+            if (existingQuiz) {
+                const savedQuiz = await courseRepo.updateQuiz(quiz);
+                setExistingQuiz(savedQuiz);
+                alert('✅ Quiz atualizado com sucesso!');
+            } else {
+                const savedQuiz = await courseRepo.createQuiz(quiz);
+                setExistingQuiz(savedQuiz);
+                alert('✅ Quiz criado com sucesso!');
+            }
+
+
+            setShowQuizEditor(false);
+        } catch (error) {
+            console.error('Erro ao salvar quiz:', error);
+            alert('❌ Erro ao salvar quiz: ' + (error as Error).message);
+        }
+    };
+
+    const handleToggleQuizRelease = async () => {
+        if (!existingQuiz) return;
+
+        setIsTogglingRelease(true);
+        try {
+            const supabase = createSupabaseClient();
+            const courseRepo = new SupabaseCourseRepository(supabase);
+
+            const newReleaseState = !existingQuiz.isManuallyReleased;
+            await courseRepo.toggleQuizRelease(existingQuiz.id, newReleaseState);
+
+            // Recarregar quiz para atualizar estado
+            const updatedQuiz = await courseRepo.getQuizByLessonId(lesson.id);
+            setExistingQuiz(updatedQuiz);
+
+            alert(newReleaseState
+                ? '✅ Quiz liberado! Alunos podem acessar independente do progresso.'
+                : '�� Quiz bloqueado. Alunos precisam completar 90% da aula.');
+        } catch (error) {
+            console.error('Erro ao alterar liberação do quiz:', error);
+            alert('❌ Erro ao alterar liberação do quiz');
+        } finally {
+            setIsTogglingRelease(false);
+        }
+    };
+
+    // Calcular posição da toolbar quando elemento ativo mudar
+    useEffect(() => {
+        if (activeEditableElement) {
+            const updatePosition = () => {
+                const rect = activeEditableElement.getBoundingClientRect();
+                const container = activeEditableElement.closest('.overflow-y-auto') as HTMLElement;
+
+                if (container) {
+                    const containerRect = container.getBoundingClientRect();
+                    setToolbarPosition({
+                        top: Math.max(10, rect.top - containerRect.top - 60),
+                        left: rect.left - containerRect.left + rect.width / 2
+                    });
+                }
+            };
+            updatePosition();
+            window.addEventListener('scroll', updatePosition, true);
+            window.addEventListener('resize', updatePosition);
+            return () => {
+                window.removeEventListener('scroll', updatePosition, true);
+                window.removeEventListener('resize', updatePosition);
+            };
+        } else {
+            setToolbarPosition(null);
+        }
+    }, [activeEditableElement]);
+
+    const handleSaveRequirements = async (requirements: import('../domain/lesson-requirements').LessonProgressRequirements) => {
+        try {
+            const supabase = createSupabaseClient();
+            const courseRepo = new SupabaseCourseRepository(supabase);
+
+            await courseRepo.saveLessonRequirements(requirements);
+            setLessonRequirements(requirements);
+
+            alert('✅ Requisitos salvos com sucesso!');
+        } catch (error) {
+            console.error('❌ Erro ao salvar requisitos:', error);
+            throw error;
+        }
+    };
+
+    const [selectedElement, setSelectedElement] = useState<HTMLElement | null>(null);
+    const savedSelectionRef = useRef<Range | null>(null); // Salva a seleção antes de perder foco
 
     // Importação de documentos
     const [isDocImporting, setIsDocImporting] = useState(false);
@@ -253,6 +438,11 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                 await handleSave();
                 setLastAutoSave(new Date());
                 console.log('✅ Auto-save: Salvamento automático concluído!');
+
+                // Esconder notificação após 3 segundos
+                setTimeout(() => {
+                    setLastAutoSave(null);
+                }, 3000);
             } catch (error) {
                 console.error('❌ Auto-save: Erro no salvamento automático:', error);
             } finally {
@@ -1147,99 +1337,6 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
     const { wordCount, charCount } = getTextStats();
 
-    // Bulk Handlers
-    const handleUpdateBulkCount = (newCount: number) => {
-        const safeCount = Math.min(10, Math.max(1, newCount));
-        setBulkCount(safeCount);
-
-        setBulkData(prev => {
-            const newData = [...prev];
-            if (safeCount > prev.length) {
-                for (let i = prev.length; i < safeCount; i++) {
-                    newData.push({
-                        id: Math.random().toString(36).substring(2) + Date.now().toString(36),
-                        text: '',
-                        audioFile: null,
-                        audioUrl: '',
-                        spacing: 0
-                    });
-                }
-            } else {
-                newData.length = safeCount;
-            }
-            return newData;
-        });
-    };
-
-    const handleBulkSave = async () => {
-        setIsBulkUploading(true);
-        const supabase = createSupabaseClient();
-        const newBlocks: any[] = [];
-
-        try {
-            console.log('🚀 BULK CREATE - Processando', bulkData.length, 'blocos...');
-
-            for (const item of bulkData) {
-                // Skip empty blocks to avoid clutter
-                if (!item.text.trim() && !item.audioFile) {
-                    console.log('⏭️  Pulando bloco vazio');
-                    continue;
-                }
-
-                let finalAudioUrl = item.audioUrl;
-
-                if (item.audioFile) {
-                    console.log('📤 Fazendo upload de áudio:', item.audioFile.name);
-                    const timestamp = Date.now();
-                    const fileExt = item.audioFile.name.split('.').pop();
-                    const fileName = `${timestamp}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-                    const filePath = `audio-files/${fileName}`;
-
-                    const { error } = await supabase.storage
-                        .from('audio-files')
-                        .upload(filePath, item.audioFile, { cacheControl: '3600', upsert: false });
-
-                    if (!error) {
-                        const { data: urlData } = supabase.storage
-                            .from('audio-files')
-                            .getPublicUrl(filePath);
-                        finalAudioUrl = urlData.publicUrl;
-                        console.log('✅ Upload concluído:', finalAudioUrl);
-                    } else {
-                        console.error('❌ Erro no upload:', error);
-                    }
-                }
-
-                newBlocks.push({
-                    id: item.id,
-                    text: item.text,
-                    audioUrl: finalAudioUrl,
-                    spacing: item.spacing
-                });
-            }
-
-            console.log('✅ BULK CREATE - Criados', newBlocks.length, 'blocos');
-            console.log('📋 Blocos criados:', JSON.stringify(newBlocks, null, 2));
-            console.log('📋 Blocos existentes antes:', blocks.length);
-
-            setBlocks(prev => {
-                const updated = [...prev, ...newBlocks];
-                console.log('📋 Total de blocos após adicionar:', updated.length);
-                return updated;
-            });
-
-            setIsBulkModalOpen(false);
-            setBulkData([]);
-            setBulkCount(3);
-
-            console.log('✅ BULK CREATE - Modal fechado, estado limpo');
-        } catch (err) {
-            console.error('❌ Erro ao processar criação em lote:', err);
-            alert('Erro ao processar criação em lote.');
-        } finally {
-            setIsBulkUploading(false);
-        }
-    };
 
     const ToolbarButton = ({
         icon,
@@ -1288,19 +1385,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                 <i className="fas fa-arrow-left"></i>
                             </button>
                             <div className="hidden sm:block">
-                                <div className="flex items-center gap-2">
-                                    <h1 className="text-xl font-bold text-slate-800 dark:text-white">Editor de Conteúdo</h1>
-                                    <button
-                                        onClick={() => setShowMetadata(!showMetadata)}
-                                        className={`ml-2 px-2 py-1 rounded-full text-xs font-semibold border transition-colors ${showMetadata
-                                            ? 'bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-300 dark:border-indigo-700'
-                                            : 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
-                                            }`}
-                                    >
-                                        <i className="fas fa-cog mr-1"></i>
-                                        Config. da Aula
-                                    </button>
-                                </div>
+                                <h1 className="text-xl font-bold text-slate-800 dark:text-white">Editor de Conteúdo</h1>
                                 <p className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate max-w-sm">
                                     {title}
                                 </p>
@@ -1309,233 +1394,147 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
                         {/* Tabs removidos - agora tudo em uma tela */}
 
-                        {/* Stats e botão salvar */}
+                        {/* Botões de ação */}
                         <div className="flex items-center gap-6">
-                            <div className="hidden md:flex items-center gap-6 text-xs font-bold text-slate-500 dark:text-slate-400">
-                                <div className="flex items-center gap-2">
-                                    <i className="fas fa-font"></i>
-                                    <span>{charCount.toLocaleString()} caracteres</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <i className="fas fa-text-width"></i>
-                                    <span>{wordCount.toLocaleString()} palavras</span>
-                                </div>
-                            </div>
 
+                            {/* 1. Botão de Quiz - Criar ou Editar */}
+                            {!loadingQuiz && (
+                                <button
+                                    onClick={() => setShowQuizEditor(true)}
+                                    className="h-9 px-3 rounded-lg font-semibold transition-all active:scale-95 flex items-center gap-1.5 text-[10px] uppercase bg-transparent border border-purple-500 text-purple-400 hover:bg-purple-500/20 hover:text-purple-300 hover:border-purple-400"
+                                    title={existingQuiz ? "Editar quiz existente" : "Criar novo quiz para esta aula"}
+                                >
+                                    <i className={`fas ${existingQuiz ? 'fa-edit' : 'fa-plus-circle'} text-[10px]`}></i>
+                                    {existingQuiz ? 'EDITAR QUIZ' : 'Criar'}
+                                </button>
+                            )}
+
+                            {/* 2. Botão de Liberação Manual do Quiz */}
+                            {existingQuiz && !loadingQuiz && (
+                                <button
+                                    onClick={handleToggleQuizRelease}
+                                    disabled={isTogglingRelease}
+                                    className={`h-9 px-3 rounded-lg font-semibold transition-all active:scale-95 flex items-center gap-1.5 text-[10px] uppercase bg-transparent border ${existingQuiz.isManuallyReleased
+                                        ? 'border-emerald-500 text-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300 hover:border-emerald-400'
+                                        : 'border-orange-500 text-orange-400 hover:bg-orange-500/20 hover:text-orange-300 hover:border-orange-400'
+                                        } ${isTogglingRelease ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    title={existingQuiz.isManuallyReleased
+                                        ? 'Quiz liberado. Clique para bloquear.'
+                                        : 'Quiz bloqueado. Clique para liberar.'}
+                                >
+                                    {isTogglingRelease ? (
+                                        <>
+                                            <i className="fas fa-circle-notch animate-spin text-[10px]"></i>
+                                            <span className="text-[10px]">...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <i className={`fas ${existingQuiz.isManuallyReleased ? 'fa-lock-open' : 'fa-lock'} text-[10px]`}></i>
+                                            {existingQuiz.isManuallyReleased ? 'QUIZ LIBERADO' : 'QUIZ BLOQUEADO'}
+                                        </>
+                                    )}
+                                </button>
+                            )}
+
+                            {/* 3. Botão Requisitos */}
+                            <button
+                                onClick={async () => {
+                                    setLoadingRequirements(true);
+                                    try {
+                                        const supabase = createSupabaseClient();
+                                        const { data, error } = await supabase
+                                            .from('lesson_progress_requirements')
+                                            .select('*')
+                                            .eq('lesson_id', lesson.id)
+                                            .single();
+
+                                        if (error && error.code !== 'PGRST116') {
+                                            throw error;
+                                        }
+
+                                        setLessonRequirements(data || {
+                                            lesson_id: lesson.id,
+                                            videoRequiredPercent: 80,
+                                            textBlocksRequiredPercent: 80,
+                                            requiredPdfIds: [],
+                                            requiredAudioIds: []
+                                        });
+                                        setShowRequirementsEditor(true);
+                                    } catch (error) {
+                                        console.error('Error loading requirements:', error);
+                                        alert('Erro ao carregar requisitos');
+                                    } finally {
+                                        setLoadingRequirements(false);
+                                    }
+                                }}
+                                disabled={loadingRequirements}
+                                className="h-9 px-3 rounded-lg bg-transparent border border-indigo-500 text-indigo-400 hover:bg-indigo-500/20 hover:text-indigo-300 hover:border-indigo-400 font-semibold transition-all flex items-center gap-2 text-[10px] uppercase disabled:opacity-50"
+                            >
+                                <i className={`fas ${loadingRequirements ? 'fa-circle-notch fa-spin' : 'fa-list-check'} text-[10px]`}></i>
+                                REQUISITOS QUIZ
+                            </button>
+
+                            {/* 4. Botão Em Lote */}
+                            <button
+                                onClick={() => setIsBulkModalOpen(true)}
+                                className="h-9 px-3 rounded-lg bg-transparent border border-slate-400 text-slate-300 hover:bg-slate-400/20 hover:text-slate-200 hover:border-slate-300 font-semibold transition-all flex items-center gap-2 text-[10px] uppercase"
+                            >
+                                <i className="fas fa-layer-group text-[10px]"></i>
+                                EM LOTE
+                            </button>
+
+                            {/* 5. Botão Importar DOCX */}
+                            <button
+                                onClick={() => document.getElementById('docx-upload')?.click()}
+                                className="h-9 px-3 rounded-lg bg-transparent border border-teal-500 text-teal-400 hover:bg-teal-500/20 hover:text-teal-300 hover:border-teal-400 font-semibold transition-all flex items-center gap-2 text-[10px] uppercase"
+                            >
+                                <i className="fas fa-file-word text-[10px]"></i>
+                                IMPORTAR DOCX
+                            </button>
+                            <input
+                                id="docx-upload"
+                                type="file"
+                                accept=".docx"
+                                onChange={() => alert('Funcionalidade de importação DOCX em desenvolvimento')}
+                                className="hidden"
+                            />
+
+                            {/* 6. Botão Salvar */}
                             <button
                                 onClick={handleSave}
                                 disabled={isSaving}
-                                className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold shadow-lg shadow-indigo-600/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+                                className="h-9 px-3 rounded-lg bg-transparent border border-blue-500 text-blue-400 hover:bg-blue-500/20 hover:text-blue-300 hover:border-blue-400 font-semibold transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 text-[10px] uppercase"
                             >
                                 {isSaving ? (
                                     <>
-                                        <i className="fas fa-circle-notch animate-spin"></i>
-                                        Salvando...
+                                        <i className="fas fa-circle-notch animate-spin text-[10px]"></i>
+                                        <span>Salvando...</span>
                                     </>
                                 ) : (
                                     <>
-                                        <i className="fas fa-save"></i>
+                                        <i className="fas fa-save text-[10px]"></i>
                                         Salvar
                                     </>
                                 )}
+                            </button>
+
+                            {/* 7. Botão Config. da Aula - apenas ícone */}
+                            <button
+                                onClick={() => setShowMetadata(!showMetadata)}
+                                className={`h-9 w-9 rounded-lg font-semibold transition-all active:scale-95 flex items-center justify-center ml-auto ${showMetadata
+                                    ? 'bg-slate-700 text-white border border-slate-600'
+                                    : 'bg-transparent border border-slate-400 text-slate-300 hover:bg-slate-400/20 hover:text-slate-200 hover:border-slate-300'
+                                    }`}
+                                title="Configurações da Aula"
+                            >
+                                <i className="fas fa-cog text-[10px]"></i>
                             </button>
                         </div>
                     </div>
                 </div>
 
-                {/* Toolbar Estilo Google Docs */}
-                {/* Toolbar always visible now */ true && (
-                    <div className="px-8 py-2 bg-slate-50 dark:bg-[#0f1520] border-t border-slate-200 dark:border-slate-800 flex items-center flex-wrap gap-1">
-                        {/* Undo/Redo */}
-                        <ToolbarButton icon="undo" command="undo" title="Desfazer" />
-                        <ToolbarButton icon="redo" command="redo" title="Refazer" />
-                        <Divider />
 
-                        {/* Zoom Control */}
-                        <div className="flex items-center gap-1 mr-2 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-0.5 px-2">
-                            <i className="fas fa-search-plus text-xs text-slate-400 mr-2"></i>
-                            <select
-                                value={zoom}
-                                onChange={(e) => setZoom(Number(e.target.value))}
-                                className="bg-transparent text-xs font-medium text-slate-600 dark:text-slate-300 focus:outline-none cursor-pointer"
-                                title="Zoom"
-                            >
-                                <option value={50}>50%</option>
-                                <option value={75}>75%</option>
-                                <option value={90}>90%</option>
-                                <option value={100}>100%</option>
-                                <option value={125}>125%</option>
-                                <option value={150}>150%</option>
-                                <option value={200}>200%</option>
-                            </select>
-                        </div>
-                        {/* Dark/Light Mode Toggle */}
-                        <button
-                            onClick={() => setForceLightMode(!forceLightMode)}
-                            className={`w-8 h-8 rounded flex items-center justify-center transition-colors ml-1 ${forceLightMode
-                                ? 'bg-yellow-100 text-yellow-600'
-                                : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                                }`}
-                            title={forceLightMode ? "Usar tema do sistema" : "Forçar fundo claro"}
-                        >
-                            <i className={`fas ${forceLightMode ? 'fa-sun' : 'fa-moon'}`}></i>
-                        </button>
-                        <Divider />
-
-                        {/* Print - Simulated */}
-                        <ToolbarButton icon="print" command="" title="Imprimir" />
-                        <Divider />
-
-                        {/* Font Family & Size & Color */}
-                        <div className="flex items-center gap-1 mr-2">
-                            {/* Font Family Selector */}
-                            <select
-                                onFocus={saveSelection}
-                                onChange={(e) => execCommand('fontName', e.target.value)}
-                                className="h-8 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs px-2 text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-500 min-w-[120px]"
-                                defaultValue="Arial"
-                                title="Família da fonte"
-                            >
-                                <option value="Arial">Arial</option>
-                                <option value="Times New Roman">Times New Roman</option>
-                                <option value="Georgia">Georgia</option>
-                                <option value="Courier New">Courier New</option>
-                                <option value="Verdana">Verdana</option>
-                                <option value="Tahoma">Tahoma</option>
-                                <option value="Trebuchet MS">Trebuchet MS</option>
-                                <option value="Impact">Impact</option>
-                                <option value="Comic Sans MS">Comic Sans MS</option>
-                            </select>
-
-                            {/* Font Size in Pixels */}
-                            <div className="relative flex items-center">
-                                <input
-                                    type="number"
-                                    min="8"
-                                    max="72"
-                                    defaultValue="14"
-                                    onMouseDown={() => saveSelection()} // Salva antes de clicar
-                                    onInput={(e) => {
-                                        const size = (e.target as HTMLInputElement).value;
-                                        if (!size || parseInt(size) < 8) return;
-
-                                        const targetElement = activeEditableElement || editorRef.current;
-
-                                        if (targetElement && savedSelectionRef.current) {
-                                            targetElement.focus();
-                                            restoreSelection();
-
-                                            const selection = window.getSelection();
-                                            if (selection && selection.rangeCount > 0) {
-                                                document.execCommand('fontSize', false, '7');
-
-                                                // Buscar apenas dentro do elemento focado
-                                                const fontElements = targetElement.querySelectorAll('font[size="7"]');
-                                                fontElements.forEach((element) => {
-                                                    element.removeAttribute('size');
-                                                    (element as HTMLElement).style.fontSize = `${size}px`;
-                                                });
-
-                                                // Salvar novamente a seleção após aplicar
-                                                saveSelection();
-
-                                                // Disparar evento para salvar
-                                                if (activeEditableElement) {
-                                                    const event = new Event('input', { bubbles: true });
-                                                    activeEditableElement.dispatchEvent(event);
-                                                } else {
-                                                    handleInput();
-                                                }
-                                            }
-                                        }
-                                    }}
-                                    className="h-8 w-16 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs px-2 text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-500 text-center"
-                                    title="Selecione o texto, depois digite o tamanho aqui"
-                                    placeholder="14px"
-                                />
-                            </div>
-
-                            <div className="relative flex items-center">
-                                <input
-                                    type="color"
-                                    onFocus={saveSelection}
-                                    onChange={(e) => execCommand('foreColor', e.target.value)}
-                                    className="absolute opacity-0 w-8 h-8 cursor-pointer z-10"
-                                    title="Cor do texto"
-                                />
-                                <button className="w-8 h-8 rounded flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                                    <i className="fas fa-palette text-sm"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <Divider />
-
-                        {/* Formats */}
-                        <div className="flex items-center bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-0.5">
-                            <ToolbarButton icon="bold" command="bold" title="Negrito (Ctrl+B)" active={activeFormats.includes('bold')} />
-                            <ToolbarButton icon="italic" command="italic" title="Itálico (Ctrl+I)" active={activeFormats.includes('italic')} />
-                            <ToolbarButton icon="underline" command="underline" title="Sublinhado (Ctrl+U)" active={activeFormats.includes('underline')} />
-                            <ToolbarButton icon="strikethrough" command="strikeThrough" title="Tachado" active={activeFormats.includes('strikeThrough')} />
-                        </div>
-                        <Divider />
-
-                        {/* Lists */}
-                        <ToolbarButton icon="list-ul" command="insertUnorderedList" title="Lista com marcadores" active={activeFormats.includes('insertUnorderedList')} />
-                        <ToolbarButton icon="list-ol" command="insertOrderedList" title="Lista numerada" active={activeFormats.includes('insertOrderedList')} />
-                        <ToolbarButton icon="indent" command="indent" title="Aumentar recuo" />
-                        <ToolbarButton icon="outdent" command="outdent" title="Diminuir recuo" />
-                        <Divider />
-
-                        {/* Alignment */}
-                        <div className="flex items-center bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-0.5">
-                            <ToolbarButton icon="align-left" command="justifyLeft" title="Alinhar à esquerda" active={activeFormats.includes('justifyLeft')} />
-                            <ToolbarButton icon="align-center" command="justifyCenter" title="Centralizar" active={activeFormats.includes('justifyCenter')} />
-                            <ToolbarButton icon="align-right" command="justifyRight" title="Alinhar à direita" active={activeFormats.includes('justifyRight')} />
-                            <ToolbarButton icon="align-justify" command="justifyFull" title="Justificado" active={activeFormats.includes('justifyFull')} />
-                        </div>
-                        <Divider />
-
-                        {/* Special */}
-                        <ToolbarButton
-                            icon="link"
-                            command="createLink"
-                            title="Inserir Link"
-                            onClick={() => {
-                                const url = prompt('Digite a URL:');
-                                if (url) execCommand('createLink', url);
-                            }}
-                        />
-
-                        {/* Multimedia Buttons */}
-                        <ToolbarButton
-                            icon="image"
-                            command=""
-                            title="Inserir Imagem"
-                            onClick={() => setShowImageModal(true)}
-                        />
-                        <ToolbarButton
-                            icon="table"
-                            command=""
-                            title="Inserir Tabela"
-                            onClick={() => setShowTableModal(true)}
-                        />
-                        <ToolbarButton
-                            icon="video"
-                            command=""
-                            title="Inserir Vídeo (YouTube/Vimeo)"
-                            onClick={() => setShowVideoModal(true)}
-                        />
-                        <ToolbarButton
-                            icon="quote-left"
-                            command=""
-                            title="Inserir Citação"
-                            onClick={insertQuote}
-                        />
-                        <ToolbarButton icon="remove-format" command="removeFormat" title="Limpar formatação" />
-                    </div>
-                )}
-
-                {/* Element Resize Toolbar - Always visible when element selected */}
+                {/* Element Resize Toolbar */}
                 {selectedElement && (
                     <div className="absolute top-[120px] left-1/2 transform -translate-x-1/2 bg-slate-800 text-white p-2 rounded-lg shadow-xl flex items-center gap-2 z-50 animate-in fade-in slide-in-from-top-4">
                         <span className="text-xs font-bold text-slate-300 mr-2">Tamanho:</span>
@@ -1579,7 +1578,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
             </div>
 
             {/* Área do editor - TWO COLUMN LAYOUT */}
-            <div className={`flex-1 flex flex-col overflow-hidden ${forceLightMode ? 'bg-slate-100' : 'bg-slate-100 dark:bg-black/20'}`}>
+            <div className={`flex-1 flex flex-col overflow-hidden ${forceLightMode ? 'bg-slate-100' : 'bg-slate-100 dark:bg-black/20'} relative`}>
                 {/* Indicador de Auto-Save */}
                 {(isAutoSaving || lastAutoSave) && (
                     <div className="fixed top-4 right-4 z-50 animate-in fade-in slide-in-from-top-2">
@@ -1674,59 +1673,11 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
                     {/* Coluna Direita: Gerenciador de Blocos */}
                     <div className="flex flex-col h-full min-h-0">
-                        {/* Header Fixo com Botões */}
-                        <div className="flex items-center justify-between mb-4 px-2 flex-shrink-0">
+                        {/* Header Fixo */}
+                        <div className="mb-4 px-2 flex-shrink-0">
                             <div>
                                 <h2 className={`text-2xl font-black tracking-tight ${forceLightMode ? 'text-slate-900' : 'text-slate-900 dark:text-white'}`}>Gerenciador de Blocos</h2>
                                 <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Sincronize parágrafos e áudios com precisão.</p>
-                            </div>
-                            <div className="flex gap-2 items-center">
-                                <input
-                                    ref={docUploadInputRef}
-                                    type="file"
-                                    accept=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                                    className="hidden"
-                                    onChange={handleDocFileInput}
-                                />
-                                <button
-                                    onClick={() => docUploadInputRef.current?.click()}
-                                    disabled={isDocImporting}
-                                    className="px-4 py-3.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:text-emerald-200 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
-                                    title="Importar um documento .docx e quebrar em blocos mantendo formataÇõÇœes"
-                                >
-                                    {isDocImporting ? (
-                                        <>
-                                            <i className="fas fa-spinner fa-spin"></i>
-                                            Importando...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <i className="fas fa-file-import"></i>
-                                            Importar DOCX
-                                        </>
-                                    )}
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        setIsBulkModalOpen(true);
-                                        handleUpdateBulkCount(3);
-                                    }}
-                                    className="px-4 py-3.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-900/20 dark:hover:bg-indigo-900/40 dark:text-indigo-300 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
-                                    title="Inserir vários blocos de uma vez"
-                                >
-                                    <i className="fas fa-layer-group"></i>
-                                    Em Lote
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        const id = Math.random().toString(36).substring(2) + Date.now().toString(36);
-                                        setBlocks([...blocks, { id, text: '', audioUrl: '' }]);
-                                    }}
-                                    className="px-6 py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-indigo-600/20 transition-all hover:scale-105 active:scale-95 flex items-center gap-2 group"
-                                >
-                                    <i className="fas fa-plus group-hover:rotate-90 transition-transform"></i>
-                                    Novo Bloco
-                                </button>
                             </div>
                         </div>
 
@@ -1962,6 +1913,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
                                             <div
                                                 key={block.id || index}
+                                                data-block-id={block.id}
                                                 onClick={() => !isSelectionMode && setExpandedBlockId(expandedBlockId === block.id ? null : block.id)}
                                                 className={`group relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm hover:shadow-xl hover:shadow-indigo-500/5 hover:border-indigo-400/50 dark:hover:border-indigo-500/50 transition-all duration-300 cursor-pointer ${expandedBlockId === block.id ? 'p-12' : 'p-6'} ${selectedBlocks.has(block.id) ? 'ring-2 ring-indigo-500 border-indigo-500' : ''
                                                     }`}
@@ -2071,6 +2023,64 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
 
                                                 <div className="relative pr-48 pt-2" onClick={(e) => e.stopPropagation()}>
+                                                    {/* Inline Toolbar - Aparece quando este bloco está ativo */}
+                                                    {activeEditableElement?.closest(`[data-block-id="${block.id}"]`) && (
+                                                        <div className="mb-3 bg-white dark:bg-slate-900 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 p-2 flex items-center gap-1 flex-wrap">
+                                                            {/* Font controls */}
+                                                            <select
+                                                                onFocus={saveSelection}
+                                                                onChange={(e) => execCommand('fontName', e.target.value)}
+                                                                className="h-7 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs px-2"
+                                                                defaultValue="Arial"
+                                                            >
+                                                                <option value="Arial">Arial</option>
+                                                                <option value="Times New Roman">Times</option>
+                                                                <option value="Georgia">Georgia</option>
+                                                            </select>
+
+                                                            <input
+                                                                type="number"
+                                                                min="8"
+                                                                max="72"
+                                                                defaultValue="14"
+                                                                className="w-12 h-7 rounded border border-slate-200 dark:border-slate-700 text-xs px-2"
+                                                            />
+
+                                                            <div className="w-px h-4 bg-slate-300 dark:bg-slate-700" />
+
+                                                            {/* Format buttons */}
+                                                            <ToolbarButton icon="bold" command="bold" title="Negrito" />
+                                                            <ToolbarButton icon="italic" command="italic" title="Itálico" />
+                                                            <ToolbarButton icon="underline" command="underline" title="Sublinhado" />
+
+                                                            <div className="w-px h-4 bg-slate-300 dark:bg-slate-700" />
+
+                                                            {/* Alignment */}
+                                                            <ToolbarButton icon="align-left" command="justifyLeft" title="Esquerda" />
+                                                            <ToolbarButton icon="align-center" command="justifyCenter" title="Centro" />
+                                                            <ToolbarButton icon="align-right" command="justifyRight" title="Direita" />
+
+                                                            <div className="w-px h-4 bg-slate-300 dark:bg-slate-700" />
+
+                                                            {/* Lists */}
+                                                            <ToolbarButton icon="list-ul" command="insertUnorderedList" title="Lista" />
+                                                            <ToolbarButton icon="list-ol" command="insertOrderedList" title="Numerada" />
+
+                                                            <div className="w-px h-4 bg-slate-300 dark:bg-slate-700" />
+
+                                                            {/* Link */}
+                                                            <ToolbarButton
+                                                                icon="link"
+                                                                command=""
+                                                                title="Link"
+                                                                onClick={() => {
+                                                                    const url = prompt('URL:');
+                                                                    if (url) execCommand('createLink', url);
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    )}
+
                                                     <EditableBlock
                                                         text={text}
                                                         onUpdate={(newText) => updateBlock(block.id, { text: newText })}
@@ -2234,147 +2244,6 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                 )
             }
 
-            {/* Bulk Creation Modal */}
-            {
-                isBulkModalOpen && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
-                        <div className="bg-white dark:bg-slate-900 w-full max-w-4xl max-h-[90vh] rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 flex flex-col animate-in zoom-in-95 duration-200">
-                            {/* Header */}
-                            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-900/50">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-2xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 text-xl shadow-sm">
-                                        <i className="fas fa-layer-group"></i>
-                                    </div>
-                                    <div>
-                                        <h3 className="font-bold text-xl text-slate-800 dark:text-white">Criação em Lote</h3>
-                                        <p className="text-xs text-slate-500 font-medium">Adicione múltiplos blocos de conteúdo e áudio simultaneamente.</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                    <div className="flex items-center gap-2 bg-white dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
-                                        <span className="text-[10px] uppercase font-black text-slate-400 px-2">Quantidade:</span>
-                                        <select
-                                            value={bulkCount}
-                                            onChange={(e) => handleUpdateBulkCount(Number(e.target.value))}
-                                            className="bg-transparent font-bold text-indigo-600 dark:text-indigo-400 outline-none text-sm cursor-pointer pr-2"
-                                        >
-                                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
-                                                <option key={n} value={n}>{n} Blocos</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <button onClick={() => setIsBulkModalOpen(false)} className="w-8 h-8 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 flex items-center justify-center transition-colors text-slate-500">
-                                        <i className="fas fa-times"></i>
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Body */}
-                            <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/30 dark:bg-[#0B0F17]">
-                                {bulkData.map((item, index) => (
-                                    <div key={item.id} className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex gap-4 items-start animate-in slide-in-from-bottom-2 duration-300" style={{ animationDelay: `${index * 50}ms` }}>
-                                        <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-500 shrink-0 mt-1">
-                                            {index + 1}
-                                        </div>
-                                        <div className="flex-1 space-y-4">
-                                            <div>
-                                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Texto do Parágrafo</label>
-                                                <textarea
-                                                    value={item.text}
-                                                    onChange={(e) => {
-                                                        const newData = [...bulkData];
-                                                        newData[index].text = e.target.value;
-                                                        setBulkData(newData);
-                                                    }}
-                                                    className="w-full h-24 p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all resize-none"
-                                                    placeholder="Digite ou cole o texto aqui..."
-                                                />
-                                            </div>
-                                            <div className="flex gap-4">
-                                                <div className="flex-1">
-                                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Áudio (Opcional)</label>
-                                                    <div className="relative">
-                                                        <input
-                                                            type="file"
-                                                            accept="audio/*"
-                                                            className="hidden"
-                                                            id={`bulk-audio-${item.id}`}
-                                                            onChange={(e) => {
-                                                                const file = e.target.files?.[0];
-                                                                if (file) {
-                                                                    const newData = [...bulkData];
-                                                                    newData[index].audioFile = file;
-                                                                    setBulkData(newData);
-                                                                }
-                                                            }}
-                                                        />
-                                                        <label htmlFor={`bulk-audio-${item.id}`} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border border-dashed cursor-pointer transition-all ${item.audioFile ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800' : 'bg-slate-50 dark:bg-slate-950 border-slate-300 dark:border-slate-700 hover:border-indigo-400'}`}>
-                                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${item.audioFile ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-200 text-slate-500'}`}>
-                                                                <i className={`fas ${item.audioFile ? 'fa-check' : 'fa-music'}`}></i>
-                                                            </div>
-                                                            <div className="flex-1 min-w-0">
-                                                                <p className={`text-xs font-bold truncate ${item.audioFile ? 'text-indigo-700 dark:text-indigo-400' : 'text-slate-500'}`}>
-                                                                    {item.audioFile ? item.audioFile.name : 'Selecionar arquivo...'}
-                                                                </p>
-                                                            </div>
-                                                        </label>
-                                                    </div>
-                                                </div>
-                                                <div className="w-1/3">
-                                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Espaçamento</label>
-                                                    <select
-                                                        value={item.spacing}
-                                                        onChange={(e) => {
-                                                            const newData = [...bulkData];
-                                                            newData[index].spacing = Number(e.target.value);
-                                                            setBulkData(newData);
-                                                        }}
-                                                        className="w-full h-[46px] px-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-600 focus:outline-none focus:border-indigo-500"
-                                                    >
-                                                        <option value={0}>Sem Espaço</option>
-                                                        <option value={4}>Pequeno</option>
-                                                        <option value={8}>Normal</option>
-                                                        <option value={12}>Médio</option>
-                                                        <option value={16}>Grande</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* Footer */}
-                            <div className="p-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex justify-end gap-3">
-                                <button
-                                    onClick={() => setIsBulkModalOpen(false)}
-                                    className="px-6 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-sm"
-                                >
-                                    Cancelar
-                                </button>
-                                <button
-                                    onClick={handleBulkSave}
-                                    disabled={isBulkUploading}
-                                    className="px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black uppercase tracking-widest shadow-lg shadow-indigo-600/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-xs"
-                                >
-                                    {isBulkUploading ? (
-                                        <>
-                                            <i className="fas fa-circle-notch animate-spin"></i>
-                                            Processando Uploads...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <i className="fas fa-check"></i>
-                                            Inserir {bulkCount} Blocos
-                                        </>
-                                    )}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )
-            }
-
             {/* Metadata Sidebar */}
             <div className={`fixed inset-y-0 right-0 w-80 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl transform transition-transform duration-300 z-[60] ${showMetadata ? 'translate-x-0' : 'translate-x-full'}`}>
                 <div className="h-full flex flex-col">
@@ -2447,6 +2316,19 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                     placeholder="https://..."
                                 />
                             </div>
+                        </div>
+
+                        {/* Quiz Section */}
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Questionário</label>
+                            <button
+                                onClick={() => setShowQuizEditor(true)}
+                                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-lg font-bold transition-colors shadow-lg shadow-purple-600/20"
+                            >
+                                <i className="fas fa-clipboard-list text-lg"></i>
+                                Gerenciar Quiz
+                            </button>
+                            <p className="text-[10px] text-slate-400">Adicione perguntas para validar o aprendizado.</p>
                         </div>
 
                         <div className="pt-6 border-t border-slate-200 dark:border-slate-800">
@@ -2771,6 +2653,153 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                             >
                                 <i className="fas fa-times"></i>
                             </button>
+                        </div>
+                    </div>
+                )
+            }
+
+            {/* Modal de Quiz */}
+            {
+                showQuizEditor && (
+                    <QuizEditor
+                        lessonId={lesson.id}
+                        existingQuiz={existingQuiz}
+                        onSave={handleCreateQuiz}
+                        onClose={() => setShowQuizEditor(false)}
+                        apiKey={apiKey}
+                        lessonContent={(async () => {
+                            // Extrair texto plano do HTML atual ou dos blocos se content estiver vazio
+                            const htmlSource = content && content.trim().length > 0
+                                ? content
+                                : (blocks || []).map((b: any) => b.text || '').join('\n');
+
+                            const div = document.createElement('div');
+                            div.innerHTML = htmlSource;
+                            const htmlText = div.textContent || div.innerText || '';
+
+                            // Extrair texto dos PDFs
+                            const pdfUrls = ((lesson as any).resources || [])
+                                .filter((r: LessonResource) => r.type === 'PDF')
+                                .map((r: LessonResource) => r.url);
+
+                            if (pdfUrls.length === 0) {
+                                return htmlText;
+                            }
+
+                            try {
+                                const { extractTextFromMultiplePDFs } = await import('../utils/pdfExtractor');
+                                const pdfText = await extractTextFromMultiplePDFs(pdfUrls);
+
+                                return `${htmlText}\n\n--- MATERIAIS EM PDF ---\n\n${pdfText}`;
+                            } catch (error) {
+                                console.error('Erro ao extrair PDFs:', error);
+                                return htmlText; // Fallback para apenas HTML
+                            }
+                        })()}
+                        lessonResources={(lesson as any).resources || []}
+                    />
+                )
+            }
+
+            {/* Modal de Requisitos */}
+            {
+                showRequirementsEditor && lessonRequirements && (
+                    <LessonRequirementsEditor
+                        lesson={{
+                            id: lesson.id,
+                            title: lesson.title,
+                            videoUrl: lesson.video_url || '',
+                            content: lesson.content || '',
+                            durationSeconds: lesson.duration_seconds || 0,
+                            imageUrl: lesson.image_url || '',
+                            contentBlocks: lesson.content_blocks || [],
+                            resources: (lesson as any).resources || (lesson as any).lesson_resources || []
+                        } as any}
+                        requirements={lessonRequirements}
+                        onSave={handleSaveRequirements}
+                        onClose={() => setShowRequirementsEditor(false)}
+                    />
+                )
+            }
+
+            {/* Modal de Criação em Lote */}
+            {
+                isBulkModalOpen && (
+                    <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-4" onClick={() => setIsBulkModalOpen(false)}>
+                        <div className="bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+                            {/* Header */}
+                            <div className="flex items-center justify-between p-6 border-b border-slate-800">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-indigo-600/20 flex items-center justify-center">
+                                        <i className="fas fa-layer-group text-indigo-400"></i>
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xl font-bold text-white">Criação em Lote</h3>
+                                        <p className="text-xs text-slate-400">Adicione múltiplos blocos de conteúdo simultaneamente.</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => setIsBulkModalOpen(false)} className="text-slate-400 hover:text-white transition-colors">
+                                    <i className="fas fa-times text-xl"></i>
+                                </button>
+                            </div>
+
+                            {/* Body */}
+                            <div className="p-6">
+                                <div className="mb-4">
+                                    <label className="flex items-center justify-between mb-2">
+                                        <span className="text-sm font-medium text-slate-300">QUANTIDADE:</span>
+                                        <select
+                                            value={bulkCount}
+                                            onChange={(e) => setBulkCount(Number(e.target.value))}
+                                            className="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-indigo-400 font-semibold text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                        >
+                                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(num => (
+                                                <option key={num} value={num}>{num} Bloco{num > 1 ? 's' : ''}</option>
+                                            ))}
+                                        </select>
+                                    </label>
+                                </div>
+
+                                <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 mb-4">
+                                    <div className="flex items-start gap-3">
+                                        <i className="fas fa-info-circle text-indigo-400 mt-1"></i>
+                                        <div className="text-xs text-slate-400">
+                                            <p className="font-semibold text-slate-300 mb-1">Como funciona:</p>
+                                            <ul className="list-disc list-inside space-y-1">
+                                                <li>Serão criados {bulkCount} novo{bulkCount > 1 ? 's' : ''} bloco{bulkCount > 1 ? 's' : ''} de conteúdo vazio{bulkCount > 1 ? 's' : ''}</li>
+                                                <li>Você poderá editar cada bloco após a criação</li>
+                                                <li>Os blocos serão adicionados ao final da aula</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Footer */}
+                            <div className="flex items-center justify-end gap-3 p-6 border-t border-slate-800">
+                                <button
+                                    onClick={() => setIsBulkModalOpen(false)}
+                                    className="px-4 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors font-medium"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        // Criar múltiplos blocos vazios
+                                        const newBlocks = Array.from({ length: bulkCount }, (_, i) => ({
+                                            id: `bulk_${Date.now()}_${i}`,
+                                            text: '',
+                                            spacing: 0
+                                        }));
+                                        setBlocks([...blocks, ...newBlocks]);
+                                        setIsBulkModalOpen(false);
+                                    }}
+                                    className="px-6 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors flex items-center gap-2"
+                                >
+                                    <i className="fas fa-check"></i>
+                                    INSERIR {bulkCount} BLOCO{bulkCount > 1 ? 'S' : ''}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )

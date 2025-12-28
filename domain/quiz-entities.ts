@@ -1,0 +1,166 @@
+import { ValidationError } from './errors';
+
+// ============ QUIZ SYSTEM INTERFACES & TYPES ============
+
+export interface QuizAttemptResult {
+    score: number;
+    passed: boolean;
+    earnedPoints: number;
+    totalPoints: number;
+}
+
+export type QuestionType = 'multiple_choice' | 'true_false';
+
+// ============ QUIZ ENTITIES ============
+
+/**
+ * QuizOption - Opção de resposta para uma pergunta
+ */
+export class QuizOption {
+    constructor(
+        public readonly id: string,
+        public readonly questionId: string,
+        public readonly optionText: string,
+        public readonly isCorrect: boolean,
+        public readonly position: number
+    ) { }
+}
+
+/**
+ * QuizQuestion - Pergunta de um questionário
+ */
+export class QuizQuestion {
+    constructor(
+        public readonly id: string,
+        public readonly quizId: string,
+        public readonly questionText: string,
+        public readonly questionType: QuestionType,
+        public readonly position: number,
+        public readonly points: number,
+        public readonly options: QuizOption[]
+    ) {
+        if (points <= 0) {
+            throw new ValidationError('Pontos da questão devem ser maiores que zero.');
+        }
+        if (options.length < 2) {
+            throw new ValidationError('Questão deve ter pelo menos 2 opções.');
+        }
+        const correctOptions = options.filter(o => o.isCorrect);
+        if (correctOptions.length === 0) {
+            throw new ValidationError('Questão deve ter pelo menos uma opção correta.');
+        }
+    }
+
+    /**
+     * Verifica se a resposta selecionada está correta
+     */
+    public isCorrectAnswer(selectedOptionId: string): boolean {
+        const option = this.options.find(o => o.id === selectedOptionId);
+        return option?.isCorrect ?? false;
+    }
+
+    /**
+     * Retorna a(s) opção(ões) correta(s)
+     */
+    public getCorrectOptions(): QuizOption[] {
+        return this.options.filter(o => o.isCorrect);
+    }
+}
+
+/**
+ * Quiz - Questionário associado a uma aula
+ */
+export class Quiz {
+    constructor(
+        public id: string,
+        public lessonId: string,
+        public title: string,
+        public description: string,
+        public passingScore: number,
+        public questions: QuizQuestion[],
+        public isManuallyReleased: boolean = false
+    ) {
+        if (passingScore < 0 || passingScore > 100) {
+            throw new ValidationError('Nota de aprovação deve estar entre 0 e 100.');
+        }
+        if (questions.length === 0) {
+            throw new ValidationError('Quiz deve ter pelo menos uma pergunta.');
+        }
+    }
+
+    /**
+     * Calcula pontuação total possível do quiz
+     */
+    public getTotalPoints(): number {
+        return this.questions.reduce((sum, q) => sum + q.points, 0);
+    }
+
+    /**
+     * Valida uma tentativa do usuário e retorna o resultado
+     */
+    public validateAttempt(userAnswers: Record<string, string>): QuizAttemptResult {
+        let earnedPoints = 0;
+        const totalPoints = this.getTotalPoints();
+
+        this.questions.forEach(question => {
+            const userAnswer = userAnswers[question.id];
+            if (userAnswer && question.isCorrectAnswer(userAnswer)) {
+                earnedPoints += question.points;
+            }
+        });
+
+        const score = totalPoints > 0 ? (earnedPoints / totalPoints) * 100 : 0;
+        const passed = score >= this.passingScore;
+
+        return { score, passed, earnedPoints, totalPoints };
+    }
+
+    /**
+     * Retorna número de questões
+     */
+    get questionCount(): number {
+        return this.questions.length;
+    }
+}
+
+/**
+ * QuizAttempt - Tentativa de um usuário em um questionário
+ */
+export class QuizAttempt {
+    constructor(
+        public readonly id: string,
+        public readonly userId: string,
+        public readonly quizId: string,
+        public readonly score: number,
+        public readonly passed: boolean,
+        public readonly answers: Record<string, string>,
+        public readonly attemptNumber: number,
+        public readonly completedAt: Date
+    ) {
+        if (score < 0 || score > 100) {
+            throw new ValidationError('Score deve estar entre 0 e 100.');
+        }
+        if (attemptNumber < 1) {
+            throw new ValidationError('Número da tentativa deve ser maior que zero.');
+        }
+    }
+
+    /**
+     * Verifica se passou no quiz
+     */
+    get isPassing(): boolean {
+        return this.passed;
+    }
+
+    /**
+     * Retorna mensagem de resultado
+     */
+    get resultMessage(): string {
+        if (this.passed) {
+            return `Parabéns! Você obteve ${this.score.toFixed(1)}% e foi aprovado!`;
+        }
+        return `Você obteve ${this.score.toFixed(1)}%. Continue estudando e tente novamente!`;
+    }
+}
+
+export { ValidationError };

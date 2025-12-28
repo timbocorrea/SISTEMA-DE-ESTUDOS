@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { AdminService } from '../services/AdminService';
 import { CourseRecord, LessonRecord, LessonResourceRecord, ModuleRecord } from '../domain/admin';
 import { fileUploadService } from '../services/FileUploadService';
+import { createSupabaseClient } from '../services/supabaseClient';
 import ResourceUploadForm from './ResourceUploadForm';
 import CreateCourseModal from './CreateCourseModal';
 import CreateModuleModal from './CreateModuleModal';
@@ -129,6 +130,51 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
       refreshLessons(initialModuleId);
     }
   }, [expandedCourseId, modulesByCourse, initialModuleId]);
+
+  const handleEditCourseFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !editingCourse) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Por favor, selecione uma imagem válida.');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('A imagem deve ter no máximo 5MB.');
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      const supabase = createSupabaseClient();
+      const fileExt = file.name.split('.').pop();
+      const fileName = `course-cover-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `course-covers/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('lesson-resources')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from('lesson-resources')
+        .getPublicUrl(filePath);
+
+      setEditingCourse({ ...editingCourse, image_url: urlData.publicUrl });
+    } catch (error) {
+      console.error('Erro ao fazer upload:', error);
+      alert(`Erro ao fazer upload: ${(error as any).message || 'Erro desconhecido'}`);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handleCreateCourse = async (title: string, description: string, imageUrl: string) => {
     try {
       setBusy(true);
@@ -990,12 +1036,60 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
                     placeholder="Titulo"
                     className="w-full bg-slate-50 dark:bg-[#0a0e14] border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-slate-700 dark:text-slate-200 text-sm outline-none"
                   />
-                  <input
-                    value={editingCourse.image_url || ''}
-                    onChange={e => setEditingCourse({ ...editingCourse, image_url: e.target.value })}
-                    placeholder="URL da Imagem de Capa"
-                    className="w-full bg-slate-50 dark:bg-[#0a0e14] border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-slate-700 dark:text-slate-200 text-sm outline-none"
-                  />
+                  <div className="space-y-3">
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Imagem de Capa</label>
+
+                    {/* Preview da imagem atual */}
+                    {editingCourse.image_url && (
+                      <div className="relative aspect-video rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-800">
+                        <img src={editingCourse.image_url} alt="Capa atual" className="w-full h-full object-cover" />
+                      </div>
+                    )}
+
+                    <div className="flex gap-2">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleEditCourseFileSelect}
+                        className="hidden"
+                        id="edit-course-cover-upload"
+                        disabled={isUploading}
+                      />
+                      <label
+                        htmlFor="edit-course-cover-upload"
+                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed transition-all cursor-pointer ${isUploading
+                          ? 'opacity-50 cursor-not-allowed border-slate-300'
+                          : 'border-slate-300 dark:border-slate-700 hover:border-indigo-500 text-slate-600 dark:text-slate-400'
+                          }`}
+                      >
+                        {isUploading ? (
+                          <>
+                            <i className="fas fa-circle-notch animate-spin"></i>
+                            <span className="text-sm font-medium">Enviando...</span>
+                          </>
+                        ) : (
+                          <>
+                            <i className="fas fa-cloud-upload-alt"></i>
+                            <span className="text-sm font-medium">Fazer Upload</span>
+                          </>
+                        )}
+                      </label>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700"></div>
+                      <span className="text-[10px] text-slate-400 font-bold uppercase">OU</span>
+                      <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700"></div>
+                    </div>
+
+                    <input
+                      value={editingCourse.image_url || ''}
+                      onChange={e => setEditingCourse({ ...editingCourse, image_url: e.target.value })}
+                      placeholder="Cole a URL da imagem aqui"
+                      className="w-full bg-slate-50 dark:bg-[#0a0e14] border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-slate-700 dark:text-slate-200 text-sm outline-none"
+                      disabled={isUploading}
+                    />
+                  </div>
                   <input
                     value={editingCourse.description || ''}
                     onChange={e => setEditingCourse({ ...editingCourse, description: e.target.value })}

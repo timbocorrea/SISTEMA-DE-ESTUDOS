@@ -1,5 +1,6 @@
 import React from 'react';
 import { Lesson, LessonResourceType } from '../domain/entities';
+import { Quiz } from '../domain/quiz-entities';
 
 const iconByType: Record<LessonResourceType, string> = {
   PDF: 'fa-file-pdf',
@@ -96,8 +97,6 @@ const LessonMaterialsSidebar: React.FC<Props> = ({ lesson }) => {
             <audio controls src={lesson.audioUrl} className="w-full" />
           </div>
         )}
-
-
 
         {resources.length > 0 && (
           <div className="space-y-4">

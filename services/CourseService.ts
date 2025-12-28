@@ -27,6 +27,25 @@ export class CourseService {
 
     if (!becameCompleted) return unlocked;
 
+    // ============ QUIZ VALIDATION ============
+    // Verificar se aula tem quiz
+    const quiz = await this.courseRepository.getQuizByLessonId(lesson.id);
+
+    if (quiz) {
+      // Se tem quiz, verificar se usuário já passou
+      const latestAttempt = await this.courseRepository.getLatestQuizAttempt(user.id, quiz.id);
+
+      if (!latestAttempt || !latestAttempt.passed) {
+        // Aula "completa" mas quiz não passou - NÃO ganha XP nem conquistas
+        // Apenas atualiza progresso
+        return unlocked;
+      }
+
+      // Marcar quiz como passado na entidade Lesson
+      lesson.setQuizPassed(true);
+    }
+
+    // ============ GAMIFICATION (só executa se passou no quiz ou aula sem quiz) ============
     user.addXp(150);
 
     const lessonAch = user.checkAndAddAchievements('LESSON');

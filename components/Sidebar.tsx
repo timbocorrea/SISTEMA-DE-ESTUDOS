@@ -90,17 +90,8 @@ const Sidebar: React.FC<SidebarProps> = ({
         <i className="fas fa-times text-xl"></i>
       </button>
 
-      {/* Toggle Button */}
-      <button
-        onClick={() => setIsCollapsed(!isCollapsed)}
-        className="absolute -right-3 top-8 w-6 h-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full shadow-sm flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:scale-110 transition-all z-50 opacity-0 group-hover:opacity-100"
-        title={isCollapsed ? "Expandir Menu" : "Recolher Menu"}
-      >
-        <i className={`fas fa-chevron-${isCollapsed ? 'right' : 'left'} text-[10px]`}></i>
-      </button>
-
       {/* Header */}
-      <div className={`flex items-center gap-3 px-1 mb-8 transition-all ${isActuallyCollapsed ? 'justify-center' : ''}`}>
+      <div className={`flex items-center gap-3 px-1 mb-8 transition-all ${isActuallyCollapsed ? 'justify-center' : ''} relative`}>
         <div className="w-10 h-10 min-w-[40px] bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-900/20 rotate-3">
           <i className="fas fa-graduation-cap"></i>
         </div>
@@ -108,6 +99,15 @@ const Sidebar: React.FC<SidebarProps> = ({
           <h1 className="font-black text-slate-800 dark:text-slate-100 text-lg leading-tight tracking-tighter uppercase whitespace-nowrap">StudySystem</h1>
           <p className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest whitespace-nowrap">Sistema de Estudos</p>
         </div>
+
+        {/* Toggle Button (Desktop Only) - Moved to header */}
+        <button
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className="hidden lg:flex absolute -right-2 top-1/2 -translate-y-1/2 w-6 h-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full shadow-sm items-center justify-center text-slate-400 hover:text-indigo-600 hover:scale-110 transition-all opacity-0 group-hover:opacity-100"
+          title={isCollapsed ? "Expandir Menu" : "Recolher Menu"}
+        >
+          <i className={`fas fa-chevron-${isCollapsed ? 'right' : 'left'} text-[10px]`}></i>
+        </button>
       </div>
 
       {/* User Status Card */}
@@ -212,17 +212,24 @@ const Sidebar: React.FC<SidebarProps> = ({
 
                               {isModuleOpen && lessons.length > 0 && (
                                 <div className="ml-3 pl-3 border-l border-slate-200/70 dark:border-slate-800/70 space-y-1">
-                                  {lessons.map(lesson => (
-                                    <button
-                                      key={lesson.id}
-                                      onClick={() => {
-                                        onSelectLesson?.(course.id, module.id, lesson.id);
-                                      }}
-                                      className="w-full text-left px-3 py-2 rounded-lg transition-all text-[11px] font-medium tracking-tight text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 truncate"
-                                    >
-                                      {lesson.title}
-                                    </button>
-                                  ))}
+                                  {lessons.map(lesson => {
+                                    const isActiveLesson = activeLessonId === lesson.id;
+                                    return (
+                                      <button
+                                        key={lesson.id}
+                                        onClick={() => {
+                                          onSelectLesson?.(course.id, module.id, lesson.id);
+                                        }}
+                                        className={`w-full text-left px-3 py-2 rounded-lg transition-all text-[11px] font-medium tracking-tight truncate ${isActiveLesson
+                                          ? 'bg-indigo-600/20 text-indigo-700 dark:text-indigo-300 font-bold shadow-sm border border-indigo-600/30'
+                                          : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                          }`}
+                                      >
+                                        {isActiveLesson && <i className="fas fa-play-circle mr-2 text-indigo-600 dark:text-indigo-400"></i>}
+                                        {lesson.title}
+                                      </button>
+                                    );
+                                  })}
                                 </div>
                               )}
                             </div>
@@ -335,8 +342,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                                               onOpenContent?.(course.id, module.id, lesson.id);
                                             }}
                                             className={`w-full text-left px-3 py-2 rounded-lg transition-all text-[11px] font-medium tracking-tight truncate ${isActiveLesson
-                                                ? 'bg-emerald-600/20 text-emerald-700 dark:text-emerald-300 font-bold shadow-sm border border-emerald-600/30'
-                                                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                              ? 'bg-emerald-600/20 text-emerald-700 dark:text-emerald-300 font-bold shadow-sm border border-emerald-600/30'
+                                              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                                               }`}
                                           >
                                             {isActiveLesson && <i className="fas fa-pencil-alt mr-2 text-emerald-600 dark:text-emerald-400"></i>}

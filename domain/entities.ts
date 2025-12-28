@@ -14,6 +14,8 @@ export interface ILessonData {
   position: number;
   lastAccessedBlockId?: string | null;
   contentBlocks?: IContentBlock[];
+  hasQuiz?: boolean; // NOVO: indica se aula tem quiz
+  quizPassed?: boolean; // NOVO: indica se usuário passou no quiz
 }
 
 export interface IContentBlock {
@@ -47,8 +49,45 @@ export class UserProgress {
     public readonly lessonId: string,
     public readonly watchedSeconds: number,
     public readonly isCompleted: boolean,
-    public readonly lastAccessedBlockId: string | null = null
+    public readonly lastAccessedBlockId: string | null = null,
+    // Campos de rastreamento detalhado
+    public readonly videoProgress: number = 0,
+    public readonly textBlocksRead: string[] = [],
+    public readonly pdfsViewed: string[] = [],
+    public readonly audiosPlayed: string[] = [],
+    public readonly materialsAccessed: string[] = []
   ) { }
+
+  /**
+   * Calcula a porcentagem de progresso (Rich Domain Model)
+   * @param durationSeconds Duração total da aula
+   * @returns Porcentagem de 0 a 100
+   */
+  public calculateProgressPercentage(durationSeconds: number): number {
+    if (durationSeconds <= 0) {
+      return this.watchedSeconds > 0 ? 100 : 0;
+    }
+    return Math.round((this.watchedSeconds / durationSeconds) * 100);
+  }
+
+  /**
+   * Verifica se uma ação já foi realizada
+   */
+  public hasReadTextBlock(blockId: string): boolean {
+    return this.textBlocksRead.includes(blockId);
+  }
+
+  public hasViewedPdf(pdfId: string): boolean {
+    return this.pdfsViewed.includes(pdfId);
+  }
+
+  public hasPlayedAudio(audioId: string): boolean {
+    return this.audiosPlayed.includes(audioId);
+  }
+
+  public hasAccessedMaterial(materialId: string): boolean {
+    return this.materialsAccessed.includes(materialId);
+  }
 }
 
 export class Lesson {
@@ -66,6 +105,10 @@ export class Lesson {
   private _lastAccessedBlockId: string | null;
   private _contentBlocks: IContentBlock[];
 
+  // NOVO: Suporte a Quiz System
+  private _hasQuiz: boolean;
+  private _quizPassed: boolean;
+
   constructor(data: ILessonData) {
     this._id = data.id;
     this._title = data.title;
@@ -80,6 +123,8 @@ export class Lesson {
     this._position = data.position || 0;
     this._lastAccessedBlockId = data.lastAccessedBlockId || null;
     this._contentBlocks = data.contentBlocks ? [...data.contentBlocks] : [];
+    this._hasQuiz = data.hasQuiz || false;
+    this._quizPassed = data.quizPassed || false;
   }
 
   get id(): string { return this._id; }
@@ -95,6 +140,18 @@ export class Lesson {
   get position(): number { return this._position; }
   get lastAccessedBlockId(): string | null { return this._lastAccessedBlockId; }
   get contentBlocks(): IContentBlock[] { return [...this._contentBlocks]; }
+  get hasQuiz(): boolean { return this._hasQuiz; }
+  get quizPassed(): boolean { return this._quizPassed; }
+
+  // Setter para quiz passed (usado quando usuário passa no quiz)
+  public setQuizPassed(passed: boolean): void {
+    this._quizPassed = passed;
+  }
+
+  // Setter para hasQuiz (usado ao carregar dados)
+  public setHasQuiz(has: boolean): void {
+    this._hasQuiz = has;
+  }
 
   public updateProgress(watched: number): boolean {
     if (watched < 0) throw new ValidationError('O tempo assistido não pode ser negativo.');
@@ -115,6 +172,28 @@ export class Lesson {
     }
 
     return !wasCompleted && this._isCompleted;
+  }
+
+  /**
+   * Calcula a porcentagem de progresso da aula (Rich Domain Model)
+   * @returns Porcentagem de 0 a 100
+   */
+  public calculateProgressPercentage(): number {
+    if (this._durationSeconds <= 0) {
+      return this._watchedSeconds > 0 ? 100 : 0;
+    }
+    return Math.round((this._watchedSeconds / this._durationSeconds) * 100);
+  }
+
+  /**
+   * Determina se a aula está REALMENTE concluída
+   * Considera se há quiz e se o usuário passou nele (Rich Domain Model + Quiz System)
+   * @returns true se aula está concluída E (não tem quiz OU passou no quiz)
+   */
+  public isTrulyCompleted(): boolean {
+    if (!this._isCompleted) return false;
+    if (this._hasQuiz && !this._quizPassed) return false;
+    return true;
   }
 }
 
@@ -145,6 +224,30 @@ export class User {
     if (amount < 0) throw new ValidationError('A quantidade de XP deve ser positiva.');
     this._xp += amount;
     this._level = Math.floor(this._xp / 1000) + 1;
+  }
+
+  /**
+   * Calcula o XP dentro do nível atual (Rich Domain Model)
+   * @returns XP de 0 a 999
+   */
+  public calculateXpInCurrentLevel(): number {
+    return this._xp % 1000;
+  }
+
+  /**
+   * Calcula o XP restante para o próximo nível (Rich Domain Model)
+   * @returns XP necessário para subir de nível
+   */
+  public getRemainingXpForNextLevel(): number {
+    return 1000 - this.calculateXpInCurrentLevel();
+  }
+
+  /**
+   * Calcula a porcentagem de progresso no nível atual (Rich Domain Model)
+   * @returns Porcentagem de 0 a 100
+   */
+  public calculateLevelProgress(): number {
+    return Math.round((this.calculateXpInCurrentLevel() / 1000) * 100);
   }
 
   public checkAndAddAchievements(type: 'LESSON' | 'MODULE' | 'COURSE' | 'XP' | 'LEVEL'): Achievement | null {

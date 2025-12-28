@@ -5,6 +5,11 @@ import VideoPlayer from './VideoPlayer';
 import LessonMaterialsSidebar from './LessonMaterialsSidebar';
 // import GeminiBuddy from './GeminiBuddy'; // Removed: Uses global now
 import NotesPanelPrototype from './NotesPanelPrototype';
+import QuizModal from './QuizModal';
+import QuizResultsModal from './QuizResultsModal';
+import { Quiz, QuizAttemptResult } from '../domain/quiz-entities';
+import { createSupabaseClient } from '../services/supabaseClient';
+import { SupabaseCourseRepository } from '../repositories/SupabaseCourseRepository';
 
 interface LessonViewerProps {
     course: Course;
@@ -48,6 +53,117 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     const playbackSpeedRef = useRef<number>(playbackSpeed); // Ref para manter valor atualizado nos callbacks
     const blockRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
     const optionsMenuRef = useRef<HTMLDivElement | null>(null);
+
+    // Quiz State
+    const [quiz, setQuiz] = useState<Quiz | null>(null);
+    const [showQuizModal, setShowQuizModal] = useState(false);
+    const [quizResult, setQuizResult] = useState<QuizAttemptResult | null>(null);
+    const [isSubmittingQuiz, setIsSubmittingQuiz] = useState(false);
+
+    // Carregar quiz quando aula mudar
+    useEffect(() => {
+        async function loadQuiz() {
+            setQuiz(null);
+            setQuizResult(null);
+            setShowQuizModal(false);
+
+            if (!lesson) return;
+
+            try {
+                const supabase = createSupabaseClient();
+                const courseRepo = new SupabaseCourseRepository(supabase);
+
+                console.log('🎯 [STUDENT] Carregando quiz para aula:', lesson.id);
+                const lessonQuiz = await courseRepo.getQuizByLessonId(lesson.id);
+
+                if (lessonQuiz) {
+                    console.log('✅ [STUDENT] Quiz carregado:', {
+                        id: lessonQuiz.id,
+                        title: lessonQuiz.title,
+                        questions: lessonQuiz.questions.length,
+                        isManuallyReleased: lessonQuiz.isManuallyReleased,
+                        progressPercentage: lesson.calculateProgressPercentage()
+                    });
+
+                    setQuiz(lessonQuiz);
+                    lesson.setHasQuiz(true);
+
+                    // Verificar se já passou
+                    const attempt = await courseRepo.getLatestQuizAttempt(user.id, lessonQuiz.id);
+                    if (attempt?.passed) {
+                        lesson.setQuizPassed(true);
+                    }
+                } else {
+                    console.log('⚠️ [STUDENT] Nenhum quiz encontrado para aula:', lesson.id);
+                }
+            } catch (error) {
+                console.error('❌ [STUDENT] Error loading quiz:', error);
+            }
+        }
+
+        loadQuiz();
+    }, [lesson.id, user.id]);
+
+    const handleQuizSubmit = async (answers: Record<string, string>) => {
+        if (!quiz) return;
+
+        setIsSubmittingQuiz(true);
+        try {
+            const supabase = createSupabaseClient();
+            const courseRepo = new SupabaseCourseRepository(supabase);
+
+            // Validar respostas (lógica no domínio)
+            const result = quiz.validateAttempt(answers);
+
+            // Registrar tentativa no banco
+            await courseRepo.submitQuizAttempt(
+                user.id,
+                quiz.id,
+                result.score,
+                result.passed,
+                answers
+            );
+
+            setShowQuizModal(false);
+            setQuizResult(result);
+
+            if (result.passed) {
+                lesson.setQuizPassed(true);
+                // Quiz passado! Agora podemos atualizar o progresso para completar a aula
+                // Chamamos onProgressUpdate com o progresso atual para disparar a verificação de conquistas
+                await onProgressUpdate(lesson.watchedSeconds, activeBlockId || undefined);
+            }
+        } catch (error) {
+            console.error('Error submitting quiz:', error);
+            alert('Erro ao enviar quiz. Tente novamente.');
+        } finally {
+            setIsSubmittingQuiz(false);
+        }
+    };
+
+    /**
+     * Intercepta a atualização de progresso para verificar se precisa abrir o quiz
+     */
+    const handleProgressUpdateInternal = async (watchedSeconds: number, lastBlockId?: string) => {
+        // Lógica de conclusão baseada no tempo (ex: 90% da duração) ou se já estava completa
+        const duration = lesson.durationSeconds || 1;
+        const progressPercent = (watchedSeconds / duration) * 100;
+        const isCompletingNow = progressPercent >= 90;
+
+        // Se está completando AGORA e tem quiz e NÃO passou no quiz
+        if (isCompletingNow && quiz && !lesson.quizPassed) {
+            // Salva o progresso, mas CourseService NÃO vai dar XP/Conquista ainda porque quiz não passou
+            await onProgressUpdate(watchedSeconds, lastBlockId);
+
+            // Abre o modal do quiz para o usuário completar
+            if (!showQuizModal && !quizResult) {
+                setShowQuizModal(true);
+            }
+        } else {
+            // Comportamento normal
+            await onProgressUpdate(watchedSeconds, lastBlockId);
+        }
+    };
 
     // Estado para o widget flutuante do Buddy AI
     // const [isBuddyOpen, setIsBuddyOpen] = useState(false); // Removed: Global Buddy used
@@ -109,7 +225,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
         setAudioProgress(0);
 
         // Save progress (Resume point)
-        onProgressUpdate(lesson.watchedSeconds, block.id);
+        handleProgressUpdateInternal(lesson.watchedSeconds, block.id);
 
         const audio = new Audio(block.audioUrl);
         audioRef.current = audio;
@@ -222,7 +338,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                 </div>
 
                 {lesson.videoUrl && (
-                    <VideoPlayer lesson={lesson} onProgress={onProgressUpdate} />
+                    <VideoPlayer lesson={lesson} onProgress={handleProgressUpdateInternal} />
                 )}
 
                 {/* Conteúdo da Matéria (Texto Rico OU Blocos de Áudio) */}
@@ -421,6 +537,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
             {/* Coluna Direita: Materials/Buddy/Notes */}
             <div className="w-full lg:w-[340px] flex-shrink-0">
                 <div className="sticky top-8 space-y-6 h-fit self-start">
+
                     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-1 flex">
                         <button
                             onClick={() => {
@@ -455,9 +572,135 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                         <NotesPanelPrototype userId={user.id} lessonId={lesson.id} refreshTrigger={activeBlockId} />
                     )}
 
+                    {/* Seção de Quiz - ABAIXO dos materiais */}
+                    {quiz && (() => {
+                        const quizAvailable = quiz.isManuallyReleased || lesson.calculateProgressPercentage() >= 90;
+
+                        // Debug log
+                        console.log('🎯 [QUIZ WIDGET] Availability:', {
+                            title: quiz.title,
+                            isManuallyReleased: quiz.isManuallyReleased,
+                            progress: lesson.calculateProgressPercentage(),
+                            available: quizAvailable
+                        });
+
+                        return (
+                            <div className={`rounded-2xl border overflow-hidden transition-all ${quizAvailable
+                                ? 'bg-gradient-to-br from-emerald-900/40 via-teal-900/30 to-green-900/40 border-emerald-500/30 shadow-lg shadow-emerald-500/10'
+                                : 'bg-slate-900 border-slate-700'
+                                }`}>
+                                <div className={`p-4 border-b flex items-center gap-3 ${quizAvailable
+                                    ? 'bg-emerald-800/30 border-emerald-700/30'
+                                    : 'bg-slate-800 border-slate-700'
+                                    }`}>
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${quizAvailable
+                                        ? 'bg-emerald-500/20 text-emerald-400'
+                                        : 'bg-slate-700 text-slate-500'
+                                        }`}>
+                                        <i className={`fas ${quizAvailable ? 'fa-graduation-cap' : 'fa-lock'} text-xl`}></i>
+                                    </div>
+                                    <div className="flex-1">
+                                        <h3 className="text-sm font-bold text-slate-100">Quiz da Aula</h3>
+                                        <p className="text-[10px] text-emerald-300 font-bold uppercase tracking-widest">
+                                            {quizAvailable ? 'Disponível' : 'Bloqueado'}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="p-4">
+                                    <button
+                                        onClick={quizAvailable ? () => {
+                                            setShowQuizModal(true);
+                                            onTrackAction?.('Abriu o Quiz da aula');
+                                        } : undefined}
+                                        disabled={!quizAvailable}
+                                        className={`w-full rounded-xl p-4 transition-all ${quizAvailable
+                                            ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 cursor-pointer shadow-lg shadow-emerald-500/20'
+                                            : 'bg-slate-800 cursor-not-allowed opacity-60'
+                                            }`}
+                                        title={quizAvailable ? `Iniciar: ${quiz.title}` : `Complete 90% da aula para desbloquear`}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-12 h-12 rounded-xl border-2 flex items-center justify-center flex-shrink-0 ${quizAvailable
+                                                ? 'border-white/30 text-white'
+                                                : 'border-slate-600 text-slate-500'
+                                                }`}>
+                                                <i className={`fas ${quizAvailable ? 'fa-play-circle' : 'fa-lock'} text-2xl`}></i>
+                                            </div>
+                                            <div className="flex-1 text-left">
+                                                <p className={`text-base font-bold ${quizAvailable ? 'text-white' : 'text-slate-400'}`}>
+                                                    {quiz.title}
+                                                </p>
+                                                <p className={`text-xs font-bold uppercase tracking-wider ${quizAvailable ? 'text-emerald-100' : 'text-slate-500'
+                                                    }`}>
+                                                    {quiz.questions.length} {quiz.questions.length === 1 ? 'Pergunta' : 'Perguntas'}
+                                                </p>
+                                            </div>
+                                            {quizAvailable && (
+                                                <i className="fas fa-arrow-right text-white text-xl"></i>
+                                            )}
+                                        </div>
+                                    </button>
+
+                                    {/* Progresso quando bloqueado */}
+                                    {!quizAvailable && (
+                                        <div className="mt-4 p-3 bg-slate-800/50 rounded-xl border border-slate-700">
+                                            <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
+                                                <span className="font-bold uppercase tracking-wider">Progresso</span>
+                                                <span className="font-bold text-slate-300">
+                                                    {lesson.calculateProgressPercentage()}% / 90%
+                                                </span>
+                                            </div>
+                                            <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+                                                <div
+                                                    className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-300"
+                                                    style={{ width: `${Math.min(lesson.calculateProgressPercentage(), 100)}%` }}
+                                                ></div>
+                                            </div>
+                                            <p className="text-[10px] text-slate-500 mt-2 text-center">
+                                                {90 - lesson.calculateProgressPercentage() > 0
+                                                    ? `Faltam ${(90 - lesson.calculateProgressPercentage()).toFixed(0)}% para desbloquear`
+                                                    : 'Quiz liberado!'}
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })()}
+
                 </div>
             </div>
-        </div>
+
+            {/* Modal de Quiz */}
+            {
+                showQuizModal && quiz && (
+                    <QuizModal
+                        quiz={quiz}
+                        isOpen={showQuizModal}
+                        onClose={() => setShowQuizModal(false)}
+                        onSubmit={handleQuizSubmit}
+                        isSubmitting={isSubmittingQuiz}
+                    />
+                )
+            }
+
+            {/* Modal de Resultado */}
+            {
+                quizResult && quiz && (
+                    <QuizResultsModal
+                        result={quizResult}
+                        passingScore={quiz.passingScore}
+                        isOpen={!!quizResult}
+                        onClose={() => setQuizResult(null)}
+                        onRetry={() => {
+                            setQuizResult(null);
+                            setShowQuizModal(true);
+                        }}
+                    />
+                )
+            }
+        </div >
     );
 };
 

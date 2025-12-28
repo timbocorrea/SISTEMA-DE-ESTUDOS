@@ -22,6 +22,7 @@ import { SupabaseAdminRepository } from './repositories/SupabaseAdminRepository'
 import { AuthService } from './services/AuthService';
 import { CourseService } from './services/CourseService';
 import { AdminService } from './services/AdminService';
+import { createSupabaseClient } from './services/supabaseClient';
 
 const App: React.FC = () => {
   const [session, setSession] = useState<IUserSession | null>(null);
@@ -94,7 +95,9 @@ const App: React.FC = () => {
 
   const { authService, courseService, adminService } = useMemo(() => {
     const authRepo = new SupabaseAuthRepository();
-    const courseRepo = new SupabaseCourseRepository();
+    // DIP: Injetar SupabaseClient no repositório
+    const supabaseClient = createSupabaseClient();
+    const courseRepo = new SupabaseCourseRepository(supabaseClient);
     const adminRepo = new SupabaseAdminRepository();
     return {
       authService: new AuthService(authRepo),
@@ -644,6 +647,7 @@ const App: React.FC = () => {
         return (
           <LessonContentEditorPage
             lesson={editingLesson}
+            apiKey={currentUser.geminiApiKey || import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_API_KEY}
             onSave={async (newContent, metadata) => {
               try {
                 // Atualizar aula no backend
@@ -891,7 +895,7 @@ const App: React.FC = () => {
         onSelectLesson={handleSelectLessonDetailed}
         isMobileOpen={isMobileMenuOpen}
         onCloseMobile={() => setIsMobileMenuOpen(false)}
-        activeLessonId={editingLesson?.id} // Destaca a aula sendo editada
+        activeLessonId={currentLesson?.id || editingLesson?.id} // Destaca aula atual ou aula sendo editada
       />
 
       {/* Mobile Overlay */}
@@ -904,7 +908,7 @@ const App: React.FC = () => {
 
       {/* Breadcrumb Navigation / Header */}
       <div className="flex-1 flex flex-col min-h-0 w-full overflow-hidden h-full">
-        <header className="flex items-center gap-4 px-4 py-3 bg-white dark:bg-[#0a0e14] border-b border-slate-200 dark:border-slate-800 lg:hidden">
+        <header className="flex items-center gap-4 px-4 py-3 bg-white dark:bg-[#0a0e14] border-b border-slate-200 dark:border-slate-800 lg:hidden sticky top-0 z-50">
           <button
             onClick={() => setIsMobileMenuOpen(true)}
             className="w-10 h-10 flex items-center justify-center text-slate-500 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Course, User } from '../domain/entities';
+import LevelProgressCircle from './LevelProgressCircle';
 
 interface StudentDashboardProps {
   user: User;
@@ -13,36 +14,14 @@ interface StudentDashboardProps {
 }
 
 const GamificationStats: React.FC<{ user: User }> = ({ user }) => {
-  const xpInLevel = user.xp % 1000;
-  const progressPercent = (xpInLevel / 1000) * 100;
-  const xpRemaining = 1000 - xpInLevel;
+  // Usar métodos do domínio (Rich Domain Model) em vez de cálculos locais
+  const progressPercent = user.calculateLevelProgress();
+  const xpRemaining = user.getRemainingXpForNextLevel();
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl md:rounded-3xl p-4 md:p-6 shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col md:flex-row items-center gap-4 md:gap-8 mb-8 transition-all hover:shadow-md">
-      {/* Círculo de Nível - Escondido no Mobile, mostrado no Desktop */}
-      <div className="relative flex-shrink-0 hidden md:block">
-        <div className="w-24 h-24 rounded-full bg-gradient-to-br from-indigo-600 to-violet-500 flex items-center justify-center shadow-xl shadow-indigo-500/30 border-4 border-white dark:border-slate-800">
-          <div className="text-center">
-            <span className="block text-3xl font-black text-white leading-none">{user.level}</span>
-            <span className="text-[10px] font-bold text-indigo-100 uppercase tracking-tighter">Nível</span>
-          </div>
-        </div>
-        <svg className="absolute top-0 left-0 w-24 h-24 -rotate-90 pointer-events-none overflow-visible">
-          <circle cx="48" cy="48" r="50" fill="none" stroke="currentColor" strokeWidth="2" className="text-indigo-500/10" />
-          <circle
-            cx="48"
-            cy="48"
-            r="50"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="3"
-            strokeDasharray="314.159"
-            strokeDashoffset={314.159 - (314.159 * progressPercent) / 100}
-            strokeLinecap="round"
-            className="text-indigo-500 drop-shadow-[0_0_8px_rgba(99,102,241,0.5)] transition-all duration-1000"
-          />
-        </svg>
-      </div>
+      {/* Componente de círculo de progresso (SRP - Single Responsibility) */}
+      <LevelProgressCircle level={user.level} progressPercent={progressPercent} />
 
       <div className="flex-1 w-full space-y-3 md:space-y-4">
         <div className="flex justify-between items-center md:items-end">
@@ -165,7 +144,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
             )}
           </div>
         ) : (
-          <div className={`gap-6 ${viewMode === 'list' ? 'flex flex-col' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
+          <div className={`gap-6 ${viewMode === 'list' ? 'flex flex-col' : 'grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4'}`}>
             {courses.map(course => {
               const progress = computeCourseProgress(course);
               const isEnrolled = enrolledCourseIds.includes(course.id);
@@ -278,7 +257,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
               return (
                 <div
                   key={course.id}
-                  className="bg-white dark:bg-slate-900 rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl dark:hover:border-slate-700 transition-all group flex flex-col"
+                  className="bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-lg dark:hover:border-slate-700 transition-all group flex flex-col"
                 >
                   <div
                     onClick={() => onCourseClick(course.id)}
@@ -298,61 +277,61 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
 
                     {!course.imageUrl && (
-                      <div className="absolute bottom-5 left-5 w-12 h-12 bg-white/10 border border-white/15 rounded-2xl flex items-center justify-center text-white text-xl backdrop-blur-sm shadow-lg">
+                      <div className="absolute bottom-2 left-2 w-8 h-8 bg-white/10 border border-white/15 rounded-xl flex items-center justify-center text-white text-sm backdrop-blur-sm shadow-lg">
                         <i className="fas fa-book-open"></i>
                       </div>
                     )}
 
-                    <div className="absolute top-4 right-4 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md px-2 py-1 rounded-lg text-xs font-bold text-slate-800 dark:text-white flex items-center gap-1 shadow-sm z-10">
-                      <i className="fas fa-layer-group text-indigo-500"></i> {course.modules.length}
+                    <div className="absolute top-2 right-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md px-1.5 py-0.5 rounded-md text-[10px] font-bold text-slate-800 dark:text-white flex items-center gap-1 shadow-sm z-10">
+                      <i className="fas fa-layer-group text-indigo-500 text-[8px]"></i> {course.modules.length}
                     </div>
                   </div>
 
-                  <div className="p-6 flex-1 flex flex-col space-y-4">
+                  <div className="p-3 flex-1 flex flex-col space-y-2">
                     {/* Badge "Inscrito" se estiver inscrito */}
                     {isEnrolled && (
-                      <span className="bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest w-fit flex items-center gap-1">
-                        <i className="fas fa-check-circle"></i> Inscrito
+                      <span className="bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wide w-fit flex items-center gap-0.5">
+                        <i className="fas fa-check-circle text-[7px]"></i> Inscrito
                       </span>
                     )}
 
-                    <span className="bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest w-fit">
+                    <span className="bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wide w-fit">
                       {progress.completed}/{progress.total} aulas
                     </span>
 
-                    <h4 className="font-extrabold text-slate-800 dark:text-white text-lg leading-tight group-hover:text-indigo-600 transition-colors">
+                    <h4 className="font-extrabold text-slate-800 dark:text-white text-sm leading-tight group-hover:text-indigo-600 transition-colors">
                       {course.title}
                     </h4>
 
-                    <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2">
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2">
                       {course.description || 'Sem descrição.'}
                     </p>
 
-                    <div className="space-y-1.5 mt-auto">
-                      <div className="flex justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    <div className="space-y-1 mt-auto">
+                      <div className="flex justify-between text-[8px] font-black text-slate-400 uppercase tracking-wide">
                         <span>Progresso: {progress.percent}%</span>
                       </div>
-                      <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                      <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                         <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${progress.percent}%` }}></div>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-3 pt-2">
+                    <div className="grid grid-cols-1 gap-1.5 pt-1">
                       {/* Lógica condicional de botões */}
                       {showEnrollButton && !isEnrolled ? (
                         // Botão de INSCREVER (Dashboard - não inscrito)
                         <button
                           onClick={() => onCourseClick(course.id)}
-                          className="w-full bg-green-600 hover:bg-green-500 text-white py-4 rounded-2xl font-black transition-all shadow-lg shadow-green-500/20 active:scale-95 text-sm uppercase tracking-wider"
+                          className="w-full bg-green-600 hover:bg-green-500 text-white py-2 rounded-xl font-black transition-all shadow-md shadow-green-500/20 active:scale-95 text-[10px] uppercase tracking-wide"
                         >
-                          <i className="fas fa-user-plus mr-2"></i>
+                          <i className="fas fa-user-plus mr-1 text-[8px]"></i>
                           Inscrever-se
                         </button>
                       ) : (
                         // Botão de CONTINUAR (Meus Cursos ou já inscrito)
                         <button
                           onClick={() => onCourseClick(course.id)}
-                          className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-4 rounded-2xl font-black transition-all shadow-lg shadow-indigo-500/20 active:scale-95 text-sm uppercase tracking-wider"
+                          className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-2 rounded-xl font-black transition-all shadow-md shadow-indigo-500/20 active:scale-95 text-[10px] uppercase tracking-wide"
                         >
                           Continuar
                         </button>
@@ -361,9 +340,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                       {user.role === 'INSTRUCTOR' && (
                         <button
                           onClick={() => (onManageCourse ? onManageCourse(course.id) : onManageContent?.())}
-                          className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-white py-4 rounded-2xl font-black transition-all active:scale-95 text-sm uppercase tracking-wider"
+                          className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-white py-2 rounded-xl font-black transition-all active:scale-95 text-[10px] uppercase tracking-wide"
                         >
-                          <i className="fas fa-pen mr-2"></i> Gerenciar
+                          <i className="fas fa-pen mr-1 text-[8px]"></i> Gerenciar
                         </button>
                       )}
                     </div>

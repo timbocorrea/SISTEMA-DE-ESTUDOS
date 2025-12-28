@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createSupabaseClient } from '../services/supabaseClient';
 
 interface CreateCourseModalProps {
     isOpen: boolean;
@@ -16,14 +17,65 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [imageUrl, setImageUrl] = useState('');
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [isUploading, setIsUploading] = useState(false);
 
     React.useEffect(() => {
         if (isOpen) {
             setTitle('');
             setDescription('');
             setImageUrl('');
+            setSelectedFile(null);
         }
     }, [isOpen]);
+
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            alert('Por favor, selecione uma imagem válida.');
+            return;
+        }
+
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            alert('A imagem deve ter no máximo 5MB.');
+            return;
+        }
+
+        setSelectedFile(file);
+        setIsUploading(true);
+
+        try {
+            const supabase = createSupabaseClient();
+            const fileExt = file.name.split('.').pop();
+            const fileName = `course-cover-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+            const filePath = `course-covers/${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('lesson-resources')
+                .upload(filePath, file, {
+                    cacheControl: '3600',
+                    upsert: false
+                });
+
+            if (uploadError) throw uploadError;
+
+            const { data: urlData } = supabase.storage
+                .from('lesson-resources')
+                .getPublicUrl(filePath);
+
+            setImageUrl(urlData.publicUrl);
+        } catch (error) {
+            console.error('Erro ao fazer upload:', error);
+            alert(`Erro ao fazer upload: ${(error as any).message || 'Erro desconhecido'}`);
+            setSelectedFile(null);
+        } finally {
+            setIsUploading(false);
+        }
+    };
 
     if (!isOpen) return null;
 
@@ -64,12 +116,58 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">URL da Imagem de Capa (Opcional)</label>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Imagem de Capa (Opcional)</label>
+
+                            {/* Upload de arquivo */}
+                            <div className="mb-3">
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleFileSelect}
+                                    className="hidden"
+                                    id="course-cover-upload"
+                                    disabled={isUploading}
+                                />
+                                <label
+                                    htmlFor="course-cover-upload"
+                                    className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed transition-all cursor-pointer ${selectedFile
+                                        ? 'border-green-500 bg-green-50 dark:bg-green-900/20 text-green-600'
+                                        : 'border-slate-300 dark:border-slate-700 hover:border-indigo-500 text-slate-600 dark:text-slate-400'
+                                        } ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                >
+                                    {isUploading ? (
+                                        <>
+                                            <i className="fas fa-circle-notch animate-spin"></i>
+                                            <span className="text-sm font-medium">Fazendo upload...</span>
+                                        </>
+                                    ) : selectedFile ? (
+                                        <>
+                                            <i className="fas fa-check-circle"></i>
+                                            <span className="text-sm font-medium truncate">{selectedFile.name}</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <i className="fas fa-cloud-upload-alt"></i>
+                                            <span className="text-sm font-medium">Clique para fazer upload</span>
+                                        </>
+                                    )}
+                                </label>
+                            </div>
+
+                            {/* Divisor OU */}
+                            <div className="flex items-center gap-3 mb-3">
+                                <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700"></div>
+                                <span className="text-xs text-slate-400 font-bold">OU</span>
+                                <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700"></div>
+                            </div>
+
+                            {/* URL manual */}
                             <input
                                 value={imageUrl}
                                 onChange={(e) => setImageUrl(e.target.value)}
-                                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-slate-800 dark:text-white outline-none focus:border-indigo-500 transition-colors"
-                                placeholder="https://..."
+                                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-slate-800 dark:text-white outline-none focus:border-indigo-500 transition-colors text-sm"
+                                placeholder="Ou cole uma URL: https://..."
+                                disabled={isUploading}
                             />
                         </div>
                         <div>
@@ -93,7 +191,7 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
                         </button>
                         <button
                             onClick={handleSubmit}
-                            disabled={!title.trim() || isLoading}
+                            disabled={!title.trim() || isLoading || isUploading}
                             className="flex-1 px-4 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold transition-colors flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20"
                         >
                             {isLoading ? <i className="fas fa-circle-notch animate-spin"></i> : <i className="fas fa-check"></i>}

@@ -1,6 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { ICourseRepository } from './ICourseRepository';
 import { Course, Module, Lesson, ILessonData, LessonResource, LessonResourceType, UserProgress, User, Achievement } from '../domain/entities';
+import { Quiz, QuizQuestion, QuizOption, QuizAttempt } from '../domain/quiz-entities';
 import { NotFoundError, DomainError } from '../domain/errors';
 import { createSupabaseClient } from '../services/supabaseClient';
 
@@ -9,13 +10,22 @@ type LessonProgressRow = {
   watched_seconds: number;
   is_completed: boolean;
   last_accessed_block_id: string | null;
+  video_progress?: number;
+  text_blocks_read?: string[];
+  pdfs_viewed?: string[];
+  audios_played?: string[];
+  materials_accessed?: string[];
 };
 
 export class SupabaseCourseRepository implements ICourseRepository {
   private client: SupabaseClient;
 
-  constructor() {
-    this.client = createSupabaseClient();
+  /**
+   * Construtor com Injeção de Dependência (DIP - Dependency Inversion Principle)
+   * @param client Instância do SupabaseClient injetada externamente
+   */
+  constructor(client: SupabaseClient) {
+    this.client = client;
   }
 
   private async getProgressByUser(userId?: string): Promise<Map<string, LessonProgressRow>> {
@@ -23,7 +33,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
 
     const { data, error } = await this.client
       .from('lesson_progress')
-      .select('lesson_id, watched_seconds, is_completed, last_accessed_block_id')
+      .select('lesson_id, watched_seconds, is_completed, last_accessed_block_id, video_progress, text_blocks_read, pdfs_viewed, audios_played, materials_accessed')
       .eq('user_id', userId);
 
     if (error) {
@@ -151,6 +161,18 @@ export class SupabaseCourseRepository implements ICourseRepository {
    * Salva o progresso técnico da aula.
    */
   async updateLessonProgress(userId: string, lessonId: string, watchedSeconds: number, isCompleted: boolean, lastBlockId?: string): Promise<void> {
+    // Buscar duração da aula para calcular video_progress
+    const { data: lessonData } = await this.client
+      .from('lessons')
+      .select('duration_seconds')
+      .eq('id', lessonId)
+      .single();
+
+    const durationSeconds = lessonData?.duration_seconds || 0;
+    const videoProgress = durationSeconds > 0
+      ? Math.min(100, (watchedSeconds / durationSeconds) * 100)
+      : (watchedSeconds > 0 ? 100 : 0);
+
     const { error } = await this.client
       .from('lesson_progress')
       .upsert(
@@ -160,6 +182,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
           watched_seconds: watchedSeconds,
           is_completed: isCompleted,
           last_accessed_block_id: lastBlockId || null,
+          video_progress: videoProgress,
           updated_at: new Date().toISOString()
         },
         { onConflict: 'user_id,lesson_id' }
@@ -182,23 +205,25 @@ export class SupabaseCourseRepository implements ICourseRepository {
   async getUserProgress(userId: string): Promise<UserProgress[]> {
     const { data, error } = await this.client
       .from('lesson_progress')
-      .select('user_id, lesson_id, watched_seconds, is_completed, last_accessed_block_id')
+      .select('lesson_id, watched_seconds, is_completed, last_accessed_block_id, video_progress, text_blocks_read, pdfs_viewed, audios_played, materials_accessed')
       .eq('user_id', userId);
 
     if (error) {
-      throw new DomainError(`Falha ao buscar progresso: ${error.message}`);
+      throw new DomainError(`Erro ao buscar progresso do usuário: ${error.message}`);
     }
 
-    return (data || []).map(
-      (p: any) =>
-        new UserProgress(
-          p.user_id,
-          p.lesson_id,
-          p.watched_seconds || 0,
-          p.is_completed || false,
-          p.last_accessed_block_id || null
-        )
-    );
+    return (data || []).map(row => new UserProgress(
+      userId,
+      row.lesson_id,
+      row.watched_seconds,
+      row.is_completed,
+      row.last_accessed_block_id,
+      row.video_progress || 0,
+      row.text_blocks_read || [],
+      row.pdfs_viewed || [],
+      row.audios_played || [],
+      row.materials_accessed || []
+    ));
   }
 
   /**
@@ -328,5 +353,375 @@ export class SupabaseCourseRepository implements ICourseRepository {
     if (error) throw new DomainError(error.message);
     return !!data;
   }
-}
 
+  // ============ QUIZ METHODS ============
+
+  async getQuizByLessonId(lessonId: string): Promise<Quiz | null> {
+    console.log('🔍 [REPOSITORY] getQuizByLessonId chamado com lessonId:', lessonId);
+
+    const { data: quizData, error: quizError } = await this.client
+      .from('quizzes')
+      .select(`
+        id,
+        lesson_id,
+        title,
+        description,
+        passing_score,
+        is_manually_released,
+        quiz_questions (
+          id,
+          quiz_id,
+          question_text,
+          question_type,
+          position,
+          points,
+          quiz_options (
+            id,
+            question_id,
+            option_text,
+            is_correct,
+            position
+          )
+        )
+      `)
+      .eq('lesson_id', lessonId)
+      .maybeSingle();
+
+    console.log('🔍 [REPOSITORY] Supabase response - data:', quizData);
+    console.log('🔍 [REPOSITORY] Supabase response - error:', quizError);
+
+    if (quizError) throw new DomainError(`Erro ao buscar quiz: ${quizError.message}`);
+    if (!quizData) {
+      console.log('⚠️ [REPOSITORY] Nenhum quiz encontrado no banco para lesson_id:', lessonId);
+      return null;
+    }
+
+    const questions = (quizData.quiz_questions || []).map((q: any) => {
+      const options = (q.quiz_options || []).map((o: any) =>
+        new QuizOption(o.id, o.question_id, o.option_text, o.is_correct, o.position)
+      );
+      return new QuizQuestion(q.id, q.quiz_id, q.question_text, q.question_type, q.position, q.points, options);
+    });
+
+    console.log('✅ [REPOSITORY] Quiz construído com sucesso:', {
+      id: quizData.id,
+      title: quizData.title,
+      questionsCount: questions.length
+    });
+
+    return new Quiz(quizData.id, quizData.lesson_id, quizData.title, quizData.description, quizData.passing_score, questions, quizData.is_manually_released ?? false);
+  }
+
+  async createQuiz(quiz: Quiz): Promise<Quiz> {
+    const { data: quizData, error: quizError } = await this.client
+      .from('quizzes')
+      .insert({
+        lesson_id: quiz.lessonId,
+        title: quiz.title,
+        description: quiz.description,
+        passing_score: quiz.passingScore,
+        is_manually_released: quiz.isManuallyReleased
+      })
+      .select()
+      .single();
+
+    if (quizError) throw new DomainError(`Erro ao criar quiz: ${quizError.message}`);
+
+    for (const question of quiz.questions) {
+      const { data: questionData, error: questionError } = await this.client
+        .from('quiz_questions')
+        .insert({
+          quiz_id: quizData.id,
+          question_text: question.questionText,
+          question_type: question.questionType,
+          position: question.position,
+          points: question.points
+        })
+        .select()
+        .single();
+
+      if (questionError) throw new DomainError(`Erro ao criar pergunta: ${questionError.message}`);
+
+      const options = question.options.map(o => ({
+        question_id: questionData.id,
+        option_text: o.optionText,
+        is_correct: o.isCorrect,
+        position: o.position
+      }));
+
+      const { error: optionsError } = await this.client
+        .from('quiz_options')
+        .insert(options);
+
+      if (optionsError) throw new DomainError(`Erro ao criar opções: ${optionsError.message}`);
+    }
+
+    const createdQuiz = await this.getQuizByLessonId(quiz.lessonId);
+    if (!createdQuiz) throw new DomainError('Quiz criado mas não foi possível recuperá-lo');
+    return createdQuiz;
+  }
+
+  async updateQuiz(quiz: Quiz): Promise<Quiz> {
+    const { error } = await this.client
+      .from('quizzes')
+      .update({
+        title: quiz.title,
+        description: quiz.description,
+        passing_score: quiz.passingScore
+      })
+      .eq('id', quiz.id);
+
+    if (error) throw new DomainError(`Erro ao atualizar quiz: ${error.message}`);
+
+    const updated = await this.getQuizByLessonId(quiz.lessonId);
+    if (!updated) throw new NotFoundError('Quiz', quiz.id);
+    return updated;
+  }
+
+  async deleteQuiz(quizId: string): Promise<void> {
+    const { error } = await this.client
+      .from('quizzes')
+      .delete()
+      .eq('id', quizId);
+
+    if (error) throw new DomainError(`Erro ao deletar quiz: ${error.message}`);
+  }
+
+  async toggleQuizRelease(quizId: string, released: boolean): Promise<void> {
+    const { error } = await this.client
+      .from('quizzes')
+      .update({ is_manually_released: released })
+      .eq('id', quizId);
+
+    if (error) throw new DomainError(`Erro ao atualizar liberação do quiz: ${error.message}`);
+  }
+
+  async submitQuizAttempt(userId: string, quizId: string, score: number, passed: boolean, answers: Record<string, string>): Promise<QuizAttempt> {
+    const { data, error } = await this.client
+      .from('quiz_attempts')
+      .insert({
+        user_id: userId,
+        quiz_id: quizId,
+        score,
+        passed,
+        answers
+      })
+      .select()
+      .single();
+
+    if (error) throw new DomainError(`Erro ao registrar tentativa: ${error.message}`);
+
+    return new QuizAttempt(
+      data.id,
+      data.user_id,
+      data.quiz_id,
+      data.score,
+      data.passed,
+      data.answers,
+      data.attempt_number,
+      new Date(data.completed_at)
+    );
+  }
+
+  async getLatestQuizAttempt(userId: string, quizId: string): Promise<QuizAttempt | null> {
+    const { data, error } = await this.client
+      .from('quiz_attempts')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('quiz_id', quizId)
+      .order('completed_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw new DomainError(`Erro ao buscar tentativa: ${error.message}`);
+    if (!data) return null;
+
+    return new QuizAttempt(
+      data.id,
+      data.user_id,
+      data.quiz_id,
+      data.score,
+      data.passed,
+      data.answers,
+      data.attempt_number,
+      new Date(data.completed_at)
+    );
+  }
+
+  async getQuizAttempts(userId: string, quizId: string): Promise<QuizAttempt[]> {
+    const { data, error } = await this.client
+      .from('quiz_attempts')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('quiz_id', quizId)
+      .order('completed_at', { ascending: false });
+
+    if (error) throw new DomainError(`Erro ao buscar tentativas: ${error.message}`);
+
+    const attempts: QuizAttempt[] = (data || []).map(row =>
+      new QuizAttempt(
+        row.id,
+        row.user_id,
+        row.quiz_id,
+        row.score,
+        row.passed,
+        row.answers,
+        row.attempt_number,
+        new Date(row.completed_at)
+      )
+    );
+
+    return attempts;
+  }
+
+  // ===== LESSON PROGRESS REQUIREMENTS =====
+
+  async getLessonRequirements(lessonId: string): Promise<import('../domain/lesson-requirements').LessonProgressRequirements> {
+    const { LessonProgressRequirements } = await import('../domain/lesson-requirements');
+
+    const { data, error } = await this.client
+      .from('lesson_progress_requirements')
+      .select('*')
+      .eq('lesson_id', lessonId)
+      .maybeSingle();
+
+    if (error) throw new DomainError(`Erro ao buscar requisitos: ${error.message}`);
+
+    // Se não configurado, retorna padrão (90% vídeo)
+    if (!data) {
+      return new LessonProgressRequirements(lessonId, 90, 0, [], [], []);
+    }
+
+    return new LessonProgressRequirements(
+      data.lesson_id,
+      data.video_required_percent,
+      data.text_blocks_required_percent,
+      data.required_pdfs || [],
+      data.required_audios || [],
+      data.required_materials || []
+    );
+  }
+
+  async saveLessonRequirements(requirements: import('../domain/lesson-requirements').LessonProgressRequirements): Promise<void> {
+    const { error } = await this.client
+      .from('lesson_progress_requirements')
+      .upsert({
+        lesson_id: requirements.lessonId,
+        video_required_percent: requirements.videoRequiredPercent,
+        text_blocks_required_percent: requirements.textBlocksRequiredPercent,
+        required_pdfs: requirements.requiredPdfs,
+        required_audios: requirements.requiredAudios,
+        required_materials: requirements.requiredMaterials
+      });
+
+    if (error) throw new DomainError(`Erro ao salvar requisitos: ${error.message}`);
+  }
+
+  // ===== DETAILED PROGRESS TRACKING =====
+
+  async markTextBlockAsRead(userId: string, lessonId: string, blockId: string): Promise<void> {
+    // Buscar progresso atual
+    const { data: progress } = await this.client
+      .from('lesson_progress')
+      .select('text_blocks_read')
+      .eq('user_id', userId)
+      .eq('lesson_id', lessonId)
+      .maybeSingle();
+
+    const blocksRead: string[] = progress?.text_blocks_read || [];
+
+    // Adicionar se ainda não estiver na lista
+    if (!blocksRead.includes(blockId)) {
+      blocksRead.push(blockId);
+
+      const { error } = await this.client
+        .from('lesson_progress')
+        .upsert({
+          user_id: userId,
+          lesson_id: lessonId,
+          text_blocks_read: blocksRead,
+          last_updated: new Date().toISOString()
+        });
+
+      if (error) throw new DomainError(`Erro ao marcar bloco como lido: ${error.message}`);
+    }
+  }
+
+  async markPdfViewed(userId: string, lessonId: string, pdfId: string): Promise<void> {
+    const { data: progress } = await this.client
+      .from('lesson_progress')
+      .select('pdfs_viewed')
+      .eq('user_id', userId)
+      .eq('lesson_id', lessonId)
+      .maybeSingle();
+
+    const pdfsViewed: string[] = progress?.pdfs_viewed || [];
+
+    if (!pdfsViewed.includes(pdfId)) {
+      pdfsViewed.push(pdfId);
+
+      const { error } = await this.client
+        .from('lesson_progress')
+        .upsert({
+          user_id: userId,
+          lesson_id: lessonId,
+          pdfs_viewed: pdfsViewed,
+          last_updated: new Date().toISOString()
+        });
+
+      if (error) throw new DomainError(`Erro ao marcar PDF como visualizado: ${error.message}`);
+    }
+  }
+
+  async markAudioPlayed(userId: string, lessonId: string, audioId: string): Promise<void> {
+    const { data: progress } = await this.client
+      .from('lesson_progress')
+      .select('audios_played')
+      .eq('user_id', userId)
+      .eq('lesson_id', lessonId)
+      .maybeSingle();
+
+    const audiosPlayed: string[] = progress?.audios_played || [];
+
+    if (!audiosPlayed.includes(audioId)) {
+      audiosPlayed.push(audioId);
+
+      const { error } = await this.client
+        .from('lesson_progress')
+        .upsert({
+          user_id: userId,
+          lesson_id: lessonId,
+          audios_played: audiosPlayed,
+          last_updated: new Date().toISOString()
+        });
+
+      if (error) throw new DomainError(`Erro ao marcar áudio como reproduzido: ${error.message}`);
+    }
+  }
+
+  async markMaterialAccessed(userId: string, lessonId: string, materialId: string): Promise<void> {
+    const { data: progress } = await this.client
+      .from('lesson_progress')
+      .select('materials_accessed')
+      .eq('user_id', userId)
+      .eq('lesson_id', lessonId)
+      .maybeSingle();
+
+    const materialsAccessed: string[] = progress?.materials_accessed || [];
+
+    if (!materialsAccessed.includes(materialId)) {
+      materialsAccessed.push(materialId);
+
+      const { error } = await this.client
+        .from('lesson_progress')
+        .upsert({
+          user_id: userId,
+          lesson_id: lessonId,
+          materials_accessed: materialsAccessed,
+          last_updated: new Date().toISOString()
+        });
+
+      if (error) throw new DomainError(`Erro ao marcar material como acessado: ${error.message}`);
+    }
+  }
+}
