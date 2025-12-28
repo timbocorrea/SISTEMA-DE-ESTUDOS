@@ -368,6 +368,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
         description,
         passing_score,
         is_manually_released,
+        questions_count,
         quiz_questions (
           id,
           quiz_id,
@@ -409,7 +410,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
       questionsCount: questions.length
     });
 
-    return new Quiz(quizData.id, quizData.lesson_id, quizData.title, quizData.description, quizData.passing_score, questions, quizData.is_manually_released ?? false);
+    return new Quiz(quizData.id, quizData.lesson_id, quizData.title, quizData.description, quizData.passing_score, questions, quizData.is_manually_released ?? false, quizData.questions_count);
   }
 
   async createQuiz(quiz: Quiz): Promise<Quiz> {
@@ -420,7 +421,8 @@ export class SupabaseCourseRepository implements ICourseRepository {
         title: quiz.title,
         description: quiz.description,
         passing_score: quiz.passingScore,
-        is_manually_released: quiz.isManuallyReleased
+        is_manually_released: quiz.isManuallyReleased,
+        questions_count: quiz.questionsCount
       })
       .select()
       .single();
@@ -467,7 +469,8 @@ export class SupabaseCourseRepository implements ICourseRepository {
       .update({
         title: quiz.title,
         description: quiz.description,
-        passing_score: quiz.passingScore
+        passing_score: quiz.passingScore,
+        questions_count: quiz.questionsCount
       })
       .eq('id', quiz.id);
 
@@ -572,6 +575,44 @@ export class SupabaseCourseRepository implements ICourseRepository {
     );
 
     return attempts;
+  }
+
+  // ===== QUIZ REPORTING =====
+
+  async createQuizReport(report: import('../domain/quiz-entities').QuizReport): Promise<void> {
+    const { error } = await this.client
+      .from('quiz_reports')
+      .insert({
+        quiz_id: report.quizId,
+        question_id: report.questionId,
+        user_id: report.userId,
+        issue_type: report.issueType,
+        comment: report.comment,
+        status: report.status || 'pending'
+      });
+
+    if (error) throw new DomainError(`Erro ao criar reporte de erro: ${error.message}`);
+  }
+
+  async getQuizReports(quizId: string): Promise<import('../domain/quiz-entities').QuizReport[]> {
+    const { data, error } = await this.client
+      .from('quiz_reports')
+      .select('*')
+      .eq('quiz_id', quizId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw new DomainError(`Erro ao buscar reportes: ${error.message}`);
+
+    return (data || []).map(row => ({
+      id: row.id,
+      quizId: row.quiz_id,
+      questionId: row.question_id,
+      userId: row.user_id,
+      issueType: row.issue_type,
+      comment: row.comment,
+      status: row.status,
+      createdAt: new Date(row.created_at)
+    }));
   }
 
   // ===== LESSON PROGRESS REQUIREMENTS =====

@@ -14,6 +14,20 @@ export type QuestionType = 'multiple_choice' | 'true_false';
 // ============ QUIZ ENTITIES ============
 
 /**
+ * QuizReport - Relatório de erro em uma questão
+ */
+export interface QuizReport {
+    id?: string;
+    quizId: string;
+    questionId: string;
+    userId: string;
+    issueType: 'no_correct' | 'multiple_correct' | 'confusing' | 'other';
+    comment?: string;
+    status: 'pending' | 'resolved' | 'ignored';
+    createdAt?: Date;
+}
+
+/**
  * QuizOption - Opção de resposta para uma pergunta
  */
 export class QuizOption {
@@ -78,7 +92,8 @@ export class Quiz {
         public description: string,
         public passingScore: number,
         public questions: QuizQuestion[],
-        public isManuallyReleased: boolean = false
+        public isManuallyReleased: boolean = false,
+        public questionsCount: number | null = null
     ) {
         if (passingScore < 0 || passingScore > 100) {
             throw new ValidationError('Nota de aprovação deve estar entre 0 e 100.');

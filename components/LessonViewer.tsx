@@ -195,6 +195,17 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
         }
     }, [playbackSpeed]);
 
+    // Auto-scroll to active block
+    useEffect(() => {
+        if (activeBlockId) {
+            const element = blockRefs.current[activeBlockId];
+            if (element) {
+                // Scroll the element into view, centering it for better visibility
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+    }, [activeBlockId]);
+
 
 
     const playBlock = (index: number) => {
@@ -467,7 +478,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
                     {/* Rendering Logic: If has blocks, render blocks. Else render rich text. */}
                     {lesson.contentBlocks && lesson.contentBlocks.length > 0 ? (
-                        <div>
+                        <div className="max-h-[70vh] overflow-y-auto pr-2 scrollbar-thin">
                             {lesson.contentBlocks.map((block, index) => {
                                 // Calcular o espaçamento usando a mesma lógica do editor
                                 const spacing = block.spacing !== undefined ? block.spacing : 0;
@@ -525,11 +536,13 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                             })}
                         </div>
                     ) : (
-                        <div
-                            className={`leading-relaxed lesson-content-view break-words overflow-hidden ${contentTheme === 'dark' ? 'text-slate-300' : 'text-slate-700'} [&_p]:!text-[1em] [&_span]:!text-[1em] [&_li]:!text-[1em] [&_strong]:!text-[1em] [&_em]:!text-[1em]`}
-                            style={{ fontSize: `${fontSize}%`, lineHeight: '1.6' }}
-                            dangerouslySetInnerHTML={{ __html: lesson.content }}
-                        />
+                        <div className="max-h-[70vh] overflow-y-auto pr-2 scrollbar-thin">
+                            <div
+                                className={`leading-relaxed lesson-content-view break-words overflow-hidden ${contentTheme === 'dark' ? 'text-slate-300' : 'text-slate-700'} [&_p]:!text-[1em] [&_span]:!text-[1em] [&_li]:!text-[1em] [&_strong]:!text-[1em] [&_em]:!text-[1em]`}
+                                style={{ fontSize: `${fontSize}%`, lineHeight: '1.6' }}
+                                dangerouslySetInnerHTML={{ __html: lesson.content }}
+                            />
+                        </div>
                     )}
                 </div>
             </div>

@@ -9,6 +9,7 @@ interface QuizEditorProps {
         title: string;
         description: string;
         passingScore: number;
+        questionsCount: number | null;
         questions: Array<{
             questionText: string;
             questionType: 'multiple_choice' | 'true_false';
@@ -29,6 +30,36 @@ const QuizEditor: React.FC<QuizEditorProps> = ({ lessonId, existingQuiz, onSave,
     const [title, setTitle] = useState(existingQuiz?.title || 'Questionário da Aula');
     const [description, setDescription] = useState(existingQuiz?.description || 'Teste seus conhecimentos');
     const [passingScore, setPassingScore] = useState(existingQuiz?.passingScore || 80);
+    const [questionsCount, setQuestionsCount] = useState<number | null>(existingQuiz?.questionsCount || null);
+
+    // Reports State
+    const [showReports, setShowReports] = useState(false);
+    const [reports, setReports] = useState<import('../domain/quiz-entities').QuizReport[]>([]);
+    const [isLoadingReports, setIsLoadingReports] = useState(false);
+
+    const loadReports = async () => {
+        if (!existingQuiz?.id) return;
+
+        setIsLoadingReports(true);
+        try {
+            // Dynamic import to avoid cycles
+            const { createSupabaseClient } = await import('../services/supabaseClient');
+            const { SupabaseCourseRepository } = await import('../repositories/SupabaseCourseRepository');
+
+            const supabase = createSupabaseClient();
+            const repo = new SupabaseCourseRepository(supabase);
+
+            const fetchedReports = await repo.getQuizReports(existingQuiz.id);
+            setReports(fetchedReports);
+            setShowReports(true);
+        } catch (error) {
+            console.error('Erro ao carregar reports:', error);
+            alert('Erro ao carregar relatórios de erro.');
+        } finally {
+            setIsLoadingReports(false);
+        }
+    };
+
     const [questions, setQuestions] = useState<any[]>(
         existingQuiz?.questions.map(q => ({
             questionText: q.questionText,
@@ -492,6 +523,7 @@ Requisitos:
                 title,
                 description,
                 passingScore,
+                questionsCount,
                 questions
             });
         } finally {
@@ -557,6 +589,41 @@ Requisitos:
                                 onChange={(e) => setPassingScore(Number(e.target.value))}
                                 className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
                             />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                                Banco de Questões (Limite de Perguntas)
+                            </label>
+                            <div className="flex gap-2">
+                                <input
+                                    type="number"
+                                    min="0"
+                                    max={questions.length}
+                                    value={questionsCount || ''}
+                                    onChange={(e) => {
+                                        const val = e.target.value === '' ? null : Number(e.target.value);
+                                        setQuestionsCount(val);
+                                    }}
+                                    className="flex-1 px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    placeholder={`Todas (${questions.length})`}
+                                />
+                                {existingQuiz && (
+                                    <button
+                                        onClick={loadReports}
+                                        className="px-4 py-2 rounded-xl bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-bold hover:bg-amber-200 transition-colors flex items-center gap-2"
+                                        title="Ver reportes de erro"
+                                        disabled={isLoadingReports}
+                                    >
+                                        <i className="fas fa-exclamation-triangle"></i>
+                                        {isLoadingReports ? '...' : 'Reportes'}
+                                    </button>
+                                )}
+                            </div>
+                            <p className="text-xs text-slate-500 mt-1">
+                                Se preenchido, o aluno verá apenas essa quantidade de perguntas sorteadas aleatoriamente a cada tentativa.
+                                Deixe em branco para exibir todas as {questions.length} perguntas.
+                            </p>
                         </div>
                     </div>
 
@@ -797,6 +864,69 @@ Requisitos:
                                 <i className="fas fa-check mr-2"></i>
                                 Adicionar {pendingQuestions.length} {pendingQuestions.length === 1 ? 'Pergunta' : 'Perguntas'}
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Reports Modal */}
+            {showReports && (
+                <div className="fixed inset-0 z-[400] bg-black/50 flex items-center justify-center p-4 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-700 flex flex-col">
+                        <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-amber-50 dark:bg-amber-900/10">
+                            <h3 className="text-xl font-bold text-amber-700 dark:text-amber-500 flex items-center gap-2">
+                                <i className="fas fa-exclamation-triangle"></i>
+                                Reportes de Erro ({reports.length})
+                            </h3>
+                            <button onClick={() => setShowReports(false)} className="text-slate-500 hover:text-slate-700 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-black/5">
+                                <i className="fas fa-times"></i>
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                            {reports.length === 0 ? (
+                                <p className="text-center text-slate-500 py-8">Nenhum reporte encontrado para este quiz.</p>
+                            ) : (
+                                reports.map(report => {
+                                    const relatedQuestion = questions.find((_, idx) => {
+                                        // Como não temos IDs nas perguntas locais (são índices), é difícil mapear 100%
+                                        // Mas se a pergunta existir no quiz original, podemos tentar achar
+                                        // O ideal seria 'questions' ter IDs, mas neste editor elas podem ser novas.
+                                        // Vamos apenas mostrar dados do reporte.
+                                        return false;
+                                    }) || existingQuiz?.questions.find(q => q.id === report.questionId);
+
+                                    return (
+                                        <div key={report.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-sm">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${report.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                                                    report.status === 'resolved' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'
+                                                    }`}>
+                                                    {report.status}
+                                                </span>
+                                                <span className="text-xs text-slate-400">
+                                                    {report.createdAt && new Date(report.createdAt).toLocaleDateString()}
+                                                </span>
+                                            </div>
+
+                                            <p className="text-sm font-bold text-slate-900 dark:text-white mb-1">
+                                                Questão: {relatedQuestion ? relatedQuestion.questionText : 'ID: ' + report.questionId?.substring(0, 8)}
+                                            </p>
+
+                                            <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg mt-2 text-sm">
+                                                <p className="font-semibold text-slate-700 dark:text-slate-300">
+                                                    Motivo: {report.issueType === 'no_correct' ? 'Sem resposta correta' :
+                                                        report.issueType === 'multiple_correct' ? 'Múltiplas corretas' :
+                                                            report.issueType === 'confusing' ? 'Confuso/Incorreto' : 'Outro'}
+                                                </p>
+                                                {report.comment && (
+                                                    <p className="text-slate-600 dark:text-slate-400 mt-1 italic">"{report.comment}"</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
                         </div>
                     </div>
                 </div>

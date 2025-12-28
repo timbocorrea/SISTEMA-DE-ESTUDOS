@@ -74,8 +74,8 @@ const Sidebar: React.FC<SidebarProps> = ({
       z-[70] lg:z-0 
       ${isActuallyCollapsed ? 'lg:w-20' : 'lg:w-72'} 
       w-72 h-full 
-      bg-[#f8fafc] dark:bg-[#111827] 
-      border-r border-slate-200 dark:border-slate-800 
+      bg-[#e2e8f0] dark:bg-[#111827] 
+      border-r border-slate-300 dark:border-slate-800 
       p-4 
       transition-all duration-300 
       group
@@ -91,7 +91,10 @@ const Sidebar: React.FC<SidebarProps> = ({
       </button>
 
       {/* Header */}
-      <div className={`flex items-center gap-3 px-1 mb-8 transition-all ${isActuallyCollapsed ? 'justify-center' : ''} relative`}>
+      <div
+        onClick={() => onViewChange('courses')}
+        className={`flex items-center gap-3 px-1 mb-8 transition-all ${isActuallyCollapsed ? 'justify-center' : ''} relative cursor-pointer group/header`}
+      >
         <div className="w-10 h-10 min-w-[40px] bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-900/20 rotate-3">
           <i className="fas fa-graduation-cap"></i>
         </div>

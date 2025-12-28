@@ -1401,7 +1401,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                             {!loadingQuiz && (
                                 <button
                                     onClick={() => setShowQuizEditor(true)}
-                                    className="h-9 px-3 rounded-lg font-semibold transition-all active:scale-95 flex items-center gap-1.5 text-[10px] uppercase bg-transparent border border-purple-500 text-purple-400 hover:bg-purple-500/20 hover:text-purple-300 hover:border-purple-400"
+                                    className="h-9 px-3 rounded-lg font-semibold transition-all active:scale-95 flex items-center gap-1.5 text-[10px] uppercase bg-purple-600 text-white border border-transparent hover:bg-purple-700 dark:bg-transparent dark:border-purple-500 dark:text-purple-400 dark:hover:bg-purple-500/20 dark:hover:border-purple-400"
                                     title={existingQuiz ? "Editar quiz existente" : "Criar novo quiz para esta aula"}
                                 >
                                     <i className={`fas ${existingQuiz ? 'fa-edit' : 'fa-plus-circle'} text-[10px]`}></i>
@@ -1414,9 +1414,9 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                 <button
                                     onClick={handleToggleQuizRelease}
                                     disabled={isTogglingRelease}
-                                    className={`h-9 px-3 rounded-lg font-semibold transition-all active:scale-95 flex items-center gap-1.5 text-[10px] uppercase bg-transparent border ${existingQuiz.isManuallyReleased
-                                        ? 'border-emerald-500 text-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300 hover:border-emerald-400'
-                                        : 'border-orange-500 text-orange-400 hover:bg-orange-500/20 hover:text-orange-300 hover:border-orange-400'
+                                    className={`h-9 px-3 rounded-lg font-semibold transition-all active:scale-95 flex items-center gap-1.5 text-[10px] uppercase border ${existingQuiz.isManuallyReleased
+                                        ? 'bg-emerald-600 text-white border-transparent hover:bg-emerald-700 dark:bg-transparent dark:border-emerald-500 dark:text-emerald-400 dark:hover:bg-emerald-500/20 dark:hover:border-emerald-400'
+                                        : 'bg-orange-500 text-white border-transparent hover:bg-orange-600 dark:bg-transparent dark:border-orange-500 dark:text-orange-400 dark:hover:bg-orange-500/20 dark:hover:border-orange-400'
                                         } ${isTogglingRelease ? 'opacity-50 cursor-not-allowed' : ''}`}
                                     title={existingQuiz.isManuallyReleased
                                         ? 'Quiz liberado. Clique para bloquear.'
@@ -1468,7 +1468,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                     }
                                 }}
                                 disabled={loadingRequirements}
-                                className="h-9 px-3 rounded-lg bg-transparent border border-indigo-500 text-indigo-400 hover:bg-indigo-500/20 hover:text-indigo-300 hover:border-indigo-400 font-semibold transition-all flex items-center gap-2 text-[10px] uppercase disabled:opacity-50"
+                                className="h-9 px-3 rounded-lg bg-indigo-600 text-white border border-transparent hover:bg-indigo-700 dark:bg-transparent dark:border-indigo-500 dark:text-indigo-400 dark:hover:bg-indigo-500/20 dark:hover:border-indigo-400 font-semibold transition-all flex items-center gap-2 text-[10px] uppercase disabled:opacity-50"
                             >
                                 <i className={`fas ${loadingRequirements ? 'fa-circle-notch fa-spin' : 'fa-list-check'} text-[10px]`}></i>
                                 REQUISITOS QUIZ
@@ -1477,7 +1477,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                             {/* 4. Botão Em Lote */}
                             <button
                                 onClick={() => setIsBulkModalOpen(true)}
-                                className="h-9 px-3 rounded-lg bg-transparent border border-slate-400 text-slate-300 hover:bg-slate-400/20 hover:text-slate-200 hover:border-slate-300 font-semibold transition-all flex items-center gap-2 text-[10px] uppercase"
+                                className="h-9 px-3 rounded-lg bg-slate-600 text-white border border-transparent hover:bg-slate-700 dark:bg-transparent dark:border-slate-400 dark:text-slate-300 dark:hover:bg-slate-400/20 dark:hover:border-slate-300 font-semibold transition-all flex items-center gap-2 text-[10px] uppercase"
                             >
                                 <i className="fas fa-layer-group text-[10px]"></i>
                                 EM LOTE
@@ -1486,7 +1486,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                             {/* 5. Botão Importar DOCX */}
                             <button
                                 onClick={() => document.getElementById('docx-upload')?.click()}
-                                className="h-9 px-3 rounded-lg bg-transparent border border-teal-500 text-teal-400 hover:bg-teal-500/20 hover:text-teal-300 hover:border-teal-400 font-semibold transition-all flex items-center gap-2 text-[10px] uppercase"
+                                className="h-9 px-3 rounded-lg bg-teal-600 text-white border border-transparent hover:bg-teal-700 dark:bg-transparent dark:border-teal-500 dark:text-teal-400 dark:hover:bg-teal-500/20 dark:hover:border-teal-400 font-semibold transition-all flex items-center gap-2 text-[10px] uppercase"
                             >
                                 <i className="fas fa-file-word text-[10px]"></i>
                                 IMPORTAR DOCX
@@ -1503,7 +1503,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                             <button
                                 onClick={handleSave}
                                 disabled={isSaving}
-                                className="h-9 px-3 rounded-lg bg-transparent border border-blue-500 text-blue-400 hover:bg-blue-500/20 hover:text-blue-300 hover:border-blue-400 font-semibold transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 text-[10px] uppercase"
+                                className="h-9 px-3 rounded-lg bg-blue-600 text-white border border-transparent hover:bg-blue-700 dark:bg-transparent dark:border-blue-500 dark:text-blue-400 dark:hover:bg-blue-500/20 dark:hover:border-blue-400 font-semibold transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 text-[10px] uppercase"
                             >
                                 {isSaving ? (
                                     <>
@@ -1523,7 +1523,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                 onClick={() => setShowMetadata(!showMetadata)}
                                 className={`h-9 w-9 rounded-lg font-semibold transition-all active:scale-95 flex items-center justify-center ml-auto ${showMetadata
                                     ? 'bg-slate-700 text-white border border-slate-600'
-                                    : 'bg-transparent border border-slate-400 text-slate-300 hover:bg-slate-400/20 hover:text-slate-200 hover:border-slate-300'
+                                    : 'bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200 dark:bg-transparent dark:border-slate-400 dark:text-slate-300 dark:hover:bg-slate-400/20 dark:hover:border-slate-300'
                                     }`}
                                 title="Configurações da Aula"
                             >
@@ -2065,6 +2065,11 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                                             {/* Lists */}
                                                             <ToolbarButton icon="list-ul" command="insertUnorderedList" title="Lista" />
                                                             <ToolbarButton icon="list-ol" command="insertOrderedList" title="Numerada" />
+
+                                                            <div className="w-px h-4 bg-slate-300 dark:bg-slate-700" />
+
+                                                            <ToolbarButton icon="indent" command="indent" title="Aumentar Recuo" />
+                                                            <ToolbarButton icon="outdent" command="outdent" title="Diminuir Recuo" />
 
                                                             <div className="w-px h-4 bg-slate-300 dark:bg-slate-700" />
 

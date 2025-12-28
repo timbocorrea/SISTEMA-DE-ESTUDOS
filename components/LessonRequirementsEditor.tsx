@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Lesson } from '../domain/entities';
+import { Lesson, LessonResource } from '../domain/entities';
 import { LessonProgressRequirements } from '../domain/lesson-requirements';
 
 interface Props {
@@ -22,9 +22,9 @@ export const LessonRequirementsEditor: React.FC<Props> = ({
     );
     const [isSaving, setIsSaving] = useState(false);
 
-    // Safe access to resources - handle both Lesson entity and LessonRecord
-    const resources = (lesson as any).resources || [];
-    const pdfsAndFiles = resources.filter((r: any) => r.type === 'PDF' || r.type === 'FILE');
+    // Safe access to resources
+    const resources = lesson.resources || [];
+    const pdfsAndFiles = resources.filter((r: LessonResource) => r.type === 'PDF' || r.type === 'FILE');
     const hasRequirements = videoPercent > 0 || textPercent > 0 || requiredPdfs.size > 0;
 
     const handleSave = async () => {
@@ -140,7 +140,7 @@ export const LessonRequirementsEditor: React.FC<Props> = ({
                                 📄 Materiais Obrigatórios
                             </label>
                             <div className="space-y-1 max-h-32 overflow-y-auto">
-                                {pdfsAndFiles.map(resource => (
+                                {pdfsAndFiles.map((resource: LessonResource) => (
                                     <label
                                         key={resource.id}
                                         className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors"

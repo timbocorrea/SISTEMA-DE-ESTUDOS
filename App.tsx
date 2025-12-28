@@ -908,7 +908,7 @@ const App: React.FC = () => {
 
       {/* Breadcrumb Navigation / Header */}
       <div className="flex-1 flex flex-col min-h-0 w-full overflow-hidden h-full">
-        <header className="flex items-center gap-4 px-4 py-3 bg-white dark:bg-[#0a0e14] border-b border-slate-200 dark:border-slate-800 lg:hidden sticky top-0 z-50">
+        <header className="flex items-center gap-4 px-4 py-3 bg-[#e2e8f0] dark:bg-[#0a0e14] border-b border-slate-200 dark:border-slate-800 lg:hidden sticky top-0 z-50">
           <button
             onClick={() => setIsMobileMenuOpen(true)}
             className="w-10 h-10 flex items-center justify-center text-slate-500 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"

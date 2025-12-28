@@ -14,7 +14,7 @@ const Breadcrumb: React.FC<BreadcrumbProps> = ({ items }) => {
     if (items.length === 0) return null;
 
     return (
-        <nav className="bg-white dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 px-8 py-4 backdrop-blur-sm sticky top-0 z-40">
+        <nav className="bg-[#e2e8f0] dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 px-8 py-4 backdrop-blur-sm sticky top-0 z-40">
             <div className="flex items-center gap-2 text-sm">
                 {items.map((item, index) => (
                     <React.Fragment key={index}>
