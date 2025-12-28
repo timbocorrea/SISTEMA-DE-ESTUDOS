@@ -120,3 +120,28 @@ body {
     text-indent: 0 !important;
   }
 }
+
+/* Utilitários de Espaçamento entre Blocos */
+.spacing-0 {
+  margin-bottom: 0px !important;
+}
+
+.spacing-4 {
+  margin-bottom: 4px !important;
+}
+
+.spacing-8 {
+  margin-bottom: 8px !important;
+}
+
+.spacing-12 {
+  margin-bottom: 12px !important;
+}
+
+.spacing-16 {
+  margin-bottom: 16px !important;
+}
+
+.spacing-24 {
+  margin-bottom: 24px !important;
+}

@@ -481,8 +481,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                         <div className="max-h-[70vh] overflow-y-auto pr-2 scrollbar-thin">
                             {lesson.contentBlocks.map((block, index) => {
                                 // Calcular o espaçamento usando a mesma lógica do editor
-                                const spacing = block.spacing !== undefined ? block.spacing : 0;
-                                const spacingClass = spacing === 0 ? 'mb-0' : spacing === 4 ? 'mb-4' : spacing === 8 ? 'mb-8' : spacing === 12 ? 'mb-12' : spacing === 16 ? 'mb-16' : spacing === 24 ? 'mb-24' : 'mb-8';
+                                const spacing = block.spacing !== undefined ? block.spacing : 8;
+                                const spacingClass = `spacing-${spacing}`;
 
                                 return (
                                     <div

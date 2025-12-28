@@ -928,9 +928,9 @@ const App: React.FC = () => {
           <header className="flex items-center gap-4 px-4 py-3 bg-[#e2e8f0] dark:bg-[#0a0e14] border-b border-slate-200 dark:border-slate-800 lg:hidden sticky top-0 z-50">
             <button
               onClick={() => setIsMobileMenuOpen(true)}
-              className="w-10 h-10 flex items-center justify-center text-slate-500 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              className="w-12 h-12 flex items-center justify-center text-slate-500 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             >
-              <i className="fas fa-bars text-lg"></i>
+              <i className="fas fa-bars text-xl"></i>
             </button>
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white text-xs rotate-3">
