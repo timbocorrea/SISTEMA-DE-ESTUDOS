@@ -269,15 +269,122 @@ export class SupabaseAdminRepository implements IAdminRepository {
   async listProfiles(): Promise<ProfileRecord[]> {
     const { data, error } = await this.client
       .from('profiles')
-      .select('id,email,name,role,xp_total,current_level,gemini_api_key,updated_at')
+      .select('id,email,name,role,xp_total,current_level,gemini_api_key,updated_at,approval_status,approved_at,approved_by,rejection_reason')
       .order('updated_at', { ascending: false });
 
     if (error) throw new DomainError(`Falha ao listar usuários: ${error.message}`);
     return (data || []) as ProfileRecord[];
   }
 
+  async fetchPendingUsers(): Promise<ProfileRecord[]> {
+    const { data, error } = await this.client
+      .from('profiles')
+      .select('*')
+      .eq('approval_status', 'pending');
+
+    if (error) throw new DomainError(`Falha ao buscar usuários pendentes: ${error.message}`);
+    return (data || []) as ProfileRecord[];
+  }
+
+  async fetchApprovedUsers(): Promise<ProfileRecord[]> {
+    const { data, error } = await this.client
+      .from('profiles')
+      .select('*')
+      .eq('approval_status', 'approved');
+
+    if (error) throw new DomainError(`Falha ao buscar usuários aprovados: ${error.message}`);
+    return (data || []) as ProfileRecord[];
+  }
+
+  async fetchRejectedUsers(): Promise<ProfileRecord[]> {
+    const { data, error } = await this.client
+      .from('profiles')
+      .select('*')
+      .eq('approval_status', 'rejected');
+
+    if (error) throw new DomainError(`Falha ao buscar usuários rejeitados: ${error.message}`);
+    return (data || []) as ProfileRecord[];
+  }
+
+  async assignCoursesToUser(userId: string, courseIds: string[], adminId: string): Promise<void> {
+    if (courseIds.length === 0) return;
+    const records = courseIds.map(cid => ({
+      user_id: userId,
+      course_id: cid,
+      enrolled_at: new Date().toISOString(),
+      is_active: true
+    }));
+
+    const { error } = await this.client.from('user_course_assignments').upsert(records);
+    if (error) throw new DomainError(`Falha ao atribuir cursos: ${error.message}`);
+  }
+
+  async addUserCourseAssignment(userId: string, courseId: string): Promise<void> {
+    return this.assignCoursesToUser(userId, [courseId], 'system');
+  }
+
+  async removeAllUserCourseAssignments(userId: string): Promise<void> {
+    const { error } = await this.client.from('user_course_assignments').delete().eq('user_id', userId);
+    if (error) throw new DomainError(`Falha ao remover todos os cursos do usuário: ${error.message}`);
+  }
+
+  async deleteProfile(userId: string): Promise<void> {
+    // First remove related data if not cascaded
+    await this.removeAllUserCourseAssignments(userId);
+    const { error } = await this.client.from('profiles').delete().eq('id', userId);
+    if (error) throw new DomainError(`Falha ao excluir perfil: ${error.message}`);
+  }
+
   async updateProfileRole(profileId: string, role: 'STUDENT' | 'INSTRUCTOR'): Promise<void> {
     return this.updateProfile(profileId, { role });
+  }
+
+  async approveUser(userId: string, adminId: string): Promise<void> {
+    const { error } = await this.client
+      .from('profiles')
+      .update({
+        approval_status: 'approved',
+        approved_at: new Date().toISOString(),
+        approved_by: adminId,
+        rejection_reason: null
+      })
+      .eq('id', userId);
+
+    if (error) throw new DomainError(`Falha ao aprovar usuário: ${error.message}`);
+  }
+
+  async rejectUser(userId: string, adminId: string, reason?: string): Promise<void> {
+    const { error } = await this.client
+      .from('profiles')
+      .update({
+        approval_status: 'rejected',
+        approved_at: null,
+        approved_by: adminId,
+        rejection_reason: reason || 'Bloqueado pelo administrador'
+      })
+      .eq('id', userId);
+
+    if (error) throw new DomainError(`Falha ao bloquear usuário: ${error.message}`);
+  }
+
+  async getUserCourseAssignments(userId: string): Promise<string[]> {
+    const { data, error } = await this.client
+      .from('user_course_assignments')
+      .select('course_id')
+      .eq('user_id', userId);
+
+    if (error) throw new DomainError(`Falha ao buscar cursos do usuário: ${error.message}`);
+    return (data || []).map(d => d.course_id);
+  }
+
+  async removeUserCourseAssignment(userId: string, courseId: string): Promise<void> {
+    const { error } = await this.client
+      .from('user_course_assignments')
+      .delete()
+      .eq('user_id', userId)
+      .eq('course_id', courseId);
+
+    if (error) throw new DomainError(`Falha ao remover atribuição de curso: ${error.message}`);
   }
 
   async updateProfile(id: string, patch: { role?: 'STUDENT' | 'INSTRUCTOR'; geminiApiKey?: string | null }): Promise<void> {
@@ -287,5 +394,23 @@ export class SupabaseAdminRepository implements IAdminRepository {
 
     const { error } = await this.client.from('profiles').update(updates).eq('id', id);
     if (error) throw new DomainError(`Falha ao atualizar perfil: ${error.message}`);
+  }
+
+  async getSystemStats(): Promise<any> {
+    const { data, error } = await this.client.rpc('get_db_stats');
+
+    // Fallback if RPC fails or not created yet
+    if (error) {
+      console.warn("RPC get_db_stats failed, falling back to manual count", error);
+      return {
+        db_size: 'N/A',
+        user_count: 0,
+        course_count: 0,
+        lesson_count: 0,
+        file_count: 0,
+        storage_size_bytes: 0
+      };
+    }
+    return data;
   }
 }

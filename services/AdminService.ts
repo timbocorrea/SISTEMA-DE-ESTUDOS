@@ -108,4 +108,48 @@ export class AdminService {
   updateProfile(id: string, patch: { role?: 'STUDENT' | 'INSTRUCTOR'; geminiApiKey?: string | null }): Promise<void> {
     return this.adminRepository.updateProfile(id, patch);
   }
+
+  // ========================================
+  // USER APPROVAL SYSTEM
+  // ========================================
+
+  fetchPendingUsers(): Promise<ProfileRecord[]> {
+    return this.adminRepository.fetchPendingUsers();
+  }
+
+  fetchApprovedUsers(): Promise<ProfileRecord[]> {
+    return this.adminRepository.fetchApprovedUsers();
+  }
+
+  fetchRejectedUsers(): Promise<ProfileRecord[]> {
+    return this.adminRepository.fetchRejectedUsers();
+  }
+
+  approveUser(userId: string, adminId: string): Promise<void> {
+    return this.adminRepository.approveUser(userId, adminId);
+  }
+
+  rejectUser(userId: string, adminId: string, reason?: string): Promise<void> {
+    return this.adminRepository.rejectUser(userId, adminId, reason);
+  }
+
+  assignCoursesToUser(userId: string, courseIds: string[], adminId: string): Promise<void> {
+    return this.adminRepository.assignCoursesToUser(userId, courseIds, adminId);
+  }
+
+  getUserCourseAssignments(userId: string): Promise<string[]> {
+    return this.adminRepository.getUserCourseAssignments(userId);
+  }
+
+  removeUserCourseAssignment(userId: string, courseId: string): Promise<void> {
+    return this.adminRepository.removeUserCourseAssignment(userId, courseId);
+  }
+
+  deleteProfile(userId: string): Promise<void> {
+    return this.adminRepository.deleteProfile(userId);
+  }
+
+  getSystemStats(): Promise<any> {
+    return this.adminRepository.getSystemStats();
+  }
 }

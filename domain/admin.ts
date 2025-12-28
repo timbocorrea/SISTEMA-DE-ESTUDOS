@@ -56,3 +56,12 @@ export type CourseEnrollmentRecord = {
   enrolled_at: string;
   is_active: boolean;
 };
+
+export type SystemStats = {
+  db_size: string;
+  user_count: number;
+  course_count: number;
+  lesson_count: number;
+  file_count: number;
+  storage_size_bytes: number;
+};

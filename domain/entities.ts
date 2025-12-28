@@ -209,7 +209,8 @@ export class User {
     public readonly role: 'STUDENT' | 'INSTRUCTOR',
     xp: number = 0,
     achievements: Achievement[] = [],
-    public readonly geminiApiKey: string | null = null
+    public readonly geminiApiKey: string | null = null,
+    public readonly approvalStatus: 'pending' | 'approved' | 'rejected' = 'approved'
   ) {
     this._xp = xp;
     this._achievements = achievements;
@@ -331,8 +332,20 @@ export class User {
     return newlyUnlocked;
   }
 
+  public isPending(): boolean {
+    return this.approvalStatus === 'pending';
+  }
+
+  public isApproved(): boolean {
+    return this.approvalStatus === 'approved';
+  }
+
+  public isRejected(): boolean {
+    return this.approvalStatus === 'rejected';
+  }
+
   public clone(): User {
-    return new User(this.id, this.name, this.email, this.role, this._xp, [...this._achievements], this.geminiApiKey);
+    return new User(this.id, this.name, this.email, this.role, this._xp, [...this._achievements], this.geminiApiKey, this.approvalStatus);
   }
 }
 

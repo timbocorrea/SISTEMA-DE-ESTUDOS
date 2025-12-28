@@ -6,6 +6,7 @@ import AuthForm from './components/AuthForm';
 import StudentDashboard from './components/StudentDashboard';
 import AdminContentManagement from './components/AdminContentManagement';
 import UserManagement from './components/UserManagement';
+import FileManagement from './components/FileManagement';
 import AchievementsPage from './components/AchievementsPage';
 import LessonMaterialsSidebar from './components/LessonMaterialsSidebar';
 import CourseEnrollmentModal from './components/CourseEnrollmentModal';
@@ -13,6 +14,8 @@ import Breadcrumb from './components/Breadcrumb';
 import LessonContentEditorPage from './components/LessonContentEditorPage';
 import LessonViewer from './components/LessonViewer';
 import HistoryPage from './components/HistoryPage';
+import PendingApprovalScreen from './components/PendingApprovalScreen';
+import { SystemHealth } from './components/SystemHealth';
 import { IUserSession } from './domain/auth';
 import { LessonRecord } from './domain/admin';
 import { Achievement, Course, Lesson, Module, User } from './domain/entities';
@@ -77,8 +80,19 @@ const App: React.FC = () => {
     return (savedMode as ViewMode) || 'list';
   });
 
+  const [fileSystemPath, setFileSystemPath] = useState('');
   const [initialBuddyMessage, setInitialBuddyMessage] = useState<string | undefined>(undefined);
   const [userHistory, setUserHistory] = useState<string[]>([]);
+
+  // Function to handle file navigation from sidebar
+  const handleNavigateFile = (path: string) => {
+    setFileSystemPath(path);
+    setActiveView('files');
+    // Close mobile menu if open
+    setIsMobileMenuOpen(false);
+  };
+
+
 
   const addToHistory = (action: string) => {
     if (!currentUser) return;
@@ -658,6 +672,17 @@ const App: React.FC = () => {
       case 'users':
         return currentUser.role === 'INSTRUCTOR' ? <UserManagement adminService={adminService} /> : <div className="p-8">Acesso negado.</div>;
 
+      case 'files':
+        return currentUser.role === 'INSTRUCTOR' ? (
+          <FileManagement
+            path={fileSystemPath}
+            onPathChange={setFileSystemPath}
+          />
+        ) : <div className="p-8">Acesso negado.</div>;
+
+      case 'system-health':
+        return currentUser.role === 'INSTRUCTOR' ? <SystemHealth adminService={adminService} /> : <div className="p-8">Acesso negado.</div>;
+
       case 'content-editor':
         if (!editingLesson) return <div className="p-8">Nenhuma aula selecionada para edição.</div>;
         return (
@@ -885,6 +910,28 @@ const App: React.FC = () => {
     }
   };
 
+
+  // NOVO: Verificar status de aprovação
+  // Se o usuário estiver pendente ou rejeitado, mostrar tela de aprovação pendente
+  if (currentUser && !isLoading) {
+    if (currentUser.isPending()) {
+      return (
+        <QueryClientProvider client={queryClient}>
+          <PendingApprovalScreen
+            userEmail={currentUser.email}
+            onLogout={handleLogout}
+          />
+        </QueryClientProvider>
+      );
+    }
+
+    if (currentUser.isRejected()) {
+      // Fazer logout automático para usuários rejeitados
+      handleLogout();
+      return null;
+    }
+  }
+
   return (
     <QueryClientProvider client={queryClient}>
       <div className="flex flex-col lg:flex-row lg:h-screen w-full bg-white dark:bg-[#0a0e14] text-slate-900 dark:text-slate-100 transition-colors duration-300 font-lexend relative overflow-x-hidden">
@@ -899,6 +946,7 @@ const App: React.FC = () => {
           theme={theme}
           onToggleTheme={toggleTheme}
           user={currentUser}
+          onNavigateFile={handleNavigateFile}
           courses={enrolledCourses}
           onOpenContent={(courseId, moduleId, lessonId) => {
             // Security Check: Verify enrollment

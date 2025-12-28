@@ -191,17 +191,6 @@ export class SupabaseCourseRepository implements ICourseRepository {
     if (error) throw new DomainError(`Falha ao persistir progresso: ${error.message}`);
   }
 
-  async getAllCourses(userId?: string): Promise<Course[]> {
-    const { data, error } = await this.client.from('courses').select('id');
-    if (error) throw new DomainError('Falha ao buscar cursos');
-
-    const ids = (data || []).map((c: any) => c.id);
-    const results = await Promise.allSettled(ids.map(id => this.getCourseById(id, userId)));
-    return results
-      .filter(r => r.status === 'fulfilled')
-      .map(r => (r as any).value as Course);
-  }
-
   async getUserProgress(userId: string): Promise<UserProgress[]> {
     const { data, error } = await this.client
       .from('lesson_progress')
@@ -227,12 +216,12 @@ export class SupabaseCourseRepository implements ICourseRepository {
   }
 
   /**
-   * Recupera o usuário do Supabase e converte para Entidade de Domínio.
+   * Recupera o usuรกrio do Supabase e converte para Entidade de Domínio.
    */
   async getUserById(userId: string): Promise<User> {
     const { data, error } = await this.client
       .from('profiles')
-      .select('id, name, email, role, xp_total, current_level, achievements, gemini_api_key')
+      .select('id, name, email, role, xp_total, current_level, achievements, gemini_api_key, approval_status')
       .eq('id', userId)
       .single();
 
@@ -245,7 +234,8 @@ export class SupabaseCourseRepository implements ICourseRepository {
       data.role || 'STUDENT',
       data.xp_total || 0,
       this.mapAchievements(data.achievements || []),
-      data.gemini_api_key || null
+      data.gemini_api_key || null,
+      data.approval_status || 'approved'
     );
   }
 
@@ -269,9 +259,66 @@ export class SupabaseCourseRepository implements ICourseRepository {
   }
 
   /**
-   * Retorna apenas cursos nos quais o usuário está inscrito
+   * Retorna cursos atribuídos ao usuário (user_course_assignments)
+   * Se o usuário for INSTRUCTOR, retorna todos os cursos
+   */
+  private async getUserAssignedCourseIds(userId: string): Promise<string[]> {
+    // Verificar se é instrutor
+    const { data: profileData } = await this.client
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .single();
+
+    // Instrutores veem todos os cursos
+    if (profileData?.role === 'INSTRUCTOR') {
+      const { data: allCourses } = await this.client
+        .from('courses')
+        .select('id');
+      return (allCourses || []).map(c => c.id);
+    }
+
+    // Estudantes veem apenas cursos atribuídos
+    const { data: assignments } = await this.client
+      .from('user_course_assignments')
+      .select('course_id')
+      .eq('user_id', userId);
+
+    return (assignments || []).map(a => a.course_id);
+  }
+
+  async getAllCourses(userId?: string): Promise<Course[]> {
+    if (!userId) {
+      // Sem userId, retorna todos (público)
+      const { data, error } = await this.client.from('courses').select('id');
+      if (error) throw new DomainError('Falha ao buscar cursos');
+      const ids = (data || []).map((c: any) => c.id);
+      const results = await Promise.allSettled(ids.map(id => this.getCourseById(id)));
+      return results
+        .filter(r => r.status === 'fulfilled')
+        .map(r => (r as any).value as Course);
+    }
+
+    // Com userId, retorna apenas cursos atribuídos
+    const assignedIds = await this.getUserAssignedCourseIds(userId);
+    if (assignedIds.length === 0) return [];
+
+    const results = await Promise.allSettled(
+      assignedIds.map(id => this.getCourseById(id, userId))
+    );
+    return results
+      .filter(r => r.status === 'fulfilled')
+      .map(r => (r as any).value as Course);
+  }
+
+  /**
+   * Retorna apenas cursos nos quais o usuário está inscrito E que foram atribuídos
    */
   async getEnrolledCourses(userId: string): Promise<Course[]> {
+    // Buscar IDs dos cursos atribuídos
+    const assignedIds = await this.getUserAssignedCourseIds(userId);
+    if (assignedIds.length === 0) return [];
+
     // Buscar IDs dos cursos inscritos
     const { data: enrollments, error: enrollError } = await this.client
       .from('course_enrollments')
@@ -287,9 +334,14 @@ export class SupabaseCourseRepository implements ICourseRepository {
 
     const enrolledCourseIds = enrollments.map(e => e.course_id);
 
+    // Intersecção: cursos que estão TANTO atribuídos QUANTO inscritos
+    const validCourseIds = enrolledCourseIds.filter(id => assignedIds.includes(id));
+
+    if (validCourseIds.length === 0) return [];
+
     // Buscar cursos completos usando getCourseById
     const results = await Promise.allSettled(
-      enrolledCourseIds.map(id => this.getCourseById(id, userId))
+      validCourseIds.map(id => this.getCourseById(id, userId))
     );
 
     return results

@@ -16,6 +16,7 @@ interface SidebarProps {
   isMobileOpen?: boolean;
   onCloseMobile?: () => void;
   activeLessonId?: string; // ID da aula sendo editada no Content Editor
+  onNavigateFile?: (path: string) => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -31,11 +32,13 @@ const Sidebar: React.FC<SidebarProps> = ({
   onSelectLesson,
   isMobileOpen = false,
   onCloseMobile,
-  activeLessonId
+  activeLessonId,
+  onNavigateFile
 }) => {
   const isAdmin = session.user.role === 'INSTRUCTOR';
 
   const [isCollapsed, setIsCollapsed] = useState(true);
+  const [themeDropdownOpen, setThemeDropdownOpen] = useState(false);
 
   // Removido o useEffect de persistência para garantir que sempre inicie fechado
 
@@ -66,7 +69,18 @@ const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   return (
-    <aside className={`
+    <aside
+      onClick={(e) => {
+        // Toggle collapse quando clicar no sidebar (exceto mobile e se clicar em botões/links)
+        if (!isMobileOpen && window.innerWidth >= 1024) {
+          const target = e.target as HTMLElement;
+          // Não toggle se clicar em botão, link, ou input
+          if (!target.closest('button') && !target.closest('a') && !target.closest('input')) {
+            setIsCollapsed(!isCollapsed);
+          }
+        }
+      }}
+      className={`
       ${isMobileOpen ? 'flex fixed' : 'hidden'} 
       lg:flex lg:relative 
       flex-col
@@ -80,6 +94,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       transition-all duration-300 
       group
       shadow-2xl lg:shadow-none
+      cursor-pointer lg:cursor-pointer
     `}>
 
       {/* Close Button Mobile */}
@@ -105,18 +120,6 @@ const Sidebar: React.FC<SidebarProps> = ({
           <h1 className="font-black text-slate-800 dark:text-slate-100 text-lg leading-tight tracking-tighter uppercase whitespace-nowrap">StudySystem</h1>
           <p className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest whitespace-nowrap">Sistema de Estudos</p>
         </div>
-
-        {/* Toggle Button (Desktop Only) - Moved to header */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setIsCollapsed(!isCollapsed);
-          }}
-          className="hidden lg:flex absolute -right-2 top-1/2 -translate-y-1/2 w-6 h-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full shadow-sm items-center justify-center text-slate-400 hover:text-indigo-600 hover:scale-110 transition-all opacity-0 group-hover:opacity-100"
-          title={isCollapsed ? "Expandir Menu" : "Recolher Menu"}
-        >
-          <i className={`fas fa-chevron-${isCollapsed ? 'right' : 'left'} text-[10px]`}></i>
-        </button>
       </div>
 
       {/* User Status Card */}
@@ -389,34 +392,135 @@ const Sidebar: React.FC<SidebarProps> = ({
                   Controle de Usuários
                 </span>
               </button>
+
+              {/* Arquivos Menu with Subfolders */}
+              <div>
+                <button
+                  onClick={() => {
+                    // Toggle if already active view or collapsed
+                    if (activeView === 'files') {
+                      // Only toggle menu
+                    }
+                    onViewChange('files');
+                    // Add state for file menu open? Reuse contentMenuOpen or new state?
+                    // Let's reuse a simple local toggle or just expanded by default when active
+                  }}
+                  className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight mb-1 ${activeView === 'files' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
+                  title="Gerenciar Arquivos"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <i className="fas fa-folder-open w-5 text-center"></i>
+                    <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
+                      Arquivos
+                    </span>
+                  </div>
+                  {!isActuallyCollapsed && activeView === 'files' && <i className="fas fa-chevron-down text-xs"></i>}
+                </button>
+
+                {!isActuallyCollapsed && activeView === 'files' && (
+                  <div className="ml-7 pl-3 border-l border-slate-200 dark:border-slate-800 space-y-1 mb-2 animate-in slide-in-from-top-2 duration-200">
+                    {['audios', 'course-covers', 'images', 'pdfs'].map(folder => (
+                      <button
+                        key={folder}
+                        onClick={() => onNavigateFile?.(folder)}
+                        className="w-full text-left px-3 py-2 rounded-lg transition-all text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-indigo-600 dark:hover:text-indigo-400 capitalize"
+                      >
+                        <i className="fas fa-folder mr-2 text-yellow-500"></i>
+                        {folder}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <button
+                onClick={() => onViewChange('system-health')}
+                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight mb-1 ${activeView === 'system-health' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
+                title="Saúde do Sistema"
+              >
+                <i className="fas fa-heartbeat w-5 text-center"></i>
+                <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
+                  Saúde do Sistema
+                </span>
+              </button>
             </div>
           </>
         )}
       </nav>
 
       <div className={`mt-auto pt-6 space-y-2 border-t border-slate-200 dark:border-slate-800 transition-all ${isActuallyCollapsed ? 'flex flex-col items-center' : ''}`}>
+        {/* Theme Button with Dropdown */}
+        <div className="relative">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setThemeDropdownOpen(!themeDropdownOpen);
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-sm font-bold ${isActuallyCollapsed ? 'justify-center' : ''}`}
+            title="Alterar Tema"
+          >
+            <i className="fas fa-palette w-5 text-center"></i>
+            <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
+              Tema
+            </span>
+            {!isActuallyCollapsed && (
+              <i className={`fas fa-chevron-${themeDropdownOpen ? 'up' : 'down'} ml-auto text-xs`}></i>
+            )}
+          </button>
+
+          {/* Dropdown Menu */}
+          {themeDropdownOpen && !isActuallyCollapsed && (
+            <div className="absolute bottom-full left-0 right-0 mb-2 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleTheme();
+                  if (theme === 'dark') setThemeDropdownOpen(false);
+                }}
+                className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors ${theme === 'light'
+                  ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400'
+                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
+                  }`}
+              >
+                <i className="fas fa-sun w-4"></i>
+                <span>Claro</span>
+                {theme === 'light' && <i className="fas fa-check ml-auto text-xs"></i>}
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleTheme();
+                  if (theme === 'light') setThemeDropdownOpen(false);
+                }}
+                className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors ${theme === 'dark'
+                  ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400'
+                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
+                  }`}
+              >
+                <i className="fas fa-moon w-4"></i>
+                <span>Escuro</span>
+                {theme === 'dark' && <i className="fas fa-check ml-auto text-xs"></i>}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Logout Button with Red Glow */}
         <button
-          onClick={onToggleTheme}
-          className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-sm font-bold ${isActuallyCollapsed ? 'justify-center' : ''}`}
-          title={theme === 'light' ? 'Modo Noturno' : 'Modo Claro'}
-        >
-          <i className={`fas fa-${theme === 'light' ? 'moon' : 'sun'} w-5 text-center`}></i>
-          <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
-            {theme === 'light' ? 'Modo Noturno' : 'Modo Claro'}
-          </span>
-        </button>
-        <button
-          onClick={onLogout}
-          className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 transition-all text-sm font-bold ${isActuallyCollapsed ? 'justify-center' : ''}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onLogout();
+          }}
+          className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all text-sm font-bold group relative ${isActuallyCollapsed ? 'justify-center' : ''} hover:shadow-lg hover:shadow-red-500/20`}
           title="Encerrar Sessão"
         >
           <i className="fas fa-sign-out-alt w-5 text-center"></i>
           <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
-            Encerrar Sessão
+            Encerrar
           </span>
         </button>
       </div>
-    </aside>
+    </aside >
   );
 };
 
