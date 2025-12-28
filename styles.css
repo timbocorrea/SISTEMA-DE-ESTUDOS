@@ -5,7 +5,15 @@
 @tailwind utilities;
 
 html {
-  font-size: 85%; /* Ajuste global para diminuir a proporção dos elementos */
+  font-size: 95%;
+  /* Proporção maior para mobile */
+}
+
+@media (min-width: 1024px) {
+  html {
+    font-size: 85%;
+    /* Proporção menor para desktop para aumentar densidade */
+  }
 }
 
 body {
@@ -102,7 +110,8 @@ body {
 
 /* Reset de indentação para telas mobile */
 @media (max-width: 1024px) {
-  .lesson-content-view *, 
+
+  .lesson-content-view *,
   .lesson-block-content * {
     padding-left: 0 !important;
     padding-right: 0 !important;
