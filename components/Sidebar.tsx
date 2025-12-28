@@ -92,7 +92,10 @@ const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Header */}
       <div
-        onClick={() => onViewChange('courses')}
+        onClick={() => {
+          onViewChange('courses');
+          onCloseMobile?.();
+        }}
         className={`flex items-center gap-3 px-1 mb-8 transition-all ${isActuallyCollapsed ? 'justify-center' : ''} relative cursor-pointer group/header`}
       >
         <div className="w-10 h-10 min-w-[40px] bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-900/20 rotate-3">
@@ -105,7 +108,10 @@ const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Toggle Button (Desktop Only) - Moved to header */}
         <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsCollapsed(!isCollapsed);
+          }}
           className="hidden lg:flex absolute -right-2 top-1/2 -translate-y-1/2 w-6 h-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full shadow-sm items-center justify-center text-slate-400 hover:text-indigo-600 hover:scale-110 transition-all opacity-0 group-hover:opacity-100"
           title={isCollapsed ? "Expandir Menu" : "Recolher Menu"}
         >

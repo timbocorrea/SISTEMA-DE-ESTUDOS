@@ -331,7 +331,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                 </button>
 
                 <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-                    <h2 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight">{lesson.title}</h2>
+                    <h2 className="text-xl md:text-3xl font-black text-slate-800 dark:text-white tracking-tight">{lesson.title}</h2>
                     <div className="flex items-center justify-between">
                         <p className="text-slate-500 dark:text-slate-400 font-medium">
                             {course.title}
