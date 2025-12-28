@@ -1385,9 +1385,11 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                 <i className="fas fa-arrow-left"></i>
                             </button>
                             <div className="hidden sm:block">
-                                <h1 className="text-xl font-bold text-slate-800 dark:text-white">Editor de Conteúdo</h1>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate max-w-sm">
+                                <h1 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">
                                     {title}
+                                </h1>
+                                <p className="text-[10px] text-indigo-500 font-black uppercase tracking-widest">
+                                    Editor de Conteúdo
                                 </p>
                             </div>
                         </div>

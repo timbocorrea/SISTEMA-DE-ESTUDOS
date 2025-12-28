@@ -23,6 +23,20 @@ import { AuthService } from './services/AuthService';
 import { CourseService } from './services/CourseService';
 import { AdminService } from './services/AdminService';
 import { createSupabaseClient } from './services/supabaseClient';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+// Configuração do React Query para cache global
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // Dados considerad os "frescos" por 5 minutos
+      gcTime: 1000 * 60 * 60 * 24, // Manter no lixo (cache) por 24 horas
+      refetchOnWindowFocus: false, // Evitar refetch ao trocar de aba
+      retry: 1,
+    },
+  },
+});
+
 
 const App: React.FC = () => {
   const [session, setSession] = useState<IUserSession | null>(null);
@@ -565,17 +579,19 @@ const App: React.FC = () => {
 
   if (!session || !currentUser) {
     return (
-      <AuthForm
-        authService={authService}
-        onSuccess={async () => {
-          const s = await authService.restoreSession();
-          if (s) {
-            setSession(s);
-            const profile = await courseService.fetchUserProfile(s.user.id);
-            setCurrentUser(profile);
-          }
-        }}
-      />
+      <QueryClientProvider client={queryClient}>
+        <AuthForm
+          authService={authService}
+          onSuccess={async () => {
+            const s = await authService.restoreSession();
+            if (s) {
+              setSession(s);
+              const profile = await courseService.fetchUserProfile(s.user.id);
+              setCurrentUser(profile);
+            }
+          }}
+        />
+      </QueryClientProvider>
     );
   }
 
@@ -870,151 +886,153 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row lg:h-screen w-full bg-white dark:bg-[#0a0e14] text-slate-900 dark:text-slate-100 transition-colors duration-300 font-lexend relative overflow-x-hidden">
-      <Sidebar
-        session={session}
-        activeView={activeView}
-        onViewChange={(view, keepMobileOpen = false) => {
-          setActiveView(view);
-          if (!keepMobileOpen) setIsMobileMenuOpen(false);
-        }}
-        onLogout={handleLogout}
-        theme={theme}
-        onToggleTheme={toggleTheme}
-        user={currentUser}
-        courses={enrolledCourses}
-        onOpenContent={(courseId, moduleId, lessonId) => {
-          // Security Check: Verify enrollment
-          const isEnrolled = enrolledCourses.some(c => c.id === courseId);
-          if (!isEnrolled) {
-            alert("Você precisa se inscrever neste curso para acessar o conteúdo.");
-            return;
-          }
-          handleOpenContentFromSidebar(courseId, moduleId, lessonId);
-        }}
-        onSelectLesson={handleSelectLessonDetailed}
-        isMobileOpen={isMobileMenuOpen}
-        onCloseMobile={() => setIsMobileMenuOpen(false)}
-        activeLessonId={currentLesson?.id || editingLesson?.id} // Destaca aula atual ou aula sendo editada
-      />
-
-      {/* Mobile Overlay */}
-      {isMobileMenuOpen && (
-        <div
-          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[55] lg:hidden animate-in fade-in duration-300"
-          onClick={() => setIsMobileMenuOpen(false)}
+    <QueryClientProvider client={queryClient}>
+      <div className="flex flex-col lg:flex-row lg:h-screen w-full bg-white dark:bg-[#0a0e14] text-slate-900 dark:text-slate-100 transition-colors duration-300 font-lexend relative overflow-x-hidden">
+        <Sidebar
+          session={session}
+          activeView={activeView}
+          onViewChange={(view, keepMobileOpen = false) => {
+            setActiveView(view);
+            if (!keepMobileOpen) setIsMobileMenuOpen(false);
+          }}
+          onLogout={handleLogout}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          user={currentUser}
+          courses={enrolledCourses}
+          onOpenContent={(courseId, moduleId, lessonId) => {
+            // Security Check: Verify enrollment
+            const isEnrolled = enrolledCourses.some(c => c.id === courseId);
+            if (!isEnrolled) {
+              alert("Você precisa se inscrever neste curso para acessar o conteúdo.");
+              return;
+            }
+            handleOpenContentFromSidebar(courseId, moduleId, lessonId);
+          }}
+          onSelectLesson={handleSelectLessonDetailed}
+          isMobileOpen={isMobileMenuOpen}
+          onCloseMobile={() => setIsMobileMenuOpen(false)}
+          activeLessonId={currentLesson?.id || editingLesson?.id} // Destaca aula atual ou aula sendo editada
         />
-      )}
 
-      {/* Breadcrumb Navigation / Header */}
-      <div className="flex-1 flex flex-col min-h-0 w-full overflow-hidden h-full">
-        <header className="flex items-center gap-4 px-4 py-3 bg-[#e2e8f0] dark:bg-[#0a0e14] border-b border-slate-200 dark:border-slate-800 lg:hidden sticky top-0 z-50">
-          <button
-            onClick={() => setIsMobileMenuOpen(true)}
-            className="w-10 h-10 flex items-center justify-center text-slate-500 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-          >
-            <i className="fas fa-bars text-lg"></i>
-          </button>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white text-xs rotate-3">
-              <i className="fas fa-graduation-cap"></i>
+        {/* Mobile Overlay */}
+        {isMobileMenuOpen && (
+          <div
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[55] lg:hidden animate-in fade-in duration-300"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+        )}
+
+        {/* Breadcrumb Navigation / Header */}
+        <div className="flex-1 flex flex-col min-h-0 w-full overflow-hidden h-full">
+          <header className="flex items-center gap-4 px-4 py-3 bg-[#e2e8f0] dark:bg-[#0a0e14] border-b border-slate-200 dark:border-slate-800 lg:hidden sticky top-0 z-50">
+            <button
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="w-10 h-10 flex items-center justify-center text-slate-500 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            >
+              <i className="fas fa-bars text-lg"></i>
+            </button>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white text-xs rotate-3">
+                <i className="fas fa-graduation-cap"></i>
+              </div>
+              <h1 className="font-black text-slate-800 dark:text-slate-100 text-sm uppercase tracking-tighter">StudySystem</h1>
             </div>
-            <h1 className="font-black text-slate-800 dark:text-slate-100 text-sm uppercase tracking-tighter">StudySystem</h1>
+          </header>
+
+          <div className="hidden lg:block">
+            <Breadcrumb items={getBreadcrumbItems()} />
           </div>
-        </header>
 
-        <div className="hidden lg:block">
-          <Breadcrumb items={getBreadcrumbItems()} />
-        </div>
+          <main className="flex-1 overflow-y-auto bg-slate-50/50 dark:bg-transparent scroll-smooth relative">
+            {renderContent()}
 
-        <main className="flex-1 overflow-y-auto bg-slate-50/50 dark:bg-transparent scroll-smooth relative">
-          {renderContent()}
-
-          {activeAchievement && (
-            <div className="fixed bottom-8 right-8 z-[100] animate-in slide-in-from-bottom-10 duration-500">
-              <div className="bg-gradient-to-r from-indigo-600 to-violet-700 p-[2px] rounded-3xl shadow-[0_20px_50px_rgba(79,70,229,0.3)]">
-                <div className="bg-slate-950 px-6 py-5 rounded-[22px] flex items-center gap-5 min-w-[340px]">
-                  <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center text-yellow-400 text-2xl border border-white/10 shadow-inner">
-                    <i className={`fas ${activeAchievement.icon}`}></i>
+            {activeAchievement && (
+              <div className="fixed bottom-8 right-8 z-[100] animate-in slide-in-from-bottom-10 duration-500">
+                <div className="bg-gradient-to-r from-indigo-600 to-violet-700 p-[2px] rounded-3xl shadow-[0_20px_50px_rgba(79,70,229,0.3)]">
+                  <div className="bg-slate-950 px-6 py-5 rounded-[22px] flex items-center gap-5 min-w-[340px]">
+                    <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center text-yellow-400 text-2xl border border-white/10 shadow-inner">
+                      <i className={`fas ${activeAchievement.icon}`}></i>
+                    </div>
+                    <div className="flex-1">
+                      <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] block mb-1">
+                        Medalha Desbloqueada!
+                      </span>
+                      <h4 className="text-lg font-black text-white leading-tight tracking-tight">{activeAchievement.title}</h4>
+                      <p className="text-[11px] text-slate-400 font-medium leading-relaxed">{activeAchievement.description}</p>
+                    </div>
+                    <button onClick={() => setActiveAchievement(null)} className="p-2 text-slate-500 hover:text-white transition-colors">
+                      <i className="fas fa-times"></i>
+                    </button>
                   </div>
-                  <div className="flex-1">
-                    <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] block mb-1">
-                      Medalha Desbloqueada!
-                    </span>
-                    <h4 className="text-lg font-black text-white leading-tight tracking-tight">{activeAchievement.title}</h4>
-                    <p className="text-[11px] text-slate-400 font-medium leading-relaxed">{activeAchievement.description}</p>
-                  </div>
-                  <button onClick={() => setActiveAchievement(null)} className="p-2 text-slate-500 hover:text-white transition-colors">
-                    <i className="fas fa-times"></i>
-                  </button>
                 </div>
               </div>
-            </div>
-          )}
-        </main>
-      </div>
+            )}
+          </main>
+        </div>
 
-      {/* Modal de Confirmação de Inscrição */}
-      {selectedCourseForEnrollment && (
-        <CourseEnrollmentModal
-          course={selectedCourseForEnrollment}
-          isOpen={isEnrollmentModalOpen}
-          onClose={() => {
-            setIsEnrollmentModalOpen(false);
-            setSelectedCourseForEnrollment(null);
-          }}
-          onConfirm={confirmEnrollment}
-          isLoading={isEnrolling}
-        />
-      )}
+        {/* Modal de Confirmação de Inscrição */}
+        {selectedCourseForEnrollment && (
+          <CourseEnrollmentModal
+            course={selectedCourseForEnrollment}
+            isOpen={isEnrollmentModalOpen}
+            onClose={() => {
+              setIsEnrollmentModalOpen(false);
+              setSelectedCourseForEnrollment(null);
+            }}
+            onConfirm={confirmEnrollment}
+            isLoading={isEnrolling}
+          />
+        )}
 
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-        @keyframes slide-up {
-          from { transform: translateY(100%); opacity: 0; }
-          to { transform: translateY(0); opacity: 1; }
-        }
-        .animate-in {
-          animation: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
-      `
-        }}
-      />
-
-      {/* Global AI Assistant */}
-      {session && currentUser && (
-        <GeminiBuddy
-          key={currentUser.id} // Forces complete reset when user changes
-          apiKey={currentUser.geminiApiKey || import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_API_KEY}
-          userName={currentUser.name}
-          systemContext={`
-            Estatísticas do Sistema (Dados em tempo real):
-            - Total de Cursos na Plataforma: ${availableCourses.length}
-            - Cursos Inscritos pelo Aluno: ${enrolledCourses.length}
-            
-            HISTÓRICO DE ATIVIDADES DO USUÁRIO (Use estas informações para responder perguntas sobre "onde parei", "o que fiz", etc):
-            ${userHistory.length > 0 ? userHistory.slice(0, 10).map((item, idx) => `${idx + 1}. ${item}`).join('\n            ') : 'Nenhuma atividade registrada ainda.'}
-            
-            Contexto de Navegação:
-            ${activeView === 'admin'
-              ? "O usuário está na Área Administrativa. Ele pode criar/editar cursos e gerenciar usuários."
-              : activeView === 'lesson' && course && activeModule && currentLesson
-                ? `O aluno está na aula "${currentLesson.title}" (Módulo: ${activeModule.title}).`
-                : "O aluno está no Painel Principal. Aqui ele vê seus cursos e conquistas."}
-          `}
-          currentContext={
-            activeView === 'lesson' && currentLesson
-              ? (currentLesson.contentBlocks && currentLesson.contentBlocks.length > 0
-                ? currentLesson.contentBlocks.map(b => b.text).join('\n\n')
-                : currentLesson.content)
-              : undefined
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+          @keyframes slide-up {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
           }
-          initialMessage={initialBuddyMessage}
-          onNavigate={handleBuddyNavigate}
+          .animate-in {
+            animation: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          }
+        `
+          }}
         />
-      )}
-    </div>
+
+        {/* Global AI Assistant */}
+        {session && currentUser && (
+          <GeminiBuddy
+            key={currentUser.id} // Forces complete reset when user changes
+            apiKey={currentUser.geminiApiKey || import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_API_KEY}
+            userName={currentUser.name}
+            systemContext={`
+              Estatísticas do Sistema (Dados em tempo real):
+              - Total de Cursos na Plataforma: ${availableCourses.length}
+              - Cursos Inscritos pelo Aluno: ${enrolledCourses.length}
+              
+              HISTÓRICO DE ATIVIDADES DO USUÁRIO (Use estas informações para responder perguntas sobre "onde parei", "o que fiz", etc):
+              ${userHistory.length > 0 ? userHistory.slice(0, 10).map((item, idx) => (idx + 1) + ". " + item).join('\n            ') : 'Nenhuma atividade registrada ainda.'}
+              
+              Contexto de Navegação:
+              ${activeView === 'admin'
+                ? "O usuário está na Área Administrativa. Ele pode criar/editar cursos e gerenciar usuários."
+                : (activeView === 'lesson' && course && activeModule && currentLesson)
+                  ? "O aluno está na aula \"" + currentLesson.title + "\" (Módulo: " + activeModule.title + ")."
+                  : "O aluno está no Painel Principal. Aqui ele vê seus cursos e conquistas."}
+            `}
+            currentContext={
+              activeView === 'lesson' && currentLesson
+                ? (currentLesson.contentBlocks && currentLesson.contentBlocks.length > 0
+                  ? currentLesson.contentBlocks.map(b => b.text).join('\n\n')
+                  : currentLesson.content)
+                : undefined
+            }
+            initialMessage={initialBuddyMessage}
+            onNavigate={handleBuddyNavigate}
+          />
+        )}
+      </div>
+    </QueryClientProvider>
   );
 };
 

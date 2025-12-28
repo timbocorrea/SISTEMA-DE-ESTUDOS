@@ -4,10 +4,15 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  font-size: 85%; /* Ajuste global para diminuir a proporção dos elementos */
+}
+
 body {
   font-family: 'Lexend', sans-serif;
   margin: 0;
   padding: 0;
+  line-height: 1.5;
 }
 
 .dark body {
