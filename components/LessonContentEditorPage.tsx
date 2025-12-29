@@ -333,6 +333,15 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
     const [isDocImporting, setIsDocImporting] = useState(false);
     const [docImportError, setDocImportError] = useState<string | null>(null);
     const docUploadInputRef = useRef<HTMLInputElement | null>(null);
+    const [docPreviewHtml, setDocPreviewHtml] = useState<string | null>(null);
+    const [isDocDragActive, setIsDocDragActive] = useState(false);
+
+    // Importação/exportação de JSON (conteúdo)
+    const jsonUploadInputRef = useRef<HTMLInputElement | null>(null);
+    const [jsonImportError, setJsonImportError] = useState<string | null>(null);
+    const [jsonImportSuccess, setJsonImportSuccess] = useState<string | null>(null);
+    const [jsonImportMode, setJsonImportMode] = useState<'replace' | 'append' | 'prepend'>('replace');
+    const [isJsonImporting, setIsJsonImporting] = useState(false);
 
     // Seleção em massa
     const [selectedBlocks, setSelectedBlocks] = useState<Set<string>>(new Set());
@@ -750,6 +759,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
     const importDocFile = async (file: File) => {
         setDocImportError(null);
+        setJsonImportError(null);
 
         const extension = file.name.split('.').pop()?.toLowerCase();
         if (extension === 'doc') {
@@ -821,6 +831,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
             setBlocks(prev => [...prev, ...newBlocks]);
             setExpandedBlockId(newBlocks[0]?.id || null);
+            setDocPreviewHtml(processedHtml);
         } catch (error) {
             console.error('Erro ao importar documento', error);
             const errorMessage = error instanceof Error
@@ -840,6 +851,217 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
         if (!file) return;
 
         await importDocFile(file);
+    };
+
+    const handleDocxDrop = async (event: React.DragEvent<HTMLDivElement>) => {
+        event.preventDefault();
+        setIsDocDragActive(false);
+        const file = event.dataTransfer.files?.[0];
+        if (file) {
+            await importDocFile(file);
+        }
+    };
+
+    const handleDocxDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+        event.preventDefault();
+        setIsDocDragActive(true);
+    };
+
+    const handleDocxDragLeave = () => setIsDocDragActive(false);
+
+    const handleJsonExport = () => {
+        const payload = {
+            version: '1.0',
+            lessonId: lesson.id,
+            generatedAt: new Date().toISOString(),
+            blocks
+        };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${lesson.title || 'conteudo'}.json`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+    };
+
+    // Converter JSON estruturado de documento Word em blocos HTML
+    const convertStructuredJsonToBlocks = (contentItems: any[]): Block[] => {
+        return contentItems.map((item) => {
+            let combinedText = '';
+            const runs = item.runs || [];
+
+            for (const run of runs) {
+                let text = run.text || '';
+                if (run.bold) text = `<strong>${text}</strong>`;
+                if (run.italic) text = `<em>${text}</em>`;
+                if (run.underline) text = `<u>${text}</u>`;
+                if (run.strike) text = `<s>${text}</s>`;
+                if (run.fontSize) text = `<span style="font-size: ${run.fontSize}pt">${text}</span>`;
+                if (run.color && run.color !== 'auto') text = `<span style="color: #${run.color}">${text}</span>`;
+                combinedText += text;
+            }
+
+            if (!combinedText.trim()) combinedText = '<br>';
+
+            let htmlElement = 'p';
+            let styleAttr = '';
+
+            if (item.type === 'heading') htmlElement = `h${item.level || 1}`;
+
+            if (item.style?.alignment) {
+                const alignMap: Record<string, string> = { 'center': 'center', 'right': 'right', 'both': 'justify', 'left': 'left' };
+                const align = alignMap[item.style.alignment] || 'left';
+                if (align !== 'left') styleAttr += `text-align: ${align};`;
+            }
+
+            if (item.style?.indentation) {
+                if (item.style.indentation.left) styleAttr += `margin-left: ${item.style.indentation.left / 20}pt;`;
+                if (item.style.indentation.firstLine) styleAttr += `text-indent: ${item.style.indentation.firstLine / 20}pt;`;
+            }
+
+            const styleAttribute = styleAttr ? ` style="${styleAttr}"` : '';
+            const htmlText = `<${htmlElement}${styleAttribute}>${combinedText}</${htmlElement}>`;
+
+            return {
+                id: crypto?.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2),
+                text: htmlText,
+                audioUrl: '',
+                spacing: item.style?.spacing?.after ? Math.round(item.style.spacing.after / 100) : 0
+            };
+        });
+    };
+
+    const importJsonContent = async (file: File, mode: 'replace' | 'append' | 'prepend' = jsonImportMode) => {
+        setJsonImportError(null);
+        setJsonImportSuccess(null);
+        setIsJsonImporting(true);
+
+        // 1. Validar tamanho do arquivo (máximo 10MB)
+        const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+        if (file.size > MAX_FILE_SIZE) {
+            setJsonImportError('Arquivo muito grande. Tamanho máximo: 10MB');
+            setIsJsonImporting(false);
+            if (jsonUploadInputRef.current) {
+                jsonUploadInputRef.current.value = '';
+            }
+            return;
+        }
+
+        try {
+            // 2. Ler arquivo
+            const text = await file.text();
+            const parsed = JSON.parse(text);
+
+            // 3. Detectar e converter formato estruturado de documento Word
+            let incomingBlocks: any[] = [];
+
+            if (Array.isArray(parsed)) {
+                // Formato: array direto de blocos
+                incomingBlocks = parsed;
+            } else if (parsed.content && Array.isArray(parsed.content)) {
+                // Formato estruturado de documento Word com "content" e "runs"
+                console.log('📄 Detectado formato estruturado de documento Word, convertendo...');
+                incomingBlocks = convertStructuredJsonToBlocks(parsed.content);
+            } else if (parsed.blocks || parsed.content_blocks) {
+                // Formato padrão do sistema
+                incomingBlocks = parsed.blocks || parsed.content_blocks;
+            }
+
+            // 4. Validar existência de blocos
+            if (!Array.isArray(incomingBlocks) || incomingBlocks.length === 0) {
+                throw new Error('JSON sem blocos válidos.');
+            }
+
+            // 5. Validar limite máximo de blocos
+            if (incomingBlocks.length > 1000) {
+                throw new Error(`Arquivo contém muitos blocos (${incomingBlocks.length}). Máximo permitido: 1000`);
+            }
+
+            // 6. Validar estrutura de cada bloco
+            const invalidBlocks = incomingBlocks.filter((b: any, idx: number) => {
+                if (typeof b !== 'object' || b === null) return true;
+                if (b.text !== undefined && typeof b.text !== 'string') return true;
+                if (b.spacing !== undefined && typeof b.spacing !== 'number') return true;
+                if (b.audioUrl !== undefined && typeof b.audioUrl !== 'string') return true;
+                if (b.audio_url !== undefined && typeof b.audio_url !== 'string') return true;
+                return false;
+            });
+
+            if (invalidBlocks.length > 0) {
+                throw new Error(`Encontrados ${invalidBlocks.length} bloco(s) com formato inválido.`);
+            }
+
+            // 7. Confirmar se há conteúdo existente e modo é 'replace'
+            if (blocks.length > 0 && mode === 'replace') {
+                const confirmReplace = window.confirm(
+                    `⚠️ Atenção: Você possui ${blocks.length} bloco(s) de conteúdo.\n\n` +
+                    `Importar este arquivo JSON irá SUBSTITUIR todo o conteúdo atual.\n\n` +
+                    `Deseja continuar?`
+                );
+
+                if (!confirmReplace) {
+                    setIsJsonImporting(false);
+                    if (jsonUploadInputRef.current) {
+                        jsonUploadInputRef.current.value = '';
+                    }
+                    return;
+                }
+            }
+
+            // 8. Normalizar blocos
+            const normalized = incomingBlocks.map((b: any) => ({
+                id: b.id || (crypto?.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2)),
+                text: b.text || '',
+                audioUrl: b.audioUrl || b.audio_url || '',
+                spacing: b.spacing || 0
+            }));
+
+            // 9. Aplicar modo de importação
+            let resultBlocks: Block[];
+            if (mode === 'replace') {
+                resultBlocks = normalized;
+            } else if (mode === 'append') {
+                resultBlocks = [...blocks, ...normalized];
+            } else { // prepend
+                resultBlocks = [...normalized, ...blocks];
+            }
+
+            setBlocks(resultBlocks);
+            setExpandedBlockId(normalized[0]?.id || null);
+
+            // 10. Feedback de sucesso
+            const modeLabels = {
+                replace: 'substituídos',
+                append: 'adicionados ao final',
+                prepend: 'adicionados ao início'
+            };
+
+            setJsonImportSuccess(
+                `✅ ${normalized.length} bloco(s) ${modeLabels[mode]} com sucesso!`
+            );
+
+            // Limpar mensagem de sucesso após 5 segundos
+            setTimeout(() => setJsonImportSuccess(null), 5000);
+
+        } catch (err: any) {
+            console.error('Erro ao importar JSON', err);
+            const message = err?.message || 'Falha ao ler JSON. Verifique se o arquivo está no formato correto.';
+            setJsonImportError(message);
+        } finally {
+            setIsJsonImporting(false);
+            if (jsonUploadInputRef.current) {
+                jsonUploadInputRef.current.value = '';
+            }
+        }
+    };
+
+    const handleJsonFileInput = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        await importJsonContent(file);
     };
 
     const updateBlock = (id: string, updates: any) => {
@@ -1497,7 +1719,8 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                 id="docx-upload"
                                 type="file"
                                 accept=".docx"
-                                onChange={() => alert('Funcionalidade de importação DOCX em desenvolvimento')}
+                                ref={docUploadInputRef}
+                                onChange={handleDocFileInput}
                                 className="hidden"
                             />
 
@@ -1689,6 +1912,152 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                 <span>{docImportError}</span>
                             </div>
                         )}
+
+                        {jsonImportError && (
+                            <div className="mb-3 px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-xs text-amber-700 dark:text-amber-200 font-semibold flex items-start gap-2">
+                                <i className="fas fa-exclamation-circle mt-0.5"></i>
+                                <span>{jsonImportError}</span>
+                            </div>
+                        )}
+
+                        {/* Importaçã o rápida (DOCX ou JSON) */}
+                        <div
+                            className={`mb-4 px-4 py-3 rounded-xl border ${isDocDragActive ? 'border-teal-500 bg-teal-50 dark:bg-teal-900/10' : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40'} transition-colors`}
+                            onDrop={handleDocxDrop}
+                            onDragOver={handleDocxDragOver}
+                            onDragLeave={handleDocxDragLeave}
+                        >
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                <div>
+                                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Importar Conteúdo</p>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400">Arraste um DOCX ou use os botões abaixo. JSON recria os blocos exatamente como salvos.</p>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    <button
+                                        onClick={() => document.getElementById('docx-upload')?.click()}
+                                        className="px-3 py-2 rounded-lg bg-teal-600 text-white text-xs font-semibold flex items-center gap-2 hover:bg-teal-700 transition-colors"
+                                    >
+                                        <i className="fas fa-file-word"></i> DOCX
+                                    </button>
+                                    <button
+                                        onClick={() => jsonUploadInputRef.current?.click()}
+                                        disabled={isJsonImporting}
+                                        className="px-3 py-2 rounded-lg bg-slate-800 text-white text-xs font-semibold flex items-center gap-2 hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        {isJsonImporting ? (
+                                            <>
+                                                <i className="fas fa-spinner fa-spin"></i> Importando...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <i className="fas fa-file-code"></i> Importar JSON
+                                            </>
+                                        )}
+                                    </button>
+                                    <button
+                                        onClick={handleJsonExport}
+                                        className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold flex items-center gap-2 hover:bg-indigo-700 transition-colors"
+                                    >
+                                        <i className="fas fa-download"></i> Exportar JSON
+                                    </button>
+                                    <input
+                                        ref={jsonUploadInputRef}
+                                        type="file"
+                                        accept="application/json"
+                                        className="hidden"
+                                        onChange={handleJsonFileInput}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Seletor de Modo de Importação JSON */}
+                            <div className="mt-3 flex items-center gap-2">
+                                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                                    Modo de Importação:
+                                </label>
+                                <div className="flex gap-1">
+                                    <button
+                                        onClick={() => setJsonImportMode('replace')}
+                                        className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${jsonImportMode === 'replace'
+                                            ? 'bg-red-600 text-white shadow-md'
+                                            : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-600'
+                                            }`}
+                                        title="Substituir todo o conteúdo existente"
+                                    >
+                                        <i className="fas fa-sync-alt mr-1"></i>
+                                        Substituir
+                                    </button>
+                                    <button
+                                        onClick={() => setJsonImportMode('append')}
+                                        className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${jsonImportMode === 'append'
+                                            ? 'bg-green-600 text-white shadow-md'
+                                            : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-600'
+                                            }`}
+                                        title="Adicionar blocos ao final do conteúdo existente"
+                                    >
+                                        <i className="fas fa-arrow-down mr-1"></i>
+                                        Adicionar ao Final
+                                    </button>
+                                    <button
+                                        onClick={() => setJsonImportMode('prepend')}
+                                        className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${jsonImportMode === 'prepend'
+                                            ? 'bg-blue-600 text-white shadow-md'
+                                            : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-600'
+                                            }`}
+                                        title="Adicionar blocos no início, antes do conteúdo existente"
+                                    >
+                                        <i className="fas fa-arrow-up mr-1"></i>
+                                        Adicionar ao Início
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Feedback de Sucesso */}
+                            {jsonImportSuccess && (
+                                <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg animate-in fade-in slide-in-from-top-2">
+                                    <div className="flex items-center gap-2">
+                                        <i className="fas fa-check-circle text-green-600 dark:text-green-400"></i>
+                                        <p className="text-xs font-semibold text-green-700 dark:text-green-400">
+                                            {jsonImportSuccess}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Feedback de Erro */}
+                            {jsonImportError && (
+                                <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <div className="flex items-center gap-2">
+                                            <i className="fas fa-exclamation-triangle text-red-600 dark:text-red-400"></i>
+                                            <p className="text-xs font-semibold text-red-700 dark:text-red-400">
+                                                Erro ao importar JSON: {jsonImportError}
+                                            </p>
+                                        </div>
+                                        <button
+                                            onClick={() => setJsonImportError(null)}
+                                            className="text-xs text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 underline font-medium"
+                                        >
+                                            Dispensar
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                            {docPreviewHtml && (
+                                <div className="mt-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 p-3 max-h-64 overflow-auto">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">Prévia do DOCX importado</p>
+                                        <button
+                                            onClick={() => setDocPreviewHtml(null)}
+                                            className="text-xs text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                                        >
+                                            Limpar
+                                        </button>
+                                    </div>
+                                    <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: docPreviewHtml }} />
+                                </div>
+                            )}
+                        </div>
 
                         {/* Barra de Ferramentas de Seleção em Massa */}
                         {blocks.length > 0 && (
@@ -2040,13 +2409,78 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                                                 <option value="Georgia">Georgia</option>
                                                             </select>
 
-                                                            <input
-                                                                type="number"
-                                                                min="8"
-                                                                max="72"
-                                                                defaultValue="14"
-                                                                className="w-12 h-7 rounded border border-slate-200 dark:border-slate-700 text-xs px-2"
-                                                            />
+                                                            <div className="w-px h-4 bg-slate-300 dark:bg-slate-700" />
+
+                                                            <div className="flex items-center gap-1">
+                                                                <span className="text-[10px] text-slate-500 font-medium">Px:</span>
+                                                                <input
+                                                                    type="number"
+                                                                    min="8"
+                                                                    max="72"
+                                                                    defaultValue="14"
+                                                                    onMouseDown={(e) => {
+                                                                        // Salvar seleção antes do input receber foco
+                                                                        saveSelection();
+                                                                    }}
+                                                                    onKeyDown={(e) => {
+                                                                        if (e.key === 'Enter') {
+                                                                            e.preventDefault();
+                                                                            const size = parseInt(e.currentTarget.value);
+                                                                            if (size >= 8 && size <= 72 && activeEditableElement) {
+                                                                                const selection = window.getSelection();
+                                                                                // Se não houver seleção ou se for apenas um cursor, seleciona todo o bloco
+                                                                                if (!selection || selection.isCollapsed || !activeEditableElement.contains(selection.anchorNode)) {
+                                                                                    const range = document.createRange();
+                                                                                    range.selectNodeContents(activeEditableElement);
+                                                                                    selection?.removeAllRanges();
+                                                                                    selection?.addRange(range);
+                                                                                }
+
+                                                                                document.execCommand('fontSize', false, '7');
+                                                                                const fontElements = activeEditableElement.querySelectorAll('font[size="7"]');
+                                                                                fontElements.forEach(font => {
+                                                                                    const span = document.createElement('span');
+                                                                                    span.style.fontSize = `${size}pt`;
+                                                                                    span.innerHTML = font.innerHTML;
+                                                                                    font.parentNode?.replaceChild(span, font);
+                                                                                });
+
+                                                                                // Persistir alterações
+                                                                                updateBlock(block.id, { text: activeEditableElement.innerHTML });
+                                                                            }
+                                                                        }
+                                                                    }}
+                                                                    onBlur={(e) => {
+                                                                        const size = parseInt(e.target.value);
+                                                                        if (size >= 8 && size <= 72 && activeEditableElement) {
+                                                                            const selection = window.getSelection();
+                                                                            // Se não houver seleção ou se for apenas um cursor, seleciona todo o bloco
+                                                                            if (!selection || selection.isCollapsed || !activeEditableElement.contains(selection.anchorNode)) {
+                                                                                const range = document.createRange();
+                                                                                range.selectNodeContents(activeEditableElement);
+                                                                                selection?.removeAllRanges();
+                                                                                selection?.addRange(range);
+                                                                            }
+
+                                                                            document.execCommand('fontSize', false, '7');
+                                                                            const fontElements = activeEditableElement.querySelectorAll('font[size="7"]');
+                                                                            fontElements.forEach(font => {
+                                                                                const span = document.createElement('span');
+                                                                                span.style.fontSize = `${size}pt`;
+                                                                                span.innerHTML = font.innerHTML;
+                                                                                font.parentNode?.replaceChild(span, font);
+                                                                            });
+
+                                                                            // Persistir alterações
+                                                                            updateBlock(block.id, { text: activeEditableElement.innerHTML });
+                                                                        }
+                                                                    }}
+                                                                    className="w-14 h-7 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs px-2 text-center"
+                                                                    title="Tamanho da fonte (Enter para aplicar)"
+                                                                />
+                                                            </div>
+
+                                                            <div className="w-px h-4 bg-slate-300 dark:bg-slate-700" />
 
                                                             <div className="w-px h-4 bg-slate-300 dark:bg-slate-700" />
 

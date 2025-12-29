@@ -413,4 +413,192 @@ export class SupabaseAdminRepository implements IAdminRepository {
     }
     return data;
   }
+
+  // ============ QUIZ METHODS IMPLEMENTATION ============
+
+  /**
+   * Busca quiz completo (com perguntas e opções) por lesson_id
+   */
+  async getQuizByLessonId(lessonId: string): Promise<any | null> {
+    const { data: quizData, error: quizError } = await this.client
+      .from('quizzes')
+      .select(`
+        id,
+        lesson_id,
+        title,
+        description,
+        passing_score,
+        quiz_questions (
+          id,
+          quiz_id,
+          question_text,
+          question_type,
+          position,
+          points,
+          quiz_options (
+            id,
+            question_id,
+            option_text,
+            is_correct,
+            position
+          )
+        )
+      `)
+      .eq('lesson_id', lessonId)
+      .maybeSingle();
+
+    if (quizError) throw new DomainError(`Erro ao buscar quiz: ${quizError.message}`);
+    if (!quizData) return null;
+
+    return quizData;
+  }
+
+  /**
+   * Cria quiz completo (quiz + perguntas + opções)
+   */
+  async createQuiz(quiz: any): Promise<any> {
+    // 1. Inserir quiz
+    const { data: quizData, error: quizError } = await this.client
+      .from('quizzes')
+      .insert({
+        lesson_id: quiz.lessonId,
+        title: quiz.title,
+        description: quiz.description,
+        passing_score: quiz.passingScore
+      })
+      .select()
+      .single();
+
+    if (quizError) throw new DomainError(`Erro ao criar quiz: ${quizError.message}`);
+
+    // 2. Inserir perguntas
+    for (const question of quiz.questions) {
+      const { data: questionData, error: questionError } = await this.client
+        .from('quiz_questions')
+        .insert({
+          quiz_id: quizData.id,
+          question_text: question.questionText,
+          question_type: question.questionType,
+          position: question.position,
+          points: question.points
+        })
+        .select()
+        .single();
+
+      if (questionError) throw new DomainError(`Erro ao criar pergunta: ${questionError.message}`);
+
+      // 3. Inserir opções
+      const options = question.options.map((o: any) => ({
+        question_id: questionData.id,
+        option_text: o.optionText,
+        is_correct: o.isCorrect,
+        position: o.position
+      }));
+
+      const { error: optionsError } = await this.client
+        .from('quiz_options')
+        .insert(options);
+
+      if (optionsError) throw new DomainError(`Erro ao criar opções: ${optionsError.message}`);
+    }
+
+    // Retornar quiz criado
+    const createdQuiz = await this.getQuizByLessonId(quiz.lessonId);
+    if (!createdQuiz) throw new DomainError('Quiz criado mas não foi possível recuperá-lo');
+    return createdQuiz;
+  }
+
+  /**
+   * Atualiza quiz existente (apenas metadados, não perguntas)
+   */
+  async updateQuiz(quiz: any): Promise<any> {
+    const { error } = await this.client
+      .from('quizzes')
+      .update({
+        title: quiz.title,
+        description: quiz.description,
+        passing_score: quiz.passingScore
+      })
+      .eq('id', quiz.id);
+
+    if (error) throw new DomainError(`Erro ao atualizar quiz: ${error.message}`);
+
+    const updated = await this.getQuizByLessonId(quiz.lessonId);
+    if (!updated) throw new DomainError('Quiz não encontrado após atualização');
+    return updated;
+  }
+
+  /**
+   * Deleta quiz (CASCADE deleta perguntas e opções)
+   */
+  async deleteQuiz(quizId: string): Promise<void> {
+    const { error } = await this.client
+      .from('quizzes')
+      .delete()
+      .eq('id', quizId);
+
+    if (error) throw new DomainError(`Erro ao deletar quiz: ${error.message}`);
+  }
+
+  /**
+   * Registra tentativa de quiz
+   */
+  async submitQuizAttempt(
+    userId: string,
+    quizId: string,
+    score: number,
+    passed: boolean,
+    answers: Record<string, string>
+  ): Promise<any> {
+    const { data, error } = await this.client
+      .from('quiz_attempts')
+      .insert({
+        user_id: userId,
+        quiz_id: quizId,
+        score,
+        passed,
+        answers
+      })
+      .select()
+      .single();
+
+    if (error) throw new DomainError(`Erro ao registrar tentativa: ${error.message}`);
+
+    return data;
+  }
+
+  /**
+   * Busca última tentativa do usuário
+   */
+  async getLatestQuizAttempt(userId: string, quizId: string): Promise<any | null> {
+    const { data, error } = await this.client
+      .from('quiz_attempts')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('quiz_id', quizId)
+      .order('completed_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw new DomainError(`Erro ao buscar tentativa: ${error.message}`);
+    if (!data) return null;
+
+    return data;
+  }
+
+  /**
+   * Busca todas as tentativas do usuário em um quiz
+   */
+  async getQuizAttempts(userId: string, quizId: string): Promise<any[]> {
+    const { data, error } = await this.client
+      .from('quiz_attempts')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('quiz_id', quizId)
+      .order('completed_at', { ascending: false });
+
+    if (error) throw new DomainError(`Erro ao buscar tentativas: ${error.message}`);
+
+    return (data || []);
+  }
 }

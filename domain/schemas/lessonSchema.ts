@@ -18,8 +18,7 @@ export const lessonSchema = z.object({
         .url('URL de vídeo inválida')
         .optional()
         .or(z.literal('')),
-    audioUrl: z,
-        spacing: z.number().int('Espacamento deve ser um numero inteiro').min(0).optional()
+    audioUrl: z
         .string()
         .url('URL de áudio inválida')
         .optional()

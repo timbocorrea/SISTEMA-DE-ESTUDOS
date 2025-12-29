@@ -9,7 +9,8 @@ describe('Lesson.updateProgress', () => {
       videoUrl: 'https://example.com/video.mp4',
       durationSeconds: 100,
       watchedSeconds: 0,
-      isCompleted: false
+      isCompleted: false,
+      position: 0
     });
 
     expect(lesson.isCompleted).toBe(false);
@@ -30,7 +31,8 @@ describe('Lesson.updateProgress', () => {
       videoUrl: 'https://example.com/video.mp4',
       durationSeconds: 0,
       watchedSeconds: 0,
-      isCompleted: false
+      isCompleted: false,
+      position: 0
     });
 
     expect(lesson.updateProgress(0)).toBe(false);
