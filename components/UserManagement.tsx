@@ -395,161 +395,127 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
         </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="bg-slate-50 dark:bg-slate-800/50">
-                {isSelectMode && (
-                  <th className="px-6 py-4 text-center">
-                    <input
-                      type="checkbox"
-                      checked={selectedUserIds.length === filtered.length && filtered.length > 0}
-                      onChange={toggleSelectAll}
-                      className="w-5 h-5 rounded border-2 border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-2 focus:ring-indigo-500/50 cursor-pointer"
-                    />
-                  </th>
-                )}
-                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Usuário</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest text-center">Role</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest text-center">Nível</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest text-right">XP Total</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest text-center">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {loading && (
-                <tr>
-                  <td colSpan={isSelectMode ? 6 : 5} className="px-6 py-8 text-center text-sm text-slate-400">
-                    Carregando…
-                  </td>
-                </tr>
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        {loading && (
+          <div className="col-span-full py-12 text-center text-slate-400">
+            <i className="fas fa-spinner fa-spin text-3xl mb-3"></i>
+            <p>Carregando usuários...</p>
+          </div>
+        )}
+
+        {!loading && filtered.length === 0 && (
+          <div className="col-span-full py-12 text-center text-slate-400 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 border-dashed">
+            <i className="fas fa-users text-4xl mb-3 opacity-50"></i>
+            <p>Nenhum usuário encontrado.</p>
+          </div>
+        )}
+
+        {!loading && filtered.map(u => {
+          const isBlocked = (u as any).approval_status === 'rejected';
+          const isPending = (u as any).approval_status === 'pending';
+          const isSelected = selectedUserIds.includes(u.id);
+
+          return (
+            <div
+              key={u.id}
+              onClick={() => {
+                if (isSelectMode) toggleUserSelection(u.id);
+                else setViewingUser(u);
+              }}
+              className={`relative group p-6 rounded-3xl border transition-all cursor-pointer ${isSelected
+                  ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-500 shadow-indigo-100 dark:shadow-none'
+                  : isBlocked
+                    ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-900/30'
+                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-lg hover:-translate-y-1'
+                }`}
+            >
+              {/* Checkbox de Seleção (Absoluto) */}
+              {isSelectMode && (
+                <div className="absolute top-4 right-4 z-10">
+                  <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-colors ${isSelected
+                      ? 'bg-indigo-600 border-indigo-600 text-white'
+                      : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800'
+                    }`}>
+                    {isSelected && <i className="fas fa-check text-xs"></i>}
+                  </div>
+                </div>
               )}
 
-              {!loading && filtered.length === 0 && (
-                <tr>
-                  <td colSpan={isSelectMode ? 6 : 5} className="px-6 py-8 text-center text-sm text-slate-400">
-                    Nenhum usuário encontrado.
-                  </td>
-                </tr>
-              )}
+              {/* Cabeçalho do Card */}
+              <div className="flex items-start gap-4 mb-4">
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-xl shadow-sm ${u.role === 'INSTRUCTOR'
+                    ? 'bg-cyan-100 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-400'
+                    : 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400'
+                  }`}>
+                  <i className={`fas ${u.role === 'INSTRUCTOR' ? 'fa-chalkboard-teacher' : 'fa-user-graduate'}`}></i>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-slate-800 dark:text-white truncate text-lg pr-6">{u.name || 'Sem nome'}</h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 truncate">{u.email}</p>
 
-              {!loading &&
-                filtered.map(u => {
-                  const isBlocked = (u as any).approval_status === 'rejected';
-                  return (
-                    <tr
-                      key={u.id}
-                      className={`transition-all group ${isSelectMode ? '' : 'cursor-pointer'
-                        } ${selectedUserIds.includes(u.id) ? 'bg-indigo-50 dark:bg-indigo-900/20' : ''
-                        } ${isBlocked
-                          ? 'bg-red-100 dark:bg-red-950/40 border-l-4 border-red-500 hover:bg-red-200 dark:hover:bg-red-950/60'
-                          : 'hover:bg-slate-50 dark:hover:bg-slate-800/30'
-                        }`}
-                      onClick={() => !isSelectMode && setViewingUser(u)}
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider ${u.role === 'INSTRUCTOR'
+                        ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300'
+                        : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                      }`}>
+                      {u.role === 'INSTRUCTOR' ? 'Admin' : 'Aluno'}
+                    </span>
+
+                    {isPending && (
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 uppercase tracking-wider">
+                        Pendente
+                      </span>
+                    )}
+                    {isBlocked && (
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 uppercase tracking-wider">
+                        Bloqueado
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Status Stats */}
+              <div className="grid grid-cols-2 gap-2 mb-4">
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
+                  <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Nível</p>
+                  <p className="text-lg font-black text-slate-700 dark:text-slate-200">LVL {u.current_level ?? 1}</p>
+                </div>
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
+                  <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">XP Total</p>
+                  <p className="text-lg font-black text-indigo-500">{(u.xp_total ?? 0).toLocaleString()}</p>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800" onClick={e => e.stopPropagation()}>
+                {activeTab === 'pending' && (
+                  <>
+                    <button
+                      onClick={() => handleApproveClick(u)}
+                      className="flex-1 px-3 py-2 rounded-xl bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/30 text-green-600 dark:text-green-400 font-bold text-xs transition-colors flex items-center justify-center gap-1"
                     >
-                      {isSelectMode && (
-                        <td className="px-6 py-5 text-center" onClick={(e) => e.stopPropagation()}>
-                          <input
-                            type="checkbox"
-                            checked={selectedUserIds.includes(u.id)}
-                            onChange={() => toggleUserSelection(u.id)}
-                            className="w-5 h-5 rounded border-2 border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-2 focus:ring-indigo-500/50 cursor-pointer"
-                          />
-                        </td>
-                      )}
-                      <td className="px-6 py-5">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-indigo-600/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center border border-indigo-600/10">
-                            <i className="fas fa-user"></i>
-                          </div>
-                          <div>
-                            <p className="text-sm font-black text-slate-700 dark:text-slate-200">{u.name || '—'}</p>
-                            <p className="text-[10px] text-slate-400">{u.email}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-5 text-center">
-                        <div className="flex flex-col gap-2 items-center">
-                          <span
-                            className={`text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-widest ${u.role === 'INSTRUCTOR'
-                              ? 'bg-cyan-600 text-white'
-                              : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200'
-                              }`}
-                          >
-                            {u.role === 'INSTRUCTOR' ? 'Admin' : 'Student'}
-                          </span>
+                      <i className="fas fa-check"></i> Aprovar
+                    </button>
+                    <button
+                      onClick={() => handleRejectClick(u)}
+                      className="flex-1 px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 font-bold text-xs transition-colors flex items-center justify-center gap-1"
+                    >
+                      <i className="fas fa-times"></i> Rejeitar
+                    </button>
+                  </>
+                )}
 
-                          {/* Status de Aprovação */}
-                          {(() => {
-                            const status = (u as any).approval_status || 'approved';
-                            if (status === 'pending') {
-                              return (
-                                <span className="text-[10px] font-black px-2 py-1 rounded-md bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 uppercase tracking-widest">
-                                  <i className="fas fa-clock mr-1"></i>Pendente
-                                </span>
-                              );
-                            } else if (status === 'rejected') {
-                              return (
-                                <span className="text-[10px] font-black px-2 py-1 rounded-md bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 uppercase tracking-widest">
-                                  <i className="fas fa-ban mr-1"></i>Bloqueado
-                                </span>
-                              );
-                            }
-                            return null;
-                          })()}
-                        </div>
-                      </td>
-                      <td className="px-6 py-5 text-center">
-                        <span className="bg-indigo-600 text-white text-[10px] font-black px-2 py-1 rounded-md">
-                          LVL {u.current_level ?? 1}
-                        </span>
-                      </td>
-                      <td className="px-6 py-5 text-right">
-                        <span className="text-sm font-black text-slate-600 dark:text-slate-200">
-                          {(u.xp_total ?? 0).toLocaleString()}
-                        </span>
-                      </td>
-                      <td className="px-6 py-5 text-center" onClick={(e) => e.stopPropagation()}>
-                        <div className="inline-flex items-center gap-2">
-                          {/* Botões de aprovação/rejeição para usuários pendentes */}
-                          {activeTab === 'pending' && !isSelectMode && (
-                            <>
-                              <button
-                                onClick={() => handleApproveClick(u)}
-                                className="px-3 py-2 rounded-xl bg-green-100 hover:bg-green-200 dark:bg-green-900/30 dark:hover:bg-green-900/50 text-green-700 dark:text-green-400 transition-colors"
-                                title="Aprovar Usuário"
-                              >
-                                <i className="fas fa-check"></i>
-                              </button>
-                              <button
-                                onClick={() => handleRejectClick(u)}
-                                className="px-3 py-2 rounded-xl bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-700 dark:text-red-400 transition-colors"
-                                title="Rejeitar Usuário"
-                              >
-                                <i className="fas fa-times"></i>
-                              </button>
-                            </>
-                          )}
-
-                          {/* Botão de configuração para todos */}
-                          {!isSelectMode && (
-                            <button
-                              onClick={() => handleEditClick(u)}
-                              className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors"
-                              title="Configurar Usuário"
-                            >
-                              <i className="fas fa-cog"></i>
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-            </tbody>
-          </table>
-        </div>
+                <button
+                  onClick={() => handleEditClick(u)}
+                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold text-xs transition-colors"
+                >
+                  <i className="fas fa-cog"></i> Editar
+                </button>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       <div className="text-[11px] text-slate-500 dark:text-slate-400">
