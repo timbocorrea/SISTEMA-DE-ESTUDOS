@@ -349,7 +349,7 @@ const FileManagement: React.FC<FileManagementProps> = ({ path, onPathChange }) =
                             className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white"
                         />
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                         {['all', 'images', 'videos', 'audios', 'documents'].map(type => (
                             <button
                                 key={type}
@@ -392,7 +392,8 @@ const FileManagement: React.FC<FileManagementProps> = ({ path, onPathChange }) =
                     )}
                 </div>
             ) : (
-                <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+                <>
+                <div className="hidden md:block bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
                     <table className="w-full">
                         <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
                             <tr>
@@ -434,7 +435,7 @@ const FileManagement: React.FC<FileManagementProps> = ({ path, onPathChange }) =
                                         </td>
                                         <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">
                                             {isFolder
-                                                ? (folderStats[file.name] ? `${folderStats[file.name].count} items • ${formatSize(folderStats[file.name].size)}` : 'Calculando...')
+                                                ? (folderStats[file.name] ? `${folderStats[file.name].count} items · ${formatSize(folderStats[file.name].size)}` : 'Calculando...')
                                                 : formatSize(file.metadata?.size || 0)
                                             }
                                         </td>
@@ -480,6 +481,83 @@ const FileManagement: React.FC<FileManagementProps> = ({ path, onPathChange }) =
                         </tbody>
                     </table>
                 </div>
+
+                <div className="md:hidden grid grid-cols-1 gap-3">
+                    {filteredFiles.map(file => {
+                        const isFolder = file.id === null;
+                        const isImage = !isFolder && getFileType(file.name) === 'image';
+                        const fullPath = currentPath ? currentPath + '/' + file.name : file.name;
+
+                        return (
+                            <div key={file.name} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+                                <div className="flex items-start gap-3">
+                                    <div className="mt-1">
+                                        {isFolder ? (
+                                            <i className="fas fa-folder text-yellow-500"></i>
+                                        ) : (
+                                            <i className={getFileIcon(file.name)}></i>
+                                        )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        {isFolder ? (
+                                            <button
+                                                onClick={() => openFolder(file.name)}
+                                                className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline block text-left truncate"
+                                            >
+                                                {file.name}
+                                            </button>
+                                        ) : (
+                                            <p className="font-semibold text-slate-800 dark:text-white truncate">
+                                                {file.name}
+                                            </p>
+                                        )}
+                                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                                            {isFolder
+                                                ? (folderStats[file.name] ? `${folderStats[file.name].count} items · ${formatSize(folderStats[file.name].size)}` : 'Calculando...')
+                                                : formatSize(file.metadata?.size || 0)
+                                            }
+                                        </p>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                            {formatDate(file.created_at)}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex flex-wrap gap-2 mt-3">
+                                    {!isFolder && isImage && (
+                                        <button
+                                            onClick={() => setPreviewFile(getFileUrl(fullPath))}
+                                            className="flex-1 min-w-[120px] px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-colors"
+                                            title="Visualizar"
+                                        >
+                                            <i className="fas fa-eye mr-2"></i> Visualizar
+                                        </button>
+                                    )}
+                                    {!isFolder && (
+                                        <button
+                                            onClick={() => downloadFile(file.name)}
+                                            className="flex-1 min-w-[120px] px-3 py-2 rounded-lg bg-green-600 hover:bg-green-500 text-white text-sm font-medium transition-colors"
+                                            title="Download"
+                                        >
+                                            <i className="fas fa-download mr-2"></i> Download
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={() => deleteFile(file.name)}
+                                        disabled={deleting === file.name}
+                                        className="flex-1 min-w-[120px] px-3 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-sm font-medium transition-colors disabled:opacity-50"
+                                    >
+                                        {deleting === file.name ? (
+                                            <><i className="fas fa-spinner fa-spin mr-2"></i> Excluindo...</>
+                                        ) : (
+                                            <><i className="fas fa-trash mr-2"></i> Excluir</>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+                </>
             )}
 
             {/* Preview Modal */}
@@ -509,3 +587,4 @@ const FileManagement: React.FC<FileManagementProps> = ({ path, onPathChange }) =
 };
 
 export default FileManagement;
+

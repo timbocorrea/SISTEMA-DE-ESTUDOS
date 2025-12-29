@@ -10,6 +10,9 @@ interface GeminiBuddyProps {
   onNavigate?: (courseId: string, lessonId: string) => void;
 }
 
+// Module-level variable to track if welcome message has been shown in this session (resets on page reload)
+let hasShownWelcome = false;
+
 const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
   currentContext = '',
   systemContext = 'Navegando no sistema',
@@ -49,6 +52,9 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
   useEffect(() => {
     if (isDelayed) return; // Wait for delay
 
+    // Check if welcome message was already shown in this session using module variable
+    if (hasShownWelcome) return;
+
     if (initialMessage && messages.length === 0) {
       // Regex to find [[RESUME:courseId:lessonId]]
       const actionMatch = initialMessage.match(/\[\[RESUME:(.+?):(.+?)\]\]/);
@@ -66,6 +72,9 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
 
       setIsOpen(true); // Auto-open for ANY initial message (Welcome or Resume)
       setMessages([{ role: 'ai', text, action }]);
+
+      // Mark as shown for this session
+      hasShownWelcome = true;
 
       // Auto-close após 5 segundos
       const autoCloseTimer = setTimeout(() => {

@@ -438,14 +438,19 @@ const App: React.FC = () => {
       if (savedState) {
         try {
           const state = JSON.parse(savedState);
+          const resumeKey = state?.courseId && state?.lessonId ? `${state.courseId}:${state.lessonId}` : null;
+          const lastShownResumeKey = localStorage.getItem(`lastBuddyResumeKey_${currentUser.id}`);
           const timeDiff = Date.now() - state.timestamp;
           const fifteenMinutes = 15 * 60 * 1000;
 
-          if (timeDiff > fifteenMinutes) {
+          // Marca como restaurado mesmo se já tiver mostrado antes (evita onboarding indevido)
+          restored = true;
+
+          if (resumeKey && resumeKey !== lastShownResumeKey && timeDiff > fifteenMinutes) {
             setInitialBuddyMessage(
               `👋 Olá de novo, ${currentUser.name}! Percebi que você estava estudando **"${state.lessonTitle}"** antes de sair. Quer continuar de onde parou? [[RESUME:${state.courseId}:${state.lessonId}]]`
             );
-            restored = true;
+            localStorage.setItem(`lastBuddyResumeKey_${currentUser.id}`, resumeKey);
           }
         } catch (e) {
           console.error("Error parsing user state", e);
@@ -973,7 +978,7 @@ const App: React.FC = () => {
 
         {/* Breadcrumb Navigation / Header */}
         <div className="flex-1 flex flex-col min-h-0 w-full overflow-hidden h-full">
-          <header className="flex items-center gap-4 px-4 py-3 bg-[#e2e8f0] dark:bg-[#0a0e14] border-b border-slate-200 dark:border-slate-800 lg:hidden sticky top-0 z-50">
+          <header className="flex items-center gap-4 px-4 py-3 bg-[#e2e8f0] dark:bg-[#0a0e14] border-b border-slate-200 dark:border-slate-800 lg:hidden fixed top-0 left-0 right-0 z-50">
             <button
               onClick={() => setIsMobileMenuOpen(true)}
               className="w-12 h-12 flex items-center justify-center text-slate-500 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
@@ -992,7 +997,7 @@ const App: React.FC = () => {
             <Breadcrumb items={getBreadcrumbItems()} />
           </div>
 
-          <main className="flex-1 overflow-y-auto bg-slate-50/50 dark:bg-transparent scroll-smooth relative">
+          <main className="flex-1 overflow-y-auto bg-slate-50/50 dark:bg-transparent scroll-smooth relative pt-[73px] lg:pt-0">
             {renderContent()}
 
             {activeAchievement && (
