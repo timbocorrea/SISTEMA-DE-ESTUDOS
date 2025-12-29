@@ -549,7 +549,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
             {/* Coluna Direita: Materials/Buddy/Notes */}
             <div className="w-full lg:w-[340px] flex-shrink-0">
-                <div className="sticky top-8 space-y-6 h-fit self-start">
+                <div className="sticky top-8 space-y-6 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:pr-2 scrollbar-thin">
 
                     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-1 flex">
                         <button
