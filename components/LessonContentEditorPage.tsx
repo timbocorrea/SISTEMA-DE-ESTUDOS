@@ -115,8 +115,8 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
     const [hoveredBlockIndex, setHoveredBlockIndex] = useState<number | null>(null);
     const [showMediaMenu, setShowMediaMenu] = useState(false);
     const [mediaMenuIndex, setMediaMenuIndex] = useState<number | null>(null);
-    const [showSpacingMenu, setShowSpacingMenu] = useState(false);
-    const [spacingMenuIndex, setSpacingMenuIndex] = useState<number | null>(null);
+    const [currentFontSize, setCurrentFontSize] = useState<string>('14');
+
 
     // Controle de tamanho de mídia
     const [selectedMedia, setSelectedMedia] = useState<HTMLElement | null>(null);
@@ -584,6 +584,48 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
         if (document.queryCommandState('insertOrderedList')) formats.push('insertOrderedList');
 
         setActiveFormats(formats);
+
+        // Detectar tamanho da fonte
+        const selection = window.getSelection();
+        if (selection && selection.anchorNode) {
+            let element = (selection.anchorNode.nodeType === 3
+                ? selection.anchorNode.parentElement
+                : selection.anchorNode) as HTMLElement;
+
+            if (element) {
+                // Estratégia de varredura manual: subir a árvore procurando style.fontSize inline
+                let current = element;
+                let foundInlineSize = null;
+
+                // Subir até encontrar o bloco raiz ou o editor
+                while (current && current.nodeType === 1 && !current.classList?.contains('lesson-block-content') && current !== editorRef.current) {
+                    // 1. Checar estilo inline direto (mais confiável para nossos spans gerados)
+                    if (current.style && current.style.fontSize) {
+                        foundInlineSize = current.style.fontSize;
+                        break;
+                    }
+
+                    current = current.parentElement as HTMLElement;
+                }
+
+                if (foundInlineSize) {
+                    const size = parseInt(foundInlineSize);
+                    if (!isNaN(size)) {
+                        setCurrentFontSize(size.toString());
+                        return;
+                    }
+                }
+
+                // Fallback: Computed Style
+                const computed = window.getComputedStyle(element).fontSize;
+                if (computed && computed.endsWith('px')) {
+                    const px = parseFloat(computed);
+                    // Conversão padrão aproximada: 1pt = 1.333px
+                    const pt = Math.round(px * 0.75);
+                    setCurrentFontSize(pt.toString());
+                }
+            }
+        }
     };
 
     const handleSave = async () => {
@@ -2171,31 +2213,16 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                             >
                                                 <div className="absolute inset-x-0 h-px bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-700 to-transparent opacity-0 group-hover/add:opacity-100 transition-opacity"></div>
 
-                                                {/* Bot\u00e3o \"+\" */}
+                                                {/* Botão "+" */}
                                                 <button
                                                     onClick={() => {
                                                         setMediaMenuIndex(index);
                                                         setShowMediaMenu(!showMediaMenu);
-                                                        setShowSpacingMenu(false); // Fechar menu de espaçamento
                                                     }}
                                                     className={`relative z-10 w-8 h-8 rounded-full bg-white dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 text-slate-400 dark:text-slate-500 hover:border-indigo-500 hover:text-indigo-600 hover:scale-110 shadow-lg transition-all duration-200 ${hoveredBlockIndex === index ? 'opacity-100 scale-100' : 'opacity-0 scale-75 pointer-events-none'
                                                         }`}
                                                 >
                                                     <i className="fas fa-plus text-xs"></i>
-                                                </button>
-
-                                                {/* Botão de Espaçamento - ao lado do botão "+" */}
-                                                <button
-                                                    onClick={() => {
-                                                        setSpacingMenuIndex(index);
-                                                        setShowSpacingMenu(!showSpacingMenu);
-                                                        setShowMediaMenu(false); // Fechar menu de multimídia
-                                                    }}
-                                                    className={`relative z-10 w-8 h-8 rounded-full bg-white dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 text-slate-400 dark:text-slate-500 hover:border-purple-500 hover:text-purple-600 hover:scale-110 shadow-lg transition-all duration-200 ml-2 ${hoveredBlockIndex === index ? 'opacity-100 scale-100' : 'opacity-0 scale-75 pointer-events-none'
-                                                        }`}
-                                                    title="Configurar espaçamento"
-                                                >
-                                                    <i className="fas fa-arrows-alt-v text-xs"></i>
                                                 </button>
 
                                                 {/* Botão de Adicionar Bloco - ao lado do botão de espaçamento */}
@@ -2246,38 +2273,6 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                                             <i className="fas fa-video w-4"></i>
                                                             <span>Inserir Vídeo</span>
                                                         </button>
-                                                    </div>
-                                                )}
-
-                                                {/* Menu Popup - Espaçamento */}
-                                                {showSpacingMenu && spacingMenuIndex === index && (
-                                                    <div className="absolute top-10 left-1/2 -translate-x-1/2 z-50 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 p-2 min-w-[180px] animate-in fade-in slide-in-from-top-2 duration-200">
-                                                        {[
-                                                            { value: 0, label: 'Sem Espaço' },
-                                                            { value: 4, label: 'Pequeno' },
-                                                            { value: 8, label: 'Normal' },
-                                                            { value: 12, label: 'Médio' },
-                                                            { value: 16, label: 'Grande' },
-                                                            { value: 24, label: 'Enorme' }
-                                                        ].map(option => (
-                                                            <button
-                                                                key={option.value}
-                                                                onClick={() => {
-                                                                    updateBlock(block.id, { spacing: option.value });
-                                                                    setShowSpacingMenu(false);
-                                                                }}
-                                                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium transition-colors ${block.spacing === option.value
-                                                                    ? 'bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400'
-                                                                    : 'text-slate-700 dark:text-slate-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 hover:text-purple-600'
-                                                                    }`}
-                                                            >
-                                                                <i className="fas fa-arrows-alt-v w-4 text-xs"></i>
-                                                                <span>{option.label}</span>
-                                                                {block.spacing === option.value && (
-                                                                    <i className="fas fa-check ml-auto text-xs"></i>
-                                                                )}
-                                                            </button>
-                                                        ))}
                                                     </div>
                                                 )}
                                             </div>
@@ -2417,7 +2412,49 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                                                     type="number"
                                                                     min="8"
                                                                     max="72"
-                                                                    defaultValue="14"
+                                                                    value={currentFontSize}
+                                                                    onChange={(e) => {
+                                                                        const target = e.target;
+                                                                        const newVal = target.value;
+                                                                        setCurrentFontSize(newVal);
+
+                                                                        const size = parseInt(newVal);
+                                                                        if (size >= 8 && size <= 72 && activeEditableElement) {
+                                                                            // 1. Restaurar seleção anterior para aplicar no lugar certo
+                                                                            restoreSelection();
+
+                                                                            const selection = window.getSelection();
+
+                                                                            // 2. Se seleção inválida ou apenas cursor, selecionar todo o bloco para feedback visual imediato
+                                                                            if (!selection || selection.isCollapsed || !activeEditableElement.contains(selection.anchorNode)) {
+                                                                                const range = document.createRange();
+                                                                                range.selectNodeContents(activeEditableElement);
+                                                                                selection?.removeAllRanges();
+                                                                                selection?.addRange(range);
+                                                                            }
+
+                                                                            // 3. Aplicar Tamanho
+                                                                            document.execCommand('fontSize', false, '7');
+
+                                                                            // 4. Substituir <font> legado por <span> com estilo pt exato
+                                                                            const fontElements = activeEditableElement.querySelectorAll('font[size="7"]');
+                                                                            fontElements.forEach(font => {
+                                                                                const span = document.createElement('span');
+                                                                                span.style.fontSize = `${size}pt`;
+                                                                                span.innerHTML = font.innerHTML;
+                                                                                font.parentNode?.replaceChild(span, font);
+                                                                            });
+
+                                                                            // 5. Persistir no estado do componente pai
+                                                                            updateBlock(block.id, { text: activeEditableElement.innerHTML });
+
+                                                                            // 6. Atualizar a referência de seleção salva (pois o DOM mudou) e devolver foco ao input
+                                                                            saveSelection();
+                                                                            setTimeout(() => {
+                                                                                target.focus();
+                                                                            }, 0);
+                                                                        }
+                                                                    }}
                                                                     onMouseDown={(e) => {
                                                                         // Salvar seleção antes do input receber foco
                                                                         saveSelection();
