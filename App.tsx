@@ -59,6 +59,21 @@ const App: React.FC = () => {
   const [contentTheme, setContentTheme] = useState<'light' | 'dark'>('light'); // Estado para tema do conteúdo da aula
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // Estado para menu mobile
 
+  // History State Interface
+  interface HistoryState {
+    view: string;
+    courseId?: string;
+    moduleId?: string;
+    lessonId?: string;
+    filePath?: string;
+  }
+
+  // Helper to push state to history
+  const pushHistoryState = (state: HistoryState) => {
+    window.history.pushState(state, '', '');
+  };
+
+
   // Estados do modal de inscrição
   const [selectedCourseForEnrollment, setSelectedCourseForEnrollment] = useState<Course | null>(null);
   const [isEnrollmentModalOpen, setIsEnrollmentModalOpen] = useState(false);
@@ -81,13 +96,72 @@ const App: React.FC = () => {
   });
 
   const [fileSystemPath, setFileSystemPath] = useState('');
+
+  // Handle Popstate (Back Button)
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      const state = event.state as HistoryState;
+      if (!state) {
+        // Fallback to default/initial state if no state exists (e.g. initial load)
+        setActiveView('dashboard');
+        return;
+      }
+
+      setActiveView(state.view);
+
+      if (state.view === 'files') {
+        setFileSystemPath(state.filePath || '');
+        return;
+      }
+
+      if (state.courseId) {
+        const foundCourse = availableCourses.find(c => c.id === state.courseId) || enrolledCourses.find(c => c.id === state.courseId);
+        if (foundCourse) {
+          setCourse(foundCourse);
+
+          if (state.moduleId) {
+            const foundModule = foundCourse.modules.find(m => m.id === state.moduleId);
+            setActiveModule(foundModule || null);
+          } else {
+            setActiveModule(null);
+          }
+
+          if (state.lessonId && state.moduleId) {
+            const foundModule = foundCourse.modules.find(m => m.id === state.moduleId);
+            const foundLesson = foundModule?.lessons.find(l => l.id === state.lessonId);
+            setCurrentLesson(foundLesson || null);
+          } else {
+            setCurrentLesson(null);
+          }
+        }
+      } else {
+        setCourse(null);
+        setCurrentLesson(null);
+        setActiveModule(null);
+      }
+
+      // Handle other views if necessary
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    // Replace initial state on load to ensure we have a base state to return to
+    if (!window.history.state) {
+      window.history.replaceState({ view: 'dashboard' }, '', '');
+    }
+
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [availableCourses, enrolledCourses]);
+
   const [initialBuddyMessage, setInitialBuddyMessage] = useState<string | undefined>(undefined);
+
   const [userHistory, setUserHistory] = useState<string[]>([]);
 
   // Function to handle file navigation from sidebar
   const handleNavigateFile = (path: string) => {
     setFileSystemPath(path);
     setActiveView('files');
+    pushHistoryState({ view: 'files', filePath: path });
     // Close mobile menu if open
     setIsMobileMenuOpen(false);
   };
@@ -248,7 +322,10 @@ const App: React.FC = () => {
     items.push({
       label: 'Painel',
       icon: 'fas fa-home',
-      onClick: () => setActiveView('dashboard')
+      onClick: () => {
+        setActiveView('dashboard');
+        pushHistoryState({ view: 'dashboard' });
+      }
     });
 
     // Adicionar itens baseado na view
@@ -284,8 +361,9 @@ const App: React.FC = () => {
         icon: 'fas fa-graduation-cap',
         onClick: () => {
           setCurrentLesson(null);
-          setActiveModule(null);
+          pushHistoryState({ view: 'lesson', courseId: course.id, moduleId: activeModule?.id }); // Keep module if active, or just course
         }
+
       });
 
       if (activeModule) {
@@ -340,6 +418,8 @@ const App: React.FC = () => {
       setCourse(selected);
       setActiveModule(null);
       setCurrentLesson(null);
+
+      pushHistoryState({ view: 'lesson', courseId: selected.id });
     }
     setLessonSidebarTab('materials');
     setActiveView('lesson');
@@ -351,6 +431,7 @@ const App: React.FC = () => {
     setActiveModule(mod);
     setCurrentLesson(null);
     setLessonSidebarTab('materials');
+    pushHistoryState({ view: 'lesson', courseId: course.id, moduleId: moduleId });
   };
 
   const handleSelectLesson = (lesson: Lesson) => {
@@ -358,12 +439,27 @@ const App: React.FC = () => {
     setLessonSidebarTab('materials');
     if (course) {
       addToHistory(`Abriu a aula "${lesson.title}" [ID_CURSO:${course.id}|ID_AULA:${lesson.id}]`);
+
+      // We need to know the module for this lesson to store it correctly history
+      // Assuming activeModule is set, or we find it.
+      let moduleId = activeModule?.id;
+      if (!moduleId) {
+        moduleId = course.modules.find(m => m.lessons.some(l => l.id === lesson.id))?.id;
+      }
+
+      pushHistoryState({
+        view: 'lesson',
+        courseId: course.id,
+        moduleId: moduleId,
+        lessonId: lesson.id
+      });
     }
   };
 
   const handleManageCourse = (courseId: string) => {
     setAdminSelection({ courseId });
     setActiveView('content');
+    pushHistoryState({ view: 'content' }); // We could store adminSelection too if needed
   };
 
 
@@ -681,7 +777,7 @@ const App: React.FC = () => {
         return currentUser.role === 'INSTRUCTOR' ? (
           <FileManagement
             path={fileSystemPath}
-            onPathChange={setFileSystemPath}
+            onPathChange={handleNavigateFile}
           />
         ) : <div className="p-8">Acesso negado.</div>;
 
@@ -945,6 +1041,7 @@ const App: React.FC = () => {
           activeView={activeView}
           onViewChange={(view, keepMobileOpen = false) => {
             setActiveView(view);
+            pushHistoryState({ view });
             if (!keepMobileOpen) setIsMobileMenuOpen(false);
           }}
           onLogout={handleLogout}
