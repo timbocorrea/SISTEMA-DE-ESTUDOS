@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { GoogleGenAI } from '@google/genai';
+// Google SDK removed in favor of direct REST API for better compatibility
 
 interface GeminiBuddyProps {
   currentContext?: string; // Conteúdo da aula (opcional)
@@ -89,6 +89,12 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
   useEffect(() => {
     if (!apiKey) return;
 
+    // Log masked key for verification (first 8 + last 4 chars)
+    const maskedKey = apiKey.length > 12
+      ? `${apiKey.substring(0, 8)}...${apiKey.substring(apiKey.length - 4)}`
+      : apiKey.substring(0, 4) + '...';
+    console.log(`🔑 [GeminiBuddy] API Key in use: ${maskedKey}`);
+
     if (apiKey.startsWith('sk-')) {
       setProvider('openai');
       setActiveModel('gpt-3.5-turbo');
@@ -112,41 +118,51 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
     }
 
     setProvider('google');
-    // Google Auto-detect logic
+    // Google Auto-detect logic via REST
     const findBestModel = async () => {
       try {
-        const ai = new GoogleGenAI({ apiKey });
-        // @ts-ignore
-        const result = await ai.models.list();
-        const textResult = result as any;
-        const models = textResult.models || textResult || [];
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+        if (!response.ok) throw new Error(`List Error: ${response.status} ${response.statusText}`);
+
+        const data = await response.json();
+        const models = data.models || [];
 
         const availableNames = Array.isArray(models)
           ? models.map((m: any) => (m.name || '').replace('models/', ''))
           : [];
 
         setDebugInfo(`Found: ${availableNames.join(', ')}`);
+        console.log('Gemini Models Found:', availableNames);
 
         // Priority list
         const candidates = [
+          'gemini-flash-latest',
           'gemini-1.5-flash',
           'gemini-1.5-flash-001',
+          'gemini-1.5-flash-8b',
           'gemini-1.5-pro',
           'gemini-1.5-pro-001',
           'gemini-pro',
-          'gemini-1.0-pro'
+          'gemini-pro-latest',
+          'gemini-1.0-pro',
+          'gemini-2.0-flash-exp',
+          'gemini-2.0-flash'
         ];
 
         const best = candidates.find(c => availableNames.includes(c));
 
         if (best) {
+          console.log('Gemini: Selected Best Model:', best);
           setActiveModel(best);
         } else {
+          // If no preferred model found but API works, keep default or pick first gemini
           const fallback = availableNames.find((n: string) => n.includes('gemini'));
           if (fallback) setActiveModel(fallback);
         }
       } catch (e) {
-        setDebugInfo(`List Error: ${(e as Error).message}`);
+        const msg = (e as Error).message;
+        console.error('Gemini Model List Error:', msg);
+        setDebugInfo(`List Error: ${msg} (Using default)`);
       }
     };
 
@@ -290,15 +306,27 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
         setMessages(prev => [...prev, { role: 'ai', text: aiResponse, action }]);
 
       } else {
-        // Google Gemini
-        const ai = new GoogleGenAI({ apiKey: apiKey! });
-        const response = await ai.models.generateContent({
-          model: activeModel,
-          contents: `Contexto: ${fullContext}\n\nDúvida: ${userMessage}`,
-          config: { systemInstruction }
+        // Google Gemini via REST API
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{
+              parts: [{ text: `Contexto: ${fullContext}\n\nDúvida: ${userMessage}` }]
+            }],
+            systemInstruction: {
+              parts: [{ text: systemInstruction }]
+            }
+          })
         });
 
-        let aiResponse = response.text || "Sem resposta.";
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error?.message || `Erro Google: ${response.status}`);
+        }
+
+        let aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "Sem resposta.";
 
         // Parse [[RESUME:courseId:lessonId]] action
         const actionMatch = aiResponse.match(/\[\[RESUME:(.+?):(.+?)\]\]/);
