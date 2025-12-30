@@ -6,6 +6,7 @@ import QuizEditor from './QuizEditor';
 import { LessonRequirementsEditor } from './LessonRequirementsEditor';
 import { Quiz, QuizQuestion, QuizOption } from '../domain/quiz-entities';
 import { SupabaseCourseRepository } from '../repositories/SupabaseCourseRepository'; // Ajuste conforme necessário recuperando do context
+import { marked } from 'marked'; // Para conversão de Markdown para HTML
 
 
 // Componente para gerenciar edição de bloco individual
@@ -895,6 +896,32 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
         await importDocFile(file);
     };
 
+    // Função para importar arquivos Markdown
+    const importMarkdownFile = async (file: File) => {
+        try {
+            const text = await file.text();
+            const html = await marked.parse(text); // Converte Markdown para HTML
+            const newBlocks = convertHtmlToBlocks(html);
+            setBlocks(prev => [...prev, ...newBlocks]);
+        } catch (error) {
+            console.error('Erro ao importar Markdown:', error);
+            alert('Erro ao processar arquivo Markdown');
+        }
+    };
+
+    // Handler para o input de arquivo Markdown
+    const handleMarkdownFileInput = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        if (file.name.endsWith('.md')) {
+            await importMarkdownFile(file);
+        } else {
+            alert('Por favor, selecione um arquivo .md (Markdown)');
+        }
+    };
+
+
     const handleDocxDrop = async (event: React.DragEvent<HTMLDivElement>) => {
         event.preventDefault();
         setIsDocDragActive(false);
@@ -1018,8 +1045,8 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
             }
 
             // 5. Validar limite máximo de blocos
-            if (incomingBlocks.length > 1000) {
-                throw new Error(`Arquivo contém muitos blocos (${incomingBlocks.length}). Máximo permitido: 1000`);
+            if (incomingBlocks.length > 5000) {
+                throw new Error(`Arquivo contém muitos blocos (${incomingBlocks.length}). Máximo permitido: 5000`);
             }
 
             // 6. Validar estrutura de cada bloco
@@ -2002,12 +2029,26 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                     >
                                         <i className="fas fa-download"></i> Exportar JSON
                                     </button>
+                                    <button
+                                        onClick={() => document.getElementById('markdown-upload')?.click()}
+                                        className="px-3 py-2 rounded-lg bg-purple-600 text-white text-xs font-semibold flex items-center gap-2 hover:bg-purple-700 transition-colors"
+                                    >
+                                        <i className="fab fa-markdown"></i> .md
+                                    </button>
                                     <input
+
                                         ref={jsonUploadInputRef}
                                         type="file"
                                         accept="application/json"
                                         className="hidden"
                                         onChange={handleJsonFileInput}
+                                    />
+                                    <input
+                                        id="markdown-upload"
+                                        type="file"
+                                        accept=".md"
+                                        className="hidden"
+                                        onChange={handleMarkdownFileInput}
                                     />
                                 </div>
                             </div>
