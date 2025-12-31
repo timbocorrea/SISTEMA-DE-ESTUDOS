@@ -4,15 +4,18 @@ import { Lesson } from '../domain/entities';
 
 interface VideoPlayerProps {
   lesson: Lesson;
+  videoUrl?: string; // Allow parent to override which video to display
   onProgress: (watchedSeconds: number) => void;
 }
 
-const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, onProgress }) => {
+const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, videoUrl, onProgress }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const duration = lesson.durationSeconds || 1;
   const showManualComplete = Boolean((import.meta as any)?.env?.DEV);
+
+  const currentVideoUrl = videoUrl || lesson.videoUrl; // Use provided videoUrl or fallback to lesson.videoUrl
 
   useEffect(() => {
     if (videoRef.current) {
@@ -56,7 +59,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, onProgress }) => {
     }
   };
 
-  const isYoutube = lesson.videoUrl?.includes('youtube.com') || lesson.videoUrl?.includes('youtu.be');
+  const isYoutube = currentVideoUrl?.includes('youtube.com') || currentVideoUrl?.includes('youtu.be');
 
   const getYoutubeEmbedUrl = (url: string) => {
     // Extrair ID do YouTube
@@ -67,7 +70,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, onProgress }) => {
 
   const progressPercent = Math.min(100, (currentTime / duration) * 100);
 
-  if (!lesson.videoUrl) {
+  if (!currentVideoUrl) {
     return (
       <div className="relative w-full bg-slate-900 rounded-xl overflow-hidden shadow-2xl border border-slate-700 p-8">
         <div className="flex items-center justify-between gap-4">
@@ -93,7 +96,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, onProgress }) => {
       {isYoutube ? (
         <iframe
           className="w-full h-auto aspect-video pointer-events-auto"
-          src={getYoutubeEmbedUrl(lesson.videoUrl)}
+          src={getYoutubeEmbedUrl(currentVideoUrl)}
           title={lesson.title}
           frameBorder="0"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -102,7 +105,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, onProgress }) => {
       ) : (
         <video
           ref={videoRef}
-          src={lesson.videoUrl}
+          src={currentVideoUrl}
           className="w-full h-auto aspect-video"
           onTimeUpdate={handleTimeUpdate}
           onClick={togglePlay}

@@ -200,6 +200,68 @@ export class SupabaseAuthRepository implements IAuthRepository {
     );
   }
 
+  async signInWithGoogle(): Promise<AuthResponse> {
+    const redirectTo = typeof window !== 'undefined' ? window.location.origin : undefined;
+
+    const { data, error } = await this.client.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        }
+      }
+    });
+
+    if (error) {
+      return { success: false, message: error.message || 'Erro ao iniciar login com Google.' };
+    }
+
+    // O OAuth redireciona, então não temos sessão imediata aqui
+    // A resposta de sucesso apenas indica que o redirect foi iniciado
+    return { success: true, message: 'Redirecionando para Google...' };
+  }
+
+  async handleOAuthCallback(): Promise<AuthResponse> {
+    // Após o redirect do OAuth, o Supabase processa automaticamente o hash
+    const { data, error } = await this.client.auth.getSession();
+
+    if (error || !data?.session || !data.session.user) {
+      return { success: false, message: error?.message || 'Erro ao processar login com Google.' };
+    }
+
+    const supabaseUser = data.session.user;
+    const sessionId = this.generateSessionId();
+
+    // Criar/atualizar perfil do usuário OAuth
+    const profile = await this.upsertProfile(
+      supabaseUser.id,
+      supabaseUser.email || '',
+      supabaseUser.user_metadata?.full_name || supabaseUser.user_metadata?.name || supabaseUser.email
+    );
+
+    // Atualizar last_session_id
+    await this.client
+      .from('profiles')
+      .update({ last_session_id: sessionId })
+      .eq('id', supabaseUser.id);
+
+    return {
+      success: true,
+      data: this.buildSession(
+        supabaseUser.id,
+        profile.email || supabaseUser.email || '',
+        profile.name || supabaseUser.user_metadata?.full_name || supabaseUser.email || '',
+        profile.role || 'STUDENT',
+        data.session.access_token,
+        sessionId,
+        profile.xp_total,
+        profile.current_level
+      )
+    };
+  }
+
   async logout(): Promise<void> {
     const { data: { user } } = await this.client.auth.getUser();
     if (user) {

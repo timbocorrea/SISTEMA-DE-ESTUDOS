@@ -556,7 +556,7 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
                     <div className="min-w-0">
                       <p className="text-sm font-black text-slate-800 dark:text-white truncate">{lesson.title}</p>
                       <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">
-                        Posicao: {lesson.position ?? 0} • Duracao: {(lesson.duration_seconds ?? 0).toLocaleString()}s
+                        Posicao: {lesson.position ?? 0}
                       </p>
                       <p className="text-[10px] text-slate-400 mt-2 truncate">Video: {lesson.video_url || '-'}</p>
                     </div>
@@ -593,24 +593,7 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
                           placeholder="Titulo"
                           className="w-full bg-white dark:bg-[#0a0e14] border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-slate-700 dark:text-slate-200 text-sm outline-none"
                         />
-                        <input
-                          value={activeLesson.video_url || ''}
-                          onChange={e => setActiveLesson({ ...activeLesson, video_url: e.target.value })}
-                          placeholder="URL do video"
-                          className="w-full bg-white dark:bg-[#0a0e14] border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-slate-700 dark:text-slate-200 text-sm outline-none"
-                        />
-                        <input
-                          value={activeLesson.audio_url || ''}
-                          onChange={e => setActiveLesson({ ...activeLesson, audio_url: e.target.value })}
-                          placeholder="URL do audio (opcional)"
-                          className="w-full bg-white dark:bg-[#0a0e14] border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-slate-700 dark:text-slate-200 text-sm outline-none"
-                        />
-                        <input
-                          value={activeLesson.image_url || ''}
-                          onChange={e => setActiveLesson({ ...activeLesson, image_url: e.target.value })}
-                          placeholder="URL da imagem (opcional)"
-                          className="w-full bg-white dark:bg-[#0a0e14] border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-slate-700 dark:text-slate-200 text-sm outline-none"
-                        />
+
                         <input
                           value={activeLesson.position ?? 0}
                           onChange={e => setActiveLesson({ ...activeLesson, position: Number(e.target.value) })}
@@ -619,14 +602,7 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
                           placeholder="Posicao"
                           className="w-full bg-white dark:bg-[#0a0e14] border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-slate-700 dark:text-slate-200 text-sm outline-none"
                         />
-                        <input
-                          value={activeLesson.duration_seconds ?? 0}
-                          onChange={e => setActiveLesson({ ...activeLesson, duration_seconds: Number(e.target.value) })}
-                          type="number"
-                          min={0}
-                          placeholder="Duracao (s)"
-                          className="w-full bg-white dark:bg-[#0a0e14] border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-slate-700 dark:text-slate-200 text-sm outline-none"
-                        />
+
                       </div>
 
                       {/* Botão para abrir editor de conteúdo */}
@@ -656,114 +632,12 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
                         </button>
                       </div>
 
-                      <div className="mt-4 border-t border-slate-200 dark:border-slate-800 pt-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <h5 className="text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest">Materiais da aula</h5>
-                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                            {(lessonResources[lesson.id]?.length || 0).toString()}
-                          </span>
-                        </div>
-
-                        {/* Formulário de Upload de Recursos */}
-                        <ResourceUploadForm
-                          onSubmit={async (data) => {
-                            await adminService.createLessonResource(lesson.id, {
-                              title: data.title,
-                              resourceType: data.resourceType,
-                              url: data.url,
-                              position: newResourcePosition
-                            });
-                            await refreshLessonResources(lesson.id);
-                          }}
-                          isLoading={busy}
-                        />
-
-                        <div className="space-y-2">
-                          {(lessonResources[lesson.id] || []).map(resource => {
-                            const isEditing = editingResourceId === resource.id;
-
-                            return (
-                              <div
-                                key={resource.id}
-                                className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm text-slate-700 dark:text-slate-200"
-                              >
-                                <div className="min-w-0 flex-1">
-                                  {isEditing ? (
-                                    <input
-                                      value={editingResourceTitle}
-                                      onChange={e => setEditingResourceTitle(e.target.value)}
-                                      onKeyDown={e => {
-                                        if (e.key === 'Enter') {
-                                          handleUpdateResource(resource.id, lesson.id);
-                                        } else if (e.key === 'Escape') {
-                                          setEditingResourceId(null);
-                                          setEditingResourceTitle('');
-                                        }
-                                      }}
-                                      autoFocus
-                                      className="w-full bg-white dark:bg-[#0a0e14] border border-indigo-300 dark:border-indigo-700 rounded-lg px-2 py-1 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500"
-                                      placeholder="Nome do material"
-                                    />
-                                  ) : (
-                                    <p className="font-semibold truncate">{resource.title}</p>
-                                  )}
-                                  <p className="text-[10px] text-slate-500 uppercase tracking-widest">
-                                    {resource.resource_type} • Posicao: {resource.position ?? 0}
-                                  </p>
-                                  <p className="text-[10px] text-slate-500 truncate">URL: {resource.url}</p>
-                                </div>
-
-                                <div className="flex items-center gap-1 flex-shrink-0">
-                                  {isEditing ? (
-                                    <>
-                                      <button
-                                        onClick={() => handleUpdateResource(resource.id, lesson.id)}
-                                        disabled={busy}
-                                        className="p-2 text-green-500 hover:text-green-600 disabled:opacity-50 transition-colors"
-                                        title="Salvar"
-                                      >
-                                        <i className="fas fa-check"></i>
-                                      </button>
-                                      <button
-                                        onClick={() => {
-                                          setEditingResourceId(null);
-                                          setEditingResourceTitle('');
-                                        }}
-                                        className="p-2 text-slate-400 hover:text-slate-600 transition-colors"
-                                        title="Cancelar"
-                                      >
-                                        <i className="fas fa-times"></i>
-                                      </button>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <button
-                                        onClick={() => {
-                                          setEditingResourceId(resource.id);
-                                          setEditingResourceTitle(resource.title);
-                                        }}
-                                        className="p-2 text-slate-400 hover:text-indigo-500 transition-colors"
-                                        title="Editar nome"
-                                      >
-                                        <i className="fas fa-pen"></i>
-                                      </button>
-                                      <button
-                                        onClick={() => handleDeleteResource(lesson.id, resource.id)}
-                                        className="p-2 text-slate-400 hover:text-red-500 transition-colors"
-                                        title="Excluir material"
-                                      >
-                                        <i className="fas fa-trash"></i>
-                                      </button>
-                                    </>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-                          {(lessonResources[lesson.id] || []).length === 0 && (
-                            <div className="text-[12px] text-slate-400 text-center py-2">Nenhum material adicionado.</div>
-                          )}
-                        </div>
+                      {/* Formulário de Upload de Recursos removido - agora apenas no Editor de Conteúdo */}
+                      <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 text-center border border-dashed border-slate-300 dark:border-slate-700">
+                        <p className="text-xs text-slate-500 font-medium">
+                          Gerencie os materiais desta aula através do <br />
+                          <span className="text-indigo-500 font-bold">Editor de Conteúdo da Aula</span>
+                        </p>
                       </div>
                     </div>
                   )}
@@ -772,8 +646,9 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
               {lessons.length === 0 && <div className="p-6 text-center text-sm text-slate-400">Nenhuma aula para este modulo.</div>}
             </div>
           </div>
-        )}
-      </div>
+        )
+        }
+      </div >
     );
   };
   const renderModuleList = (course: CourseRecord) => {

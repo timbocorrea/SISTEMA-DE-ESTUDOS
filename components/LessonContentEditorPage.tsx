@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createSupabaseClient } from '../services/supabaseClient';
-import { LessonRecord } from '../domain/admin';
+import { LessonRecord, LessonResourceRecord } from '../domain/admin';
+import ResourceUploadForm from './ResourceUploadForm';
+import { SupabaseAdminRepository } from '../repositories/SupabaseAdminRepository';
 import { LessonResource } from '../domain/entities';
 import QuizEditor from './QuizEditor';
 import { LessonRequirementsEditor } from './LessonRequirementsEditor';
@@ -128,7 +130,16 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
     // Metadata State
     const [title, setTitle] = useState(lesson.title);
-    const [videoUrl, setVideoUrl] = useState(lesson.video_url || '');
+    const [videoUrls, setVideoUrls] = useState<{ url: string; title: string }[]>(() => {
+        // Initialize from video_urls if available, otherwise create from video_url for backward compatibility
+        if (lesson.video_urls && lesson.video_urls.length > 0) {
+            return lesson.video_urls;
+        } else if (lesson.video_url) {
+            return [{ url: lesson.video_url, title: 'Vídeo Principal' }];
+        }
+        return [];
+    });
+    const [audioUrl, setAudioUrl] = useState(lesson.audio_url || '');
     const [durationSeconds, setDurationSeconds] = useState(lesson.duration_seconds || 0);
     const [imageUrl, setImageUrl] = useState(lesson.image_url || '');
 
@@ -155,6 +166,11 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
     const [showRequirementsEditor, setShowRequirementsEditor] = useState(false);
     const [lessonRequirements, setLessonRequirements] = useState<import('../domain/lesson-requirements').LessonProgressRequirements | null>(null);
     const [loadingRequirements, setLoadingRequirements] = useState(false);
+
+    // Quiz Management Modal State
+    const [showQuizManagementModal, setShowQuizManagementModal] = useState(false);
+    const [showMaterialModal, setShowMaterialModal] = useState(false);
+
 
     // Bulk Creation State
     const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
@@ -397,10 +413,17 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
         setBlocks(lesson.content_blocks || []);
         setTitle(lesson.title);
-        setVideoUrl(lesson.video_url || '');
+        // Update videoUrls from lesson data
+        if (lesson.video_urls && lesson.video_urls.length > 0) {
+            setVideoUrls(lesson.video_urls);
+        } else if (lesson.video_url) {
+            setVideoUrls([{ url: lesson.video_url, title: 'Vídeo Principal' }]);
+        } else {
+            setVideoUrls([]);
+        }
         setDurationSeconds(lesson.duration_seconds || 0);
         setImageUrl(lesson.image_url || '');
-    }, [lesson.id, lesson.content_blocks]); // Recarrega quando ID OU content_blocks mudarem
+    }, [lesson.id, lesson.content_blocks, lesson.video_urls, lesson.video_url]); // Recarrega quando ID, blocos ou vídeos mudarem
 
     // Detectar cliques em imagens e vídeos nos blocos
     useEffect(() => {
@@ -467,7 +490,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
             clearInterval(autoSaveInterval);
             console.log('🛑 Auto-save desativado');
         };
-    }, [blocks, title, videoUrl, durationSeconds, imageUrl]); // Dependências para recriar intervalo quando dados mudarem
+    }, [blocks, title, videoUrls, durationSeconds, imageUrl]); // Dependências para recriar intervalo quando dados mudarem
 
     // Função para redimensionar mídia
     const resizeMedia = (size: string) => {
@@ -644,13 +667,24 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
             console.log('🔍 SALVANDO - Total de blocos:', normalizedBlocks.length);
             console.log('🔍 SALVANDO - Blocos normalizados:', JSON.stringify(normalizedBlocks, null, 2));
 
-            await onSave(htmlContent, {
+            // Debug: verificar videoUrls
+            console.log('🎬 SALVANDO - videoUrls state:', videoUrls);
+            console.log('🎬 SALVANDO - videoUrls length:', videoUrls.length);
+            console.log('🎬 SALVANDO - primeiro vídeo:', videoUrls.length > 0 ? videoUrls[0] : 'NENHUM');
+
+            const metadataToSave = {
                 title,
-                video_url: videoUrl,
+                video_url: videoUrls.length > 0 ? videoUrls[0].url : null, // First video for backward compatibility
+                video_urls: videoUrls, // All videos
+                audio_url: audioUrl,
                 duration_seconds: Number(durationSeconds),
                 image_url: imageUrl,
                 content_blocks: normalizedBlocks
-            });
+            };
+
+            console.log('📤 SALVANDO - Metadata completa:', JSON.stringify(metadataToSave, null, 2));
+
+            await onSave(htmlContent, metadataToSave);
 
             console.log('✅ Salvamento concluído com sucesso!');
         } catch (error) {
@@ -816,10 +850,10 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
             return;
         }
 
-        // Validar tamanho do arquivo (máximo 5MB)
-        const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+        // Validar tamanho do arquivo (máximo 20MB)
+        const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
         if (file.size > MAX_FILE_SIZE) {
-            setDocImportError('Documento muito grande. Tamanho máximo: 5MB');
+            setDocImportError('Documento muito grande. Tamanho máximo: 20MB');
             if (docUploadInputRef.current) docUploadInputRef.current.value = '';
             return;
         }
@@ -1656,6 +1690,26 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
         </button>
     );
 
+    const handleSaveResource = async (data: { title: string; resourceType: LessonResourceRecord['resource_type']; url: string }) => {
+        if (!lesson.id) return;
+        try {
+            const repo = new SupabaseAdminRepository();
+            await repo.createLessonResource(lesson.id, {
+                title: data.title,
+                resourceType: data.resourceType,
+                url: data.url,
+                position: ((lesson as any).resources?.length || 0) + 1
+            });
+
+            alert('Material adicionado com sucesso!');
+            setShowMaterialModal(false);
+            window.location.reload();
+        } catch (error) {
+            console.error('Erro ao salvar material:', error);
+            alert('Erro ao salvar material.');
+        }
+    };
+
     const Divider = () => (
         <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-2"></div>
     );
@@ -1690,108 +1744,27 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                         {/* Botões de ação */}
                         <div className="flex items-center gap-6">
 
-                            {/* 1. Botão de Quiz - Criar ou Editar */}
-                            {!loadingQuiz && (
-                                <button
-                                    onClick={() => setShowQuizEditor(true)}
-                                    className="h-9 px-3 rounded-lg font-semibold transition-all active:scale-95 flex items-center gap-1.5 text-[10px] uppercase bg-purple-600 text-white border border-transparent hover:bg-purple-700 dark:bg-transparent dark:border-purple-500 dark:text-purple-400 dark:hover:bg-purple-500/20 dark:hover:border-purple-400"
-                                    title={existingQuiz ? "Editar quiz existente" : "Criar novo quiz para esta aula"}
-                                >
-                                    <i className={`fas ${existingQuiz ? 'fa-edit' : 'fa-plus-circle'} text-[10px]`}></i>
-                                    {existingQuiz ? 'EDITAR QUIZ' : 'Criar'}
-                                </button>
-                            )}
-
-                            {/* 2. Botão de Liberação Manual do Quiz */}
-                            {existingQuiz && !loadingQuiz && (
-                                <button
-                                    onClick={handleToggleQuizRelease}
-                                    disabled={isTogglingRelease}
-                                    className={`h-9 px-3 rounded-lg font-semibold transition-all active:scale-95 flex items-center gap-1.5 text-[10px] uppercase border ${existingQuiz.isManuallyReleased
-                                        ? 'bg-emerald-600 text-white border-transparent hover:bg-emerald-700 dark:bg-transparent dark:border-emerald-500 dark:text-emerald-400 dark:hover:bg-emerald-500/20 dark:hover:border-emerald-400'
-                                        : 'bg-orange-500 text-white border-transparent hover:bg-orange-600 dark:bg-transparent dark:border-orange-500 dark:text-orange-400 dark:hover:bg-orange-500/20 dark:hover:border-orange-400'
-                                        } ${isTogglingRelease ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                    title={existingQuiz.isManuallyReleased
-                                        ? 'Quiz liberado. Clique para bloquear.'
-                                        : 'Quiz bloqueado. Clique para liberar.'}
-                                >
-                                    {isTogglingRelease ? (
-                                        <>
-                                            <i className="fas fa-circle-notch animate-spin text-[10px]"></i>
-                                            <span className="text-[10px]">...</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <i className={`fas ${existingQuiz.isManuallyReleased ? 'fa-lock-open' : 'fa-lock'} text-[10px]`}></i>
-                                            {existingQuiz.isManuallyReleased ? 'QUIZ LIBERADO' : 'QUIZ BLOQUEADO'}
-                                        </>
-                                    )}
-                                </button>
-                            )}
-
-                            {/* 3. Botão Requisitos */}
+                            {/* Botão único para gestão de Quiz */}
                             <button
-                                onClick={async () => {
-                                    setLoadingRequirements(true);
-                                    try {
-                                        const supabase = createSupabaseClient();
-                                        const { data, error } = await supabase
-                                            .from('lesson_progress_requirements')
-                                            .select('*')
-                                            .eq('lesson_id', lesson.id)
-                                            .single();
-
-                                        if (error && error.code !== 'PGRST116') {
-                                            throw error;
-                                        }
-
-                                        setLessonRequirements(data || {
-                                            lesson_id: lesson.id,
-                                            videoRequiredPercent: 80,
-                                            textBlocksRequiredPercent: 80,
-                                            requiredPdfIds: [],
-                                            requiredAudioIds: []
-                                        });
-                                        setShowRequirementsEditor(true);
-                                    } catch (error) {
-                                        console.error('Error loading requirements:', error);
-                                        alert('Erro ao carregar requisitos');
-                                    } finally {
-                                        setLoadingRequirements(false);
-                                    }
-                                }}
-                                disabled={loadingRequirements}
-                                className="h-9 px-3 rounded-lg bg-indigo-600 text-white border border-transparent hover:bg-indigo-700 dark:bg-transparent dark:border-indigo-500 dark:text-indigo-400 dark:hover:bg-indigo-500/20 dark:hover:border-indigo-400 font-semibold transition-all flex items-center gap-2 text-[10px] uppercase disabled:opacity-50"
+                                onClick={() => setShowQuizManagementModal(true)}
+                                className="h-9 px-3 rounded-lg font-semibold transition-all active:scale-95 flex items-center gap-1.5 text-[10px] uppercase bg-purple-600 text-white border border-transparent hover:bg-purple-700 dark:bg-transparent dark:border-purple-500 dark:text-purple-400 dark:hover:bg-purple-500/20 dark:hover:border-purple-400"
+                                title="Gerenciar quiz desta aula"
                             >
-                                <i className={`fas ${loadingRequirements ? 'fa-circle-notch fa-spin' : 'fa-list-check'} text-[10px]`}></i>
-                                REQUISITOS QUIZ
+                                <i className="fas fa-clipboard-question text-[10px]"></i>
+                                QUIZ
                             </button>
 
-                            {/* 4. Botão Em Lote */}
-                            <button
-                                onClick={() => setIsBulkModalOpen(true)}
-                                className="h-9 px-3 rounded-lg bg-slate-600 text-white border border-transparent hover:bg-slate-700 dark:bg-transparent dark:border-slate-400 dark:text-slate-300 dark:hover:bg-slate-400/20 dark:hover:border-slate-300 font-semibold transition-all flex items-center gap-2 text-[10px] uppercase"
-                            >
-                                <i className="fas fa-layer-group text-[10px]"></i>
-                                EM LOTE
-                            </button>
 
-                            {/* 5. Botão Importar DOCX */}
+
+
                             <button
-                                onClick={() => document.getElementById('docx-upload')?.click()}
-                                className="h-9 px-3 rounded-lg bg-teal-600 text-white border border-transparent hover:bg-teal-700 dark:bg-transparent dark:border-teal-500 dark:text-teal-400 dark:hover:bg-teal-500/20 dark:hover:border-teal-400 font-semibold transition-all flex items-center gap-2 text-[10px] uppercase"
+                                onClick={() => setShowMaterialModal(true)}
+                                className="h-9 px-3 rounded-lg font-semibold transition-all active:scale-95 flex items-center gap-1.5 text-[10px] uppercase bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200 dark:bg-transparent dark:border-slate-400 dark:text-slate-300 dark:hover:bg-slate-400/20 dark:hover:border-slate-300"
+                                title="Adicionar material complementar"
                             >
-                                <i className="fas fa-file-word text-[10px]"></i>
-                                IMPORTAR DOCX
+                                <i className="fas fa-paperclip text-[10px]"></i>
+                                Material
                             </button>
-                            <input
-                                id="docx-upload"
-                                type="file"
-                                accept=".docx"
-                                ref={docUploadInputRef}
-                                onChange={handleDocFileInput}
-                                className="hidden"
-                            />
 
                             {/* 6. Botão Salvar */}
                             <button
@@ -1989,54 +1962,65 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                             </div>
                         )}
 
-                        {/* Importaçã o rápida (DOCX ou JSON) */}
+                        {/* Importação rápida (DOCX ou JSON) - Layout em Duas Colunas */}
                         <div
                             className={`mb-4 px-4 py-3 rounded-xl border ${isDocDragActive ? 'border-teal-500 bg-teal-50 dark:bg-teal-900/10' : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40'} transition-colors`}
                             onDrop={handleDocxDrop}
                             onDragOver={handleDocxDragOver}
                             onDragLeave={handleDocxDragLeave}
                         >
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                                <div>
-                                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Importar Conteúdo</p>
-                                    <p className="text-xs text-slate-500 dark:text-slate-400">Arraste um DOCX ou use os botões abaixo. JSON recria os blocos exatamente como salvos.</p>
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                    <button
-                                        onClick={() => document.getElementById('docx-upload')?.click()}
-                                        className="px-3 py-2 rounded-lg bg-teal-600 text-white text-xs font-semibold flex items-center gap-2 hover:bg-teal-700 transition-colors"
-                                    >
-                                        <i className="fas fa-file-word"></i> DOCX
-                                    </button>
-                                    <button
-                                        onClick={() => jsonUploadInputRef.current?.click()}
-                                        disabled={isJsonImporting}
-                                        className="px-3 py-2 rounded-lg bg-slate-800 text-white text-xs font-semibold flex items-center gap-2 hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        {isJsonImporting ? (
-                                            <>
-                                                <i className="fas fa-spinner fa-spin"></i> Importando...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <i className="fas fa-file-code"></i> Importar JSON
-                                            </>
-                                        )}
-                                    </button>
-                                    <button
-                                        onClick={handleJsonExport}
-                                        className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold flex items-center gap-2 hover:bg-indigo-700 transition-colors"
-                                    >
-                                        <i className="fas fa-download"></i> Exportar JSON
-                                    </button>
-                                    <button
-                                        onClick={() => document.getElementById('markdown-upload')?.click()}
-                                        className="px-3 py-2 rounded-lg bg-purple-600 text-white text-xs font-semibold flex items-center gap-2 hover:bg-purple-700 transition-colors"
-                                    >
-                                        <i className="fab fa-markdown"></i> .md
-                                    </button>
+                            {/* Layout em Grid de 2 colunas */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Coluna 1: Importar Conteúdo */}
+                                <div className="flex flex-col gap-3">
+                                    <div>
+                                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Importar Conteúdo</p>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400">Arraste um DOCX ou use os botões abaixo. JSON recria os blocos exatamente como salvos.</p>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <button
+                                            onClick={() => document.getElementById('docx-upload')?.click()}
+                                            className="px-3 py-2 rounded-lg bg-teal-600 text-white text-xs font-semibold flex items-center justify-center gap-2 hover:bg-teal-700 transition-colors"
+                                        >
+                                            <i className="fas fa-file-word"></i> DOCX
+                                        </button>
+                                        <button
+                                            onClick={() => jsonUploadInputRef.current?.click()}
+                                            disabled={isJsonImporting}
+                                            className="px-3 py-2 rounded-lg bg-slate-800 text-white text-xs font-semibold flex items-center justify-center gap-2 hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            {isJsonImporting ? (
+                                                <>
+                                                    <i className="fas fa-spinner fa-spin"></i> Importando...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <i className="fas fa-file-code"></i> Importar JSON
+                                                </>
+                                            )}
+                                        </button>
+                                        <button
+                                            onClick={handleJsonExport}
+                                            className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold flex items-center justify-center gap-2 hover:bg-indigo-700 transition-colors"
+                                        >
+                                            <i className="fas fa-download"></i> Exportar JSON
+                                        </button>
+                                        <button
+                                            onClick={() => document.getElementById('markdown-upload')?.click()}
+                                            className="px-3 py-2 rounded-lg bg-purple-600 text-white text-xs font-semibold flex items-center justify-center gap-2 hover:bg-purple-700 transition-colors"
+                                        >
+                                            <i className="fab fa-markdown"></i> .md
+                                        </button>
+                                    </div>
                                     <input
-
+                                        id="docx-upload"
+                                        type="file"
+                                        accept=".docx"
+                                        ref={docUploadInputRef}
+                                        onChange={handleDocFileInput}
+                                        className="hidden"
+                                    />
+                                    <input
                                         ref={jsonUploadInputRef}
                                         type="file"
                                         accept="application/json"
@@ -2051,47 +2035,48 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                         onChange={handleMarkdownFileInput}
                                     />
                                 </div>
-                            </div>
 
-                            {/* Seletor de Modo de Importação JSON */}
-                            <div className="mt-3 flex items-center gap-2">
-                                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">
-                                    Modo de Importação:
-                                </label>
-                                <div className="flex gap-1">
-                                    <button
-                                        onClick={() => setJsonImportMode('replace')}
-                                        className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${jsonImportMode === 'replace'
-                                            ? 'bg-red-600 text-white shadow-md'
-                                            : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-600'
-                                            }`}
-                                        title="Substituir todo o conteúdo existente"
-                                    >
-                                        <i className="fas fa-sync-alt mr-1"></i>
-                                        Substituir
-                                    </button>
-                                    <button
-                                        onClick={() => setJsonImportMode('append')}
-                                        className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${jsonImportMode === 'append'
-                                            ? 'bg-green-600 text-white shadow-md'
-                                            : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-600'
-                                            }`}
-                                        title="Adicionar blocos ao final do conteúdo existente"
-                                    >
-                                        <i className="fas fa-arrow-down mr-1"></i>
-                                        Adicionar ao Final
-                                    </button>
-                                    <button
-                                        onClick={() => setJsonImportMode('prepend')}
-                                        className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${jsonImportMode === 'prepend'
-                                            ? 'bg-blue-600 text-white shadow-md'
-                                            : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-600'
-                                            }`}
-                                        title="Adicionar blocos no início, antes do conteúdo existente"
-                                    >
-                                        <i className="fas fa-arrow-up mr-1"></i>
-                                        Adicionar ao Início
-                                    </button>
+                                {/* Coluna 2: Modo de Importação */}
+                                <div className="flex flex-col gap-3">
+                                    <div>
+                                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Modo de Importação</p>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400">Escolha como deseja processar o conteúdo importado.</p>
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        <button
+                                            onClick={() => setJsonImportMode('replace')}
+                                            className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 ${jsonImportMode === 'replace'
+                                                ? 'bg-red-600 text-white shadow-md'
+                                                : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-600'
+                                                }`}
+                                            title="Substituir todo o conteúdo existente"
+                                        >
+                                            <i className="fas fa-sync-alt"></i>
+                                            Substituir
+                                        </button>
+                                        <button
+                                            onClick={() => setJsonImportMode('append')}
+                                            className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 ${jsonImportMode === 'append'
+                                                ? 'bg-green-600 text-white shadow-md'
+                                                : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-600'
+                                                }`}
+                                            title="Adicionar blocos ao final do conteúdo existente"
+                                        >
+                                            <i className="fas fa-arrow-down"></i>
+                                            Adicionar ao Final
+                                        </button>
+                                        <button
+                                            onClick={() => setJsonImportMode('prepend')}
+                                            className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 ${jsonImportMode === 'prepend'
+                                                ? 'bg-blue-600 text-white shadow-md'
+                                                : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-600'
+                                                }`}
+                                            title="Adicionar blocos no início, antes do conteúdo existente"
+                                        >
+                                            <i className="fas fa-arrow-up"></i>
+                                            Adicionar ao Início
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
@@ -2796,8 +2781,17 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                 <i className="fab fa-youtube absolute left-3 top-2.5 text-slate-400"></i>
                                 <input
                                     type="text"
-                                    value={videoUrl}
-                                    onChange={(e) => setVideoUrl(e.target.value)}
+                                    value={videoUrls.length > 0 ? videoUrls[0].url : ''}
+                                    onChange={(e) => {
+                                        const newUrl = e.target.value;
+                                        if (videoUrls.length > 0) {
+                                            const updated = [...videoUrls];
+                                            updated[0].url = newUrl;
+                                            setVideoUrls(updated);
+                                        } else {
+                                            setVideoUrls([{ url: newUrl, title: 'Vídeo Principal' }]);
+                                        }
+                                    }}
                                     className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
                                     placeholder="https://youtube.com/..."
                                 />
@@ -2894,6 +2888,27 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
           .editor-content { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; box-shadow: none; border: none; }
         }
       `}</style>
+
+            {/* Modal de Upload de Material */}
+            {showMaterialModal && (
+                <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md p-6 relative" onClick={e => e.stopPropagation()}>
+                        <button
+                            onClick={() => setShowMaterialModal(false)}
+                            className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                        >
+                            <i className="fas fa-times"></i>
+                        </button>
+
+                        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-4">Adicionar Material</h3>
+
+                        <ResourceUploadForm
+                            onSubmit={handleSaveResource}
+                            isLoading={false}
+                        />
+                    </div>
+                </div>
+            )}
 
             {/* === MODALS DE MÍDIA === */}
 
@@ -3035,6 +3050,235 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                     </div>
                 )
             }
+
+            {/* Modal de Upload de Material */}
+            {showMaterialModal && (
+                <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto p-6 relative" onClick={e => e.stopPropagation()}>
+                        <button
+                            onClick={() => setShowMaterialModal(false)}
+                            className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 z-10"
+                        >
+                            <i className="fas fa-times"></i>
+                        </button>
+
+                        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-6">Gerenciar Materiais e Mídia</h3>
+
+                        {/* Layout em 2 Colunas */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                            {/* Coluna Esquerda: Outras Mídias */}
+                            <div className="space-y-4">
+                                <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+                                    <i className="fas fa-compact-disc text-indigo-500"></i>
+                                    Outras Mídias
+                                </h4>
+
+                                <div className="space-y-3">
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-500 mb-1">URL do Áudio (MP3/Podcast)</label>
+                                        <div className="relative">
+                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <i className="fas fa-volume-up text-slate-400 text-xs"></i>
+                                            </div>
+                                            <input
+                                                type="text"
+                                                value={audioUrl}
+                                                onChange={e => setAudioUrl(e.target.value)}
+                                                className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                                                placeholder="https://..."
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-500 mb-1">URL da Imagem de Capa</label>
+                                        <div className="relative">
+                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <i className="fas fa-image text-slate-400 text-xs"></i>
+                                            </div>
+                                            <input
+                                                type="text"
+                                                value={imageUrl}
+                                                onChange={e => setImageUrl(e.target.value)}
+                                                className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                                                placeholder="https://..."
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="text-xs text-amber-600 bg-amber-50 dark:bg-amber-900/20 p-3 rounded border border-amber-200 dark:border-amber-800 flex items-start gap-2">
+                                        <i className="fas fa-info-circle mt-0.5"></i>
+                                        <span>Para salvar estas alterações de mídia, use o botão <b>SALVAR</b> principal no topo da página.</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Coluna Direita: Vídeos */}
+                            <div className="space-y-4">
+                                <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+                                    <i className="fas fa-video text-indigo-500"></i>
+                                    Vídeos da Aula
+                                </h4>
+
+                                <div>
+                                    <div className="flex items-center justify-between mb-2">
+                                        <label className="block text-xs font-semibold text-slate-500">Lista de Vídeos</label>
+                                        <button
+                                            type="button"
+                                            onClick={() => setVideoUrls([...videoUrls, { url: '', title: `Vídeo ${videoUrls.length + 1}` }])}
+                                            className="px-3 py-1 text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors flex items-center gap-1"
+                                        >
+                                            <i className="fas fa-plus"></i>
+                                            Adicionar Vídeo
+                                        </button>
+                                    </div>
+
+                                    {videoUrls.length === 0 ? (
+                                        <div className="text-xs text-slate-400 text-center py-8 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg">
+                                            Nenhum vídeo adicionado. Clique em "Adicionar Vídeo" para começar.
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+                                            {videoUrls.map((video, index) => (
+                                                <div key={index} className="p-3 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                                                    <div className="flex items-start gap-2 mb-2">
+                                                        <div className="flex-1 space-y-2">
+                                                            <div>
+                                                                <label className="block text-[10px] font-semibold text-slate-500 mb-1">Título do Vídeo</label>
+                                                                <input
+                                                                    type="text"
+                                                                    value={video.title}
+                                                                    onChange={e => {
+                                                                        const updated = [...videoUrls];
+                                                                        updated[index].title = e.target.value;
+                                                                        setVideoUrls(updated);
+                                                                    }}
+                                                                    className="w-full px-2 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded text-xs outline-none focus:ring-2 focus:ring-indigo-500"
+                                                                    placeholder="Ex: Introdução, Parte 1, etc."
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-[10px] font-semibold text-slate-500 mb-1">URL (Youtube/Vimeo)</label>
+                                                                <input
+                                                                    type="text"
+                                                                    value={video.url}
+                                                                    onChange={e => {
+                                                                        const updated = [...videoUrls];
+                                                                        updated[index].url = e.target.value;
+                                                                        setVideoUrls(updated);
+                                                                    }}
+                                                                    className="w-full px-2 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded text-xs outline-none focus:ring-2 focus:ring-indigo-500"
+                                                                    placeholder="https://..."
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex flex-col gap-1">
+                                                            {index > 0 && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        const updated = [...videoUrls];
+                                                                        [updated[index - 1], updated[index]] = [updated[index], updated[index - 1]];
+                                                                        setVideoUrls(updated);
+                                                                    }}
+                                                                    className="w-6 h-6 flex items-center justify-center bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded transition-colors"
+                                                                    title="Mover para cima"
+                                                                >
+                                                                    <i className="fas fa-arrow-up text-[10px]"></i>
+                                                                </button>
+                                                            )}
+                                                            {index < videoUrls.length - 1 && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        const updated = [...videoUrls];
+                                                                        [updated[index], updated[index + 1]] = [updated[index + 1], updated[index]];
+                                                                        setVideoUrls(updated);
+                                                                    }}
+                                                                    className="w-6 h-6 flex items-center justify-center bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded transition-colors"
+                                                                    title="Mover para baixo"
+                                                                >
+                                                                    <i className="fas fa-arrow-down text-[10px]"></i>
+                                                                </button>
+                                                            )}
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const updated = videoUrls.filter((_, i) => i !== index);
+                                                                    setVideoUrls(updated);
+                                                                }}
+                                                                className="w-6 h-6 flex items-center justify-center bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 rounded transition-colors"
+                                                                title="Remover vídeo"
+                                                            >
+                                                                <i className="fas fa-trash text-[10px]"></i>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-[10px] text-slate-500 flex items-center gap-1">
+                                                        <i className="fas fa-info-circle"></i>
+                                                        <span>Vídeo {index + 1} de {videoUrls.length}{index === 0 ? ' (principal)' : ''}</span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Rodapé: Materiais Complementares */}
+                        <div className="border-t border-slate-200 dark:border-slate-800 pt-6">
+                            <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2 mb-4">
+                                <i className="fas fa-paperclip text-indigo-500"></i>
+                                Materiais Complementares
+                            </h4>
+
+                            <ResourceUploadForm
+                                onSubmit={handleSaveResource}
+                                isLoading={false}
+                            />
+                        </div>
+
+                        {/* Botão Salvar no Rodapé */}
+                        <div className="sticky bottom-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 pt-4 mt-6 flex items-center justify-between gap-4">
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                <i className="fas fa-info-circle mr-1"></i>
+                                Salvar aplica as alterações de vídeos, áudio e imagem à aula
+                            </p>
+                            <div className="flex gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowMaterialModal(false)}
+                                    className="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={async () => {
+                                        await handleSave();
+                                        setShowMaterialModal(false);
+                                    }}
+                                    disabled={isSaving}
+                                    className="px-6 py-2 text-sm font-bold bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-400 text-white rounded-lg transition-colors flex items-center gap-2 shadow-lg shadow-indigo-500/30"
+                                >
+                                    {isSaving ? (
+                                        <>
+                                            <i className="fas fa-spinner fa-spin"></i>
+                                            Salvando...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <i className="fas fa-save"></i>
+                                            Salvar Alterações
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Modal: Inserir Vídeo */}
             {
@@ -3240,6 +3484,210 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                     />
                 )
             }
+
+            {/* Quiz Management Modal */}
+            {showQuizManagementModal && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
+                        {/* Header */}
+                        <div className="sticky top-0 bg-gradient-to-r from-purple-600 to-indigo-600 p-6 rounded-t-2xl border-b border-purple-500/20">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center">
+                                        <i className="fas fa-clipboard-question text-2xl text-white"></i>
+                                    </div>
+                                    <div>
+                                        <h2 className="text-xl font-black text-white">Gerenciar Quiz</h2>
+                                        <p className="text-xs text-purple-100">Configure o quiz desta aula</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setShowQuizManagementModal(false)}
+                                    className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors flex items-center justify-center"
+                                >
+                                    <i className="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-6 space-y-4">
+                            {/* Opção 1: Criar/Editar Quiz */}
+                            {!loadingQuiz && (
+                                <div className="bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/10 dark:to-indigo-900/10 border border-purple-200 dark:border-purple-800 rounded-xl p-5 hover:shadow-lg transition-shadow">
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <i className={`fas ${existingQuiz ? 'fa-edit' : 'fa-plus-circle'} text-purple-600 dark:text-purple-400`}></i>
+                                                <h3 className="font-bold text-slate-900 dark:text-white">
+                                                    {existingQuiz ? 'Editar Quiz' : 'Criar Novo Quiz'}
+                                                </h3>
+                                            </div>
+                                            <p className="text-sm text-slate-600 dark:text-slate-400">
+                                                {existingQuiz
+                                                    ? 'Edite as perguntas e configurações do quiz existente'
+                                                    : 'Crie um novo quiz com perguntas para esta aula'}
+                                            </p>
+                                        </div>
+                                        <button
+                                            onClick={() => {
+                                                setShowQuizEditor(true);
+                                                setShowQuizManagementModal(false);
+                                            }}
+                                            className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-semibold text-sm transition-colors flex items-center gap-2 whitespace-nowrap"
+                                        >
+                                            <i className={`fas ${existingQuiz ? 'fa-edit' : 'fa-plus'}`}></i>
+                                            {existingQuiz ? 'Editar' : 'Criar'}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Opção 2: Liberar/Bloquear Quiz */}
+                            {existingQuiz && !loadingQuiz && (
+                                <div className={`bg-gradient-to-br ${existingQuiz.isManuallyReleased ? 'from-emerald-50 to-green-50 dark:from-emerald-900/10 dark:to-green-900/10 border-emerald-200 dark:border-emerald-800' : 'from-orange-50 to-amber-50 dark:from-orange-900/10 dark:to-amber-900/10 border-orange-200 dark:border-orange-800'} border rounded-xl p-5 hover:shadow-lg transition-shadow`}>
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <i className={`fas ${existingQuiz.isManuallyReleased ? 'fa-lock-open' : 'fa-lock'} ${existingQuiz.isManuallyReleased ? 'text-emerald-600 dark:text-emerald-400' : 'text-orange-600 dark:text-orange-400'}`}></i>
+                                                <h3 className="font-bold text-slate-900 dark:text-white">
+                                                    {existingQuiz.isManuallyReleased ? 'Quiz Liberado' : 'Quiz Bloqueado'}
+                                                </h3>
+                                            </div>
+                                            <p className="text-sm text-slate-600 dark:text-slate-400">
+                                                {existingQuiz.isManuallyReleased
+                                                    ? 'O quiz está disponível para os alunos. Clique para bloquear o acesso.'
+                                                    : 'O quiz está bloqueado. Clique para liberar e permitir que os alunos façam o quiz.'}
+                                            </p>
+                                        </div>
+                                        <button
+                                            onClick={() => {
+                                                handleToggleQuizRelease();
+                                                setShowQuizManagementModal(false);
+                                            }}
+                                            disabled={isTogglingRelease}
+                                            className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2 whitespace-nowrap disabled:opacity-50 ${existingQuiz.isManuallyReleased
+                                                ? 'bg-orange-600 hover:bg-orange-700 text-white'
+                                                : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                                                }`}
+                                        >
+                                            {isTogglingRelease ? (
+                                                <>
+                                                    <i className="fas fa-circle-notch animate-spin"></i>
+                                                    Processando...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <i className={`fas ${existingQuiz.isManuallyReleased ? 'fa-lock' : 'fa-lock-open'}`}></i>
+                                                    {existingQuiz.isManuallyReleased ? 'Bloquear' : 'Liberar'}
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Opção 3: Requisitos do Quiz */}
+                            <div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/10 dark:to-blue-900/10 border border-indigo-200 dark:border-indigo-800 rounded-xl p-5 hover:shadow-lg transition-shadow">
+                                <div className="flex items-start justify-between gap-4">
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <i className="fas fa-list-check text-indigo-600 dark:text-indigo-400"></i>
+                                            <h3 className="font-bold text-slate-900 dark:text-white">Requisitos do Quiz</h3>
+                                        </div>
+                                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                                            Configure os requisitos que o aluno deve cumprir para liberar o quiz automaticamente
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={async () => {
+                                            setLoadingRequirements(true);
+                                            setShowQuizManagementModal(false);
+                                            try {
+                                                const supabase = createSupabaseClient();
+                                                const { data, error } = await supabase
+                                                    .from('lesson_progress_requirements')
+                                                    .select('*')
+                                                    .eq('lesson_id', lesson.id)
+                                                    .single();
+
+                                                if (error && error.code !== 'PGRST116') {
+                                                    throw error;
+                                                }
+
+                                                setLessonRequirements(data || {
+                                                    lesson_id: lesson.id,
+                                                    videoRequiredPercent: 80,
+                                                    textBlocksRequiredPercent: 80,
+                                                    requiredPdfIds: [],
+                                                    requiredAudioIds: []
+                                                });
+                                                setShowRequirementsEditor(true);
+                                            } catch (error) {
+                                                console.error('Error loading requirements:', error);
+                                                alert('Erro ao carregar requisitos');
+                                            } finally {
+                                                setLoadingRequirements(false);
+                                            }
+                                        }}
+                                        disabled={loadingRequirements}
+                                        className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm transition-colors flex items-center gap-2 whitespace-nowrap disabled:opacity-50"
+                                    >
+                                        {loadingRequirements ? (
+                                            <>
+                                                <i className="fas fa-circle-notch animate-spin"></i>
+                                                Carregando...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <i className="fas fa-cog"></i>
+                                                Configurar
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Status do Quiz */}
+                            {existingQuiz && (
+                                <div className="mt-6 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                                    <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Status do Quiz</h4>
+                                    <div className="space-y-1 text-sm">
+                                        <div className="flex items-center gap-2">
+                                            <i className="fas fa-heading text-slate-400 w-4"></i>
+                                            <span className="text-slate-700 dark:text-slate-300">
+                                                <span className="font-semibold">Título:</span> {existingQuiz.title}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <i className="fas fa-question-circle text-slate-400 w-4"></i>
+                                            <span className="text-slate-700 dark:text-slate-300">
+                                                <span className="font-semibold">Questões:</span> {existingQuiz.questions?.length || 0}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <i className={`fas ${existingQuiz.isManuallyReleased ? 'fa-check-circle text-green-500' : 'fa-times-circle text-orange-500'} w-4`}></i>
+                                            <span className="text-slate-700 dark:text-slate-300">
+                                                <span className="font-semibold">Acesso:</span> {existingQuiz.isManuallyReleased ? 'Liberado' : 'Bloqueado'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="sticky bottom-0 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-b-2xl border-t border-slate-200 dark:border-slate-700">
+                            <button
+                                onClick={() => setShowQuizManagementModal(false)}
+                                className="w-full px-4 py-3 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold transition-colors"
+                            >
+                                Fechar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Modal de Criação em Lote */}
             {

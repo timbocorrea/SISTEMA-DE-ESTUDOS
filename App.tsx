@@ -97,6 +97,108 @@ const App: React.FC = () => {
 
   const [fileSystemPath, setFileSystemPath] = useState('');
 
+  // Persist navigation state to localStorage
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const navigationState = {
+      view: activeView,
+      courseId: course?.id,
+      moduleId: activeModule?.id,
+      lessonId: currentLesson?.id,
+      filePath: fileSystemPath,
+      editingLessonId: editingLesson?.id,
+      timestamp: Date.now()
+    };
+
+    localStorage.setItem(`navigationState_${currentUser.id}`, JSON.stringify(navigationState));
+  }, [activeView, course, activeModule, currentLesson, fileSystemPath, editingLesson, currentUser]);
+
+  // Restore navigation state on page reload
+  const [hasRestoredState, setHasRestoredState] = useState(false);
+
+  useEffect(() => {
+    if (!currentUser || availableCourses.length === 0 || hasRestoredState) return;
+
+    const savedState = localStorage.getItem(`navigationState_${currentUser.id}`);
+    if (savedState) {
+      try {
+        const state = JSON.parse(savedState);
+
+        // Restore view
+        if (state.view) {
+          setActiveView(state.view);
+        }
+
+        // Restore file path if in files view
+        if (state.view === 'files' && state.filePath) {
+          setFileSystemPath(state.filePath);
+        }
+
+        // Restore course navigation
+        if (state.courseId) {
+          const allCourses = [...availableCourses, ...enrolledCourses];
+          const foundCourse = allCourses.find(c => c.id === state.courseId);
+
+          if (foundCourse) {
+            setCourse(foundCourse);
+
+            if (state.moduleId) {
+              const foundModule = foundCourse.modules.find(m => m.id === state.moduleId);
+              if (foundModule) {
+                setActiveModule(foundModule);
+
+                if (state.lessonId) {
+                  const foundLesson = foundModule.lessons.find(l => l.id === state.lessonId);
+                  if (foundLesson) {
+                    setCurrentLesson(foundLesson);
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        // Restore content editor if was editing
+        if (state.view === 'content-editor' && state.editingLessonId && state.courseId) {
+          const allCourses = [...availableCourses, ...enrolledCourses];
+          const foundCourse = allCourses.find(c => c.id === state.courseId);
+
+          if (foundCourse) {
+            for (const module of foundCourse.modules) {
+              const lesson = module.lessons.find(l => l.id === state.editingLessonId);
+              if (lesson) {
+                const lessonRecord: LessonRecord = {
+                  id: lesson.id,
+                  module_id: module.id,
+                  title: lesson.title,
+                  content: lesson.content,
+                  video_url: lesson.videoUrl,
+                  audio_url: lesson.audioUrl,
+                  image_url: lesson.imageUrl,
+                  duration_seconds: lesson.durationSeconds,
+                  position: lesson.position ?? 0,
+                  content_blocks: lesson.contentBlocks,
+                  created_at: new Date().toISOString()
+                };
+                setEditingLesson(lessonRecord);
+                break;
+              }
+            }
+          }
+        }
+
+        setHasRestoredState(true);
+        console.log('✅ Estado de navegação restaurado após reload');
+      } catch (error) {
+        console.error('❌ Erro ao restaurar estado de navegação:', error);
+      }
+    } else {
+      // Se não há estado salvo, marca como "restaurado" para permitir inicialização padrão
+      setHasRestoredState(true);
+    }
+  }, [currentUser, availableCourses, enrolledCourses, hasRestoredState]);
+
   // Handle Popstate (Back Button)
   useEffect(() => {
     const handlePopState = (event: PopStateEvent) => {
@@ -230,11 +332,34 @@ const App: React.FC = () => {
   useEffect(() => {
     const loadSessionAndProfile = async () => {
       try {
-        const activeSession = await authService.restoreSession();
-        if (activeSession) {
-          setSession(activeSession);
-          const profile = await courseService.fetchUserProfile(activeSession.user.id);
-          setCurrentUser(profile);
+        // Verificar se há callback OAuth no hash da URL
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const hasOAuthCallback = hashParams.has('access_token') ||
+          hashParams.has('error') ||
+          window.location.hash.includes('type=recovery');
+
+        if (hasOAuthCallback) {
+          // Processar callback OAuth
+          const result = await authService.handleOAuthCallback();
+
+          if (result.success && result.data) {
+            setSession(result.data);
+            const profile = await courseService.fetchUserProfile(result.data.user.id);
+            setCurrentUser(profile);
+          } else {
+            console.error('OAuth callback failed:', result.message);
+          }
+
+          // Limpar hash da URL
+          window.history.replaceState(null, '', window.location.pathname);
+        } else {
+          // Restaurar sessão normal
+          const activeSession = await authService.restoreSession();
+          if (activeSession) {
+            setSession(activeSession);
+            const profile = await courseService.fetchUserProfile(activeSession.user.id);
+            setCurrentUser(profile);
+          }
         }
       } catch (err) {
         console.error('Failed to restore session', err);
@@ -296,11 +421,19 @@ const App: React.FC = () => {
         setEnrolledCourses(enrolled);
 
         // Inicializar curso atual com primeiro inscrito (se houver)
-        if (!course && enrolled.length > 0) {
-          setCourse(enrolled[0]);
-          setActiveModule(null);
-          setCurrentLesson(enrolled[0].modules[0]?.lessons[0] || null);
-          setLessonSidebarTab('materials');
+        // APENAS se não houver estado restaurado
+        if (!course && enrolled.length > 0 && hasRestoredState) {
+          // Verifica se já foi restaurado estado e se não tem curso definido
+          const savedState = localStorage.getItem(`navigationState_${currentUser.id}`);
+          const hasSavedNavigation = savedState && JSON.parse(savedState).courseId;
+
+          // Só inicializa automaticamente se não havia estado salvo
+          if (!hasSavedNavigation) {
+            setCourse(enrolled[0]);
+            setActiveModule(null);
+            setCurrentLesson(enrolled[0].modules[0]?.lessons[0] || null);
+            setLessonSidebarTab('materials');
+          }
         }
       } catch (err) {
         console.error('Failed to load courses', err);
@@ -312,7 +445,7 @@ const App: React.FC = () => {
     };
 
     loadData();
-  }, [session, currentUser, courseService]);
+  }, [session, currentUser, courseService, hasRestoredState]);
 
   // Gerar breadcrumb baseado no estado atual
   const getBreadcrumbItems = () => {
@@ -637,6 +770,7 @@ const App: React.FC = () => {
           title: lesson.title,
           content: lesson.content,
           video_url: lesson.videoUrl,
+          video_urls: lesson.videoUrls, // NEW: Support multiple videos
           audio_url: lesson.audioUrl,
           image_url: lesson.imageUrl,
           duration_seconds: lesson.durationSeconds,
@@ -797,6 +931,7 @@ const App: React.FC = () => {
                   title: metadata?.title || editingLesson.title,
                   content: newContent,
                   videoUrl: metadata?.video_url ?? editingLesson.video_url,
+                  videoUrls: metadata?.video_urls ?? editingLesson.video_urls, // NEW: Support multiple videos
                   imageUrl: metadata?.image_url ?? editingLesson.image_url,
                   durationSeconds: metadata?.duration_seconds ?? editingLesson.duration_seconds,
                   position: editingLesson.position,

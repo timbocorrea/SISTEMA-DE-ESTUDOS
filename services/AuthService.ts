@@ -2,7 +2,7 @@ import { IAuthRepository } from '../repositories/IAuthRepository';
 import { AuthResponse, IUserSession } from '../domain/auth';
 
 export class AuthService {
-  constructor(private authRepo: IAuthRepository) {}
+  constructor(private authRepo: IAuthRepository) { }
 
   async login(email: string, pass: string): Promise<AuthResponse> {
     const res = await this.authRepo.login(email, pass);
@@ -27,6 +27,18 @@ export class AuthService {
       return activeSession;
     }
     return this.getCachedSession();
+  }
+
+  async signInWithGoogle(): Promise<AuthResponse> {
+    return await this.authRepo.signInWithGoogle();
+  }
+
+  async handleOAuthCallback(): Promise<AuthResponse> {
+    const res = await this.authRepo.handleOAuthCallback();
+    if (res.success && res.data) {
+      localStorage.setItem('study_system_session', JSON.stringify(res.data));
+    }
+    return res;
   }
 
   async logout(): Promise<void> {

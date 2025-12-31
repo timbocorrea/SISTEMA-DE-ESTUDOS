@@ -107,7 +107,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
   async listLessons(moduleId: string): Promise<LessonRecord[]> {
     const { data, error } = await this.client
       .from('lessons')
-      .select('id,module_id,title,content,video_url,audio_url,image_url,duration_seconds,position,content_blocks,created_at')
+      .select('id,module_id,title,content,video_url,video_urls,audio_url,image_url,duration_seconds,position,content_blocks,created_at')
       .eq('module_id', moduleId)
       .order('position', { ascending: true });
 
@@ -139,7 +139,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
         duration_seconds: payload.durationSeconds ?? 0,
         position: payload.position ?? 0
       })
-      .select('id,module_id,title,content,video_url,audio_url,image_url,duration_seconds,position,created_at')
+      .select('id,module_id,title,content,video_url,video_urls,audio_url,image_url,duration_seconds,position,created_at')
       .single();
 
     if (error || !data) throw new DomainError(`Falha ao criar aula: ${error?.message || 'dados inválidos'}`);
@@ -152,6 +152,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
       title?: string;
       content?: string | null;
       videoUrl?: string | null;
+      videoUrls?: { url: string; title: string }[] | null;
       audioUrl?: string | null;
       imageUrl?: string | null;
       durationSeconds?: number | null;
@@ -163,6 +164,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
     if (patch.title !== undefined) updates.title = patch.title;
     if (patch.content !== undefined) updates.content = patch.content;
     if (patch.videoUrl !== undefined) updates.video_url = patch.videoUrl;
+    if (patch.videoUrls !== undefined) updates.video_urls = patch.videoUrls;
     if (patch.audioUrl !== undefined) updates.audio_url = patch.audioUrl;
     if (patch.imageUrl !== undefined) updates.image_url = patch.imageUrl;
     if (patch.durationSeconds !== undefined) updates.duration_seconds = patch.durationSeconds;
@@ -175,7 +177,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
       .from('lessons')
       .update(updates)
       .eq('id', id)
-      .select('id,module_id,title,content,video_url,audio_url,image_url,duration_seconds,position,content_blocks,created_at')
+      .select('id,module_id,title,content,video_url,video_urls,audio_url,image_url,duration_seconds,position,content_blocks,created_at')
       .single();
 
     if (error) {

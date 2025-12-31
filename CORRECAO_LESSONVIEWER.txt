@@ -1,0 +1,28 @@
+// CORREÇÃO DAS LINHAS 723-751 DO LessonViewer.tsx
+// SUBSTITUIR desde a linha 723 até 751 por este conteúdo:
+
+        {/* Modal de Quiz */}
+        {showQuizModal && quiz && (
+            <QuizModal
+                quiz={quiz}
+                isOpen={showQuizModal}
+                onClose={() => setShowQuizModal(false)}
+                onSubmit={handleQuizSubmit}
+                isSubmitting={isSubmittingQuiz}
+            />
+        )}
+
+        {/* Modal de Resultado */}
+        {quizResult && quiz && (
+            <QuizResultsModal
+                result={quizResult}
+                passingScore={quiz.passingScore}
+                isOpen={!!quizResult}
+                onClose={() => setQuizResult(null)}
+                onRetry={() => {
+                    setQuizResult(null);
+                    setShowQuizModal(true);
+                }}
+            />
+        )}
+        </div>

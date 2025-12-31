@@ -20,6 +20,7 @@ export type LessonRecord = {
   title: string;
   content: string | null;
   video_url: string | null;
+  video_urls?: { url: string; title: string }[] | null; // Multiple video URLs
   audio_url: string | null;
   image_url: string | null;
   duration_seconds: number | null;
