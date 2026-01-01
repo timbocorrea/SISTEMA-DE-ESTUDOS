@@ -17,10 +17,6 @@ const labelByType: Record<LessonResourceType, string> = {
   FILE: 'Arquivo'
 };
 
-type Props = {
-  lesson: Lesson;
-};
-
 // Define a unified interface for display items
 interface MaterialItem {
   id: string;
@@ -30,7 +26,12 @@ interface MaterialItem {
   isMain?: boolean; // To distinguish main lesson content
 }
 
-const LessonMaterialsSidebar: React.FC<Props> = ({ lesson }) => {
+type Props = {
+  lesson: Lesson;
+  onTrackAction?: (action: string) => void;
+};
+
+const LessonMaterialsSidebar: React.FC<Props> = ({ lesson, onTrackAction }) => {
   const resources = lesson.resources;
   const hasMaterials = Boolean(lesson.imageUrl || lesson.audioUrl || resources.length > 0);
 
@@ -216,13 +217,21 @@ const LessonMaterialsSidebar: React.FC<Props> = ({ lesson }) => {
                         {/* Preview Section (Conditional) */}
                         <div className="mt-2 pl-11">
                           {item.type === 'AUDIO' && (
-                            <audio controls src={item.url} className="w-full h-8" />
+                            <audio
+                              controls
+                              src={item.url}
+                              className="w-full h-8"
+                              onPlay={() => onTrackAction?.(`Iniciou áudio material: ${item.title}`)}
+                            />
                           )}
 
                           {item.type === 'IMAGE' && (
                             <div
                               className="relative h-24 rounded-lg overflow-hidden cursor-pointer group/img"
-                              onClick={() => setModalImage(item.url)}
+                              onClick={() => {
+                                setModalImage(item.url);
+                                onTrackAction?.(`Visualizou Imagem: ${item.title}`);
+                              }}
                             >
                               <img
                                 src={item.url}
@@ -238,7 +247,10 @@ const LessonMaterialsSidebar: React.FC<Props> = ({ lesson }) => {
 
                           {item.type === 'PDF' && (
                             <button
-                              onClick={() => setModalPDF(item.url)}
+                              onClick={() => {
+                                setModalPDF(item.url);
+                                onTrackAction?.(`Visualizou PDF: ${item.title}`);
+                              }}
                               className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
                             >
                               <i className="fas fa-eye"></i>

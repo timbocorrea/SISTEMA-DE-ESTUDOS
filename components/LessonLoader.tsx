@@ -7,9 +7,10 @@ import { User } from '../domain/entities';
 interface LessonLoaderProps {
     user: User;
     theme: 'light' | 'dark';
+    onTrackAction: (action: string) => void;
 }
 
-const LessonLoader: React.FC<LessonLoaderProps> = ({ user, theme }) => {
+const LessonLoader: React.FC<LessonLoaderProps> = ({ user, theme, onTrackAction }) => {
     const { lessonId } = useParams<{ lessonId: string }>();
     const navigate = useNavigate();
     const {
@@ -20,6 +21,10 @@ const LessonLoader: React.FC<LessonLoaderProps> = ({ user, theme }) => {
         isLoadingCourses
     } = useCourse();
 
+    const [sidebarTab, setSidebarTab] = React.useState<'materials' | 'notes'>('materials');
+    // Local state for content theme, initialized with global theme but independent after
+    const [contentTheme, setContentTheme] = React.useState<'light' | 'dark'>(theme);
+
     // Sync URL -> Context
     useEffect(() => {
         if (lessonId && activeCourse) {
@@ -29,6 +34,16 @@ const LessonLoader: React.FC<LessonLoaderProps> = ({ user, theme }) => {
             }
         }
     }, [lessonId, activeCourse, activeLesson, selectLesson]);
+
+    // Optional: Update local theme if global theme changes, OR keep it strictly independent.
+    // User requested "only inside content field", implies independence.
+    // However, a sync on mount or prop change is often expected unless overridden.
+    // For now, let's keep it simple: it starts with global theme, then acts independently.
+    // If the user changes global theme while viewing, we can decide to sync or not.
+    // Let's sync it so it feels responsive to global changes too, but local toggle only affects local.
+    useEffect(() => {
+        setContentTheme(theme);
+    }, [theme]);
 
     if (isLoadingCourses) {
         return (
@@ -51,15 +66,12 @@ const LessonLoader: React.FC<LessonLoaderProps> = ({ user, theme }) => {
     }
 
     if (!activeLesson) {
-        // If we have course but no lesson, and we tried to select it... valid ID check?
-        // For now, assume loading or not found.
         return (
             <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-4">
                 <div className="animate-pulse flex flex-col items-center">
                     <i className="fas fa-circle-notch fa-spin text-3xl text-indigo-400 mb-2"></i>
                     <p className="text-slate-500">Carregando aula...</p>
                 </div>
-                {/* Debug Info optionally */}
             </div>
         );
     }
@@ -73,11 +85,11 @@ const LessonLoader: React.FC<LessonLoaderProps> = ({ user, theme }) => {
             onProgressUpdate={async (secs, blockId) => await updateProgress(secs)}
             onBackToLessons={() => navigate(`/course/${activeCourse.id}`)}
             onBackToModules={() => navigate(`/course/${activeCourse.id}`)}
-            contentTheme={theme}
-            setContentTheme={() => { }} // Simplified, maybe connect to App handler if props drilling
-            sidebarTab='materials'
-            setSidebarTab={() => { }}
-            onTrackAction={() => { }}
+            contentTheme={contentTheme}
+            setContentTheme={setContentTheme}
+            sidebarTab={sidebarTab}
+            setSidebarTab={setSidebarTab}
+            onTrackAction={onTrackAction}
         />
     );
 };

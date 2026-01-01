@@ -6,9 +6,10 @@ interface VideoPlayerProps {
   lesson: Lesson;
   videoUrl?: string; // Allow parent to override which video to display
   onProgress: (watchedSeconds: number) => void;
+  onPlay?: () => void;
 }
 
-const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, videoUrl, onProgress }) => {
+const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, videoUrl, onProgress, onPlay }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -109,7 +110,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, videoUrl, onProgress 
           className="w-full h-auto aspect-video"
           onTimeUpdate={handleTimeUpdate}
           onClick={togglePlay}
-          onPlay={() => setIsPlaying(true)}
+          onPlay={() => { setIsPlaying(true); onPlay?.(); }}
           onPause={() => setIsPlaying(false)}
           onEnded={handleEnded}
         />

@@ -61,6 +61,7 @@ export class AdminService {
       title?: string;
       content?: string | null;
       videoUrl?: string | null;
+      videoUrls?: { url: string; title: string }[] | null;
       audioUrl?: string | null;
       imageUrl?: string | null;
       durationSeconds?: number | null;
@@ -69,6 +70,10 @@ export class AdminService {
     }
   ): Promise<LessonRecord> {
     return this.adminRepository.updateLesson(id, patch);
+  }
+
+  getLesson(id: string): Promise<LessonRecord> {
+    return this.adminRepository.getLesson(id);
   }
 
   deleteLesson(id: string): Promise<void> {
@@ -155,5 +160,19 @@ export class AdminService {
 
   getXpHistory(userId: string): Promise<import('../domain/admin').XpLogRecord[]> {
     return this.adminRepository.getXpHistory(userId);
+  }
+
+  // Generic Activity Logging (uses XP history with 0 XP)
+  logActivity(userId: string, actionType: string, description: string): Promise<void> {
+    // We treat generic logs as XP logs with amount 0.
+    // Ideally we would have a separate table, but per user request "historico de atividades" is "xp_history" currently.
+    // We use the Repository directly via a cast or if IAdminRepository supports it.
+    // Since IAdminRepository doesn't have a generic "log" method, checking if I can use existing mechanisms.
+    // Actually, I should probably add this to IAdminRepository or just use the Supabase client directly if needed,
+    // but better to keep it clean.
+    // Let's assume we can reuse logXpChange from CourseRepository context if we had it, but here we are in AdminService.
+    // Since SupabaseAdminRepository is available, let's look at `xp_history` table access there.
+    // Wait, AdminService uses IAdminRepository. I should add `logActivity` to IAdminRepository first.
+    return this.adminRepository.logActivity(userId, actionType, description);
   }
 }

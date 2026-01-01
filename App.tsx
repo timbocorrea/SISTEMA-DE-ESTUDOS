@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useState } from 'react';
-import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import GeminiBuddy from './components/GeminiBuddy';
 import AuthForm from './components/AuthForm';
@@ -11,8 +11,9 @@ import AchievementsPage from './components/AchievementsPage';
 import CourseEnrollmentModal from './components/CourseEnrollmentModal';
 import Breadcrumb from './components/Breadcrumb';
 import LessonContentEditorPage from './components/LessonContentEditorPage';
+import { LessonRecord } from './domain/admin';
 import LessonViewer from './components/LessonViewer';
-import HistoryPage from './components/HistoryPage';
+import HistoryPage, { HistoryItem } from './components/HistoryPage';
 import PendingApprovalScreen from './components/PendingApprovalScreen';
 import { SystemHealth } from './components/SystemHealth';
 import CourseLayout from './components/CourseLayout';
@@ -27,6 +28,53 @@ import { useCourse } from './contexts/CourseContext';
 import { SupabaseAdminRepository } from './repositories/SupabaseAdminRepository';
 import { AdminService } from './services/AdminService';
 import LessonLoader from './components/LessonLoader';
+
+const LessonContentEditorWrapper: React.FC<{ adminService: AdminService }> = ({ adminService }) => {
+  const { lessonId } = useParams<{ lessonId: string }>();
+  const navigate = useNavigate();
+  const [lesson, setLesson] = useState<LessonRecord | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (lessonId) {
+      adminService.getLesson(lessonId)
+        .then(setLesson)
+        .catch((err) => {
+          console.error(err);
+          alert("Erro ao carregar aula");
+          navigate('/admin/content');
+        })
+        .finally(() => setLoading(false));
+    }
+  }, [lessonId, adminService, navigate]);
+
+  if (loading) return <div className="p-8 text-slate-500">Carregando editor...</div>;
+  if (!lesson) return <div className="p-8 text-slate-500">Aula não encontrada.</div>;
+
+  return (
+    <div className="absolute inset-0 z-50 bg-white dark:bg-[#0a0e14] overflow-y-auto">
+      <LessonContentEditorPage
+        lesson={lesson}
+        onSave={async (content, metadata: any) => {
+          await adminService.updateLesson(lesson.id, {
+            content: content,
+            title: metadata?.title,
+            videoUrl: metadata?.video_url,
+            videoUrls: metadata?.video_urls,
+            audioUrl: metadata?.audio_url,
+            imageUrl: metadata?.image_url,
+            durationSeconds: metadata?.duration_seconds,
+            position: metadata?.position,
+            contentBlocks: metadata?.content_blocks
+          });
+          // Não exibir alert aqui para nao interromper fluxo, o editor ja tem seus logs
+          // Mas o editor espera Promise<void>, entao ok.
+        }}
+        onCancel={() => navigate('/admin/content')}
+      />
+    </div>
+  );
+};
 
 const App: React.FC = () => {
   const { user, session, isLoading: authLoading, logout, authService, refreshSession } = useAuth();
@@ -122,7 +170,47 @@ const App: React.FC = () => {
     } else {
       navigate(`/course/${courseId}`);
     }
+
   };
+
+  const traverseToAdminEditor = (courseId: string, moduleId?: string, lessonId?: string) => {
+    if (lessonId) {
+      navigate(`/admin/lesson/${lessonId}/edit`);
+    } else {
+      navigate('/admin/content', { state: { courseId, moduleId } });
+    }
+  };
+
+  // Activity Logging Logic
+  // Activity Logging Logic
+  const handleTrackAction = (action: string, path?: string) => {
+    if (user) {
+      const payload = {
+        text: action,
+        path: path || location.pathname // fallback to current path
+      };
+      adminService.logActivity(user.id, 'INTERACTION', JSON.stringify(payload));
+    }
+  };
+
+  // Navigation Tracking
+  useEffect(() => {
+    if (user) {
+      const path = location.pathname;
+      let description = `Visitou: ${path}`;
+      if (path === '/') description = 'Acessou o Painel Inicial';
+      else if (path === '/courses') description = 'Listou Meus Cursos';
+      else if (path === '/history') description = 'Visualizou Histórico';
+      else if (path === '/achievements') description = 'Visualizou Conquistas';
+
+      const payload = {
+        text: description,
+        path: path
+      };
+
+      adminService.logActivity(user.id, 'NAVIGATION', JSON.stringify(payload));
+    }
+  }, [location.pathname, user?.id]); // Depend on pathname and user.id
 
   // Breadcrumb Logic (Simplified)
   const getBreadcrumbItems = () => {
@@ -187,7 +275,7 @@ const App: React.FC = () => {
         user={user}
         onNavigateFile={(path) => navigate('/admin/files', { state: { path } })}
         courses={enrolledCourses}
-        onOpenContent={verifyEnrollmentAndNavigate}
+        onOpenContent={user.role === 'INSTRUCTOR' ? traverseToAdminEditor : verifyEnrollmentAndNavigate}
         onSelectLesson={(courseId, modId, lessId) => navigate(`/course/${courseId}/lesson/${lessId}`)}
         isMobileOpen={isMobileMenuOpen}
         onCloseMobile={() => setIsMobileMenuOpen(false)}
@@ -248,7 +336,7 @@ const App: React.FC = () => {
 
             {/* Feature Routes */}
             <Route path="/achievements" element={<AchievementsPage user={user} course={activeCourse} />} />
-            <Route path="/history" element={<HistoryPage history={[]} /* History to be re-implemented via Context or separate service */ />} />
+            <Route path="/history" element={<HistoryPageWrapper adminService={adminService} userId={user.id} />} />
 
             {/* Course Routes */}
             <Route path="/course/:courseId" element={<CourseLayout />}>
@@ -267,12 +355,21 @@ const App: React.FC = () => {
                 />
               } />
               <Route path="lesson/:lessonId" element={
-                <LessonLoader user={user} theme={theme} />
+                <LessonLoader user={user} theme={theme} onTrackAction={handleTrackAction} />
               } />
             </Route>
 
             {/* Admin Routes */}
-            <Route path="/admin/content" element={<AdminRoute><AdminContentManagement adminService={adminService} initialCourseId={undefined} /></AdminRoute>} />
+            <Route path="/admin/content" element={
+              <AdminRoute>
+                <AdminContentManagement
+                  adminService={adminService}
+                  initialCourseId={undefined}
+                  onOpenContentEditor={(lesson) => navigate(`/admin/lesson/${lesson.id}/edit`)}
+                />
+              </AdminRoute>
+            } />
+            <Route path="/admin/lesson/:lessonId/edit" element={<AdminRoute><LessonContentEditorWrapper adminService={adminService} /></AdminRoute>} />
             <Route path="/admin/users" element={<AdminRoute><UserManagement adminService={adminService} /></AdminRoute>} />
             <Route path="/admin/files" element={<AdminRoute><FileManagement path="" onPathChange={() => { }} /></AdminRoute>} />
             <Route path="/admin/health" element={<AdminRoute><SystemHealth adminService={adminService} /></AdminRoute>} />
@@ -308,6 +405,51 @@ const App: React.FC = () => {
       />
     </div>
   );
+};
+
+// History Wrapper
+const HistoryPageWrapper: React.FC<{ adminService: AdminService; userId: string }> = ({ adminService, userId }) => {
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    adminService.getXpHistory(userId)
+      .then(logs => {
+        const formattedHistory = logs.map(log => {
+          const date = new Date(log.created_at).toLocaleString('pt-BR');
+
+          let text = log.description || 'Atividade registrada';
+          let path: string | undefined = undefined;
+
+          // Try to parse JSON description
+          if (log.description && (log.description.startsWith('{') || log.description.startsWith('['))) {
+            try {
+              const parsed = JSON.parse(log.description);
+              if (parsed.text) text = parsed.text;
+              if (parsed.path) path = parsed.path;
+            } catch (e) {
+              // ignore
+            }
+          }
+
+          return {
+            text,
+            date,
+            points: log.amount,
+            path
+          };
+        });
+        setHistory(formattedHistory);
+      })
+      .catch(err => {
+        console.error("Failed to load history", err);
+      })
+      .finally(() => setLoading(false));
+  }, [adminService, userId]);
+
+  if (loading) return <div className="p-8 text-slate-500 text-center">Carregando histórico...</div>;
+
+  return <HistoryPage history={history} />;
 };
 
 // Inline Wrapper for Course Overview to replace the lost UI code

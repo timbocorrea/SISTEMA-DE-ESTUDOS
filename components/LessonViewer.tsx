@@ -476,6 +476,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                     lesson={lesson}
                                     videoUrl={currentVideoUrl}
                                     onProgress={handleProgressUpdateInternal}
+                                    onPlay={() => onTrackAction?.(`Reproduziu vídeo: ${currentVideoUrl || lesson.title}`)}
                                 />
                             </div>
 
@@ -766,7 +767,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                         </div>
 
                         {sidebarTab === 'materials' ? (
-                            <LessonMaterialsSidebar lesson={lesson} />
+                            <LessonMaterialsSidebar lesson={lesson} onTrackAction={onTrackAction} />
                         ) : (
                             <NotesPanelPrototype
                                 userId={user.id}
@@ -786,10 +787,10 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
 
             {/* Mobile Footer Navigation */}
-            <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 pb-safe">
+            <div className="lg:hidden fixed bottom-0 left-0 right-0 z-[70] bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 pb-safe">
                 <div className="grid grid-cols-3 h-16">
                     <button
-                        onClick={() => setActiveMobileTab('materials')}
+                        onClick={() => setActiveMobileTab(prev => prev === 'materials' ? null : 'materials')}
                         className={`flex flex-col items-center justify-center gap-1 transition-colors ${activeMobileTab === 'materials'
                             ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20'
                             : 'text-slate-500 dark:text-slate-400'
@@ -800,7 +801,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                     </button>
 
                     <button
-                        onClick={() => setActiveMobileTab('notes')}
+                        onClick={() => setActiveMobileTab(prev => prev === 'notes' ? null : 'notes')}
                         className={`flex flex-col items-center justify-center gap-1 transition-colors ${activeMobileTab === 'notes'
                             ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20'
                             : 'text-slate-500 dark:text-slate-400'
@@ -811,7 +812,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                     </button>
 
                     <button
-                        onClick={() => setActiveMobileTab('quiz')}
+                        onClick={() => setActiveMobileTab(prev => prev === 'quiz' ? null : 'quiz')}
                         className={`flex flex-col items-center justify-center gap-1 transition-colors ${activeMobileTab === 'quiz'
                             ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20'
                             : 'text-slate-500 dark:text-slate-400'
@@ -833,7 +834,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                     ></div>
 
                     {/* Drawer Content */}
-                    <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl max-h-[85vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-300">
+                    <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl max-h-[85vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-300 mb-16 sm:mb-0">
                         {/* Handle / Header */}
                         <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0">
                             <div className="w-10"></div> {/* Spacer */}
@@ -849,7 +850,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                         {/* Content Area */}
                         <div className="flex-1 overflow-y-auto p-4 scrollbar-hide">
                             {activeMobileTab === 'materials' && (
-                                <LessonMaterialsSidebar lesson={lesson} />
+                                <LessonMaterialsSidebar lesson={lesson} onTrackAction={onTrackAction} />
                             )}
 
                             {activeMobileTab === 'notes' && (

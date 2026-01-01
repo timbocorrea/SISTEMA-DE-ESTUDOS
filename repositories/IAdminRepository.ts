@@ -30,6 +30,7 @@ export interface IAdminRepository {
       title?: string;
       content?: string | null;
       videoUrl?: string | null;
+      videoUrls?: { url: string; title: string }[] | null;
       audioUrl?: string | null;
       imageUrl?: string | null;
       durationSeconds?: number | null;
@@ -37,6 +38,7 @@ export interface IAdminRepository {
       contentBlocks?: any[] | null;
     }
   ): Promise<LessonRecord>;
+  getLesson(id: string): Promise<LessonRecord>;
   deleteLesson(id: string): Promise<void>;
 
   listLessonResources(lessonId: string): Promise<LessonResourceRecord[]>;
@@ -71,4 +73,5 @@ export interface IAdminRepository {
 
   // Student Logs
   getXpHistory(userId: string): Promise<import('../domain/admin').XpLogRecord[]>;
+  logActivity(userId: string, actionType: string, description: string): Promise<void>;
 }

@@ -190,6 +190,17 @@ export class SupabaseAdminRepository implements IAdminRepository {
     return data as LessonRecord;
   }
 
+  async getLesson(id: string): Promise<LessonRecord> {
+    const { data, error } = await this.client
+      .from('lessons')
+      .select('id,module_id,title,content,video_url,video_urls,audio_url,image_url,duration_seconds,position,content_blocks,created_at')
+      .eq('id', id)
+      .single();
+
+    if (error || !data) throw new DomainError(`Falha ao buscar aula: ${error?.message || 'aula não encontrada'}`);
+    return data as LessonRecord;
+  }
+
   async deleteLesson(id: string): Promise<void> {
     const { data, error } = await this.client.from('lessons').delete().eq('id', id).select('id');
     if (error) throw new DomainError(`Falha ao excluir aula: ${error.message}`);
@@ -619,5 +630,20 @@ export class SupabaseAdminRepository implements IAdminRepository {
 
     if (error) throw new DomainError(`Erro ao buscar histórico de XP: ${error.message}`);
     return (data || []) as import('../domain/admin').XpLogRecord[];
+  }
+
+  async logActivity(userId: string, actionType: string, description: string): Promise<void> {
+    // Reuse xp_history for general logging (Amount = 0)
+    const { error } = await this.client.from('xp_history').insert({
+      user_id: userId,
+      amount: 0,
+      action_type: actionType,
+      description: description
+    });
+
+    if (error) {
+      console.error("Failed to log activity", error);
+      // Do not throw to avoid blocking UI
+    }
   }
 }
