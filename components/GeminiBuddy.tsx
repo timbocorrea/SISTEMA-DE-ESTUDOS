@@ -121,13 +121,19 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
 
   // Detect Provider and Model
   useEffect(() => {
-    if (!apiKey) return;
+    if (!apiKey) {
+      // Default to Google System Key (Backend Managed)
+      setProvider('google');
+      setActiveModel('gemini-1.5-flash');
+      setDebugInfo('System Key (Google Gemini)');
+      return;
+    }
 
     // Log masked key for verification (first 8 + last 4 chars)
     const maskedKey = apiKey.length > 12
       ? `${apiKey.substring(0, 8)}...${apiKey.substring(apiKey.length - 4)}`
       : apiKey.substring(0, 4) + '...';
-    console.log(`🔑 [GeminiBuddy] API Key in use: ${maskedKey}`);
+    console.log(`🔑 [GeminiBuddy] User API Key in use: ${maskedKey}`);
 
     if (apiKey.startsWith('sk-')) {
       setProvider('openai');
@@ -283,12 +289,7 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-900/95 backdrop-blur-sm">
-          {!apiKey ? (
-            <div className="text-center py-8 text-slate-500 text-xs">
-              <i className="fas fa-lock text-2xl mb-2 opacity-50"></i>
-              <p>IA não ativada. Contate o administrador.</p>
-            </div>
-          ) : messages.length === 0 ? (
+          {messages.length === 0 ? (
             <div className="text-center py-10 opacity-60">
               <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto text-indigo-400 mb-4 animate-pulse">
                 <i className="fas fa-comment-dots text-2xl"></i>
@@ -371,13 +372,13 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               onPaste={handlePaste}
-              placeholder={apiKey ? "Digite sua dúvida..." : "Bloqueado"}
-              disabled={!apiKey || isLoading}
+              placeholder={apiKey ? "Digite sua dúvida..." : "Digite sua dúvida (IA do Sistema)..."}
+              disabled={isLoading}
               className="flex-1 bg-slate-900 border border-slate-700 rounded-xl py-3 pl-4 pr-10 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 disabled:opacity-50"
             />
             <button
               type="submit"
-              disabled={!apiKey || isLoading || (!prompt.trim() && !selectedImage)}
+              disabled={isLoading || (!prompt.trim() && !selectedImage)}
               className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-indigo-400 hover:text-white hover:bg-indigo-600 rounded-lg transition-all disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-indigo-400"
             >
               <i className="fas fa-paper-plane text-xs"></i>

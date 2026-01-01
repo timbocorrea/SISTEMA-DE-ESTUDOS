@@ -19,19 +19,10 @@ import CourseLayout from './components/CourseLayout';
 
 import { useAuth } from './contexts/AuthContext';
 import { useCourse } from './contexts/CourseContext';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
 
 // Configure QueryClient (same as before)
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5,
-      gcTime: 1000 * 60 * 60 * 24,
-      refetchOnWindowFocus: false,
-      retry: 1,
-    },
-  },
-});
+
 
 import { SupabaseAdminRepository } from './repositories/SupabaseAdminRepository';
 import { AdminService } from './services/AdminService';
@@ -168,14 +159,12 @@ const App: React.FC = () => {
   // Auth Screen
   if (!session || !user) {
     return (
-      <QueryClientProvider client={queryClient}>
-        <AuthForm authService={authService} onSuccess={() => { /* Context handles state update via restoreSession internal logic or reload */ }} />
-      </QueryClientProvider>
+      <AuthForm authService={authService} onSuccess={() => { /* Context handles state update via restoreSession internal logic or reload */ }} />
     );
   }
 
   // Pending/Rejected Screens (Keep logic similar to before)
-  if (user.isPending()) return <QueryClientProvider client={queryClient}><PendingApprovalScreen userEmail={user.email} onLogout={logout} /></QueryClientProvider>;
+  if (user.isPending()) return <PendingApprovalScreen userEmail={user.email} onLogout={logout} />;
   if (user.isRejected()) { logout(); return null; }
 
   // Admin Check Helper
@@ -184,156 +173,155 @@ const App: React.FC = () => {
   };
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <div className="flex flex-col lg:flex-row lg:h-screen w-full bg-white dark:bg-[#0a0e14] text-slate-900 dark:text-slate-100 transition-colors duration-300 font-lexend relative overflow-x-hidden">
 
-        {/* Sidebar */}
-        <Sidebar
-          session={session}
-          activeView={activeView}
-          onViewChange={handleViewChange}
-          onLogout={logout}
-          theme={theme}
-          onToggleTheme={() => setTheme(prev => prev === 'light' ? 'dark' : 'light')}
-          user={user}
-          onNavigateFile={(path) => navigate('/admin/files', { state: { path } })}
-          courses={enrolledCourses}
-          onOpenContent={verifyEnrollmentAndNavigate}
-          onSelectLesson={(courseId, modId, lessId) => navigate(`/course/${courseId}/lesson/${lessId}`)}
-          isMobileOpen={isMobileMenuOpen}
-          onCloseMobile={() => setIsMobileMenuOpen(false)}
-          activeLessonId={activeLesson?.id}
-        />
+    <div className="flex flex-col lg:flex-row lg:h-screen w-full bg-white dark:bg-[#0a0e14] text-slate-900 dark:text-slate-100 transition-colors duration-300 font-lexend relative overflow-x-hidden">
 
-        {/* Mobile Overlay */}
-        {isMobileMenuOpen && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[55] lg:hidden animate-in fade-in duration-300" onClick={() => setIsMobileMenuOpen(false)} />
-        )}
+      {/* Sidebar */}
+      <Sidebar
+        session={session}
+        activeView={activeView}
+        onViewChange={handleViewChange}
+        onLogout={logout}
+        theme={theme}
+        onToggleTheme={() => setTheme(prev => prev === 'light' ? 'dark' : 'light')}
+        user={user}
+        onNavigateFile={(path) => navigate('/admin/files', { state: { path } })}
+        courses={enrolledCourses}
+        onOpenContent={verifyEnrollmentAndNavigate}
+        onSelectLesson={(courseId, modId, lessId) => navigate(`/course/${courseId}/lesson/${lessId}`)}
+        isMobileOpen={isMobileMenuOpen}
+        onCloseMobile={() => setIsMobileMenuOpen(false)}
+        activeLessonId={activeLesson?.id}
+      />
 
-        {/* Content Area */}
-        <div className="flex-1 flex flex-col min-h-0 w-full overflow-hidden h-full">
-          {/* Header / Breadcrumb */}
-          <div className="hidden lg:block">
-            <Breadcrumb items={getBreadcrumbItems()} />
-          </div>
+      {/* Mobile Overlay */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[55] lg:hidden animate-in fade-in duration-300" onClick={() => setIsMobileMenuOpen(false)} />
+      )}
 
-          {/* Mobile Header (Simplified for refactor) */}
-          <header className="flex items-center gap-4 px-4 py-3 bg-[#e2e8f0] dark:bg-[#0a0e14] border-b border-slate-200 dark:border-slate-800 lg:hidden fixed top-0 left-0 right-0 z-50">
-            <button onClick={() => setIsMobileMenuOpen(true)} className="w-12 h-12 flex items-center justify-center text-slate-500 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-              <i className="fas fa-bars text-xl"></i>
-            </button>
-            <div className="flex items-center gap-2">
-              <h1 className="font-black text-slate-800 dark:text-slate-100 text-sm uppercase tracking-tighter">StudySystem</h1>
-            </div>
-          </header>
-
-          <main className="flex-1 overflow-y-auto bg-slate-50/50 dark:bg-transparent scroll-smooth relative pt-[73px] lg:pt-0">
-            <Routes>
-              {/* Dashboard Routes */}
-              <Route path="/" element={
-                <StudentDashboard
-                  user={user}
-                  courses={availableCourses}
-                  onCourseClick={handleEnrollRequest}
-                  showEnrollButton={true}
-                  enrolledCourseIds={enrolledCourses.map(c => c.id)}
-                  sectionTitle="Cursos da Plataforma"
-                  onManageCourse={user.role === 'INSTRUCTOR' ? (id) => navigate('/admin/content', { state: { courseId: id } }) : undefined}
-                  onManageContent={user.role === 'INSTRUCTOR' ? () => navigate('/admin/content') : undefined}
-                />
-              } />
-              <Route path="/dashboard" element={<Navigate to="/" replace />} />
-
-              <Route path="/courses" element={
-                <StudentDashboard
-                  user={user}
-                  courses={enrolledCourses}
-                  onCourseClick={(id) => navigate(`/course/${id}`)}
-                  showEnrollButton={false}
-                  sectionTitle="Meus Cursos"
-                  enrolledCourseIds={enrolledCourses.map(c => c.id)}
-                  onManageCourse={user.role === 'INSTRUCTOR' ? (id) => navigate('/admin/content', { state: { courseId: id } }) : undefined}
-                  onManageContent={user.role === 'INSTRUCTOR' ? () => navigate('/admin/content') : undefined}
-                />
-              } />
-
-              {/* Feature Routes */}
-              <Route path="/achievements" element={<AchievementsPage user={user} course={activeCourse} />} />
-              <Route path="/history" element={<HistoryPage history={[]} /* History to be re-implemented via Context or separate service */ />} />
-
-              {/* Course Routes */}
-              <Route path="/course/:courseId" element={<CourseLayout />}>
-                <Route index element={
-                  // Course Overview (Module List)
-                  // Reusing logic from old App.tsx where we showed module list if no lesson selected
-                  <CourseOverviewWrapper
-                    user={user}
-                    activeCourse={activeCourse}
-                    onSelectModule={selectModule}
-                    onSelectLesson={(l: any) => navigate(`/course/${activeCourse?.id}/lesson/${l.id}`)}
-                  // We might need to extract the "Module List" UI from App.tsx into a component or re-inline it here
-                  // For now, let's assume we create a wrapper or component for it.
-                  // NOTE: Since I am overwriting App.tsx, I should have extracted that UI code first.
-                  // I will implement a inline component below or simplify.
-                  />
-                } />
-                <Route path="lesson/:lessonId" element={
-                  activeCourse && activeLesson ? (
-                    <LessonViewer
-                      course={activeCourse}
-                      lesson={activeLesson}
-                      user={user}
-                      onLessonSelect={(l) => navigate(`/course/${activeCourse.id}/lesson/${l.id}`)}
-                      onProgressUpdate={(secs, blockId) => updateProgress(secs) /* Fix arg mismatch if needed */}
-                      onBackToLessons={() => navigate(`/course/${activeCourse.id}`)}
-                      onBackToModules={() => navigate(`/course/${activeCourse.id}`)}
-                      contentTheme={theme} // Passing global theme as content theme default
-                      setContentTheme={() => { }} // simplified
-                      sidebarTab='materials' // simplified
-                      setSidebarTab={() => { }}
-                      onTrackAction={() => { }}
-                    />
-                  ) : <div className="p-8">Aula não encontrada ou carregando...</div>
-                } />
-              </Route>
-
-              {/* Admin Routes */}
-              <Route path="/admin/content" element={<AdminRoute><AdminContentManagement adminService={adminService} initialCourseId={undefined} /></AdminRoute>} />
-              <Route path="/admin/users" element={<AdminRoute><UserManagement adminService={adminService} /></AdminRoute>} />
-              <Route path="/admin/files" element={<AdminRoute><FileManagement path="" onPathChange={() => { }} /></AdminRoute>} />
-              <Route path="/admin/health" element={<AdminRoute><SystemHealth adminService={adminService} /></AdminRoute>} />
-
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </main>
+      {/* Content Area */}
+      <div className="flex-1 flex flex-col min-h-0 w-full overflow-hidden h-full">
+        {/* Header / Breadcrumb */}
+        <div className="hidden lg:block">
+          <Breadcrumb items={getBreadcrumbItems()} />
         </div>
 
-        {/* Enrollment Modal */}
-        {selectedCourseForEnrollment && (
-          <CourseEnrollmentModal
-            course={availableCourses.find(c => c.id === selectedCourseForEnrollment)!}
-            isOpen={isEnrollmentModalOpen}
-            onClose={() => { setIsEnrollmentModalOpen(false); setSelectedCourseForEnrollment(null); }}
-            isLoading={isEnrolling}
-            onConfirm={async () => {
-              setIsEnrolling(true);
-              await enrollInCourse(selectedCourseForEnrollment);
-              setIsEnrolling(false);
-              setIsEnrollmentModalOpen(false);
-              navigate(`/ course / ${selectedCourseForEnrollment}`);
-              setSelectedCourseForEnrollment(null);
-            }}
-          />
-        )}
+        {/* Mobile Header (Simplified for refactor) */}
+        <header className="flex items-center gap-4 px-4 py-3 bg-[#e2e8f0] dark:bg-[#0a0e14] border-b border-slate-200 dark:border-slate-800 lg:hidden fixed top-0 left-0 right-0 z-50">
+          <button onClick={() => setIsMobileMenuOpen(true)} className="w-12 h-12 flex items-center justify-center text-slate-500 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+            <i className="fas fa-bars text-xl"></i>
+          </button>
+          <div className="flex items-center gap-2">
+            <h1 className="font-black text-slate-800 dark:text-slate-100 text-sm uppercase tracking-tighter">StudySystem</h1>
+          </div>
+        </header>
 
-        {/* Gemini Buddy (simplified integration) */}
-        <GeminiBuddy
-          apiKey={user.geminiApiKey || import.meta.env.VITE_GEMINI_API_KEY}
-          userName={user.name}
-          systemContext="Você está no StudySystem v2 com Rotas."
-        />
+        <main className="flex-1 overflow-y-auto bg-slate-50/50 dark:bg-transparent scroll-smooth relative pt-[73px] lg:pt-0">
+          <Routes>
+            {/* Dashboard Routes */}
+            <Route path="/" element={
+              <StudentDashboard
+                user={user}
+                courses={availableCourses}
+                onCourseClick={handleEnrollRequest}
+                showEnrollButton={true}
+                enrolledCourseIds={enrolledCourses.map(c => c.id)}
+                sectionTitle="Cursos da Plataforma"
+                onManageCourse={user.role === 'INSTRUCTOR' ? (id) => navigate('/admin/content', { state: { courseId: id } }) : undefined}
+                onManageContent={user.role === 'INSTRUCTOR' ? () => navigate('/admin/content') : undefined}
+              />
+            } />
+            <Route path="/dashboard" element={<Navigate to="/" replace />} />
+
+            <Route path="/courses" element={
+              <StudentDashboard
+                user={user}
+                courses={enrolledCourses}
+                onCourseClick={(id) => navigate(`/course/${id}`)}
+                showEnrollButton={false}
+                sectionTitle="Meus Cursos"
+                enrolledCourseIds={enrolledCourses.map(c => c.id)}
+                onManageCourse={user.role === 'INSTRUCTOR' ? (id) => navigate('/admin/content', { state: { courseId: id } }) : undefined}
+                onManageContent={user.role === 'INSTRUCTOR' ? () => navigate('/admin/content') : undefined}
+              />
+            } />
+
+            {/* Feature Routes */}
+            <Route path="/achievements" element={<AchievementsPage user={user} course={activeCourse} />} />
+            <Route path="/history" element={<HistoryPage history={[]} /* History to be re-implemented via Context or separate service */ />} />
+
+            {/* Course Routes */}
+            <Route path="/course/:courseId" element={<CourseLayout />}>
+              <Route index element={
+                // Course Overview (Module List)
+                // Reusing logic from old App.tsx where we showed module list if no lesson selected
+                <CourseOverviewWrapper
+                  user={user}
+                  activeCourse={activeCourse}
+                  onSelectModule={selectModule}
+                  onSelectLesson={(l: any) => navigate(`/course/${activeCourse?.id}/lesson/${l.id}`)}
+                // We might need to extract the "Module List" UI from App.tsx into a component or re-inline it here
+                // For now, let's assume we create a wrapper or component for it.
+                // NOTE: Since I am overwriting App.tsx, I should have extracted that UI code first.
+                // I will implement a inline component below or simplify.
+                />
+              } />
+              <Route path="lesson/:lessonId" element={
+                activeCourse && activeLesson ? (
+                  <LessonViewer
+                    course={activeCourse}
+                    lesson={activeLesson}
+                    user={user}
+                    onLessonSelect={(l) => navigate(`/course/${activeCourse.id}/lesson/${l.id}`)}
+                    onProgressUpdate={(secs, blockId) => updateProgress(secs) /* Fix arg mismatch if needed */}
+                    onBackToLessons={() => navigate(`/course/${activeCourse.id}`)}
+                    onBackToModules={() => navigate(`/course/${activeCourse.id}`)}
+                    contentTheme={theme} // Passing global theme as content theme default
+                    setContentTheme={() => { }} // simplified
+                    sidebarTab='materials' // simplified
+                    setSidebarTab={() => { }}
+                    onTrackAction={() => { }}
+                  />
+                ) : <div className="p-8">Aula não encontrada ou carregando...</div>
+              } />
+            </Route>
+
+            {/* Admin Routes */}
+            <Route path="/admin/content" element={<AdminRoute><AdminContentManagement adminService={adminService} initialCourseId={undefined} /></AdminRoute>} />
+            <Route path="/admin/users" element={<AdminRoute><UserManagement adminService={adminService} /></AdminRoute>} />
+            <Route path="/admin/files" element={<AdminRoute><FileManagement path="" onPathChange={() => { }} /></AdminRoute>} />
+            <Route path="/admin/health" element={<AdminRoute><SystemHealth adminService={adminService} /></AdminRoute>} />
+
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </main>
       </div>
-    </QueryClientProvider>
+
+      {/* Enrollment Modal */}
+      {selectedCourseForEnrollment && (
+        <CourseEnrollmentModal
+          course={availableCourses.find(c => c.id === selectedCourseForEnrollment)!}
+          isOpen={isEnrollmentModalOpen}
+          onClose={() => { setIsEnrollmentModalOpen(false); setSelectedCourseForEnrollment(null); }}
+          isLoading={isEnrolling}
+          onConfirm={async () => {
+            setIsEnrolling(true);
+            await enrollInCourse(selectedCourseForEnrollment);
+            setIsEnrolling(false);
+            setIsEnrollmentModalOpen(false);
+            navigate(`/ course / ${selectedCourseForEnrollment}`);
+            setSelectedCourseForEnrollment(null);
+          }}
+        />
+      )}
+
+      {/* Gemini Buddy (simplified integration) */}
+      <GeminiBuddy
+        apiKey={user.geminiApiKey}
+        userName={user.name}
+        systemContext="Você está no StudySystem v2 com Rotas."
+      />
+    </div>
   );
 };
 
