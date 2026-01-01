@@ -18,6 +18,8 @@ export interface ICourseRepository {
     achievements: Achievement[]
   ): Promise<void>;
   getUserById(userId: string): Promise<User>;
+  getAllCourses(userId?: string): Promise<Course[]>;
+  getCoursesSummary(userId?: string): Promise<{ id: string; title: string; description: string; imageUrl: string | null; }[]>;
   getEnrolledCourses(userId: string): Promise<Course[]>;
   enrollInCourse(userId: string, courseId: string): Promise<void>;
   unenrollFromCourse(userId: string, courseId: string): Promise<void>;
@@ -54,13 +56,7 @@ export interface ICourseRepository {
   /**
    * Registra tentativa de quiz do usuário
    */
-  submitQuizAttempt(
-    userId: string,
-    quizId: string,
-    score: number,
-    passed: boolean,
-    answers: Record<string, string>
-  ): Promise<QuizAttempt>;
+  submitQuizAttempt(userId: string, quizId: string, answers: Record<string, string>): Promise<QuizAttempt>;
 
   /**
    * Busca última tentativa do usuário em um quiz

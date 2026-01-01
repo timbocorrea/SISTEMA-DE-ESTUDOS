@@ -57,10 +57,11 @@ const GamificationStats: React.FC<{ user: User }> = ({ user }) => {
   );
 };
 
-const computeCourseProgress = (course: Course) => {
-  const lessons = course.modules.flatMap(m => m.lessons);
+const computeCourseProgress = (course: any) => {
+  const modules = course.modules || [];
+  const lessons = modules.flatMap((m: any) => m.lessons);
   const total = lessons.length;
-  const completed = lessons.filter(l => l.isCompleted).length;
+  const completed = lessons.filter((l: any) => l.isCompleted).length;
   const percent = total === 0 ? 0 : Math.round((completed / total) * 100);
   return { total, completed, percent };
 };

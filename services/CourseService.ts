@@ -77,8 +77,20 @@ export class CourseService {
     return unlocked;
   }
 
-  public async fetchAvailableCourses(userId?: string): Promise<Course[]> {
+  public async fetchAvailableCourses(userId: string): Promise<Course[]> {
+    // Legacy: Keeping for backward compatibility if needed, or switch to summary.
+    // Ideally this should use getCoursesSummary but return type is Course[].
+    // Phase 3 Plan says: "Optimize fetchAvailableCourses to return summary only" or we change usage.
+    // Since we created getCoursesSummary in Repo, let's expose it as such.
     return this.courseRepository.getAllCourses(userId);
+  }
+
+  async getCoursesSummary(userId: string): Promise<{ id: string; title: string; description: string; imageUrl: string | null; }[]> {
+    return this.courseRepository.getCoursesSummary(userId);
+  }
+
+  async getCourseById(courseId: string, userId?: string): Promise<Course> {
+    return this.courseRepository.getCourseById(courseId, userId);
   }
 
   public async fetchUserProfile(userId: string): Promise<User> {

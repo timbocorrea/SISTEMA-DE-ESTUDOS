@@ -118,22 +118,33 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
             const supabase = createSupabaseClient();
             const courseRepo = new SupabaseCourseRepository(supabase);
 
-            // Validar respostas (lógica no domínio)
-            const result = quiz.validateAttempt(answers);
+            // Validar respostas via RPC no servidor
+            // const result = quiz.validateAttempt(answers); // Removido validação cliente
 
-            // Registrar tentativa no banco
-            await courseRepo.submitQuizAttempt(
+            // Registrar tentativa no banco (RPC calcula nota e retorna resultado)
+            const attempt = await courseRepo.submitQuizAttempt(
                 user.id,
                 quiz.id,
-                result.score,
-                result.passed,
                 answers
             );
 
-            setShowQuizModal(false);
-            setQuizResult(result);
+            // Converter para formato esperado pelo frontend se necessário, ou usar o retorno direto
+            const totalPoints = quiz.getTotalPoints();
+            // Recalcula pontos ganhos baseado no score (já que o backend retorna %)
+            const earnedPoints = Math.round((attempt.score / 100) * totalPoints);
 
-            if (result.passed) {
+            const resultWithScore = {
+                score: attempt.score,
+                passed: attempt.passed,
+                answers: attempt.answers,
+                earnedPoints,
+                totalPoints
+            };
+
+            setShowQuizModal(false);
+            setQuizResult(resultWithScore);
+
+            if (attempt.passed) {
                 lesson.setQuizPassed(true);
                 // Quiz passado! Agora podemos atualizar o progresso para completar a aula
                 // Chamamos onProgressUpdate com o progresso atual para disparar a verificação de conquistas
@@ -761,7 +772,6 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                 userId={user.id}
                                 lessonId={lesson.id}
                                 refreshTrigger={activeBlockId}
-                                apiKey={user.geminiApiKey || import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_API_KEY}
                             />
                         )}
 
@@ -781,8 +791,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                     <button
                         onClick={() => setActiveMobileTab('materials')}
                         className={`flex flex-col items-center justify-center gap-1 transition-colors ${activeMobileTab === 'materials'
-                                ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20'
-                                : 'text-slate-500 dark:text-slate-400'
+                            ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20'
+                            : 'text-slate-500 dark:text-slate-400'
                             }`}
                     >
                         <i className="fas fa-folder-open text-lg"></i>
@@ -792,8 +802,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                     <button
                         onClick={() => setActiveMobileTab('notes')}
                         className={`flex flex-col items-center justify-center gap-1 transition-colors ${activeMobileTab === 'notes'
-                                ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20'
-                                : 'text-slate-500 dark:text-slate-400'
+                            ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20'
+                            : 'text-slate-500 dark:text-slate-400'
                             }`}
                     >
                         <i className="fas fa-sticky-note text-lg"></i>
@@ -803,8 +813,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                     <button
                         onClick={() => setActiveMobileTab('quiz')}
                         className={`flex flex-col items-center justify-center gap-1 transition-colors ${activeMobileTab === 'quiz'
-                                ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20'
-                                : 'text-slate-500 dark:text-slate-400'
+                            ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20'
+                            : 'text-slate-500 dark:text-slate-400'
                             }`}
                     >
                         <i className="fas fa-graduation-cap text-lg"></i>
@@ -847,7 +857,6 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                     userId={user.id}
                                     lessonId={lesson.id}
                                     refreshTrigger={activeBlockId}
-                                    apiKey={user.geminiApiKey || import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_API_KEY}
                                 />
                             )}
 

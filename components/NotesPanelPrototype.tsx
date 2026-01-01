@@ -22,10 +22,9 @@ interface NotesPanelProps {
     userId: string;
     lessonId: string;
     refreshTrigger?: any; // Dispara restauração quando mudar (ex: activeBlockId)
-    apiKey?: string | null; // API Key para o Buddy
 }
 
-const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refreshTrigger, apiKey }) => {
+const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refreshTrigger }) => {
     const [notes, setNotes] = useState<Note[]>([]);
     const [loading, setLoading] = useState(true);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -627,7 +626,6 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
                 isOpen={showBuddyModal}
                 onClose={() => setShowBuddyModal(false)}
                 initialContext={buddyContext}
-                apiKey={apiKey}
                 onAddToNote={handleAddToNote}
                 existingNoteContent={buddyNoteContent}
             />

@@ -4,13 +4,12 @@ interface BuddyContextModalProps {
     isOpen: boolean;
     onClose: () => void;
     initialContext: string;
-    apiKey?: string | null;
     userName?: string;
     onAddToNote?: (text: string) => void;
     existingNoteContent?: string;
 }
 
-const BuddyContextModal: React.FC<BuddyContextModalProps> = ({ isOpen, onClose, initialContext, apiKey, userName, onAddToNote, existingNoteContent }) => {
+const BuddyContextModal: React.FC<BuddyContextModalProps> = ({ isOpen, onClose, initialContext, userName, onAddToNote, existingNoteContent }) => {
     const [prompt, setPrompt] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [messages, setMessages] = useState<{ role: 'user' | 'ai', text: string }[]>([]);
@@ -58,73 +57,11 @@ const BuddyContextModal: React.FC<BuddyContextModalProps> = ({ isOpen, onClose, 
         scrollToBottom();
     }, [messages]);
 
-    // Detect Provider and Model (Copied from GeminiBuddy for consistency)
+    // Simplified: Always assume Google/Gemini via backend or let backend decide based on ENV
     useEffect(() => {
-        if (!apiKey) return;
-
-        if (apiKey.startsWith('sk-')) {
-            setProvider('openai');
-            setActiveModel('gpt-3.5-turbo');
-            return;
-        }
-
-        if (apiKey.startsWith('gsk_')) {
-            setProvider('groq');
-            setActiveModel('llama-3.3-70b-versatile');
-            return;
-        }
-
-        // Zhipu keys format: id.secret
-        if (apiKey.includes('.') && apiKey.length > 20 && !apiKey.startsWith('AIza')) {
-            setProvider('zhipu');
-            setActiveModel('glm-4-flash');
-            return;
-        }
-
         setProvider('google');
-        // Google Auto-detect logic via REST
-        const findBestModel = async () => {
-            try {
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-                if (!response.ok) return;
-
-                const data = await response.json();
-                const models = data.models || [];
-
-                const availableNames = Array.isArray(models)
-                    ? models.map((m: any) => (m.name || '').replace('models/', ''))
-                    : [];
-
-                // Priority list
-                const candidates = [
-                    'gemini-flash-latest',
-                    'gemini-1.5-flash',
-                    'gemini-1.5-flash-001',
-                    'gemini-1.5-flash-8b',
-                    'gemini-1.5-pro',
-                    'gemini-1.5-pro-001',
-                    'gemini-pro',
-                    'gemini-pro-latest',
-                    'gemini-1.0-pro',
-                    'gemini-2.0-flash-exp',
-                    'gemini-2.0-flash'
-                ];
-
-                const best = candidates.find(c => availableNames.includes(c));
-
-                if (best) {
-                    setActiveModel(best);
-                } else {
-                    const fallback = availableNames.find((n: string) => n.includes('gemini'));
-                    if (fallback) setActiveModel(fallback);
-                }
-            } catch (e) {
-                console.error('Gemini Model List Error:', e);
-            }
-        };
-
-        findBestModel();
-    }, [apiKey]);
+        setActiveModel('gemini-1.5-flash');
+    }, []);
 
     const handleAsk = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -154,106 +91,34 @@ const BuddyContextModal: React.FC<BuddyContextModalProps> = ({ isOpen, onClose, 
     `;
 
         try {
-            if (provider === 'openai') {
-                const response = await fetch('https://api.openai.com/v1/chat/completions', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${apiKey} `
-                    },
-                    body: JSON.stringify({
-                        model: activeModel,
-                        messages: [
-                            { role: "system", content: systemInstruction },
-                            { role: "user", content: userMessage }
-                        ]
-                    })
-                });
+            // Use Supabase Edge Function
+            // Dynamically import client or pass as prop if available, ensuring we use useSupabaseClient hook principle in real app
+            // But here we might not have the hook context inside the modal if it's not passed. 
+            // Assuming createSupabaseClient is available from '../services/supabaseClient' like in LessonViewer
+            const { createSupabaseClient } = await import('../services/supabaseClient');
+            const supabase = createSupabaseClient();
 
-                const data = await response.json();
-                if (!response.ok) throw new Error(data.error?.message || 'Erro OpenAI');
-
-                let aiResponse = data.choices[0]?.message?.content || "Sem resposta.";
-                setMessages(prev => [...prev, { role: 'ai', text: aiResponse }]);
-
-            } else if (provider === 'groq') {
-                const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${apiKey} `
-                    },
-                    body: JSON.stringify({
-                        model: activeModel,
-                        messages: [
-                            { role: "system", content: systemInstruction },
-                            { role: "user", content: userMessage }
-                        ]
-                    })
-                });
-
-                const data = await response.json();
-                if (!response.ok) throw new Error(data.error?.message || 'Erro Groq');
-
-                let aiResponse = data.choices[0]?.message?.content || "Sem resposta.";
-                setMessages(prev => [...prev, { role: 'ai', text: aiResponse }]);
-
-            } else if (provider === 'zhipu') {
-                const response = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${apiKey} `
-                    },
-                    body: JSON.stringify({
-                        model: activeModel,
-                        messages: [
-                            { role: "system", content: systemInstruction },
-                            { role: "user", content: userMessage }
-                        ],
-                        stream: false
-                    })
-                });
-
-                const data = await response.json();
-                if (!response.ok) throw new Error(data.error?.message || `Erro Zhipu: ${response.status} `);
-
-                let aiResponse = data.choices[0]?.message?.content || "Sem resposta.";
-                setMessages(prev => [...prev, { role: 'ai', text: aiResponse }]);
-
-            } else {
-                // Google Gemini
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${apiKey}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{
-                            parts: [{ text: userMessage }]
-                        }],
-                        systemInstruction: {
-                            parts: [{ text: systemInstruction }]
-                        }
-                    })
-                });
-
-                const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(data.error?.message || `Erro Google: ${response.status}`);
+            const { data, error } = await supabase.functions.invoke('ask-ai', {
+                body: {
+                    provider: 'google', // Or let backend decide
+                    model: activeModel,
+                    messages: [
+                        { role: 'system', text: systemInstruction },
+                        { role: 'user', text: userMessage }
+                    ]
                 }
+            });
 
-                let aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "Sem resposta.";
-                setMessages(prev => [...prev, { role: 'ai', text: aiResponse }]);
-            }
+            if (error) throw new Error(error.message || 'Erro na Edge Function');
+            if (!data || !data.response) throw new Error('Resposta inválida do servidor');
+
+            setMessages(prev => [...prev, { role: 'ai', text: data.response }]);
 
         } catch (error) {
             console.error(error);
             let errorMessage = "Desculpe, não consegui processar sua dúvida no momento.";
             if (error instanceof Error) {
-                // Show more specific info if possible, but keep it user friendly
-                // e.g. "Quota exceeded" -> "Cota excedida"
-                if (error.message.includes('429')) errorMessage = "Muitas requisições. Tente em instantes.";
-                else if (error.message.includes('quota')) errorMessage = "Limite de uso da IA excedido.";
+                errorMessage = `Erro: ${error.message}`;
             }
             setMessages(prev => [...prev, { role: 'ai', text: errorMessage }]);
         } finally {
@@ -345,8 +210,8 @@ const BuddyContextModal: React.FC<BuddyContextModalProps> = ({ isOpen, onClose, 
                             type="text"
                             value={prompt}
                             onChange={(e) => setPrompt(e.target.value)}
-                            placeholder={apiKey ? "Digite sua pergunta..." : "Configuração de API necessária"}
-                            disabled={!apiKey || isLoading}
+                            placeholder="Digite sua pergunta..."
+                            disabled={isLoading}
                             className="w-full bg-slate-900 border border-slate-600 rounded-xl py-3 pl-4 pr-12 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors disabled:opacity-50"
                             autoFocus
                         />
