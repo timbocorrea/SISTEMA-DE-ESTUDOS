@@ -1,4 +1,5 @@
 
+// @ts-ignore
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -6,25 +7,28 @@ const corsHeaders = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-serve(async (req) => {
+serve(async (req: Request) => {
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders });
     }
 
     try {
-        const { messages, provider, model } = await req.json();
+        const { messages, provider, model, apiKey: bodyApiKey } = await req.json();
 
         // Default to Google/Gemini if not specified
         const aiProvider = provider || 'google';
         const aiModel = model || 'gemini-1.5-flash';
 
+        // Resolve API Key (Body > Env)
+        // @ts-ignore
+        const resolvedApiKey = bodyApiKey || (aiProvider === 'google' ? Deno.env.get('GEMINI_API_KEY') : Deno.env.get('OPENAI_API_KEY'));
+
         let responseText = '';
 
         if (aiProvider === 'google') {
-            const apiKey = Deno.env.get('GEMINI_API_KEY');
-            if (!apiKey) throw new Error('GEMINI_API_KEY not set');
+            if (!resolvedApiKey) throw new Error('GEMINI_API_KEY not set');
 
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=${apiKey}`, {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=${resolvedApiKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -47,7 +51,7 @@ serve(async (req) => {
             responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || "No response.";
 
         } else if (aiProvider === 'openai') {
-            const apiKey = Deno.env.get('OPENAI_API_KEY');
+            const apiKey = resolvedApiKey;
             if (!apiKey) throw new Error('OPENAI_API_KEY not set');
 
             const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -74,7 +78,7 @@ serve(async (req) => {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
 
-    } catch (error) {
+    } catch (error: any) {
         return new Response(JSON.stringify({ error: error.message }), {
             status: 400,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },

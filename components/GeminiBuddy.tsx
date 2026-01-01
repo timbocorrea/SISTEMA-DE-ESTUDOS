@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 // Google SDK removed in favor of direct REST API for better compatibility
+import { createSupabaseClient } from '../services/supabaseClient';
 
 interface GeminiBuddyProps {
   currentContext?: string; // Conteúdo da aula (opcional)
@@ -32,6 +33,9 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Supabase Client for Edge Functions
+  const supabase = createSupabaseClient();
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -235,203 +239,63 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
     `;
 
     try {
-      if (provider === 'openai') {
-        // OpenAI Vision Payload
-        const messagesPayload: any[] = [
-          { role: "system", content: `${systemInstruction}\nContexto: ${fullContext}` }
-        ];
+      const messagesPayload = [
+        { role: 'system', text: systemInstruction, parts: [{ text: systemInstruction }] }, // Adapting for different provider formats handling in Edge Function
+        { role: 'user', text: `${fullContext}\n\n${userMessage}`, parts: [{ text: `${fullContext}\n\n${userMessage}` }] }
+      ];
 
-        if (selectedImage) {
-          messagesPayload.push({
-            role: "user",
-            content: [
-              { type: "text", text: userMessage || "Analise esta imagem." },
-              { type: "image_url", image_url: { url: selectedImage } }
-            ]
-          });
-        } else {
-          messagesPayload.push({ role: "user", content: userMessage });
+      // Add history... in a real app, you'd append previous messages here too.
+      // For now, Edge Function is stateless in this implementation or we send full history.
+      // But the previous implementation just sent one message to Google/OpenAI mostly (except for OpenAI where it built array).
+      // Let's send the last Turn to keep it simple as per original logic, or improve.
+      // Original Logic:
+      // OpenAI: sent system + user message (no history)
+      // Gemini: sent contents: [{parts:[{text: ...}]}] (one turn)
+
+      // We will send just the current turn to match behavior and avoid token limits for now.
+
+      const { data, error } = await supabase.functions.invoke('ask-ai', {
+        body: {
+          messages: [
+            { role: 'system', text: `${systemInstruction}\nContexto: ${fullContext}` },
+            { role: 'user', text: userMessage || 'Analise a imagem.' }
+          ],
+          provider: provider,
+          model: activeModel,
+          apiKey: apiKey // BYOK Support
         }
+      });
 
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-          },
-          body: JSON.stringify({
-            model: activeModel === 'gpt-3.5-turbo' ? 'gpt-4o' : activeModel, // Force GPT-4o for vision if needed, or assume user selected a vision model
-            messages: messagesPayload
-          })
-        });
+      if (error) throw new Error(error.message || 'Erro ao comunicar com a IA');
 
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error?.message || 'Erro OpenAI');
+      const aiResponse = data.response;
 
-        let aiResponse = data.choices[0]?.message?.content || "Sem resposta.";
+      // Parse [[RESUME:courseId:lessonId]] action
+      const actionMatch = aiResponse.match(/\[\[RESUME:(.+?):(.+?)\]\]/);
+      let action: { label: string; courseId: string; lessonId: string } | undefined = undefined;
 
-        // Parse [[RESUME:courseId:lessonId]] action
-        const actionMatch = aiResponse.match(/\[\[RESUME:(.+?):(.+?)\]\]/);
-        let action = undefined;
-        if (actionMatch) {
-          aiResponse = aiResponse.replace(actionMatch[0], '');
-          action = {
-            label: 'Retomar aula 🚀',
-            courseId: actionMatch[1],
-            lessonId: actionMatch[2]
-          };
-        }
-
-        setMessages(prev => [...prev, { role: 'ai', text: aiResponse, action }]);
-
-      } else if (provider === 'groq') {
-        // Groq (Llama 3 Vision support varies, keeping text-only for now unless selectedImage is present then warn or try)
-        // Llama 3.2 11B/90B supports vision. 'llama-3.3-70b-versatile' is text only? 
-        // For safety, warn if image sent to non-vision model, or try standard format.
-
-        if (selectedImage) {
-          throw new Error("Envio de imagens ainda não suportado para Groq/Llama neste ambiente.");
-        }
-
-        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-          },
-          body: JSON.stringify({
-            model: activeModel,
-            messages: [
-              { role: "system", content: `${systemInstruction}\nContexto: ${fullContext}` },
-              { role: "user", content: userMessage }
-            ]
-          })
-        });
-
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error?.message || 'Erro Groq');
-
-        let aiResponse = data.choices[0]?.message?.content || "Sem resposta.";
-        // Action parsing...
-        const actionMatch = aiResponse.match(/\[\[RESUME:(.+?):(.+?)\]\]/);
-        let action = undefined;
-        if (actionMatch) {
-          aiResponse = aiResponse.replace(actionMatch[0], '');
-          action = {
-            label: 'Retomar aula 🚀',
-            courseId: actionMatch[1],
-            lessonId: actionMatch[2]
-          };
-        }
-        setMessages(prev => [...prev, { role: 'ai', text: aiResponse, action }]);
-
-      } else if (provider === 'zhipu') {
-        if (selectedImage) {
-          // Zhipu Vision (GLM-4V) payload is slightly different or requires specific model
-          // implementation skipped for brevity/safety unless requested
-          throw new Error("Envio de imagens não configurado para Zhipu.");
-        }
-        const response = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-          },
-          body: JSON.stringify({
-            model: activeModel,
-            messages: [
-              { role: "system", content: `${systemInstruction}\nContexto: ${fullContext}` },
-              { role: "user", content: userMessage }
-            ],
-            stream: false
-          })
-        });
-
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error?.message || `Erro Zhipu: ${response.status}`);
-        let aiResponse = data.choices[0]?.message?.content || "Sem resposta.";
-
-        const actionMatch = aiResponse.match(/\[\[RESUME:(.+?):(.+?)\]\]/);
-        let action = undefined;
-        if (actionMatch) {
-          aiResponse = aiResponse.replace(actionMatch[0], '');
-          action = {
-            label: 'Retomar aula 🚀',
-            courseId: actionMatch[1],
-            lessonId: actionMatch[2]
-          };
-        }
-        setMessages(prev => [...prev, { role: 'ai', text: aiResponse, action }]);
-
+      if (actionMatch) {
+        const cleanResponse = aiResponse.replace(actionMatch[0], '');
+        action = {
+          label: 'Retomar aula 🚀',
+          courseId: actionMatch[1],
+          lessonId: actionMatch[2]
+        };
+        setMessages(prev => [...prev, { role: 'ai', text: cleanResponse, action }]);
       } else {
-        // Google Gemini via REST API (Supports Inline Data)
-
-        const parts: any[] = [{ text: `Contexto: ${fullContext}\n\nDúvida: ${userMessage || "Analise a imagem."}` }];
-
-        if (selectedImage) {
-          // selectedImage is "data:image/png;base64,..."
-          // Extract mimetype and base64 data
-          const match = selectedImage.match(/^data:(.+);base64,(.+)$/);
-          if (match) {
-            const mimeType = match[1];
-            const data = match[2];
-            parts.push({
-              inlineData: {
-                mimeType: mimeType,
-                data: data
-              }
-            });
-          }
-        }
-
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${apiKey}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{
-              parts: parts
-            }],
-            systemInstruction: {
-              parts: [{ text: systemInstruction }]
-            }
-          })
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error?.message || `Erro Google: ${response.status}`);
-        }
-
-        let aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "Sem resposta.";
-
-        // Parse [[RESUME:courseId:lessonId]] action
-        const actionMatch = aiResponse.match(/\[\[RESUME:(.+?):(.+?)\]\]/);
-        let action = undefined;
-        if (actionMatch) {
-          aiResponse = aiResponse.replace(actionMatch[0], '');
-          action = {
-            label: 'Retomar aula 🚀',
-            courseId: actionMatch[1],
-            lessonId: actionMatch[2]
-          };
-        }
-
-        setMessages(prev => [...prev, { role: 'ai', text: aiResponse, action }]);
+        setMessages(prev => [...prev, { role: 'ai', text: aiResponse }]);
       }
+
     } catch (error) {
       console.error(error);
       let errorMessage = "Erro desconhecido";
       if (error instanceof Error) {
         errorMessage = error.message;
-        if (errorMessage.includes('429') || errorMessage.includes('quota')) errorMessage = "Cota excedida.";
-        else if (errorMessage.includes('not found')) errorMessage = `Modelo indisponível ou não suporta imagens.`;
-        else if (errorMessage.includes('余额不足') || errorMessage.includes('insufficient balance')) errorMessage = "Saldo insuficiente (IA).";
       }
       setMessages(prev => [...prev, { role: 'ai', text: `Erro: ${errorMessage}` }]);
     } finally {
       setIsLoading(false);
-      setSelectedImage(null); // Clear image after sending
+      setSelectedImage(null);
     }
   };
 
