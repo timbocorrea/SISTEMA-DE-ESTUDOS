@@ -91,11 +91,12 @@ const LessonMaterialsSidebar: React.FC<Props> = ({ lesson }) => {
   });
 
   // State to control collapsed groups
-  // Default open: AUDIO and PDF if they have items
+  // State to control collapsed groups
+  // Default all closed per user request
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
-    AUDIO: true,
+    AUDIO: false,
     IMAGE: false,
-    PDF: true,
+    PDF: false,
     LINK: false,
     FILE: false
   });

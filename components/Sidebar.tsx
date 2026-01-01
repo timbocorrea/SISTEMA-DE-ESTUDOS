@@ -37,7 +37,8 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const isAdmin = session.user.role === 'INSTRUCTOR';
 
-  const [isCollapsed, setIsCollapsed] = useState(true);
+  /* Sidebar Expanded by Default */
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [themeDropdownOpen, setThemeDropdownOpen] = useState(false);
 
   // Removido o useEffect de persistência para garantir que sempre inicie fechado

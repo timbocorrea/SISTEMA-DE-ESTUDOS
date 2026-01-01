@@ -4,7 +4,7 @@ export interface ILessonData {
   id: string;
   title: string;
   videoUrl: string;
-  videoUrls?: { url: string; title: string }[]; // Multiple video URLs
+  videoUrls?: { url: string; title: string; imageUrl?: string }[]; // Multiple video URLs
   content?: string;
   audioUrl?: string;
   imageUrl?: string;
@@ -95,7 +95,7 @@ export class Lesson {
   private _id: string;
   private _title: string;
   private _videoUrl: string;
-  private _videoUrls: { url: string; title: string }[];
+  private _videoUrls: { url: string; title: string; imageUrl?: string }[];
   private _content: string;
   private _audioUrl: string;
   private _imageUrl: string;
@@ -133,7 +133,7 @@ export class Lesson {
   get id(): string { return this._id; }
   get title(): string { return this._title; }
   get videoUrl(): string { return this._videoUrl; }
-  get videoUrls(): { url: string; title: string }[] { return [...this._videoUrls]; }
+  get videoUrls(): { url: string; title: string; imageUrl?: string }[] { return [...this._videoUrls]; }
   get content(): string { return this._content; }
   get audioUrl(): string { return this._audioUrl; }
   get imageUrl(): string { return this._imageUrl; }

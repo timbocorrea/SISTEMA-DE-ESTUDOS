@@ -400,9 +400,20 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                                     : 'border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-slate-600'
                                                     }`}
                                             >
-                                                {/* Thumbnail Placeholder - Gradiente ou Ícone */}
+                                                {/* Thumbnail Placeholder or Image */}
                                                 <div className="absolute inset-0 bg-slate-800 flex items-center justify-center group-hover:scale-105 transition-transform duration-500">
-                                                    <i className={`fas ${activeVideoIndex === index ? 'fa-play-circle text-indigo-500' : 'fa-play text-white/30'} text-3xl group-hover:text-white transition-colors`}></i>
+                                                    {video.imageUrl ? (
+                                                        <>
+                                                            <img
+                                                                src={video.imageUrl}
+                                                                alt={video.title}
+                                                                className="w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity"
+                                                            />
+                                                            <i className={`fas ${activeVideoIndex === index ? 'fa-play-circle text-indigo-500' : 'fa-play text-white'} text-3xl absolute shadow-xl`}></i>
+                                                        </>
+                                                    ) : (
+                                                        <i className={`fas ${activeVideoIndex === index ? 'fa-play-circle text-indigo-500' : 'fa-play text-white/30'} text-3xl group-hover:text-white transition-colors`}></i>
+                                                    )}
                                                 </div>
 
                                                 {/* Overlay Status */}
