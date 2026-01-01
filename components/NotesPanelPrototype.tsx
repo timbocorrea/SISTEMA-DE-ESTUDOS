@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { serializeRange, deserializeRange } from '../utils/xpathUtils';
 import { LessonNotesRepository, LessonNote } from '../repositories/LessonNotesRepository';
+import BuddyContextModal from './BuddyContextModal';
 
 interface Note {
     id: string;
@@ -21,9 +22,10 @@ interface NotesPanelProps {
     userId: string;
     lessonId: string;
     refreshTrigger?: any; // Dispara restauração quando mudar (ex: activeBlockId)
+    apiKey?: string | null; // API Key para o Buddy
 }
 
-const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refreshTrigger }) => {
+const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refreshTrigger, apiKey }) => {
     const [notes, setNotes] = useState<Note[]>([]);
     const [loading, setLoading] = useState(true);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -31,6 +33,28 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
     const [selectedColor, setSelectedColor] = useState<'yellow' | 'green' | 'blue' | 'pink'>('yellow');
     const [showColorPicker, setShowColorPicker] = useState(false);
     const [savedSelection, setSavedSelection] = useState<{ text: string, range: Range } | null>(null);
+
+    // Buddy Integration State
+    const [showBuddyModal, setShowBuddyModal] = useState(false);
+    const [buddyContext, setBuddyContext] = useState<string>('');
+    const [activeBuddyNoteId, setActiveBuddyNoteId] = useState<string | null>(null);
+    const [buddyNoteContent, setBuddyNoteContent] = useState<string>('');
+    const [visibleNotes, setVisibleNotes] = useState<Set<string>>(new Set());
+
+    const toggleNoteVisibility = (noteId: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setVisibleNotes(prev => {
+            const next = new Set(prev);
+            if (next.has(noteId)) {
+                next.delete(noteId);
+            } else {
+                next.add(noteId);
+            }
+            return next;
+        });
+    };
+
+
 
     // Carregar notas e restaurar destaques
     useEffect(() => {
@@ -282,6 +306,27 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
         }
     };
 
+    const handleAskBuddy = (context: string, noteId: string) => {
+        setBuddyContext(context);
+        setActiveBuddyNoteId(noteId);
+
+        const note = notes.find(n => n.id === noteId);
+        setBuddyNoteContent(note?.content || '');
+
+        setShowBuddyModal(true);
+    };
+
+    const handleAddToNote = async (text: string) => {
+        if (!activeBuddyNoteId) return;
+        const note = notes.find(n => n.id === activeBuddyNoteId);
+        if (!note) return;
+
+        const newContent = note.content ? `${note.content}\n\n🤖 Buddy:\n${text}` : `🤖 Buddy:\n${text}`;
+
+        await handleUpdateNote(activeBuddyNoteId, newContent);
+        alert('Resposta adicionada à nota com sucesso! ✅');
+    };
+
     const highlightColorClasses = {
         yellow: 'border-yellow-400 bg-yellow-50 dark:bg-yellow-900/10',
         green: 'border-green-400 bg-green-50 dark:bg-green-900/10',
@@ -308,7 +353,7 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
     }
 
     return (
-        <div className="h-[600px] flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+        <div className="h-[600px] flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden relative">
             {/* Header */}
             <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 flex-shrink-0">
                 <div className="flex items-center justify-between mb-2">
@@ -372,25 +417,36 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
                             </div>
                         )}
 
-                        {/* Conteúdo da nota */}
-                        <div className="mb-2">
-                            {editingId === note.id ? (
-                                <textarea
-                                    defaultValue={note.content}
-                                    className="w-full border border-indigo-300 dark:border-indigo-700 rounded-lg p-2 text-sm text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none"
-                                    rows={4}
-                                    onClick={(e) => e.stopPropagation()}
-                                    onBlur={(e) => handleUpdateNote(note.id, e.target.value)}
-                                />
-                            ) : (
-                                <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-wrap">
-                                    {note.content}
-                                </p>
-                            )}
-                        </div>
+                        {/* Conteúdo da nota (Collapsible) */}
+                        {(visibleNotes.has(note.id) || editingId === note.id) && (
+                            <div className="mb-2 animate-in slide-in-from-top-2 duration-200">
+                                {editingId === note.id ? (
+                                    <textarea
+                                        defaultValue={note.content}
+                                        className="w-full border border-indigo-300 dark:border-indigo-700 rounded-lg p-2 text-sm text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                        rows={4}
+                                        onClick={(e) => e.stopPropagation()}
+                                        onBlur={(e) => handleUpdateNote(note.id, e.target.value)}
+                                    />
+                                ) : (
+                                    <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-wrap">
+                                        {note.content}
+                                    </p>
+                                )}
+                            </div>
+                        )}
 
                         {/* Ações */}
-                        <div className="flex gap-2 items-center">
+                        <div className="flex gap-2 items-center flex-wrap pt-2 border-t border-slate-100 dark:border-slate-800/50">
+                            {/* Toggle Bundle Button */}
+                            <button
+                                onClick={(e) => toggleNoteVisibility(note.id, e)}
+                                className="text-xs text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 font-medium flex items-center gap-1 mr-auto transition-colors"
+                            >
+                                <i className={`fas fa-chevron-${visibleNotes.has(note.id) ? 'up' : 'down'}`}></i>
+                                {visibleNotes.has(note.id) ? 'Ocultar Nota' : 'Ver Nota'}
+                            </button>
+
                             {editingId === note.id ? (
                                 <button
                                     onClick={(e) => {
@@ -407,6 +463,7 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             setEditingId(note.id);
+                                            setVisibleNotes(prev => new Set(prev).add(note.id));
                                         }}
                                         className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-semibold flex items-center gap-1"
                                     >
@@ -421,6 +478,22 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
                                     >
                                         <i className="fas fa-trash"></i>Apagar
                                     </button>
+
+                                    {/* Action: Ask Buddy Button (Only for highlights) */}
+                                    {note.hasHighlight && note.highlightedText && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleAskBuddy(note.highlightedText!, note.id);
+                                            }}
+                                            className="text-xs text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1 font-bold ml-1 bg-purple-50 dark:bg-purple-900/20 px-2 py-0.5 rounded-full border border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors"
+                                            title="Perguntar ao Buddy sobre este trecho"
+                                        >
+                                            <i className="fas fa-robot text-[10px]"></i>
+                                            Perguntar
+                                        </button>
+                                    )}
+
                                     {note.hasHighlight && (
                                         <button
                                             onClick={(e) => {
@@ -548,6 +621,16 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
                     💡 Dica: Selecione texto no conteúdo da aula e clique no destaque
                 </p>
             </div>
+
+            {/* Buddy Context Modal */}
+            <BuddyContextModal
+                isOpen={showBuddyModal}
+                onClose={() => setShowBuddyModal(false)}
+                initialContext={buddyContext}
+                apiKey={apiKey}
+                onAddToNote={handleAddToNote}
+                existingNoteContent={buddyNoteContent}
+            />
         </div>
     );
 };

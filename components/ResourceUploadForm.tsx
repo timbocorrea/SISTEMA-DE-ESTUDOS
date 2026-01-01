@@ -7,6 +7,7 @@ interface ResourceUploadFormProps {
         title: string;
         resourceType: LessonResourceRecord['resource_type'];
         url: string;
+        category: string;
     }) => Promise<void>;
     isLoading: boolean;
 }
@@ -15,6 +16,7 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onSubmit, isLoa
     const [uploadMethod, setUploadMethod] = useState<'file' | 'url'>('file');
     const [title, setTitle] = useState('');
     const [resourceType, setResourceType] = useState<LessonResourceRecord['resource_type']>('PDF');
+    const [category, setCategory] = useState<string>('Material de Apoio');
     const [url, setUrl] = useState('');
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [uploadProgress, setUploadProgress] = useState(0);
@@ -74,7 +76,8 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onSubmit, isLoa
             await onSubmit({
                 title: title.trim(),
                 resourceType,
-                url: finalUrl
+                url: finalUrl,
+                category
             });
 
             setUploadProgress(100);
@@ -102,8 +105,8 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onSubmit, isLoa
                         setError('');
                     }}
                     className={`flex-1 py-2 px-3 rounded-lg text-xs font-black transition-all ${uploadMethod === 'file'
-                            ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                            : 'text-slate-500 hover:text-slate-700'
+                        ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-700'
                         }`}
                 >
                     <i className="fas fa-upload mr-1"></i>
@@ -116,8 +119,8 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onSubmit, isLoa
                         setError('');
                     }}
                     className={`flex-1 py-2 px-3 rounded-lg text-xs font-black transition-all ${uploadMethod === 'url'
-                            ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                            : 'text-slate-500 hover:text-slate-700'
+                        ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-700'
                         }`}
                 >
                     <i className="fas fa-link mr-1"></i>
@@ -135,22 +138,37 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onSubmit, isLoa
                     className="w-full bg white dark:bg-[#0a0e14] border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-700 dark:text-slate-200 text-sm outline-none disabled:opacity-50"
                 />
 
-                <select
-                    value={resourceType}
-                    onChange={e => {
-                        setResourceType(e.target.value as LessonResourceRecord['resource_type']);
-                        setSelectedFile(null);
-                        setError('');
-                    }}
-                    disabled={isLoading || isUploading}
-                    className="w-full bg-white dark:bg-[#0a0e14] border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-700 dark:text-slate-200 text-sm outline-none disabled:opacity-50"
-                >
-                    <option value="PDF">📄 PDF</option>
-                    <option value="AUDIO">🎵 Áudio</option>
-                    <option value="IMAGE">🖼️ Imagem</option>
-                    <option value="LINK">🔗 Link</option>
-                    <option value="FILE">📎 Outro Arquivo</option>
-                </select>
+                <div className="grid grid-cols-2 gap-3">
+                    <select
+                        value={resourceType}
+                        onChange={e => {
+                            setResourceType(e.target.value as LessonResourceRecord['resource_type']);
+                            setSelectedFile(null);
+                            setError('');
+                        }}
+                        disabled={isLoading || isUploading}
+                        className="w-full bg-white dark:bg-[#0a0e14] border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-700 dark:text-slate-200 text-sm outline-none disabled:opacity-50"
+                    >
+                        <option value="PDF">📄 PDF</option>
+                        <option value="AUDIO">🎵 Áudio</option>
+                        <option value="IMAGE">🖼️ Imagem</option>
+                        <option value="LINK">🔗 Link</option>
+                        <option value="FILE">📎 Outro Arquivo</option>
+                    </select>
+
+                    <select
+                        value={category}
+                        onChange={e => setCategory(e.target.value)}
+                        disabled={isLoading || isUploading}
+                        className="w-full bg-white dark:bg-[#0a0e14] border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-700 dark:text-slate-200 text-sm outline-none disabled:opacity-50"
+                    >
+                        <option value="Material de Apoio">📚 Material de Apoio</option>
+                        <option value="Exercícios">📝 Exercícios</option>
+                        <option value="Slides">📊 Slides</option>
+                        <option value="Leitura Complementar">📖 Leitura Complementar</option>
+                        <option value="Outros">📦 Outros</option>
+                    </select>
+                </div>
 
                 {/* Upload de Arquivo */}
                 {uploadMethod === 'file' && (

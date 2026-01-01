@@ -130,12 +130,12 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
     // Metadata State
     const [title, setTitle] = useState(lesson.title);
-    const [videoUrls, setVideoUrls] = useState<{ url: string; title: string }[]>(() => {
+    const [videoUrls, setVideoUrls] = useState<{ url: string; title: string; image_url?: string }[]>(() => {
         // Initialize from video_urls if available, otherwise create from video_url for backward compatibility
         if (lesson.video_urls && lesson.video_urls.length > 0) {
             return lesson.video_urls;
         } else if (lesson.video_url) {
-            return [{ url: lesson.video_url, title: 'Vídeo Principal' }];
+            return [{ url: lesson.video_url, title: 'Vídeo Principal', image_url: lesson.image_url || undefined }];
         }
         return [];
     });
@@ -147,6 +147,35 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
     const [blocks, setBlocks] = useState<any[]>(lesson.content_blocks || []);
     const [editingBlockForAudio, setEditingBlockForAudio] = useState<any | null>(null);
     const [tempAudioUrl, setTempAudioUrl] = useState('');
+
+    // Lesson Resources
+    const [lessonResources, setLessonResources] = useState<LessonResourceRecord[]>([]);
+    const [isLoadingResources, setIsLoadingResources] = useState(false);
+
+    // Quiz Management Modal State
+    const [showQuizManagementModal, setShowQuizManagementModal] = useState(false);
+    const [showMaterialModal, setShowMaterialModal] = useState(false);
+
+    // Carregar recursos ao abrir o modal
+    useEffect(() => {
+        if (showMaterialModal && lesson.id) {
+            fetchLessonResources();
+        }
+    }, [showMaterialModal, lesson.id]);
+
+    const fetchLessonResources = async () => {
+        if (!lesson.id) return;
+        setIsLoadingResources(true);
+        try {
+            const repo = new SupabaseAdminRepository();
+            const resources = await repo.listLessonResources(lesson.id);
+            setLessonResources(resources);
+        } catch (error) {
+            console.error('Erro ao buscar materiais:', error);
+        } finally {
+            setIsLoadingResources(false);
+        }
+    };
 
     // Audio Preview State
     const previewAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -167,12 +196,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
     const [lessonRequirements, setLessonRequirements] = useState<import('../domain/lesson-requirements').LessonProgressRequirements | null>(null);
     const [loadingRequirements, setLoadingRequirements] = useState(false);
 
-    // Quiz Management Modal State
-    const [showQuizManagementModal, setShowQuizManagementModal] = useState(false);
-    const [showMaterialModal, setShowMaterialModal] = useState(false);
 
-
-    // Bulk Creation State
     const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
     const [bulkCount, setBulkCount] = useState(3);
 
@@ -1690,7 +1714,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
         </button>
     );
 
-    const handleSaveResource = async (data: { title: string; resourceType: LessonResourceRecord['resource_type']; url: string }) => {
+    const handleSaveResource = async (data: { title: string; resourceType: LessonResourceRecord['resource_type']; url: string; category: string }) => {
         if (!lesson.id) return;
         try {
             const repo = new SupabaseAdminRepository();
@@ -1698,15 +1722,27 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                 title: data.title,
                 resourceType: data.resourceType,
                 url: data.url,
-                position: ((lesson as any).resources?.length || 0) + 1
+                category: data.category,
+                position: lessonResources.length + 1
             });
 
-            alert('Material adicionado com sucesso!');
-            setShowMaterialModal(false);
-            window.location.reload();
+            // Recarregar lista em vez de reload na página
+            await fetchLessonResources();
         } catch (error) {
             console.error('Erro ao salvar material:', error);
             alert('Erro ao salvar material.');
+        }
+    };
+
+    const handleDeleteResource = async (resourceId: string) => {
+        if (!confirm('Tem certeza que deseja remover este material?')) return;
+        try {
+            const repo = new SupabaseAdminRepository();
+            await repo.deleteLessonResource(resourceId);
+            await fetchLessonResources();
+        } catch (error) {
+            console.error('Erro ao excluir material:', error);
+            alert('Erro ao excluir material.');
         }
     };
 
@@ -3066,49 +3102,77 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
                         {/* Layout em 2 Colunas */}
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                            {/* Coluna Esquerda: Outras Mídias */}
-                            <div className="space-y-4">
+                            {/* Coluna Esquerda: Materiais Complementares */}
+                            <div className="space-y-4 h-full flex flex-col">
                                 <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
-                                    <i className="fas fa-compact-disc text-indigo-500"></i>
-                                    Outras Mídias
+                                    <i className="fas fa-paperclip text-indigo-500"></i>
+                                    Materiais Complementares
                                 </h4>
 
-                                <div className="space-y-3">
-                                    <div>
-                                        <label className="block text-xs font-semibold text-slate-500 mb-1">URL do Áudio (MP3/Podcast)</label>
-                                        <div className="relative">
-                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                <i className="fas fa-volume-up text-slate-400 text-xs"></i>
-                                            </div>
-                                            <input
-                                                type="text"
-                                                value={audioUrl}
-                                                onChange={e => setAudioUrl(e.target.value)}
-                                                className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500"
-                                                placeholder="https://..."
-                                            />
-                                        </div>
-                                    </div>
+                                <div className="flex-1 overflow-y-auto min-h-[200px] space-y-6">
+                                    <ResourceUploadForm
+                                        onSubmit={handleSaveResource}
+                                        isLoading={false}
+                                    />
 
-                                    <div>
-                                        <label className="block text-xs font-semibold text-slate-500 mb-1">URL da Imagem de Capa</label>
-                                        <div className="relative">
-                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                <i className="fas fa-image text-slate-400 text-xs"></i>
-                                            </div>
-                                            <input
-                                                type="text"
-                                                value={imageUrl}
-                                                onChange={e => setImageUrl(e.target.value)}
-                                                className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500"
-                                                placeholder="https://..."
-                                            />
-                                        </div>
-                                    </div>
+                                    {/* Lista de Materiais por Categoria */}
+                                    <div className="space-y-6 mt-6">
+                                        {['Material de Apoio', 'Exercícios', 'Slides', 'Leitura Complementar', 'Outros'].map(category => {
+                                            const categoryResources = lessonResources.filter(r => (r.category || 'Outros') === category);
+                                            if (categoryResources.length === 0) return null;
 
-                                    <div className="text-xs text-amber-600 bg-amber-50 dark:bg-amber-900/20 p-3 rounded border border-amber-200 dark:border-amber-800 flex items-start gap-2">
-                                        <i className="fas fa-info-circle mt-0.5"></i>
-                                        <span>Para salvar estas alterações de mídia, use o botão <b>SALVAR</b> principal no topo da página.</span>
+                                            return (
+                                                <div key={category} className="space-y-2">
+                                                    <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                                                        {category === 'Material de Apoio' && <i className="fas fa-book text-indigo-500"></i>}
+                                                        {category === 'Exercícios' && <i className="fas fa-tasks text-green-500"></i>}
+                                                        {category === 'Slides' && <i className="fas fa-presentation text-orange-500"></i>}
+                                                        {category === 'Leitura Complementar' && <i className="fas fa-book-open text-blue-500"></i>}
+                                                        {category === 'Outros' && <i className="fas fa-box text-slate-500"></i>}
+                                                        {category}
+                                                    </h5>
+                                                    <div className="space-y-2">
+                                                        {categoryResources.map(resource => (
+                                                            <div key={resource.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-800 group">
+                                                                <div className="flex items-center gap-3 overflow-hidden">
+                                                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold
+                                                                        ${resource.resource_type === 'PDF' ? 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400' :
+                                                                            resource.resource_type === 'AUDIO' ? 'bg-purple-100 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400' :
+                                                                                resource.resource_type === 'IMAGE' ? 'bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400' :
+                                                                                    'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400'}`}>
+                                                                        {resource.resource_type === 'PDF' && 'PDF'}
+                                                                        {resource.resource_type === 'AUDIO' && 'MP3'}
+                                                                        {resource.resource_type === 'IMAGE' && 'IMG'}
+                                                                        {['LINK', 'FILE'].includes(resource.resource_type) && <i className="fas fa-link"></i>}
+                                                                    </div>
+                                                                    <div className="min-w-0">
+                                                                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate" title={resource.title}>
+                                                                            {resource.title}
+                                                                        </p>
+                                                                        <a href={resource.url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-indigo-500 hover:text-indigo-600 truncate block">
+                                                                            Ver arquivo
+                                                                        </a>
+                                                                    </div>
+                                                                </div>
+                                                                <button
+                                                                    onClick={() => handleDeleteResource(resource.id)}
+                                                                    className="w-7 h-7 flex items-center justify-center rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors opacity-0 group-hover:opacity-100"
+                                                                    title="Remover material"
+                                                                >
+                                                                    <i className="fas fa-trash-alt text-xs"></i>
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                        {lessonResources.length === 0 && !isLoadingResources && (
+                                            <div className="text-center py-8 text-slate-400">
+                                                <i className="fas fa-folder-open text-2xl mb-2 opacity-30"></i>
+                                                <p className="text-xs">Nenhum material complementar adicionado.</p>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -3125,7 +3189,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                         <label className="block text-xs font-semibold text-slate-500">Lista de Vídeos</label>
                                         <button
                                             type="button"
-                                            onClick={() => setVideoUrls([...videoUrls, { url: '', title: `Vídeo ${videoUrls.length + 1}` }])}
+                                            onClick={() => setVideoUrls([...videoUrls, { url: '', title: `Vídeo ${videoUrls.length + 1}`, image_url: '' }])}
                                             className="px-3 py-1 text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors flex items-center gap-1"
                                         >
                                             <i className="fas fa-plus"></i>
@@ -3165,6 +3229,20 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                                                     onChange={e => {
                                                                         const updated = [...videoUrls];
                                                                         updated[index].url = e.target.value;
+                                                                        setVideoUrls(updated);
+                                                                    }}
+                                                                    className="w-full px-2 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded text-xs outline-none focus:ring-2 focus:ring-indigo-500"
+                                                                    placeholder="https://..."
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-[10px] font-semibold text-slate-500 mb-1">URL da Imagem de Capa</label>
+                                                                <input
+                                                                    type="text"
+                                                                    value={video.image_url || ''}
+                                                                    onChange={e => {
+                                                                        const updated = [...videoUrls];
+                                                                        updated[index].image_url = e.target.value;
                                                                         setVideoUrls(updated);
                                                                     }}
                                                                     className="w-full px-2 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded text-xs outline-none focus:ring-2 focus:ring-indigo-500"
@@ -3226,18 +3304,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                             </div>
                         </div>
 
-                        {/* Rodapé: Materiais Complementares */}
-                        <div className="border-t border-slate-200 dark:border-slate-800 pt-6">
-                            <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2 mb-4">
-                                <i className="fas fa-paperclip text-indigo-500"></i>
-                                Materiais Complementares
-                            </h4>
 
-                            <ResourceUploadForm
-                                onSubmit={handleSaveResource}
-                                isLoading={false}
-                            />
-                        </div>
 
                         {/* Botão Salvar no Rodapé */}
                         <div className="sticky bottom-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 pt-4 mt-6 flex items-center justify-between gap-4">

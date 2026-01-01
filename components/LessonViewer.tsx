@@ -637,148 +637,153 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                             >
                                 Materiais
                             </button>
-                    <button
-                        onClick={() => {
-                            setSidebarTab('notes');
-                            onTrackAction?.('Acessou Minhas Notas');
-                        }}
-                        className={`flex-1 px-3 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition ${sidebarTab === 'notes'
-                            ? 'bg-indigo-600 text-white'
-                            : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/40'
-                            }`}
-                    >
-                        Minhas Notas
-                    </button>
-                </div>
+                            <button
+                                onClick={() => {
+                                    setSidebarTab('notes');
+                                    onTrackAction?.('Acessou Minhas Notas');
+                                }}
+                                className={`flex-1 px-3 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition ${sidebarTab === 'notes'
+                                    ? 'bg-indigo-600 text-white'
+                                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/40'
+                                    }`}
+                            >
+                                Minhas Notas
+                            </button>
+                        </div>
 
-                {sidebarTab === 'materials' ? (
-                    <LessonMaterialsSidebar lesson={lesson} />
-                ) : (
-                    <NotesPanelPrototype userId={user.id} lessonId={lesson.id} refreshTrigger={activeBlockId} />
-                )}
+                        {sidebarTab === 'materials' ? (
+                            <LessonMaterialsSidebar lesson={lesson} />
+                        ) : (
+                            <NotesPanelPrototype
+                                userId={user.id}
+                                lessonId={lesson.id}
+                                refreshTrigger={activeBlockId}
+                                apiKey={user.geminiApiKey || import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_API_KEY}
+                            />
+                        )}
 
-                {/* Seção de Quiz */}
-                {quiz && (() => {
-                    const quizAvailable = quiz.isManuallyReleased || lesson.calculateProgressPercentage() >= 90;
+                        {/* Seção de Quiz */}
+                        {quiz && (() => {
+                            const quizAvailable = quiz.isManuallyReleased || lesson.calculateProgressPercentage() >= 90;
 
-                    return (
-                        <div className={`rounded-2xl border overflow-hidden transition-all ${quizAvailable
-                            ? 'bg-gradient-to-br from-emerald-900/40 via-teal-900/30 to-green-900/40 border-emerald-500/30 shadow-lg shadow-emerald-500/10'
-                            : 'bg-slate-900 border-slate-700'
-                            }`}>
-                            <div className={`p-4 border-b flex items-center gap-3 ${quizAvailable
-                                ? 'bg-emerald-800/30 border-emerald-700/30'
-                                : 'bg-slate-800 border-slate-700'
-                                }`}>
-                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${quizAvailable
-                                    ? 'bg-emerald-500/20 text-emerald-400'
-                                    : 'bg-slate-700 text-slate-500'
+                            return (
+                                <div className={`rounded-2xl border overflow-hidden transition-all ${quizAvailable
+                                    ? 'bg-gradient-to-br from-emerald-900/40 via-teal-900/30 to-green-900/40 border-emerald-500/30 shadow-lg shadow-emerald-500/10'
+                                    : 'bg-slate-900 border-slate-700'
                                     }`}>
-                                    <i className={`fas ${quizAvailable ? 'fa-graduation-cap' : 'fa-lock'} text-xl`}></i>
-                                </div>
-                                <div className="flex-1">
-                                    <h3 className="text-sm font-bold text-slate-100">Quiz da Aula</h3>
-                                    <p className="text-[10px] text-emerald-300 font-bold uppercase tracking-widest">
-                                        {quizAvailable ? 'Disponível' : 'Bloqueado'}
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="p-4">
-                                <button
-                                    onClick={quizAvailable ? () => {
-                                        setShowQuizModal(true);
-                                        onTrackAction?.('Abriu o Quiz da aula');
-                                    } : undefined}
-                                    disabled={!quizAvailable}
-                                    className={`w-full rounded-xl p-4 transition-all ${quizAvailable
-                                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 cursor-pointer shadow-lg shadow-emerald-500/20'
-                                        : 'bg-slate-800 cursor-not-allowed opacity-60'
-                                        }`}
-                                    title={quizAvailable ? `Iniciar: ${quiz.title}` : `Complete 90% da aula para desbloquear`}
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div className={`w-12 h-12 rounded-xl border-2 flex items-center justify-center flex-shrink-0 ${quizAvailable
-                                            ? 'border-white/20 bg-white/10'
-                                            : 'border-slate-700 bg-slate-700/50'
+                                    <div className={`p-4 border-b flex items-center gap-3 ${quizAvailable
+                                        ? 'bg-emerald-800/30 border-emerald-700/30'
+                                        : 'bg-slate-800 border-slate-700'
+                                        }`}>
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${quizAvailable
+                                            ? 'bg-emerald-500/20 text-emerald-400'
+                                            : 'bg-slate-700 text-slate-500'
                                             }`}>
-                                            <i className={`fas ${quizAvailable ? 'fa-play' : 'fa-lock'} text-xl ${quizAvailable ? 'text-white' : 'text-slate-500'}`}></i>
+                                            <i className={`fas ${quizAvailable ? 'fa-graduation-cap' : 'fa-lock'} text-xl`}></i>
                                         </div>
-                                        <div className="flex-1 text-left">
-                                            <h4 className={`font-bold text-sm mb-1 ${quizAvailable ? 'text-white' : 'text-slate-400'}`}>
-                                                {quiz.title}
-                                            </h4>
-                                            <p className={`text-xs ${quizAvailable ? 'text-emerald-200' : 'text-slate-500'}`}>
-                                                {quiz.questions.length} {quiz.questions.length === 1 ? 'Pergunta' : 'Perguntas'}
+                                        <div className="flex-1">
+                                            <h3 className="text-sm font-bold text-slate-100">Quiz da Aula</h3>
+                                            <p className="text-[10px] text-emerald-300 font-bold uppercase tracking-widest">
+                                                {quizAvailable ? 'Disponível' : 'Bloqueado'}
                                             </p>
                                         </div>
-                                        {quizAvailable && (
-                                            <i className="fas fa-arrow-right text-white text-xl"></i>
+                                    </div>
+
+                                    <div className="p-4">
+                                        <button
+                                            onClick={quizAvailable ? () => {
+                                                setShowQuizModal(true);
+                                                onTrackAction?.('Abriu o Quiz da aula');
+                                            } : undefined}
+                                            disabled={!quizAvailable}
+                                            className={`w-full rounded-xl p-4 transition-all ${quizAvailable
+                                                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 cursor-pointer shadow-lg shadow-emerald-500/20'
+                                                : 'bg-slate-800 cursor-not-allowed opacity-60'
+                                                }`}
+                                            title={quizAvailable ? `Iniciar: ${quiz.title}` : `Complete 90% da aula para desbloquear`}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-12 h-12 rounded-xl border-2 flex items-center justify-center flex-shrink-0 ${quizAvailable
+                                                    ? 'border-white/20 bg-white/10'
+                                                    : 'border-slate-700 bg-slate-700/50'
+                                                    }`}>
+                                                    <i className={`fas ${quizAvailable ? 'fa-play' : 'fa-lock'} text-xl ${quizAvailable ? 'text-white' : 'text-slate-500'}`}></i>
+                                                </div>
+                                                <div className="flex-1 text-left">
+                                                    <h4 className={`font-bold text-sm mb-1 ${quizAvailable ? 'text-white' : 'text-slate-400'}`}>
+                                                        {quiz.title}
+                                                    </h4>
+                                                    <p className={`text-xs ${quizAvailable ? 'text-emerald-200' : 'text-slate-500'}`}>
+                                                        {quiz.questions.length} {quiz.questions.length === 1 ? 'Pergunta' : 'Perguntas'}
+                                                    </p>
+                                                </div>
+                                                {quizAvailable && (
+                                                    <i className="fas fa-arrow-right text-white text-xl"></i>
+                                                )}
+                                            </div>
+                                        </button>
+
+                                        {!quizAvailable && (
+                                            <div className="mt-4 p-3 bg-slate-800/50 rounded-xl border border-slate-700">
+                                                <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
+                                                    <span className="font-bold uppercase tracking-wider">Progresso</span>
+                                                    <span className="font-bold text-slate-300">
+                                                        {lesson.calculateProgressPercentage()}% / 90%
+                                                    </span>
+                                                </div>
+                                                <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+                                                    <div
+                                                        className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-300"
+                                                        style={{ width: `${Math.min(lesson.calculateProgressPercentage(), 100)}%` }}
+                                                    ></div>
+                                                </div>
+                                                <p className="text-[10px] text-slate-500 mt-2 text-center">
+                                                    {90 - lesson.calculateProgressPercentage() > 0
+                                                        ? `Faltam ${(90 - lesson.calculateProgressPercentage()).toFixed(0)}% para desbloquear`
+                                                        : 'Quiz liberado!'}
+                                                </p>
+                                            </div>
                                         )}
                                     </div>
-                                </button>
-
-                                {!quizAvailable && (
-                                    <div className="mt-4 p-3 bg-slate-800/50 rounded-xl border border-slate-700">
-                                        <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
-                                            <span className="font-bold uppercase tracking-wider">Progresso</span>
-                                            <span className="font-bold text-slate-300">
-                                                {lesson.calculateProgressPercentage()}% / 90%
-                                            </span>
-                                        </div>
-                                        <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
-                                            <div
-                                                className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-300"
-                                                style={{ width: `${Math.min(lesson.calculateProgressPercentage(), 100)}%` }}
-                                            ></div>
-                                        </div>
-                                        <p className="text-[10px] text-slate-500 mt-2 text-center">
-                                            {90 - lesson.calculateProgressPercentage() > 0
-                                                ? `Faltam ${(90 - lesson.calculateProgressPercentage()).toFixed(0)}% para desbloquear`
-                                                : 'Quiz liberado!'}
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    );
-                })()}
-            </div>
-        </div>
-                </div >
+                                </div>
+                            );
+                        })()}
+                    </div>
+                </div>
+            </div >
 
 
-    {/* Conteúdo da Matéria (Texto Rico OU Blocos de Áudio) */ }
+            {/* Conteúdo da Matéria (Texto Rico OU Blocos de Áudio) */}
 
 
-{/* Modal de Quiz */ }
-{
-    showQuizModal && quiz && (
-        <QuizModal
-            quiz={quiz}
-            isOpen={showQuizModal}
-            onClose={() => setShowQuizModal(false)}
-            onSubmit={handleQuizSubmit}
-            isSubmitting={isSubmittingQuiz}
-        />
-    )
-}
+            {/* Modal de Quiz */}
+            {
+                showQuizModal && quiz && (
+                    <QuizModal
+                        quiz={quiz}
+                        isOpen={showQuizModal}
+                        onClose={() => setShowQuizModal(false)}
+                        onSubmit={handleQuizSubmit}
+                        isSubmitting={isSubmittingQuiz}
+                    />
+                )
+            }
 
-{/* Modal de Resultado */ }
-{
-    quizResult && quiz && (
-        <QuizResultsModal
-            result={quizResult}
-            passingScore={quiz.passingScore}
-            isOpen={!!quizResult}
-            onClose={() => setQuizResult(null)}
-            onRetry={() => {
-                setQuizResult(null);
-                setShowQuizModal(true);
-            }}
-        />
-    )
-}
+            {/* Modal de Resultado */}
+            {
+                quizResult && quiz && (
+                    <QuizResultsModal
+                        result={quizResult}
+                        passingScore={quiz.passingScore}
+                        isOpen={!!quizResult}
+                        onClose={() => setQuizResult(null)}
+                        onRetry={() => {
+                            setQuizResult(null);
+                            setShowQuizModal(true);
+                        }}
+                    />
+                )
+            }
         </div >
     );
 };

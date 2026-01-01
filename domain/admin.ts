@@ -20,7 +20,7 @@ export type LessonRecord = {
   title: string;
   content: string | null;
   video_url: string | null;
-  video_urls?: { url: string; title: string }[] | null; // Multiple video URLs
+  video_urls?: { url: string; title: string; image_url?: string }[] | null; // Multiple video URLs
   audio_url: string | null;
   image_url: string | null;
   duration_seconds: number | null;
@@ -36,6 +36,7 @@ export type LessonResourceRecord = {
   resource_type: 'PDF' | 'AUDIO' | 'IMAGE' | 'LINK' | 'FILE';
   url: string;
   position: number | null;
+  category?: string;
   created_at?: string;
 };
 

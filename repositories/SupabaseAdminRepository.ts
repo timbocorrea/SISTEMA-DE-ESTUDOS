@@ -203,7 +203,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
   async listLessonResources(lessonId: string): Promise<LessonResourceRecord[]> {
     const { data, error } = await this.client
       .from('lesson_resources')
-      .select('id,lesson_id,title,resource_type,url,position,created_at')
+      .select('id,lesson_id,title,resource_type,url,position,category,created_at')
       .eq('lesson_id', lessonId)
       .order('position', { ascending: true })
       .order('created_at', { ascending: true });
@@ -214,7 +214,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
 
   async createLessonResource(
     lessonId: string,
-    payload: { title: string; resourceType: LessonResourceRecord['resource_type']; url: string; position?: number }
+    payload: { title: string; resourceType: LessonResourceRecord['resource_type']; url: string; position?: number; category?: string }
   ): Promise<LessonResourceRecord> {
     const { data, error } = await this.client
       .from('lesson_resources')
@@ -223,9 +223,10 @@ export class SupabaseAdminRepository implements IAdminRepository {
         title: payload.title,
         resource_type: payload.resourceType,
         url: payload.url,
-        position: payload.position ?? 0
+        position: payload.position ?? 0,
+        category: payload.category ?? 'Outros'
       })
-      .select('id,lesson_id,title,resource_type,url,position,created_at')
+      .select('id,lesson_id,title,resource_type,url,position,category,created_at')
       .single();
 
     if (error || !data) throw new DomainError(`Falha ao criar material: ${error?.message || 'dados inválidos'}`);
@@ -239,6 +240,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
       resourceType?: LessonResourceRecord['resource_type'];
       url?: string;
       position?: number | null;
+      category?: string;
     }
   ): Promise<LessonResourceRecord> {
     const updates: Record<string, unknown> = {};
@@ -246,12 +248,13 @@ export class SupabaseAdminRepository implements IAdminRepository {
     if (patch.resourceType !== undefined) updates.resource_type = patch.resourceType;
     if (patch.url !== undefined) updates.url = patch.url;
     if (patch.position !== undefined) updates.position = patch.position;
+    if (patch.category !== undefined) updates.category = patch.category;
 
     const { data, error } = await this.client
       .from('lesson_resources')
       .update(updates)
       .eq('id', id)
-      .select('id,lesson_id,title,resource_type,url,position,created_at')
+      .select('id,lesson_id,title,resource_type,url,position,category,created_at')
       .single();
 
     if (error || !data) throw new DomainError(`Falha ao atualizar material: ${error?.message || 'dados inválidos'}`);

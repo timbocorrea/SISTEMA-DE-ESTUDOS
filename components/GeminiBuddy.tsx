@@ -29,7 +29,37 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
   const [activeModel, setActiveModel] = useState<string>('gemini-1.5-flash');
   const [provider, setProvider] = useState<'google' | 'openai' | 'zhipu' | 'groq'>('google');
   const [debugInfo, setDebugInfo] = useState<string>('');
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSelectedImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData.items;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        const file = items[i].getAsFile();
+        if (file) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            setSelectedImage(reader.result as string);
+          };
+          reader.readAsDataURL(file);
+          e.preventDefault();
+        }
+      }
+    }
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -172,10 +202,15 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
 
   const handleAsk = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!prompt.trim() || isLoading) return;
+    if ((!prompt.trim() && !selectedImage) || isLoading) return;
 
     const userMessage = prompt;
-    setMessages(prev => [...prev, { role: 'user', text: userMessage }]);
+    // Show image in chat history if present
+    const displayMessage = selectedImage ?
+      (userMessage ? `${userMessage}\n[Imagem enviada]` : '[Imagem enviada]')
+      : userMessage;
+
+    setMessages(prev => [...prev, { role: 'user', text: displayMessage }]);
     setPrompt('');
     setIsLoading(true);
 
@@ -196,10 +231,28 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
       5. Seja sempre encorajador, paciente e educado.
       6. Responda em português do Brasil.
       7. IMPORTANTE: Mantenha a conversa natural e fluida. EVITE REPETIR saudações (como "Olá [Nome]") ou formalidades excessivas em cada resposta. Se já estiver conversando, vá direto à resposta.
+      8. VISÃO (Imagens): Se o usuário enviar uma imagem, analise-a detalhadamente. Pode ser um código, um diagrama ou uma captura de tela de erro. Ajudar a resolver o problema mostrado.
     `;
 
     try {
       if (provider === 'openai') {
+        // OpenAI Vision Payload
+        const messagesPayload: any[] = [
+          { role: "system", content: `${systemInstruction}\nContexto: ${fullContext}` }
+        ];
+
+        if (selectedImage) {
+          messagesPayload.push({
+            role: "user",
+            content: [
+              { type: "text", text: userMessage || "Analise esta imagem." },
+              { type: "image_url", image_url: { url: selectedImage } }
+            ]
+          });
+        } else {
+          messagesPayload.push({ role: "user", content: userMessage });
+        }
+
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -207,11 +260,8 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
             'Authorization': `Bearer ${apiKey}`
           },
           body: JSON.stringify({
-            model: activeModel,
-            messages: [
-              { role: "system", content: `${systemInstruction}\nContexto: ${fullContext}` },
-              { role: "user", content: userMessage }
-            ]
+            model: activeModel === 'gpt-3.5-turbo' ? 'gpt-4o' : activeModel, // Force GPT-4o for vision if needed, or assume user selected a vision model
+            messages: messagesPayload
           })
         });
 
@@ -235,6 +285,14 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
         setMessages(prev => [...prev, { role: 'ai', text: aiResponse, action }]);
 
       } else if (provider === 'groq') {
+        // Groq (Llama 3 Vision support varies, keeping text-only for now unless selectedImage is present then warn or try)
+        // Llama 3.2 11B/90B supports vision. 'llama-3.3-70b-versatile' is text only? 
+        // For safety, warn if image sent to non-vision model, or try standard format.
+
+        if (selectedImage) {
+          throw new Error("Envio de imagens ainda não suportado para Groq/Llama neste ambiente.");
+        }
+
         const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -254,8 +312,7 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
         if (!response.ok) throw new Error(data.error?.message || 'Erro Groq');
 
         let aiResponse = data.choices[0]?.message?.content || "Sem resposta.";
-
-        // Parse [[RESUME:courseId:lessonId]] action
+        // Action parsing...
         const actionMatch = aiResponse.match(/\[\[RESUME:(.+?):(.+?)\]\]/);
         let action = undefined;
         if (actionMatch) {
@@ -266,10 +323,14 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
             lessonId: actionMatch[2]
           };
         }
-
         setMessages(prev => [...prev, { role: 'ai', text: aiResponse, action }]);
 
       } else if (provider === 'zhipu') {
+        if (selectedImage) {
+          // Zhipu Vision (GLM-4V) payload is slightly different or requires specific model
+          // implementation skipped for brevity/safety unless requested
+          throw new Error("Envio de imagens não configurado para Zhipu.");
+        }
         const response = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
           method: 'POST',
           headers: {
@@ -288,10 +349,8 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
 
         const data = await response.json();
         if (!response.ok) throw new Error(data.error?.message || `Erro Zhipu: ${response.status}`);
-
         let aiResponse = data.choices[0]?.message?.content || "Sem resposta.";
 
-        // Parse [[RESUME:courseId:lessonId]] action
         const actionMatch = aiResponse.match(/\[\[RESUME:(.+?):(.+?)\]\]/);
         let action = undefined;
         if (actionMatch) {
@@ -302,17 +361,35 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
             lessonId: actionMatch[2]
           };
         }
-
         setMessages(prev => [...prev, { role: 'ai', text: aiResponse, action }]);
 
       } else {
-        // Google Gemini via REST API
+        // Google Gemini via REST API (Supports Inline Data)
+
+        const parts: any[] = [{ text: `Contexto: ${fullContext}\n\nDúvida: ${userMessage || "Analise a imagem."}` }];
+
+        if (selectedImage) {
+          // selectedImage is "data:image/png;base64,..."
+          // Extract mimetype and base64 data
+          const match = selectedImage.match(/^data:(.+);base64,(.+)$/);
+          if (match) {
+            const mimeType = match[1];
+            const data = match[2];
+            parts.push({
+              inlineData: {
+                mimeType: mimeType,
+                data: data
+              }
+            });
+          }
+        }
+
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${apiKey}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [{
-              parts: [{ text: `Contexto: ${fullContext}\n\nDúvida: ${userMessage}` }]
+              parts: parts
             }],
             systemInstruction: {
               parts: [{ text: systemInstruction }]
@@ -348,12 +425,13 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
       if (error instanceof Error) {
         errorMessage = error.message;
         if (errorMessage.includes('429') || errorMessage.includes('quota')) errorMessage = "Cota excedida.";
-        else if (errorMessage.includes('not found')) errorMessage = `Modelo indisponível.`;
+        else if (errorMessage.includes('not found')) errorMessage = `Modelo indisponível ou não suporta imagens.`;
         else if (errorMessage.includes('余额不足') || errorMessage.includes('insufficient balance')) errorMessage = "Saldo insuficiente (IA).";
       }
       setMessages(prev => [...prev, { role: 'ai', text: `Erro: ${errorMessage}` }]);
     } finally {
       setIsLoading(false);
+      setSelectedImage(null); // Clear image after sending
     }
   };
 
@@ -435,18 +513,53 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
 
         {/* Input */}
         <form onSubmit={handleAsk} className="p-3 bg-slate-800 border-t border-slate-700">
+          {/* Image Preview */}
+          {selectedImage && (
+            <div className="mb-2 relative inline-block">
+              <img src={selectedImage} alt="Preview" className="h-20 rounded-lg border border-slate-600 object-cover" />
+              <button
+                type="button"
+                onClick={() => setSelectedImage(null)}
+                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs border border-white shadow-sm hover:bg-red-600 transition-colors"
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+          )}
+
           <div className="relative flex items-center gap-2">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileSelect}
+              accept="image/*"
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all border ${selectedImage
+                ? 'bg-indigo-600/20 text-indigo-400 border-indigo-500/50'
+                : 'bg-slate-900 border-slate-700 text-slate-400 hover:text-white hover:border-slate-600'
+                }`}
+              title="Enviar imagem"
+              disabled={isLoading}
+            >
+              <i className="fas fa-paperclip"></i>
+            </button>
+
             <input
               type="text"
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
+              onPaste={handlePaste}
               placeholder={apiKey ? "Digite sua dúvida..." : "Bloqueado"}
               disabled={!apiKey || isLoading}
               className="flex-1 bg-slate-900 border border-slate-700 rounded-xl py-3 pl-4 pr-10 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 disabled:opacity-50"
             />
             <button
               type="submit"
-              disabled={!apiKey || isLoading || !prompt.trim()}
+              disabled={!apiKey || isLoading || (!prompt.trim() && !selectedImage)}
               className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-indigo-400 hover:text-white hover:bg-indigo-600 rounded-lg transition-all disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-indigo-400"
             >
               <i className="fas fa-paper-plane text-xs"></i>
