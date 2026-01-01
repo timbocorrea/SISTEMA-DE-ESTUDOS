@@ -152,55 +152,9 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
     }
 
     setProvider('google');
-    // Google Auto-detect logic via REST
-    const findBestModel = async () => {
-      try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-        if (!response.ok) throw new Error(`List Error: ${response.status} ${response.statusText}`);
-
-        const data = await response.json();
-        const models = data.models || [];
-
-        const availableNames = Array.isArray(models)
-          ? models.map((m: any) => (m.name || '').replace('models/', ''))
-          : [];
-
-        setDebugInfo(`Found: ${availableNames.join(', ')}`);
-        console.log('Gemini Models Found:', availableNames);
-
-        // Priority list
-        const candidates = [
-          'gemini-flash-latest',
-          'gemini-1.5-flash',
-          'gemini-1.5-flash-001',
-          'gemini-1.5-flash-8b',
-          'gemini-1.5-pro',
-          'gemini-1.5-pro-001',
-          'gemini-pro',
-          'gemini-pro-latest',
-          'gemini-1.0-pro',
-          'gemini-2.0-flash-exp',
-          'gemini-2.0-flash'
-        ];
-
-        const best = candidates.find(c => availableNames.includes(c));
-
-        if (best) {
-          console.log('Gemini: Selected Best Model:', best);
-          setActiveModel(best);
-        } else {
-          // If no preferred model found but API works, keep default or pick first gemini
-          const fallback = availableNames.find((n: string) => n.includes('gemini'));
-          if (fallback) setActiveModel(fallback);
-        }
-      } catch (e) {
-        const msg = (e as Error).message;
-        console.error('Gemini Model List Error:', msg);
-        setDebugInfo(`List Error: ${msg} (Using default)`);
-      }
-    };
-
-    findBestModel();
+    // Default to Gemini 1.5 Flash without making external calls
+    setActiveModel('gemini-1.5-flash');
+    setDebugInfo('Provider: Google Gemini (Default: 1.5 Flash)');
   }, [apiKey]);
 
 
