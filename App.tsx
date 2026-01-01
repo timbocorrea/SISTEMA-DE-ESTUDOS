@@ -26,10 +26,10 @@ import { useCourse } from './contexts/CourseContext';
 
 import { SupabaseAdminRepository } from './repositories/SupabaseAdminRepository';
 import { AdminService } from './services/AdminService';
-import { SupabaseAuthRepository } from './repositories/SupabaseAuthRepository'; // Ensure this is imported if used directly or remove if not
+import LessonLoader from './components/LessonLoader';
 
 const App: React.FC = () => {
-  const { user, session, isLoading: authLoading, logout, authService } = useAuth();
+  const { user, session, isLoading: authLoading, logout, authService, refreshSession } = useAuth();
 
   // Instantiate AdminService (Lazy or Memoized)
   const [adminService] = useState(() => new AdminService(new SupabaseAdminRepository()));
@@ -159,7 +159,7 @@ const App: React.FC = () => {
   // Auth Screen
   if (!session || !user) {
     return (
-      <AuthForm authService={authService} onSuccess={() => { /* Context handles state update via restoreSession internal logic or reload */ }} />
+      <AuthForm authService={authService} onSuccess={async () => { await refreshSession(); }} />
     );
   }
 
@@ -267,22 +267,7 @@ const App: React.FC = () => {
                 />
               } />
               <Route path="lesson/:lessonId" element={
-                activeCourse && activeLesson ? (
-                  <LessonViewer
-                    course={activeCourse}
-                    lesson={activeLesson}
-                    user={user}
-                    onLessonSelect={(l) => navigate(`/course/${activeCourse.id}/lesson/${l.id}`)}
-                    onProgressUpdate={(secs, blockId) => updateProgress(secs) /* Fix arg mismatch if needed */}
-                    onBackToLessons={() => navigate(`/course/${activeCourse.id}`)}
-                    onBackToModules={() => navigate(`/course/${activeCourse.id}`)}
-                    contentTheme={theme} // Passing global theme as content theme default
-                    setContentTheme={() => { }} // simplified
-                    sidebarTab='materials' // simplified
-                    setSidebarTab={() => { }}
-                    onTrackAction={() => { }}
-                  />
-                ) : <div className="p-8">Aula não encontrada ou carregando...</div>
+                <LessonLoader user={user} theme={theme} />
               } />
             </Route>
 

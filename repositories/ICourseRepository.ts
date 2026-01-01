@@ -17,6 +17,7 @@ export interface ICourseRepository {
     level: number,
     achievements: Achievement[]
   ): Promise<void>;
+  logXpChange(userId: string, amount: number, actionType: string, description: string): Promise<void>;
   getUserById(userId: string): Promise<User>;
   getAllCourses(userId?: string): Promise<Course[]>;
   getCoursesSummary(userId?: string): Promise<{ id: string; title: string; description: string; imageUrl: string | null; }[]>;

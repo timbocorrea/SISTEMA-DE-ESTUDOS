@@ -737,7 +737,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
                 {/* Coluna Direita: Sidebar (Materials/Notes/Quiz) - Hidden on Mobile */}
                 <div className="hidden lg:block lg:col-span-3">
-                    <div className="sticky top-4 space-y-6 max-h-[calc(100vh-6rem)] overflow-y-auto pr-2 scrollbar-thin">
+                    <div className="sticky top-4 space-y-6 max-h-[calc(100vh_-_6rem)] overflow-y-auto pr-2 scrollbar-thin">
                         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-1 flex">
                             <button
                                 onClick={() => {

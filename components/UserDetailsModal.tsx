@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { AdminService } from '../services/AdminService';
 import { ProfileRecord, CourseRecord } from '../domain/admin';
+import { AdminStudentHistory } from './AdminStudentHistory';
 
 interface UserDetailsModalProps {
     user: ProfileRecord;
@@ -143,8 +144,8 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, adminService,
                             </p>
                             <div className="flex items-center gap-2">
                                 <span className={`px-3 py-1 rounded-lg text-sm font-black ${user.role === 'INSTRUCTOR'
-                                        ? 'bg-cyan-600 text-white'
-                                        : 'bg-indigo-600 text-white'
+                                    ? 'bg-cyan-600 text-white'
+                                    : 'bg-indigo-600 text-white'
                                     }`}>
                                     {user.role === 'INSTRUCTOR' ? '👨‍🏫 Administrador' : '👨‍🎓 Estudante'}
                                 </span>
@@ -220,8 +221,8 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, adminService,
                                         <label
                                             key={course.id}
                                             className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${selectedCourseIds.includes(course.id)
-                                                    ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
-                                                    : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-700'
+                                                ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
+                                                : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-700'
                                                 }`}
                                         >
                                             <input
@@ -293,6 +294,20 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, adminService,
                             </div>
                         )}
                     </div>
+
+
+                    {/* Histórico de Progressão */}
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
+                        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
+                            <h4 className="font-black text-slate-800 dark:text-white flex items-center gap-2">
+                                <i className="fas fa-history text-indigo-600"></i>
+                                Histórico de Progressão
+                            </h4>
+                        </div>
+                        <div className="p-4">
+                            <AdminStudentHistory userId={user.id} adminService={adminService} />
+                        </div>
+                    </div>
                 </div>
 
                 {/* Footer */}
@@ -305,7 +320,7 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, adminService,
                     </button>
                 </div>
             </div>
-        </div>
+        </div >
     );
 };
 

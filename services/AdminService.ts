@@ -152,4 +152,8 @@ export class AdminService {
   getSystemStats(): Promise<any> {
     return this.adminRepository.getSystemStats();
   }
+
+  getXpHistory(userId: string): Promise<import('../domain/admin').XpLogRecord[]> {
+    return this.adminRepository.getXpHistory(userId);
+  }
 }

@@ -278,6 +278,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
       .order('updated_at', { ascending: false });
 
     if (error) throw new DomainError(`Falha ao listar usuários: ${error.message}`);
+
     return (data || []) as ProfileRecord[];
   }
 
@@ -605,5 +606,18 @@ export class SupabaseAdminRepository implements IAdminRepository {
     if (error) throw new DomainError(`Erro ao buscar tentativas: ${error.message}`);
 
     return (data || []);
+  }
+
+
+  // ============ XP HISTORY ============
+  async getXpHistory(userId: string): Promise<import('../domain/admin').XpLogRecord[]> {
+    const { data, error } = await this.client
+      .from('xp_history')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw new DomainError(`Erro ao buscar histórico de XP: ${error.message}`);
+    return (data || []) as import('../domain/admin').XpLogRecord[];
   }
 }

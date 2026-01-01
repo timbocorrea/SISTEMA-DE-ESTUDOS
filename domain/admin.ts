@@ -67,3 +67,12 @@ export type SystemStats = {
   file_count: number;
   storage_size_bytes: number;
 };
+
+export type XpLogRecord = {
+  id: string;
+  user_id: string;
+  amount: number;
+  action_type: string;
+  description: string | null;
+  created_at: string;
+};

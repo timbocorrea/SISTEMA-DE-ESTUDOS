@@ -47,6 +47,7 @@ export class CourseService {
 
     // ============ GAMIFICATION (só executa se passou no quiz ou aula sem quiz) ============
     user.addXp(150);
+    await this.courseRepository.logXpChange(user.id, 150, 'LESSON_COMPLETE', `Conclusão da Aula: ${lesson.title}`);
 
     const lessonAch = user.checkAndAddAchievements('LESSON');
     if (lessonAch) unlocked.push(lessonAch);
@@ -54,6 +55,7 @@ export class CourseService {
     const parentModule = course.modules.find(m => m.lessons.some(l => l.id === lesson.id));
     if (parentModule && parentModule.isFullyCompleted()) {
       user.addXp(500);
+      await this.courseRepository.logXpChange(user.id, 500, 'MODULE_COMPLETE', `Módulo Completo: ${parentModule.title}`);
       const moduleAch = user.checkAndAddAchievements('MODULE');
       if (moduleAch) unlocked.push(moduleAch);
     }

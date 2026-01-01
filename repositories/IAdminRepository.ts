@@ -68,4 +68,7 @@ export interface IAdminRepository {
 
   // System Stats
   getSystemStats(): Promise<any>;
+
+  // Student Logs
+  getXpHistory(userId: string): Promise<import('../domain/admin').XpLogRecord[]>;
 }

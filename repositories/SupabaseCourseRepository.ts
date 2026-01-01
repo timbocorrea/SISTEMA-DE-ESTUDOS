@@ -221,78 +221,38 @@ export class SupabaseCourseRepository implements ICourseRepository {
    * Recupera o usuรกrio do Supabase e converte para Entidade de Domínio.
    */
   async getUserById(userId: string): Promise<User> {
-    const { data, error } = await this.client
+    // 1. Fetch Profile
+    const { data: profile, error } = await this.client
       .from('profiles')
-      .select(`
-        id, 
-        name, 
-        email, 
-        role, 
-        xp_total, 
-        current_level, 
-        gemini_api_key, 
-        approval_status,
-        user_achievements (
-           achievement_id,
-           date_earned
-        )
-      `)
+      .select('id, name, email, role, xp_total, current_level, gemini_api_key, approval_status')
       .eq('id', userId)
       .single();
 
-    if (error || !data) throw new NotFoundError('User', userId);
+    if (error || !profile) throw new NotFoundError('User', userId);
 
-    // Map new table structure to Achievement entity
-    // Note: We only have ID and date. To get full details (title, icon), we technically need an 'achievements' definition table.
-    // However, the previous system stored everything in JSON.
-    // For now, we will map ID back to a valid object. 
-    // Ideally, we should have a 'achievements_definitions' table.
-    // Given the constraints, I will reconstruct the Achievement object assuming the ID allows looking up details or keeping it minimal.
-    // Or, if we migrated the full object to metadata, we can use that. 
-    // Wait, the migration script didn't copy full JSON to metadata, just ID.
-    // Checking migration: `metadata JSONB DEFAULT '{}'::jsonb`.
-    // The previous implementation stored full object in JSON.
-    // Issue: We lost Title/Description if we only stored ID. 
-    // Let's assume for this refactor we rely on a static list of definitions or the frontend knows them.
-    // BUT the repository needs to return Achievement[].
-    // Let's modify the migration or this query to fetch metadata if available?
-    // Actually, looking at `mapAchievements`, it expects title/desc.
-    // If I cannot get them from DB, I must hardcode or fetch from definitions.
-    // Since Phase 3 is about scalability, I should probably have an definitions table.
-    // BUT checking the prompt... "table user_achievements (user_id, achievement_id, date_earned)".
-    // It seems the "Achievement" entity might need to change or we fetch definitions from code/another table.
-    // For now, I will map what I have and maybe reuse a hardcoded definition map if needed, OR 
-    // assuming the previous JSON content allows me to reconstruct.
-    // Let's check if the previous JSON had strict IDs.
+    // 2. Fetch Achievements Separately
+    const { data: achievementsData } = await this.client
+      .from('user_achievements')
+      .select('achievement_id, date_earned')
+      .eq('user_id', userId);
 
-    // TEMPORARY FIX: Use a static map or metadata.
-    // Ideally I would add `achievements_definitions` table.
-    // For this step, I will map the `achievement_id` to a generic Achievement object or use metadata if I had stored it.
-    // I will simplify and just return basic info or what is in metadata.
-
-    const achievements: Achievement[] = (data.user_achievements || []).map((ua: any) => ({
-      id: ua.achievement_id,
-      title: ua.achievement_id, // Placeholder if no definition
-      description: 'Conquista desbloqueada', // Placeholder
-      dateEarned: new Date(ua.date_earned),
-      icon: '🏆' // Placeholder
+    const achievements = (achievementsData || []).map((row: any) => ({
+      id: row.achievement_id,
+      title: "Conquista Desbloqueada",
+      description: "Você desbloqueou uma nova conquista!",
+      icon: "fas fa-trophy",
+      dateEarned: new Date(row.date_earned)
     }));
 
-    // To make this better without a definitions table, I should have stored the full object in metadata.
-    // Let me update the migration to store full object in metadata?
-    // Too late for migration apply (it's applied).
-    // I will assume for now we just return IDs and the frontend handles display, OR the repo has a hardcoded list.
-    // Let's use `achievement_id` as title for now to avoid compilation errors.
-
     return new User(
-      data.id,
-      data.name || data.email,
-      data.email,
-      data.role || 'STUDENT',
-      data.xp_total || 0,
+      profile.id,
+      profile.name || 'Estudante',
+      profile.email || '',
+      profile.role || 'STUDENT',
+      profile.xp_total || 0,
       achievements,
-      data.gemini_api_key || null,
-      data.approval_status || 'approved'
+      profile.gemini_api_key || null,
+      profile.approval_status || 'approved'
     );
   }
 
@@ -313,6 +273,22 @@ export class SupabaseCourseRepository implements ICourseRepository {
       .eq('id', userId);
 
     if (error) throw new DomainError(`Erro ao atualizar gamificação: ${error.message}`);
+  }
+
+  async logXpChange(userId: string, amount: number, actionType: string, description: string): Promise<void> {
+    const { error } = await this.client
+      .from('xp_history')
+      .insert({
+        user_id: userId,
+        amount: amount,
+        action_type: actionType,
+        description: description
+      });
+
+    if (error) {
+      console.error('Failed to log XP change:', error);
+      // We do not throw to avoid blocking the main flow
+    }
   }
 
   /**

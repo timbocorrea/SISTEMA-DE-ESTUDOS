@@ -14,6 +14,7 @@ interface AuthContextType {
     login: () => void; // Trigger for login UI or logic if needed, usually handled by AuthForm
     logout: () => Promise<void>;
     authService: AuthService;
+    refreshSession: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -28,23 +29,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const authService = new AuthService(new SupabaseAuthRepository());
     const courseService = new CourseService(new SupabaseCourseRepository(createSupabaseClient()));
 
-    useEffect(() => {
-        const loadSession = async () => {
-            try {
-                const activeSession = await authService.restoreSession();
-                if (activeSession) {
-                    setSession(activeSession);
-                    const profile = await courseService.fetchUserProfile(activeSession.user.id);
-                    setUser(profile);
-                }
-            } catch (err) {
-                console.error('Failed to restore session', err);
-            } finally {
-                setIsLoading(false);
+    const refreshSession = async () => {
+        try {
+            const activeSession = await authService.restoreSession();
+            if (activeSession) {
+                setSession(activeSession);
+                const profile = await courseService.fetchUserProfile(activeSession.user.id);
+                setUser(profile);
             }
-        };
+        } catch (err) {
+            console.error('Failed to restore session', err);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
-        loadSession();
+    useEffect(() => {
+        refreshSession();
     }, []);
 
     const logout = async () => {
@@ -54,7 +55,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     return (
-        <AuthContext.Provider value={{ session, user, isLoading, login: () => { }, logout, authService }}>
+        <AuthContext.Provider value={{ session, user, isLoading, login: () => { }, logout, authService, refreshSession }}>
             {children}
         </AuthContext.Provider>
     );
