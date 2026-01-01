@@ -97,9 +97,12 @@ const App: React.FC = () => {
 
   const [fileSystemPath, setFileSystemPath] = useState('');
 
+  // Impede que salvemos o estado antes de restaur -lo (evita sobrescrever o estado salvo no reload)
+  const [hasRestoredState, setHasRestoredState] = useState(false);
+
   // Persist navigation state to localStorage
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser || !hasRestoredState) return;
 
     const navigationState = {
       view: activeView,
@@ -112,11 +115,9 @@ const App: React.FC = () => {
     };
 
     localStorage.setItem(`navigationState_${currentUser.id}`, JSON.stringify(navigationState));
-  }, [activeView, course, activeModule, currentLesson, fileSystemPath, editingLesson, currentUser]);
+  }, [activeView, course, activeModule, currentLesson, fileSystemPath, editingLesson, currentUser, hasRestoredState]);
 
   // Restore navigation state on page reload
-  const [hasRestoredState, setHasRestoredState] = useState(false);
-
   useEffect(() => {
     if (!currentUser || availableCourses.length === 0 || hasRestoredState) return;
 

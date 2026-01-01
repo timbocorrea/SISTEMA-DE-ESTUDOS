@@ -63,6 +63,9 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     const [quizResult, setQuizResult] = useState<QuizAttemptResult | null>(null);
     const [isSubmittingQuiz, setIsSubmittingQuiz] = useState(false);
 
+    // Mobile Navigation State
+    const [activeMobileTab, setActiveMobileTab] = useState<'materials' | 'notes' | 'quiz' | null>(null);
+
     // Carregar quiz quando aula mudar
     useEffect(() => {
         async function loadQuiz() {
@@ -320,6 +323,95 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                 setAudioProgress(percentage);
             }
         }
+    };
+
+    // Helper to render Quiz Status Card (Reused for Desktop and Mobile)
+    const renderQuizStatusCard = () => {
+        if (!quiz) return null;
+
+        const quizAvailable = quiz.isManuallyReleased || lesson.calculateProgressPercentage() >= 90;
+
+        return (
+            <div className={`rounded-2xl border overflow-hidden transition-all ${quizAvailable
+                ? 'bg-gradient-to-br from-emerald-900/40 via-teal-900/30 to-green-900/40 border-emerald-500/30 shadow-lg shadow-emerald-500/10'
+                : 'bg-slate-900 border-slate-700'
+                }`}>
+                <div className={`p-4 border-b flex items-center gap-3 ${quizAvailable
+                    ? 'bg-emerald-800/30 border-emerald-700/30'
+                    : 'bg-slate-800 border-slate-700'
+                    }`}>
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${quizAvailable
+                        ? 'bg-emerald-500/20 text-emerald-400'
+                        : 'bg-slate-700 text-slate-500'
+                        }`}>
+                        <i className={`fas ${quizAvailable ? 'fa-graduation-cap' : 'fa-lock'} text-xl`}></i>
+                    </div>
+                    <div className="flex-1">
+                        <h3 className="text-sm font-bold text-slate-100">Quiz da Aula</h3>
+                        <p className="text-[10px] text-emerald-300 font-bold uppercase tracking-widest">
+                            {quizAvailable ? 'Disponível' : 'Bloqueado'}
+                        </p>
+                    </div>
+                </div>
+
+                <div className="p-4">
+                    <button
+                        onClick={quizAvailable ? () => {
+                            setShowQuizModal(true);
+                            onTrackAction?.('Abriu o Quiz da aula');
+                        } : undefined}
+                        disabled={!quizAvailable}
+                        className={`w-full rounded-xl p-4 transition-all ${quizAvailable
+                            ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 cursor-pointer shadow-lg shadow-emerald-500/20'
+                            : 'bg-slate-800 cursor-not-allowed opacity-60'
+                            }`}
+                        title={quizAvailable ? `Iniciar: ${quiz.title}` : `Complete 90% da aula para desbloquear`}
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className={`w-12 h-12 rounded-xl border-2 flex items-center justify-center flex-shrink-0 ${quizAvailable
+                                ? 'border-white/20 bg-white/10'
+                                : 'border-slate-700 bg-slate-700/50'
+                                }`}>
+                                <i className={`fas ${quizAvailable ? 'fa-play' : 'fa-lock'} text-xl ${quizAvailable ? 'text-white' : 'text-slate-500'}`}></i>
+                            </div>
+                            <div className="flex-1 text-left">
+                                <h4 className={`font-bold text-sm mb-1 ${quizAvailable ? 'text-white' : 'text-slate-400'}`}>
+                                    {quiz.title}
+                                </h4>
+                                <p className={`text-xs ${quizAvailable ? 'text-emerald-200' : 'text-slate-500'}`}>
+                                    {quiz.questions.length} {quiz.questions.length === 1 ? 'Pergunta' : 'Perguntas'}
+                                </p>
+                            </div>
+                            {quizAvailable && (
+                                <i className="fas fa-arrow-right text-white text-xl"></i>
+                            )}
+                        </div>
+                    </button>
+
+                    {!quizAvailable && (
+                        <div className="mt-4 p-3 bg-slate-800/50 rounded-xl border border-slate-700">
+                            <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
+                                <span className="font-bold uppercase tracking-wider">Progresso</span>
+                                <span className="font-bold text-slate-300">
+                                    {lesson.calculateProgressPercentage()}% / 90%
+                                </span>
+                            </div>
+                            <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-300"
+                                    style={{ width: `${Math.min(lesson.calculateProgressPercentage(), 100)}%` }}
+                                ></div>
+                            </div>
+                            <p className="text-[10px] text-slate-500 mt-2 text-center">
+                                {90 - lesson.calculateProgressPercentage() > 0
+                                    ? `Faltam ${(90 - lesson.calculateProgressPercentage()).toFixed(0)}% para desbloquear`
+                                    : 'Quiz liberado!'}
+                            </p>
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
     };
 
     // Determine which video URL to use
@@ -632,8 +724,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                     </div>
                 </div>
 
-                {/* Coluna Direita: Sidebar (Materials/Notes/Quiz) - 3 columns */}
-                <div className="lg:col-span-3">
+                {/* Coluna Direita: Sidebar (Materials/Notes/Quiz) - Hidden on Mobile */}
+                <div className="hidden lg:block lg:col-span-3">
                     <div className="sticky top-4 space-y-6 max-h-[calc(100vh-6rem)] overflow-y-auto pr-2 scrollbar-thin">
                         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-1 flex">
                             <button
@@ -674,91 +766,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                         )}
 
                         {/* Seção de Quiz */}
-                        {quiz && (() => {
-                            const quizAvailable = quiz.isManuallyReleased || lesson.calculateProgressPercentage() >= 90;
-
-                            return (
-                                <div className={`rounded-2xl border overflow-hidden transition-all ${quizAvailable
-                                    ? 'bg-gradient-to-br from-emerald-900/40 via-teal-900/30 to-green-900/40 border-emerald-500/30 shadow-lg shadow-emerald-500/10'
-                                    : 'bg-slate-900 border-slate-700'
-                                    }`}>
-                                    <div className={`p-4 border-b flex items-center gap-3 ${quizAvailable
-                                        ? 'bg-emerald-800/30 border-emerald-700/30'
-                                        : 'bg-slate-800 border-slate-700'
-                                        }`}>
-                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${quizAvailable
-                                            ? 'bg-emerald-500/20 text-emerald-400'
-                                            : 'bg-slate-700 text-slate-500'
-                                            }`}>
-                                            <i className={`fas ${quizAvailable ? 'fa-graduation-cap' : 'fa-lock'} text-xl`}></i>
-                                        </div>
-                                        <div className="flex-1">
-                                            <h3 className="text-sm font-bold text-slate-100">Quiz da Aula</h3>
-                                            <p className="text-[10px] text-emerald-300 font-bold uppercase tracking-widest">
-                                                {quizAvailable ? 'Disponível' : 'Bloqueado'}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <div className="p-4">
-                                        <button
-                                            onClick={quizAvailable ? () => {
-                                                setShowQuizModal(true);
-                                                onTrackAction?.('Abriu o Quiz da aula');
-                                            } : undefined}
-                                            disabled={!quizAvailable}
-                                            className={`w-full rounded-xl p-4 transition-all ${quizAvailable
-                                                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 cursor-pointer shadow-lg shadow-emerald-500/20'
-                                                : 'bg-slate-800 cursor-not-allowed opacity-60'
-                                                }`}
-                                            title={quizAvailable ? `Iniciar: ${quiz.title}` : `Complete 90% da aula para desbloquear`}
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-12 h-12 rounded-xl border-2 flex items-center justify-center flex-shrink-0 ${quizAvailable
-                                                    ? 'border-white/20 bg-white/10'
-                                                    : 'border-slate-700 bg-slate-700/50'
-                                                    }`}>
-                                                    <i className={`fas ${quizAvailable ? 'fa-play' : 'fa-lock'} text-xl ${quizAvailable ? 'text-white' : 'text-slate-500'}`}></i>
-                                                </div>
-                                                <div className="flex-1 text-left">
-                                                    <h4 className={`font-bold text-sm mb-1 ${quizAvailable ? 'text-white' : 'text-slate-400'}`}>
-                                                        {quiz.title}
-                                                    </h4>
-                                                    <p className={`text-xs ${quizAvailable ? 'text-emerald-200' : 'text-slate-500'}`}>
-                                                        {quiz.questions.length} {quiz.questions.length === 1 ? 'Pergunta' : 'Perguntas'}
-                                                    </p>
-                                                </div>
-                                                {quizAvailable && (
-                                                    <i className="fas fa-arrow-right text-white text-xl"></i>
-                                                )}
-                                            </div>
-                                        </button>
-
-                                        {!quizAvailable && (
-                                            <div className="mt-4 p-3 bg-slate-800/50 rounded-xl border border-slate-700">
-                                                <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
-                                                    <span className="font-bold uppercase tracking-wider">Progresso</span>
-                                                    <span className="font-bold text-slate-300">
-                                                        {lesson.calculateProgressPercentage()}% / 90%
-                                                    </span>
-                                                </div>
-                                                <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
-                                                    <div
-                                                        className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-300"
-                                                        style={{ width: `${Math.min(lesson.calculateProgressPercentage(), 100)}%` }}
-                                                    ></div>
-                                                </div>
-                                                <p className="text-[10px] text-slate-500 mt-2 text-center">
-                                                    {90 - lesson.calculateProgressPercentage() > 0
-                                                        ? `Faltam ${(90 - lesson.calculateProgressPercentage()).toFixed(0)}% para desbloquear`
-                                                        : 'Quiz liberado!'}
-                                                </p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            );
-                        })()}
+                        {renderQuizStatusCard()}
                     </div>
                 </div>
             </div >
@@ -767,7 +775,95 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
             {/* Conteúdo da Matéria (Texto Rico OU Blocos de Áudio) */}
 
 
-            {/* Modal de Quiz */}
+            {/* Mobile Footer Navigation */}
+            <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 pb-safe">
+                <div className="grid grid-cols-3 h-16">
+                    <button
+                        onClick={() => setActiveMobileTab('materials')}
+                        className={`flex flex-col items-center justify-center gap-1 transition-colors ${activeMobileTab === 'materials'
+                                ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20'
+                                : 'text-slate-500 dark:text-slate-400'
+                            }`}
+                    >
+                        <i className="fas fa-folder-open text-lg"></i>
+                        <span className="text-[10px] font-bold uppercase tracking-wider">Materiais</span>
+                    </button>
+
+                    <button
+                        onClick={() => setActiveMobileTab('notes')}
+                        className={`flex flex-col items-center justify-center gap-1 transition-colors ${activeMobileTab === 'notes'
+                                ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20'
+                                : 'text-slate-500 dark:text-slate-400'
+                            }`}
+                    >
+                        <i className="fas fa-sticky-note text-lg"></i>
+                        <span className="text-[10px] font-bold uppercase tracking-wider">Notas</span>
+                    </button>
+
+                    <button
+                        onClick={() => setActiveMobileTab('quiz')}
+                        className={`flex flex-col items-center justify-center gap-1 transition-colors ${activeMobileTab === 'quiz'
+                                ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20'
+                                : 'text-slate-500 dark:text-slate-400'
+                            }`}
+                    >
+                        <i className="fas fa-graduation-cap text-lg"></i>
+                        <span className="text-[10px] font-bold uppercase tracking-wider">Quiz</span>
+                    </button>
+                </div>
+            </div>
+
+            {/* Mobile Drawer */}
+            {activeMobileTab && (
+                <div className="lg:hidden fixed inset-0 z-[60] flex items-end sm:items-center justify-center">
+                    {/* Backdrop */}
+                    <div
+                        className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+                        onClick={() => setActiveMobileTab(null)}
+                    ></div>
+
+                    {/* Drawer Content */}
+                    <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl max-h-[85vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-300">
+                        {/* Handle / Header */}
+                        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0">
+                            <div className="w-10"></div> {/* Spacer */}
+                            <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
+                            <button
+                                onClick={() => setActiveMobileTab(null)}
+                                className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500"
+                            >
+                                <i className="fas fa-times text-lg"></i>
+                            </button>
+                        </div>
+
+                        {/* Content Area */}
+                        <div className="flex-1 overflow-y-auto p-4 scrollbar-hide">
+                            {activeMobileTab === 'materials' && (
+                                <LessonMaterialsSidebar lesson={lesson} />
+                            )}
+
+                            {activeMobileTab === 'notes' && (
+                                <NotesPanelPrototype
+                                    userId={user.id}
+                                    lessonId={lesson.id}
+                                    refreshTrigger={activeBlockId}
+                                    apiKey={user.geminiApiKey || import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_API_KEY}
+                                />
+                            )}
+
+                            {activeMobileTab === 'quiz' && (
+                                <div className="space-y-4">
+                                    <h3 className="text-lg font-bold text-center text-slate-800 dark:text-white">Quiz da Aula</h3>
+                                    {renderQuizStatusCard()}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Espaçamento extra no fundo apenas no mobile para o menu fixo */}
+            <div className="h-20 lg:hidden"></div>
             {
                 showQuizModal && quiz && (
                     <QuizModal
