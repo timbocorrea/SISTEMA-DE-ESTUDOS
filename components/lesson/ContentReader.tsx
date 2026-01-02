@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import Highlighter from 'react-highlight-words';
+
 import { Lesson } from '../../domain/entities';
 import { useLessonStore } from '../../stores/useLessonStore';
 
@@ -46,28 +46,36 @@ const ContentReader: React.FC<ContentReaderProps> = ({
         }
     };
 
-    const highlightRenderer = ({ children, highlightIndex }: any) => {
-        const highlight = highlights[highlightIndex];
-        if (!highlight) return <span>{children}</span>;
+    /**
+     * Applies highlights to HTML content by replacing text occurrences with <mark> tags.
+     * Uses a regex that attempts to avoid replacing text inside HTML tags.
+     */
+    const applyHighlights = (html: string, highlights: HighlightData[]) => {
+        if (!highlights || highlights.length === 0) return html;
 
-        return (
-            <mark
-                className={`highlight-${highlight.color}`}
-                style={{
-                    backgroundColor: getBackgroundColor(highlight.color),
-                    padding: '2px 4px',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                }}
-                onClick={(e) => {
-                    e.stopPropagation();
-                    highlight.onClick?.();
-                }}
-                data-note-id={highlight.id}
-            >
-                {children}
-            </mark>
-        );
+        let enhancedHtml = html;
+
+        // Sort highlights by length (descending) to prioritize longer phrases
+        const sortedHighlights = [...highlights].sort((a, b) => b.text.length - a.text.length);
+
+        sortedHighlights.forEach(highlight => {
+            if (!highlight.text || highlight.text.trim() === '') return;
+
+            // Escape special regex characters
+            const escapedText = highlight.text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+            // Regex to match text NOT inside HTML tags (lookahead check)
+            // Matches the text only if it's NOT followed by a closing '>' without a preceding '<'
+            // This is a robust way to match content text vs tag attributes/names
+            const regex = new RegExp(`(${escapedText})(?![^<]*>)`, 'gi');
+
+            enhancedHtml = enhancedHtml.replace(regex, (match) => {
+                const colorHex = getBackgroundColor(highlight.color);
+                return `<mark class="highlight-${highlight.color}" data-note-id="${highlight.id}" style="background-color: ${colorHex}; padding: 2px 4px; border-radius: 4px; cursor: pointer;">${match}</mark>`;
+            });
+        });
+
+        return enhancedHtml;
     };
 
     const renderContent = () => {
@@ -75,6 +83,9 @@ const ContentReader: React.FC<ContentReaderProps> = ({
             return lesson.contentBlocks.map((block, index) => {
                 const hasAudio = !!block.audioUrl;
                 const isActive = activeBlockId === block.id;
+
+                // Apply highlights to the block text
+                const htmlWithHighlights = applyHighlights(block.text, highlights);
 
                 return (
                     <div
@@ -92,7 +103,20 @@ const ContentReader: React.FC<ContentReaderProps> = ({
                             cursor: hasAudio ? 'pointer' : 'default',
                             transition: 'all 0.2s ease',
                         }}
-                        onClick={() => {
+                        onClick={(e) => {
+                            // Check if a highlight was clicked
+                            const target = e.target as HTMLElement;
+                            const mark = target.closest('mark');
+
+                            if (mark && mark.dataset.noteId) {
+                                e.stopPropagation();
+                                const noteId = mark.dataset.noteId;
+                                const highlight = highlights.find(h => h.id === noteId);
+                                highlight?.onClick?.();
+                                return;
+                            }
+
+                            // Normal block click (Audio)
                             if (hasAudio && onBlockClick) {
                                 onBlockClick(block.id, index);
                                 onTrackAction?.(`Clicou no bloco de áudio ${index + 1}`);
@@ -114,18 +138,32 @@ const ContentReader: React.FC<ContentReaderProps> = ({
                             </div>
                         )}
                         <div
-                            dangerouslySetInnerHTML={{ __html: block.text }}
+                            dangerouslySetInnerHTML={{ __html: htmlWithHighlights }}
                             style={{ display: 'inline' }}
                         />
                     </div>
                 );
             });
         } else if (lesson.content) {
-            // Fallback to HTML content if no blocks
+            // Apply highlights to the full content fallback
+            const htmlWithHighlights = applyHighlights(lesson.content, highlights);
+
             return (
                 <div
-                    dangerouslySetInnerHTML={{ __html: lesson.content }}
+                    dangerouslySetInnerHTML={{ __html: htmlWithHighlights }}
                     style={{ fontSize: `${fontSize}px`, lineHeight: 1.8 }}
+                    onClick={(e) => {
+                        // Check if a highlight was clicked
+                        const target = e.target as HTMLElement;
+                        const mark = target.closest('mark');
+
+                        if (mark && mark.dataset.noteId) {
+                            e.stopPropagation();
+                            const noteId = mark.dataset.noteId;
+                            const highlight = highlights.find(h => h.id === noteId);
+                            highlight?.onClick?.();
+                        }
+                    }}
                 />
             );
         }

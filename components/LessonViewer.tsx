@@ -10,7 +10,7 @@ import QuizResultsModal from './QuizResultsModal';
 import { Quiz, QuizAttemptResult } from '../domain/quiz-entities';
 import { createSupabaseClient } from '../services/supabaseClient';
 import { SupabaseCourseRepository } from '../repositories/SupabaseCourseRepository';
-import { deserializeRange, findRangeByText } from '../utils/xpathUtils';
+
 import { LessonNotesRepository } from '../repositories/LessonNotesRepository';
 import { useLessonStore } from '../stores/useLessonStore';
 import ContentReader from './lesson/ContentReader';
@@ -269,112 +269,43 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
 
 
-    // Restore text highlights (Mobile & Desktop persistence)
+    // State for highlights
+    const [highlights, setHighlights] = useState<{ id: string; text: string; color: 'yellow' | 'green' | 'blue' | 'pink'; onClick: () => void }[]>([]);
+
+    // Fetch and prepare highlights
     useEffect(() => {
         let isMounted = true;
 
-        const handleHighlightClick = (noteId: string) => {
-            setFocusedNoteId(noteId);
-            setSidebarTab('notes');
-            handleOpenDrawer('notes');
-        };
-
-        const loadAndApplyHighlights = async () => {
+        const loadHighlights = async () => {
             if (!user.id || !lesson.id) return;
 
             try {
-                // Fetch notes (lightweight if cached, or just quick fetch)
                 const dbNotes = await LessonNotesRepository.loadNotes(user.id, lesson.id);
                 if (!isMounted) return;
 
-                // Restore highlights
-                setTimeout(() => {
-                    console.log(`[Highlights] Attempting to restore ${dbNotes.length} highlights.`);
-                    dbNotes.forEach(note => {
-                        if (note.has_highlight && note.xpath_start && note.xpath_end) {
-                            try {
-                                const existingMark = document.querySelector(`mark[data-note-id="${note.id}"]`);
-                                if (existingMark) {
-                                    console.log(`[Highlights] Note ${note.id} already applied.`);
-                                    return;
-                                }
-
-                                const range = deserializeRange({
-                                    xpathStart: note.xpath_start,
-                                    offsetStart: note.offset_start!,
-                                    xpathEnd: note.xpath_end,
-                                    offsetEnd: note.offset_end!
-                                });
-
-                                if (range) {
-                                    const highlightSpan = document.createElement('mark');
-                                    highlightSpan.className = `highlight-${note.highlight_color}`;
-                                    highlightSpan.style.backgroundColor =
-                                        note.highlight_color === 'yellow' ? '#fef08a' :
-                                            note.highlight_color === 'green' ? '#86efac' :
-                                                note.highlight_color === 'blue' ? '#93c5fd' : '#f9a8d4';
-                                    highlightSpan.style.padding = '2px 4px';
-                                    highlightSpan.style.borderRadius = '4px';
-                                    highlightSpan.style.cursor = 'pointer';
-                                    highlightSpan.setAttribute('data-note-id', note.id);
-                                    highlightSpan.onclick = (e) => {
-                                        e.stopPropagation();
-                                        handleHighlightClick(note.id);
-                                    };
-
-                                    const contents = range.extractContents();
-                                    highlightSpan.appendChild(contents);
-                                    range.insertNode(highlightSpan);
-                                    console.log(`[Highlights] Success restoring note ${note.id}`);
-                                } else {
-                                    console.warn(`[Highlights] Failed to deserialize range for note ${note.id}. XPath: ${note.xpath_start}`);
-
-                                    // Fallback: Tentativa de buscar pelo texto se tiver salvo
-                                    if (note.highlighted_text) {
-                                        console.log(`[Highlights] Tentando fallback por texto para nota ${note.id}`);
-                                        const textRange = findRangeByText(note.highlighted_text, document.body);
-
-                                        if (textRange) {
-                                            const highlightSpan = document.createElement('mark');
-                                            highlightSpan.className = `highlight-${note.highlight_color}`;
-                                            highlightSpan.style.backgroundColor =
-                                                note.highlight_color === 'yellow' ? '#fef08a' :
-                                                    note.highlight_color === 'green' ? '#86efac' :
-                                                        note.highlight_color === 'blue' ? '#93c5fd' : '#f9a8d4';
-                                            highlightSpan.style.padding = '2px 4px';
-                                            highlightSpan.style.borderRadius = '4px';
-                                            highlightSpan.style.cursor = 'pointer';
-                                            highlightSpan.setAttribute('data-note-id', note.id);
-                                            highlightSpan.onclick = (e) => {
-                                                e.stopPropagation();
-                                                handleHighlightClick(note.id);
-                                            };
-
-                                            const contents = textRange.extractContents();
-                                            highlightSpan.appendChild(contents);
-                                            textRange.insertNode(highlightSpan);
-                                            console.log(`[Highlights] Fallback sucesso para nota ${note.id}`);
-                                        } else {
-                                            console.warn(`[Highlights] Text fallback failed for note ${note.id}`);
-                                        }
-                                    }
-                                }
-                            } catch (e) {
-                                console.error(`[Highlights] Error restoring note ${note.id}:`, e);
-                            }
+                const formattedHighlights = dbNotes
+                    .filter(note => note.has_highlight && note.highlighted_text)
+                    .map(note => ({
+                        id: note.id,
+                        text: note.highlighted_text!,
+                        color: note.highlight_color as 'yellow' | 'green' | 'blue' | 'pink',
+                        onClick: () => {
+                            setFocusedNoteId(note.id);
+                            setSidebarTab('notes');
+                            handleOpenDrawer('notes');
                         }
-                    });
-                }, 800); // Reduced delay to reapply highlights faster on mobile
+                    }));
+
+                setHighlights(formattedHighlights);
             } catch (err) {
-                console.error("Error loading highlights in LessonViewer", err);
+                console.error("Error loading highlights:", err);
             }
         };
 
-        // Run on mount and when block changes (in case of re-render)
-        loadAndApplyHighlights();
+        loadHighlights();
 
         return () => { isMounted = false; };
-    }, [lesson.id, user.id, activeBlockId, activeMobileTab]);
+    }, [lesson.id, user.id]);
 
     const playBlock = (index: number) => {
         const blocks = lesson.contentBlocks;
@@ -839,7 +770,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                         <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-indigo-200 dark:scrollbar-thumb-slate-700 p-6">
                             <ContentReader
                                 lesson={lesson}
-                                highlights={[]} // TODO: Load highlights from notes if needed
+                                highlights={highlights}
                                 onBlockClick={(blockId, index) => audioEnabled && playBlock(index)}
                                 onTrackAction={onTrackAction}
                             />
