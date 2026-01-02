@@ -24,7 +24,19 @@ import { CourseService } from '../services/CourseService';
 export const useCoursesList = (service: CourseService, userId: string | undefined, enabled: boolean) => {
     return useQuery({
         queryKey: ['courses', 'list', userId],
-        queryFn: () => service.fetchAvailableCourses(userId!), // Service logic needs update to use Summary
+        queryFn: async () => {
+            if (!userId) return [];
+            const summaries = await service.getCoursesSummary(userId);
+            // Map summary to Course entity with empty modules to be lightweight
+            // This satisfies the UI expectation of Course[] without the heavy load
+            return summaries.map(s => new Course(
+                s.id,
+                s.title,
+                s.description,
+                s.imageUrl,
+                [] // Empty modules for summary view
+            ));
+        },
         enabled: enabled && !!userId,
         staleTime: 1000 * 60 * 10, // 10 minutes
     });

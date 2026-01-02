@@ -8,7 +8,9 @@ const createRepo = (): Partial<ICourseRepository> => ({
   updateLessonProgress: vi.fn().mockResolvedValue(undefined),
   getAllCourses: vi.fn(),
   getUserById: vi.fn(),
-  updateUserGamification: vi.fn().mockResolvedValue(undefined)
+  updateUserGamification: vi.fn().mockResolvedValue(undefined),
+  getQuizByLessonId: vi.fn().mockResolvedValue(null),
+  logXpChange: vi.fn().mockResolvedValue(undefined)
 });
 
 describe('CourseService.updateUserProgress', () => {
@@ -31,7 +33,7 @@ describe('CourseService.updateUserProgress', () => {
     const unlocked = await service.updateUserProgress(user, lesson, course, false);
 
     expect(unlocked).toEqual([]);
-    expect(repo.updateLessonProgress).toHaveBeenCalledWith('u1', 'l1', 10, false);
+    expect(repo.updateLessonProgress).toHaveBeenCalledWith('u1', 'l1', 10, false, undefined);
     expect(repo.updateUserGamification).not.toHaveBeenCalled();
   });
 
@@ -57,7 +59,7 @@ describe('CourseService.updateUserProgress', () => {
 
     const unlocked = await service.updateUserProgress(user, lesson, course, becameCompleted);
 
-    expect(repo.updateLessonProgress).toHaveBeenCalledWith('u1', 'l1', 90, true);
+    expect(repo.updateLessonProgress).toHaveBeenCalledWith('u1', 'l1', 90, true, undefined);
     expect(repo.updateUserGamification).toHaveBeenCalledWith('u1', user.xp, user.level, user.achievements);
 
     expect(user.xp).toBe(650); // 150 (aula) + 500 (módulo completo)

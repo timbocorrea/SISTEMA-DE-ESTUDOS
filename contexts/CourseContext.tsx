@@ -28,67 +28,34 @@ const CourseContext = createContext<CourseContextType | undefined>(undefined);
 
 export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { user } = useAuth();
-    const [activeCourseId, setActiveCourseId] = useState<string | null>(null);
-
-    // Initialize Service (Memoized/One-off ideally, but here simple const is fine as repo is stateless)
-    const courseService = new CourseService(new SupabaseCourseRepository(createSupabaseClient()));
-
-    // 1. Fetch Lists (Summary)
-    // Note: useCoursesList hook expects service. We need to import it.
-    // Importing hook from '../hooks/useCourses'
-    // To allow using the hook which uses useQuery, we must be inside QueryClientProvider (App wraps this).
-
-    // We need to access the hooks. Importing them:
-    // import { useCoursesList, useCourseDetails } from '../hooks/useCourses';
-    // (Added import via MultiReplace or I will add it now at top)
-
-    // REPLACEMENT NOTE: I cannot add imports easily with single replace if top is far.
-    // I will assume I can edit the top separately or usage implies import.
-    // For now I will inline the useQuery logic or use the hook if I can add the import.
-    // Let's use the hook but I need to add import to file.
-    // Since this tool call replaces the body, I will do a separate call for imports.
-    // Actually, I should use `multi_replace` to add import AND update body.
-    // OR just use `useQuery` directly here to save tool calls, as Context is the main place.
-    // The Plan said "Create hooks", so I should use them.
-    // I will ADD the import in a separate step or try to include it if I can view the file.
-    // I'll stick to direct implementation here for speed/robustness if I can't import easily.
-    // Wait, I created `hooks/useCourses.ts`. using it is cleaner.
-
     // State for Active Items
+    const [activeCourseId, setActiveCourseId] = useState<string | null>(null);
     const [activeModule, setActiveModule] = useState<Module | null>(null);
     const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
 
-    // Queries
-    // @ts-ignore - Implicit import assumption or I will fix in next step
+    // Initialize Service (Memoized)
+    // We instantiate it once. Since repository is stateless, this is fine.
+    const courseService = React.useMemo(() => new CourseService(new SupabaseCourseRepository(createSupabaseClient())), []);
+
+    // 1. Fetch Lists (Summary)
     const coursesListQuery = useCoursesList(courseService, user?.id, !!user);
+    const availableCourses = (coursesListQuery.data || []) as unknown as Course[];
+
+    // 2. Fetch Active Course Details
     const courseDetailsQuery = useCourseDetails(courseService, activeCourseId, user?.id);
-
-    const availableCourses = (coursesListQuery.data || []) as unknown as Course[]; // Casting Summary to Course for compatibility temporarily?
-    // WARNING: Summary is NOT Course. 
-    // Types: `availableCourses` in Context is `Course[]`.
-    // I need to change Context Type to `CourseSummary[]` OR map it.
-    // Breaking change? The app uses `courses.map(c => ...)`
-    // Summary has title, id, description, image.
-    // If components access `modules`, it will fail.
-    // `StudentDashboard` uses `courses` to list them. It only needs title/desc/image.
-    // So `CourseSummary` is sufficient for compatibility if I cast or update type.
-    // Let's update `CourseContextType` definition too.
-
-    const enrolledCourses = []; // fetchEnrolledCourses is separate.
-    // Actually, `useCoursesList` in my hook called `fetchAvailableCourses` which I mapped to `getAllCourses` (Summary attempt).
-    // I should probably have separate queries or one unified list.
-    // For now, let's say `availableCourses` handles the main list.
-
-    // Active Course Logic
     const activeCourse = courseDetailsQuery.data || null;
-    const isLoadingCourses = coursesListQuery.isLoading || courseDetailsQuery.isLoading;
 
-    // derived enrolled (legacy support or fetch separate?)
-    // In Phase 3, maybe we just list all and check enrollment status?
-    // For simplicity, let's keep `enrolledCourses` as a separate fetch or derived.
-    // Current Dashboard splits them.
-    // Let's leave `enrolledCourses` empty for a moment and focus on the main fetch.
-    // Or add `useEnrolledCourses` hook.
+    const isLoadingCourses = coursesListQuery.isLoading || courseDetailsQuery.isLoading;
+    const enrolledCourses = availableCourses; // Keeping simplified for now as per plan
+
+    // Reset module/lesson when course changes (handled partly effectively by activeCourse changing, 
+    // but explicit reset on ID change is good).
+    useEffect(() => {
+        if (!activeCourseId) {
+            setActiveModule(null);
+            setActiveLesson(null);
+        }
+    }, [activeCourseId]);
 
     const selectCourse = (courseId: string) => {
         if (activeCourseId !== courseId) {

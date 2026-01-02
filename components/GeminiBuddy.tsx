@@ -273,6 +273,7 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
       {/* Toggle Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
+        aria-label="Abrir assistente IA"
         className={`fixed ${mobileBottomClass} md:bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 ${isOpen ? 'bg-red-500 rotate-90' : 'bg-indigo-600 hover:bg-indigo-500'
           }`}
       >
@@ -384,6 +385,7 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
             />
             <button
               type="submit"
+              aria-label="Enviar"
               disabled={isLoading || (!prompt.trim() && !selectedImage)}
               className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-indigo-400 hover:text-white hover:bg-indigo-600 rounded-lg transition-all disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-indigo-400"
             >
