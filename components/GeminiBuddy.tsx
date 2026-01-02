@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-// Google SDK removed in favor of direct REST API for better compatibility
 import { createSupabaseClient } from '../services/supabaseClient';
 
 interface GeminiBuddyProps {
   currentContext?: string; // Conteúdo da aula (opcional)
   systemContext?: string; // Contexto de navegação do sistema
   userName?: string;
-  apiKey?: string | null;
   initialMessage?: string; // Mensagem inicial para "Welcome Back"
   onNavigate?: (courseId: string, lessonId: string) => void;
 }
@@ -19,7 +17,6 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
   currentContext = '',
   systemContext = 'Navegando no sistema',
   userName,
-  apiKey,
   initialMessage,
   onNavigate
 }) => {
@@ -28,9 +25,6 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
   // Enhanced message type to support actions
   const [messages, setMessages] = useState<{ role: 'user' | 'ai', text: string, action?: { label: string, courseId: string, lessonId: string } }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [activeModel, setActiveModel] = useState<string>('gemini-1.5-flash');
-  const [provider, setProvider] = useState<'google' | 'openai' | 'zhipu' | 'groq'>('google');
-  const [debugInfo, setDebugInfo] = useState<string>('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -120,51 +114,6 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
     }
   }, [initialMessage, isDelayed]);
 
-  // Detect Provider and Model
-  useEffect(() => {
-    if (!apiKey) {
-      // Default to Google System Key (Backend Managed)
-      setProvider('google');
-      setActiveModel('gemini-1.5-flash');
-      setDebugInfo('System Key (Google Gemini)');
-      return;
-    }
-
-    // Log masked key for verification (first 8 + last 4 chars)
-    const maskedKey = apiKey.length > 12
-      ? `${apiKey.substring(0, 8)}...${apiKey.substring(apiKey.length - 4)}`
-      : apiKey.substring(0, 4) + '...';
-    console.log(`🔑 [GeminiBuddy] User API Key in use: ${maskedKey}`);
-
-    if (apiKey.startsWith('sk-')) {
-      setProvider('openai');
-      setActiveModel('gpt-3.5-turbo');
-      setDebugInfo('Provider: OpenAI detected');
-      return;
-    }
-
-    if (apiKey.startsWith('gsk_')) {
-      setProvider('groq');
-      setActiveModel('llama-3.3-70b-versatile');
-      setDebugInfo('Provider: Groq (Llama 3) detected');
-      return;
-    }
-
-    // Zhipu keys format: id.secret
-    if (apiKey.includes('.') && apiKey.length > 20 && !apiKey.startsWith('AIza')) {
-      setProvider('zhipu');
-      setActiveModel('glm-4-flash');
-      setDebugInfo('Provider: Zhipu AI detected');
-      return;
-    }
-
-    setProvider('google');
-    // Default to Gemini 1.5 Flash without making external calls
-    setActiveModel('gemini-1.5-flash');
-    setDebugInfo('Provider: Google Gemini (Default: 1.5 Flash)');
-  }, [apiKey]);
-
-
   const handleAsk = async (e: React.FormEvent) => {
     e.preventDefault();
     if ((!prompt.trim() && !selectedImage) || isLoading) return;
@@ -200,30 +149,12 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
     `;
 
     try {
-      const messagesPayload = [
-        { role: 'system', text: systemInstruction, parts: [{ text: systemInstruction }] }, // Adapting for different provider formats handling in Edge Function
-        { role: 'user', text: `${fullContext}\n\n${userMessage}`, parts: [{ text: `${fullContext}\n\n${userMessage}` }] }
-      ];
-
-      // Add history... in a real app, you'd append previous messages here too.
-      // For now, Edge Function is stateless in this implementation or we send full history.
-      // But the previous implementation just sent one message to Google/OpenAI mostly (except for OpenAI where it built array).
-      // Let's send the last Turn to keep it simple as per original logic, or improve.
-      // Original Logic:
-      // OpenAI: sent system + user message (no history)
-      // Gemini: sent contents: [{parts:[{text: ...}]}] (one turn)
-
-      // We will send just the current turn to match behavior and avoid token limits for now.
-
       const { data, error } = await supabase.functions.invoke('ask-ai', {
         body: {
           messages: [
             { role: 'system', text: `${systemInstruction}\nContexto: ${fullContext}` },
             { role: 'user', text: userMessage || 'Analise a imagem.' }
-          ],
-          provider: provider,
-          model: activeModel,
-          apiKey: apiKey // BYOK Support
+          ]
         }
       });
 
@@ -379,7 +310,7 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               onPaste={handlePaste}
-              placeholder={apiKey ? "Digite sua dúvida..." : "Digite sua dúvida (IA do Sistema)..."}
+              placeholder="Digite sua dúvida (IA do Sistema)..."
               disabled={isLoading}
               className="flex-1 bg-slate-900 border border-slate-700 rounded-xl py-3 pl-4 pr-10 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 disabled:opacity-50"
             />

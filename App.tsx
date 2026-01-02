@@ -396,7 +396,6 @@ const App: React.FC = () => {
 
       {/* Gemini Buddy (simplified integration) */}
       <GeminiBuddy
-        apiKey={user.geminiApiKey}
         userName={user.name}
         systemContext="Você está no StudySystem v2 com Rotas."
       />

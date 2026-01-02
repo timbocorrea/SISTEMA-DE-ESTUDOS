@@ -1,6 +1,8 @@
 
 // @ts-ignore
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// @ts-ignore
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -13,21 +15,64 @@ serve(async (req: Request) => {
     }
 
     try {
-        const { messages, provider, model, apiKey: bodyApiKey } = await req.json();
+        const { messages, apiKey: bodyApiKey } = await req.json();
 
-        // Default to Google/Gemini if not specified
-        const aiProvider = provider || 'google';
-        const aiModel = model || 'gemini-1.5-flash';
+        // 1. Initialize Supabase Client with User Auth
+        const authHeader = req.headers.get('Authorization');
+        if (!authHeader) throw new Error('Missing Authorization header');
 
-        // Resolve API Key (Body > Env)
-        // @ts-ignore
-        const resolvedApiKey = bodyApiKey || (aiProvider === 'google' ? Deno.env.get('GEMINI_API_KEY') : Deno.env.get('OPENAI_API_KEY'));
+        const supabaseClient = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+            { global: { headers: { Authorization: authHeader } } }
+        );
+
+        // 2. Get User
+        const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+        if (userError || !user) throw new Error('Unauthorized user');
+
+        // 3. Fetch API Key from DB (Backend-Side Lookup)
+        let resolvedApiKey = bodyApiKey; // Fallback legacy logic if passed, but typically undefined now
+
+        if (!resolvedApiKey) {
+            const { data: profile, error: profileError } = await supabaseClient
+                .from('profiles')
+                .select('gemini_api_key')
+                .eq('id', user.id)
+                .single();
+
+            if (profileError) throw new Error('Failed to fetch user profile');
+            resolvedApiKey = profile?.gemini_api_key;
+        }
+
+        if (!resolvedApiKey) {
+            // Fallback to System Key if Env is set (Optional, based on requirement)
+            // For now, let's assume system requires user key or falls back to system wide key if available
+            resolvedApiKey = Deno.env.get('GEMINI_API_KEY');
+        }
+
+        if (!resolvedApiKey) {
+            throw new Error('No API Key found. Please configure your integration key in Settings.');
+        }
+
+        // 4. Determine Provider based on Key Prefix (Server-Side Logic)
+        let aiProvider = 'google';
+        let aiModel = 'gemini-1.5-flash';
+
+        if (resolvedApiKey.startsWith('sk-')) {
+            aiProvider = 'openai';
+            aiModel = 'gpt-3.5-turbo';
+        } else if (resolvedApiKey.startsWith('gsk_')) {
+            aiProvider = 'groq';
+            aiModel = 'llama-3.3-70b-versatile';
+        } else if (resolvedApiKey.includes('.') && resolvedApiKey.length > 20 && !resolvedApiKey.startsWith('AIza')) {
+            aiProvider = 'zhipu';
+            aiModel = 'glm-4-flash';
+        }
 
         let responseText = '';
 
         if (aiProvider === 'google') {
-            if (!resolvedApiKey) throw new Error('GEMINI_API_KEY not set');
-
             const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=${resolvedApiKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
