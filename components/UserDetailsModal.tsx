@@ -8,9 +8,11 @@ interface UserDetailsModalProps {
     adminService: AdminService;
     onClose: () => void;
     onRefresh: () => void;
+    onApprove: (user: ProfileRecord) => void;
+    onReject: (user: ProfileRecord) => void;
 }
 
-const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, adminService, onClose, onRefresh }) => {
+const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, adminService, onClose, onRefresh, onApprove, onReject }) => {
     const [assignedCourses, setAssignedCourses] = useState<CourseRecord[]>([]);
     const [allCourses, setAllCourses] = useState<CourseRecord[]>([]);
     const [loading, setLoading] = useState(true);
@@ -311,7 +313,27 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, adminService,
                 </div>
 
                 {/* Footer */}
-                <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex justify-end">
+                <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex justify-between items-center">
+                    <div className="flex gap-2">
+                        {(user as any).approval_status === 'approved' && (
+                            <button
+                                onClick={() => onReject(user)}
+                                className="px-4 py-2 rounded-xl bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 font-bold text-sm hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors flex items-center gap-2"
+                            >
+                                <i className="fas fa-ban"></i>
+                                Bloquear
+                            </button>
+                        )}
+                        {((user as any).approval_status === 'rejected' || (user as any).approval_status === 'pending') && (
+                            <button
+                                onClick={() => onApprove(user)}
+                                className="px-4 py-2 rounded-xl bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold text-sm hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors flex items-center gap-2"
+                            >
+                                <i className="fas fa-check-circle"></i>
+                                {(user as any).approval_status === 'pending' ? 'Aprovar' : 'Desbloquear'}
+                            </button>
+                        )}
+                    </div>
                     <button
                         onClick={onClose}
                         className="px-6 py-3 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-sm hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"

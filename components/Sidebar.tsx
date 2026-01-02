@@ -230,8 +230,10 @@ const Sidebar: React.FC<SidebarProps> = ({
                                     return (
                                       <button
                                         key={lesson.id}
-                                        onClick={() => {
+                                        onClick={(e) => {
+                                          e.stopPropagation();
                                           onSelectLesson?.(course.id, module.id, lesson.id);
+                                          onCloseMobile?.();
                                         }}
                                         className={`w-full text-left px-3 py-2 rounded-lg transition-all text-[11px] font-medium tracking-tight truncate ${isActiveLesson
                                           ? 'bg-indigo-600/20 text-indigo-700 dark:text-indigo-300 font-bold shadow-sm border border-indigo-600/30'

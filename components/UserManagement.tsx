@@ -423,18 +423,18 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
                 else setViewingUser(u);
               }}
               className={`relative group p-6 rounded-3xl border transition-all cursor-pointer ${isSelected
-                  ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-500 shadow-indigo-100 dark:shadow-none'
-                  : isBlocked
-                    ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-900/30'
-                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-lg hover:-translate-y-1'
+                ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-500 shadow-indigo-100 dark:shadow-none'
+                : isBlocked
+                  ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-900/30'
+                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-lg hover:-translate-y-1'
                 }`}
             >
               {/* Checkbox de Seleção (Absoluto) */}
               {isSelectMode && (
                 <div className="absolute top-4 right-4 z-10">
                   <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-colors ${isSelected
-                      ? 'bg-indigo-600 border-indigo-600 text-white'
-                      : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800'
+                    ? 'bg-indigo-600 border-indigo-600 text-white'
+                    : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800'
                     }`}>
                     {isSelected && <i className="fas fa-check text-xs"></i>}
                   </div>
@@ -444,8 +444,8 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
               {/* Cabeçalho do Card */}
               <div className="flex items-start gap-4 mb-4">
                 <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-xl shadow-sm ${u.role === 'INSTRUCTOR'
-                    ? 'bg-cyan-100 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-400'
-                    : 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400'
+                  ? 'bg-cyan-100 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-400'
+                  : 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400'
                   }`}>
                   <i className={`fas ${u.role === 'INSTRUCTOR' ? 'fa-chalkboard-teacher' : 'fa-user-graduate'}`}></i>
                 </div>
@@ -455,8 +455,8 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
 
                   <div className="flex items-center gap-2 mt-2">
                     <span className={`text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider ${u.role === 'INSTRUCTOR'
-                        ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300'
-                        : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                      ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300'
+                      : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
                       }`}>
                       {u.role === 'INSTRUCTOR' ? 'Admin' : 'Aluno'}
                     </span>
@@ -522,6 +522,21 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
         Se der erro de permissão, crie policies RLS para INSTRUCTOR ler/atualizar `profiles`.
       </div>
 
+      {/* Modal de Visualização Detalhada */}
+      {viewingUser && (
+        <UserDetailsModal
+          user={viewingUser}
+          adminService={adminService}
+          onClose={() => setViewingUser(null)}
+          onRefresh={() => {
+            setViewingUser(null);
+            loadUsers();
+          }}
+          onApprove={handleApproveClick}
+          onReject={handleRejectClick}
+        />
+      )}
+
       {/* Modal de Aprovação */}
       {approvingUser && (
         <ApproveUserModal
@@ -531,19 +546,6 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
           onClose={() => setApprovingUser(null)}
           onSuccess={() => {
             setApprovingUser(null);
-            loadUsers();
-          }}
-        />
-      )}
-
-      {/* Modal de Visualização Detalhada */}
-      {viewingUser && (
-        <UserDetailsModal
-          user={viewingUser}
-          adminService={adminService}
-          onClose={() => setViewingUser(null)}
-          onRefresh={() => {
-            setViewingUser(null);
             loadUsers();
           }}
         />

@@ -17,6 +17,7 @@ import HistoryPage, { HistoryItem } from './components/HistoryPage';
 import PendingApprovalScreen from './components/PendingApprovalScreen';
 import { SystemHealth } from './components/SystemHealth';
 import CourseLayout from './components/CourseLayout';
+import CourseOverview from './components/CourseOverview';
 
 import { useAuth } from './contexts/AuthContext';
 import { useCourse } from './contexts/CourseContext';
@@ -343,15 +344,11 @@ const App: React.FC = () => {
               <Route index element={
                 // Course Overview (Module List)
                 // Reusing logic from old App.tsx where we showed module list if no lesson selected
-                <CourseOverviewWrapper
+                <CourseOverview
                   user={user}
                   activeCourse={activeCourse}
-                  onSelectModule={selectModule}
+                  onSelectModule={(m: any) => selectModule(m.id)}
                   onSelectLesson={(l: any) => navigate(`/course/${activeCourse?.id}/lesson/${l.id}`)}
-                // We might need to extract the "Module List" UI from App.tsx into a component or re-inline it here
-                // For now, let's assume we create a wrapper or component for it.
-                // NOTE: Since I am overwriting App.tsx, I should have extracted that UI code first.
-                // I will implement a inline component below or simplify.
                 />
               } />
               <Route path="lesson/:lessonId" element={
@@ -452,37 +449,5 @@ const HistoryPageWrapper: React.FC<{ adminService: AdminService; userId: string 
   return <HistoryPage history={history} />;
 };
 
-// Inline Wrapper for Course Overview to replace the lost UI code
-const CourseOverviewWrapper: React.FC<{
-  user: any;
-  activeCourse: any;
-  onSelectLesson: (l: any) => void;
-  onSelectModule: (m: any) => void;
-}> = ({ user, activeCourse, onSelectLesson }) => {
-  // Re-implement the Grid/List view of modules/lessons
-  // For brevity in this artifact, I will render a simple list.
-  // In a real refactor, this should be its own file: components/CourseOverview.tsx
-  if (!activeCourse) return <div>Curso não selecionado</div>;
-  return (
-    <div className="max-w-5xl mx-auto px-8 py-8 space-y-6">
-      <h2 className="text-2xl font-black text-slate-800 dark:text-white mb-6">{activeCourse.title}</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {activeCourse.modules.map((m: any) => (
-          <div key={m.id} className="p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-            <h3 className="font-bold text-lg mb-4">{m.title}</h3>
-            <div className="space-y-2">
-              {m.lessons.map((l: any) => (
-                <div key={l.id} onClick={() => onSelectLesson(l)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded cursor-pointer flex items-center gap-2">
-                  <i className="fas fa-play-circle text-indigo-500"></i>
-                  <span>{l.title}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
+// End of App
 export default App;
