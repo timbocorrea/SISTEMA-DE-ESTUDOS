@@ -76,6 +76,21 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
       });
   }, [courses, enrolledCourseIds]);
 
+  const containerVars = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVars = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0 }
+  };
+
   return (
     <div className="p-4 md:p-8 space-y-8 max-w-7xl mx-auto">
       {/* Header with improved layout */}
@@ -144,7 +159,12 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
             )}
           </div>
         ) : (
-          <div className={`gap-6 ${viewMode === 'list' ? 'flex flex-col' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'}`}>
+          <motion.div
+            className={`gap-6 ${viewMode === 'list' ? 'flex flex-col' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'}`}
+            variants={containerVars}
+            initial="hidden"
+            animate="show"
+          >
             {courses.map(course => {
               const progress = computeCourseProgress(course);
               const isEnrolled = enrolledCourseIds.includes(course.id);
@@ -154,8 +174,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 return (
                   <motion.div
                     key={course.id}
-                    layoutId={`course-card-${course.id}`}
-                    transition={{ duration: 0.5, type: "spring" }}
+                    layoutId={`course-card-${course.id}`} // Manter para Shared Layout
+                    variants={itemVars} // Aplicar variante
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
                     onClick={() => onCourseClick(course.id)}
                     className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all group flex items-center gap-6 cursor-pointer"
                   >
@@ -219,7 +240,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 return (
                   <motion.div
                     key={course.id}
-                    layoutId={`course-card-${course.id}`} // Mantém layoutId do container
+                    layoutId={`course-card-${course.id}`} // Mantém layoutId
+                    variants={itemVars} // Aplicar variante
                     onClick={() => onCourseClick(course.id)}
                     className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm hover:border-indigo-500 dark:hover:border-indigo-500 cursor-pointer transition-all group flex flex-col h-full"
                   >
@@ -260,18 +282,20 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
               }
 
               // RENDERIZAÇÃO: MODO CARDS (NOVO COMPONENTE)
+              // Wrap CourseCard with motion.div for animation stagger
               return (
-                <CourseCard
-                  key={course.id}
-                  course={course}
-                  isEnrolled={isEnrolled}
-                  progress={progress.percent}
-                  onClick={() => onCourseClick(course.id)}
-                  onManage={user.role === 'INSTRUCTOR' ? () => onManageCourse?.(course.id) : undefined}
-                />
+                <motion.div key={course.id} variants={itemVars}>
+                  <CourseCard
+                    course={course}
+                    isEnrolled={isEnrolled}
+                    progress={progress.percent}
+                    onClick={() => onCourseClick(course.id)}
+                    onManage={user.role === 'INSTRUCTOR' ? () => onManageCourse?.(course.id) : undefined}
+                  />
+                </motion.div>
               );
             })}
-          </div>
+          </motion.div>
         )}
       </div>
     </div>

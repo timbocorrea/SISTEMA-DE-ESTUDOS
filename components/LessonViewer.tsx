@@ -440,7 +440,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                 {/* Coluna Esquerda: Vídeo + Conteúdo (75% normal, 100% cinema mode) */}
                 <motion.div
                     layoutId={`course-card-${course.id}`}
-                    transition={{ duration: 0.5, type: "spring" }}
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
                     className={`space-y-8 ${isCinemaMode ? 'lg:col-span-12' : 'lg:col-span-9'}`}
                 >
 
@@ -460,7 +460,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
                             {/* Cinema Mode Toggle */}
                             <div className="flex justify-end">
-                                <button
+                                <motion.button
+                                    whileTap={{ scale: 0.95 }}
                                     onClick={() => {
                                         toggleCinemaMode();
                                         onTrackAction?.(isCinemaMode ? 'Desativou Modo Cinema' : 'Ativou Modo Cinema');
@@ -470,7 +471,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                 >
                                     <i className={`fas ${isCinemaMode ? 'fa-compress' : 'fa-expand'}`}></i>
                                     <span className="hidden sm:inline">{isCinemaMode ? 'Sair do Cinema' : 'Modo Cinema'}</span>
-                                </button>
+                                </motion.button>
                             </div>
 
                             {/* Carrossel de Vídeos */}
@@ -486,7 +487,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
                                     <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-indigo-200 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent snap-x">
                                         {lesson.videoUrls!.map((video, index) => (
-                                            <button
+                                            <motion.button
+                                                whileTap={{ scale: 0.95 }}
                                                 key={index}
                                                 onClick={() => {
                                                     setActiveVideoIndex(index);
@@ -526,7 +528,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                                 <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/90 via-black/50 to-transparent">
                                                     <p className="text-white text-xs font-bold line-clamp-2 drop-shadow-md">{video.title}</p>
                                                 </div>
-                                            </button>
+                                            </motion.button>
                                         ))}
                                     </div>
                                 </div>
@@ -549,7 +551,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                 </div>
                             </div>
                             <div className="relative" ref={optionsMenuRef}>
-                                <button
+                                <motion.button
+                                    whileTap={{ scale: 0.95 }}
                                     onClick={() => setIsOptionsMenuOpen(!isOptionsMenuOpen)}
                                     className={`px-4 py-2 rounded-xl flex items-center justify-center gap-2 border transition-all duration-300 font-bold text-xs uppercase tracking-wider shadow-sm hover:shadow-md ${isOptionsMenuOpen
                                         ? 'bg-indigo-600 border-indigo-500 text-white'
@@ -560,7 +563,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                 >
                                     <i className={`fas fa-cog transition-transform duration-500 ${isOptionsMenuOpen ? 'rotate-90' : ''}`}></i>
                                     <span>Opções</span>
-                                </button>
+                                </motion.button>
 
                                 {/* Dropdown Menu */}
                                 {isOptionsMenuOpen && (
@@ -671,10 +674,16 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                 </motion.div>
 
                 {/* Coluna Direita: Sidebar (Materials/Notes/Quiz) - Hidden on Mobile and in Cinema Mode */}
-                <div className={`lg:col-span-3 ${isCinemaMode ? 'hidden' : 'hidden lg:block'}`}>
+                <motion.div
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.3, duration: 0.5 }}
+                    className={`lg:col-span-3 ${isCinemaMode ? 'hidden' : 'hidden lg:block'}`}
+                >
                     <div className="sticky top-4 space-y-6 max-h-[calc(100vh_-_6rem)] overflow-y-auto pr-2 scrollbar-thin">
                         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-1 flex">
-                            <button
+                            <motion.button
+                                whileTap={{ scale: 0.95 }}
                                 onClick={() => {
                                     setSidebarTab('materials');
                                     onTrackAction?.('Acessou os Materiais da aula');
@@ -685,8 +694,9 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                     }`}
                             >
                                 Materiais
-                            </button>
-                            <button
+                            </motion.button>
+                            <motion.button
+                                whileTap={{ scale: 0.95 }}
                                 onClick={() => {
                                     setSidebarTab('notes');
                                     onTrackAction?.('Acessou Minhas Notas');
@@ -697,7 +707,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                     }`}
                             >
                                 Minhas Notas
-                            </button>
+                            </motion.button>
                         </div>
 
                         {sidebarTab === 'materials' ? (
@@ -713,8 +723,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                         {/* Seção de Quiz */}
                         {renderQuizStatusCard()}
                     </div>
-                </div>
-            </div >
+                </motion.div>
+            </div>
 
 
             {/* Conteúdo da Matéria (Texto Rico OU Blocos de Áudio) */}
