@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AdminService } from '../services/AdminService';
+
 import { ProfileRecord } from '../domain/admin';
 import { createSupabaseClient } from '../services/supabaseClient';
 import ApproveUserModal from './ApproveUserModal';
@@ -7,6 +9,7 @@ import RejectUserModal from './RejectUserModal';
 import UserDetailsModal from './UserDetailsModal';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
 import { toast } from 'sonner';
+import UserCourseAccessModal from './UserCourseAccessModal';
 
 type Props = {
   adminService: AdminService;
@@ -14,12 +17,14 @@ type Props = {
 };
 
 const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) => {
+  const navigate = useNavigate();
   const [users, setUsers] = useState<ProfileRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('');
   const [busyId, setBusyId] = useState<string>('');
   const [editingUser, setEditingUser] = useState<{ id: string; name: string; email: string; role: 'STUDENT' | 'INSTRUCTOR'; apiKey: string } | null>(null);
+  const [managingAccessUser, setManagingAccessUser] = useState<ProfileRecord | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   // Approval system state
@@ -142,6 +147,10 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
     });
   };
 
+  const handleAccessClick = (user: ProfileRecord) => {
+    setManagingAccessUser(user);
+  };
+
   const toggleSelectMode = () => {
     setIsSelectMode(!isSelectMode);
     setSelectedUserIds([]);
@@ -258,6 +267,12 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
               className="w-full pl-12 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-slate-700 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition"
             />
           </div>
+          <button
+            onClick={() => navigate('/admin/access')}
+            className="px-4 py-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-all active:scale-95 shadow-sm"
+          >
+            <i className="fas fa-lock mr-2"></i> Acesso aos Cursos
+          </button>
           <button
             onClick={() => loadUsers().catch(e => setError((e as Error).message))}
             className="px-4 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-sm shadow-lg shadow-indigo-600/20 transition-all active:scale-95"
@@ -397,7 +412,8 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+      {/* Mobile View: Cards */}
+      <div className="grid grid-cols-1 gap-6 md:hidden">
         {loading && (
           <div className="col-span-full py-12 text-center text-slate-400">
             <i className="fas fa-spinner fa-spin text-3xl mb-3"></i>
@@ -514,10 +530,171 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
                 >
                   <i className="fas fa-cog"></i> Editar
                 </button>
+                <button
+                  onClick={() => handleAccessClick(u)}
+                  className="px-4 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:hover:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-bold text-xs transition-colors"
+                  title="Gerenciar Acesso aos Cursos"
+                >
+                  <i className="fas fa-lock"></i> Acesso
+                </button>
               </div>
             </div>
           );
         })}
+      </div>
+
+      {/* Desktop View: Table */}
+      <div className="hidden md:block overflow-hidden rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+              {isSelectMode && <th className="p-4 w-12"></th>}
+              <th className="p-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Usuário</th>
+              <th className="p-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Função</th>
+              <th className="p-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
+              <th className="p-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Nível</th>
+              <th className="p-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">XP</th>
+              <th className="p-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Ações</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            {loading && (
+              <tr>
+                <td colSpan={7} className="p-12 text-center text-slate-400">
+                  <i className="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                  <p>Carregando...</p>
+                </td>
+              </tr>
+            )}
+
+            {!loading && filtered.length === 0 && (
+              <tr>
+                <td colSpan={7} className="p-12 text-center text-slate-400">
+                  <p>Nenhum usuário encontrado.</p>
+                </td>
+              </tr>
+            )}
+
+            {!loading && filtered.map(u => {
+              const isBlocked = (u as any).approval_status === 'rejected';
+              const isPending = (u as any).approval_status === 'pending';
+              const isSelected = selectedUserIds.includes(u.id);
+
+              return (
+                <tr
+                  key={u.id}
+                  className={`group transition-colors cursor-pointer ${isSelected
+                      ? 'bg-indigo-50 dark:bg-indigo-900/10'
+                      : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                    }`}
+                  onClick={() => {
+                    if (isSelectMode) toggleUserSelection(u.id);
+                    else setViewingUser(u);
+                  }}
+                >
+                  {isSelectMode && (
+                    <td className="p-4" onClick={e => e.stopPropagation()}>
+                      <div
+                        onClick={() => toggleUserSelection(u.id)}
+                        className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors cursor-pointer ${isSelected
+                            ? 'bg-indigo-600 border-indigo-600 text-white'
+                            : 'border-slate-300 dark:border-slate-600'
+                          }`}>
+                        {isSelected && <i className="fas fa-check text-[10px]"></i>}
+                      </div>
+                    </td>
+                  )}
+                  <td className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${u.role === 'INSTRUCTOR'
+                          ? 'bg-cyan-100 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-400'
+                          : 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400'
+                        }`}>
+                        <i className={`fas ${u.role === 'INSTRUCTOR' ? 'fa-chalkboard-teacher' : 'fa-user-graduate'}`}></i>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-bold text-slate-800 dark:text-white text-sm truncate max-w-[200px]">{u.name || 'Sem nome'}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[200px]">{u.email}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <span className={`text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-wider ${u.role === 'INSTRUCTOR'
+                        ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300'
+                        : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                      }`}>
+                      {u.role === 'INSTRUCTOR' ? 'Admin' : 'Aluno'}
+                    </span>
+                  </td>
+                  <td className="p-4">
+                    {isPending && (
+                      <span className="text-[10px] font-black px-2 py-1 rounded-md bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 uppercase tracking-wider">
+                        Pendente
+                      </span>
+                    )}
+                    {isBlocked && (
+                      <span className="text-[10px] font-black px-2 py-1 rounded-md bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 uppercase tracking-wider">
+                        Bloqueado
+                      </span>
+                    )}
+                    {!isPending && !isBlocked && (
+                      <span className="text-[10px] font-black px-2 py-1 rounded-md bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 uppercase tracking-wider">
+                        Ativo
+                      </span>
+                    )}
+                  </td>
+                  <td className="p-4">
+                    <span className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                      Level {u.current_level ?? 1}
+                    </span>
+                  </td>
+                  <td className="p-4">
+                    <span className="text-sm font-black text-indigo-600 dark:text-indigo-400">
+                      {(u.xp_total ?? 0).toLocaleString()}
+                    </span>
+                  </td>
+                  <td className="p-4 text-right" onClick={e => e.stopPropagation()}>
+                    <div className="flex items-center justify-end gap-2">
+                      {activeTab === 'pending' && (
+                        <>
+                          <button
+                            onClick={() => handleApproveClick(u)}
+                            className="p-2 rounded-lg bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/30 text-green-600 dark:text-green-400 transition-colors"
+                            title="Aprovar"
+                          >
+                            <i className="fas fa-check"></i>
+                          </button>
+                          <button
+                            onClick={() => handleRejectClick(u)}
+                            className="p-2 rounded-lg bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 transition-colors"
+                            title="Rejeitar"
+                          >
+                            <i className="fas fa-times"></i>
+                          </button>
+                        </>
+                      )}
+
+                      <button
+                        onClick={() => handleEditClick(u)}
+                        className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-indigo-600 transition-colors"
+                        title="Editar Usuário"
+                      >
+                        <i className="fas fa-cog"></i>
+                      </button>
+                      <button
+                        onClick={() => handleAccessClick(u)}
+                        className="p-2 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                        title="Gerenciar Acesso"
+                      >
+                        <i className="fas fa-lock"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
 
       <div className="text-[11px] text-slate-500 dark:text-slate-400">
@@ -563,6 +740,19 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
           onSuccess={() => {
             setRejectingUser(null);
             loadUsers();
+          }}
+        />
+      )}
+
+      {/* Modal de Acesso aos Cursos */}
+      {managingAccessUser && (
+        <UserCourseAccessModal
+          user={managingAccessUser}
+          adminService={adminService}
+          onClose={() => setManagingAccessUser(null)}
+          onSuccess={() => {
+            toast.success(`Acessos de ${managingAccessUser.name} atualizados!`);
+            setManagingAccessUser(null);
           }}
         />
       )}

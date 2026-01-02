@@ -113,11 +113,9 @@ const ContentReader: React.FC<ContentReaderProps> = ({
                                 <span>{isActive ? 'Tocando...' : 'Clique para ouvir'}</span>
                             </div>
                         )}
-                        <Highlighter
-                            searchWords={highlights.map(h => h.text)}
-                            textToHighlight={block.text.replace(/<[^>]*>/g, '')} // Strip HTML tags
-                            highlightTag={highlightRenderer}
-                            autoEscape={true}
+                        <div
+                            dangerouslySetInnerHTML={{ __html: block.text }}
+                            style={{ display: 'inline' }}
                         />
                     </div>
                 );
