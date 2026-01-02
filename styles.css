@@ -145,3 +145,20 @@ body {
 .spacing-24 {
   margin-bottom: 24px !important;
 }
+
+.highlight-flash {
+  animation: highlight-flash 1.2s ease-in-out 1;
+  box-shadow: 0 0 0 6px rgba(99, 102, 241, 0.25);
+}
+
+@keyframes highlight-flash {
+  0% {
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(99, 102, 241, 0.12);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+  }
+}

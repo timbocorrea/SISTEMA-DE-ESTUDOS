@@ -14,7 +14,7 @@ export function getXPath(node: Node): string {
     }
 
     const parentPath = getXPath(parent);
-    
+
     // For text nodes, count preceding text node siblings
     if (node.nodeType === Node.TEXT_NODE) {
         const siblings = Array.from(parent.childNodes);
@@ -95,4 +95,22 @@ export function deserializeRange(data: {
         console.error('Error deserializing range:', e);
         return null;
     }
+}
+
+// Fallback: Find range by text content (simple text match)
+export function findRangeByText(text: string, root: Node): Range | null {
+    if (!text || !root) return null;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+    let node: Node | null;
+    while ((node = walker.nextNode())) {
+        const content = node.textContent || '';
+        const index = content.indexOf(text);
+        if (index >= 0) {
+            const range = document.createRange();
+            range.setStart(node, index);
+            range.setEnd(node, index + text.length);
+            return range;
+        }
+    }
+    return null;
 }

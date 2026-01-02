@@ -10,6 +10,8 @@ import QuizResultsModal from './QuizResultsModal';
 import { Quiz, QuizAttemptResult } from '../domain/quiz-entities';
 import { createSupabaseClient } from '../services/supabaseClient';
 import { SupabaseCourseRepository } from '../repositories/SupabaseCourseRepository';
+import { deserializeRange, findRangeByText } from '../utils/xpathUtils';
+import { LessonNotesRepository } from '../repositories/LessonNotesRepository';
 
 interface LessonViewerProps {
     course: Course;
@@ -65,6 +67,40 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
     // Mobile Navigation State
     const [activeMobileTab, setActiveMobileTab] = useState<'materials' | 'notes' | 'quiz' | null>(null);
+    const [focusedNoteId, setFocusedNoteId] = useState<string | null>(null);
+
+    // History & Drawer Management
+    useEffect(() => {
+        const handlePopState = () => {
+            if (activeMobileTab) {
+                setActiveMobileTab(null);
+            }
+        };
+
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, [activeMobileTab]);
+
+    const handleOpenDrawer = (tab: 'materials' | 'notes' | 'quiz') => {
+        if (activeMobileTab === tab) {
+            handleCloseDrawer();
+        } else {
+            if (!activeMobileTab) {
+                window.history.pushState({ drawer: true }, '', window.location.href);
+            }
+            setActiveMobileTab(tab);
+        }
+    };
+
+    const handleCloseDrawer = () => {
+        if (activeMobileTab) {
+            // Using history.back() triggers popstate, which closes the drawer via the effect
+            // We check if state matches to avoid popping base history if manual close
+            // But checking history.state is unreliable across browsers.
+            // Safe bet: if we have drawer open, we likely pushed state.
+            window.history.back();
+        }
+    };
 
     // Carregar quiz quando aula mudar
     useEffect(() => {
@@ -224,6 +260,115 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     }, [activeBlockId]);
 
 
+
+
+
+    // Restore text highlights (Mobile & Desktop persistence)
+    useEffect(() => {
+        let isMounted = true;
+
+        const handleHighlightClick = (noteId: string) => {
+            setFocusedNoteId(noteId);
+            setSidebarTab('notes');
+            handleOpenDrawer('notes');
+        };
+
+        const loadAndApplyHighlights = async () => {
+            if (!user.id || !lesson.id) return;
+
+            try {
+                // Fetch notes (lightweight if cached, or just quick fetch)
+                const dbNotes = await LessonNotesRepository.loadNotes(user.id, lesson.id);
+                if (!isMounted) return;
+
+                // Restore highlights
+                setTimeout(() => {
+                    console.log(`[Highlights] Attempting to restore ${dbNotes.length} highlights.`);
+                    dbNotes.forEach(note => {
+                        if (note.has_highlight && note.xpath_start && note.xpath_end) {
+                            try {
+                                const existingMark = document.querySelector(`mark[data-note-id="${note.id}"]`);
+                                if (existingMark) {
+                                    console.log(`[Highlights] Note ${note.id} already applied.`);
+                                    return;
+                                }
+
+                                const range = deserializeRange({
+                                    xpathStart: note.xpath_start,
+                                    offsetStart: note.offset_start!,
+                                    xpathEnd: note.xpath_end,
+                                    offsetEnd: note.offset_end!
+                                });
+
+                                if (range) {
+                                    const highlightSpan = document.createElement('mark');
+                                    highlightSpan.className = `highlight-${note.highlight_color}`;
+                                    highlightSpan.style.backgroundColor =
+                                        note.highlight_color === 'yellow' ? '#fef08a' :
+                                            note.highlight_color === 'green' ? '#86efac' :
+                                                note.highlight_color === 'blue' ? '#93c5fd' : '#f9a8d4';
+                                    highlightSpan.style.padding = '2px 4px';
+                                    highlightSpan.style.borderRadius = '4px';
+                                    highlightSpan.style.cursor = 'pointer';
+                                    highlightSpan.setAttribute('data-note-id', note.id);
+                                    highlightSpan.onclick = (e) => {
+                                        e.stopPropagation();
+                                        handleHighlightClick(note.id);
+                                    };
+
+                                    const contents = range.extractContents();
+                                    highlightSpan.appendChild(contents);
+                                    range.insertNode(highlightSpan);
+                                    console.log(`[Highlights] Success restoring note ${note.id}`);
+                                } else {
+                                    console.warn(`[Highlights] Failed to deserialize range for note ${note.id}. XPath: ${note.xpath_start}`);
+
+                                    // Fallback: Tentativa de buscar pelo texto se tiver salvo
+                                    if (note.highlighted_text) {
+                                        console.log(`[Highlights] Tentando fallback por texto para nota ${note.id}`);
+                                        const textRange = findRangeByText(note.highlighted_text, document.body);
+
+                                        if (textRange) {
+                                            const highlightSpan = document.createElement('mark');
+                                            highlightSpan.className = `highlight-${note.highlight_color}`;
+                                            highlightSpan.style.backgroundColor =
+                                                note.highlight_color === 'yellow' ? '#fef08a' :
+                                                    note.highlight_color === 'green' ? '#86efac' :
+                                                        note.highlight_color === 'blue' ? '#93c5fd' : '#f9a8d4';
+                                            highlightSpan.style.padding = '2px 4px';
+                                            highlightSpan.style.borderRadius = '4px';
+                                            highlightSpan.style.cursor = 'pointer';
+                                            highlightSpan.setAttribute('data-note-id', note.id);
+                                            highlightSpan.onclick = (e) => {
+                                                e.stopPropagation();
+                                                handleHighlightClick(note.id);
+                                            };
+
+                                            const contents = textRange.extractContents();
+                                            highlightSpan.appendChild(contents);
+                                            textRange.insertNode(highlightSpan);
+                                            console.log(`[Highlights] Fallback sucesso para nota ${note.id}`);
+                                        } else {
+                                            console.warn(`[Highlights] Text fallback failed for note ${note.id}`);
+                                        }
+                                    }
+                                }
+                            } catch (e) {
+                                console.error(`[Highlights] Error restoring note ${note.id}:`, e);
+                            }
+                        }
+                    });
+                }, 800); // Reduced delay to reapply highlights faster on mobile
+            } catch (err) {
+                console.error("Error loading highlights in LessonViewer", err);
+            }
+        };
+
+        // Run on mount and when block changes (in case of re-render)
+        loadAndApplyHighlights();
+
+        return () => { isMounted = false; };
+    }, [lesson.id, user.id, activeBlockId, activeMobileTab]);
 
     const playBlock = (index: number) => {
         const blocks = lesson.contentBlocks;
@@ -787,10 +932,10 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
 
             {/* Mobile Footer Navigation */}
-            <div className="lg:hidden fixed bottom-0 left-0 right-0 z-[70] bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 pb-safe">
+            <div className="lg:hidden fixed bottom-0 left-0 right-0 z-[70] bg-slate-100 dark:bg-slate-950 border-t border-slate-300 dark:border-slate-800 pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
                 <div className="grid grid-cols-3 h-16">
                     <button
-                        onClick={() => setActiveMobileTab(prev => prev === 'materials' ? null : 'materials')}
+                        onClick={() => handleOpenDrawer('materials')}
                         className={`flex flex-col items-center justify-center gap-1 transition-colors ${activeMobileTab === 'materials'
                             ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20'
                             : 'text-slate-500 dark:text-slate-400'
@@ -801,7 +946,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                     </button>
 
                     <button
-                        onClick={() => setActiveMobileTab(prev => prev === 'notes' ? null : 'notes')}
+                        onClick={() => handleOpenDrawer('notes')}
                         className={`flex flex-col items-center justify-center gap-1 transition-colors ${activeMobileTab === 'notes'
                             ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20'
                             : 'text-slate-500 dark:text-slate-400'
@@ -812,7 +957,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                     </button>
 
                     <button
-                        onClick={() => setActiveMobileTab(prev => prev === 'quiz' ? null : 'quiz')}
+                        onClick={() => handleOpenDrawer('quiz')}
                         className={`flex flex-col items-center justify-center gap-1 transition-colors ${activeMobileTab === 'quiz'
                             ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20'
                             : 'text-slate-500 dark:text-slate-400'
@@ -830,7 +975,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                     {/* Backdrop */}
                     <div
                         className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
-                        onClick={() => setActiveMobileTab(null)}
+                        onClick={handleCloseDrawer}
                     ></div>
 
                     {/* Drawer Content */}
@@ -840,7 +985,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                             <div className="w-10"></div> {/* Spacer */}
                             <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
                             <button
-                                onClick={() => setActiveMobileTab(null)}
+                                onClick={handleCloseDrawer}
                                 className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500"
                             >
                                 <i className="fas fa-times text-lg"></i>
@@ -858,6 +1003,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                     userId={user.id}
                                     lessonId={lesson.id}
                                     refreshTrigger={activeBlockId}
+                                    onNoteSelect={handleCloseDrawer}
+                                    focusedNoteId={focusedNoteId}
                                 />
                             )}
 

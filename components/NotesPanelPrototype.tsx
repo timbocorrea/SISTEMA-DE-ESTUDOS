@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { serializeRange, deserializeRange } from '../utils/xpathUtils';
+import { serializeRange, deserializeRange, findRangeByText } from '../utils/xpathUtils';
 import { LessonNotesRepository, LessonNote } from '../repositories/LessonNotesRepository';
 import BuddyContextModal from './BuddyContextModal';
 
@@ -21,10 +21,12 @@ interface Note {
 interface NotesPanelProps {
     userId: string;
     lessonId: string;
-    refreshTrigger?: any; // Dispara restauração quando mudar (ex: activeBlockId)
+    refreshTrigger?: any; // Dispara restauracao quando mudar (ex: activeBlockId)
+    onNoteSelect?: () => void;
+    focusedNoteId?: string | null;
 }
 
-const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refreshTrigger }) => {
+const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refreshTrigger, onNoteSelect, focusedNoteId }) => {
     const [notes, setNotes] = useState<Note[]>([]);
     const [loading, setLoading] = useState(true);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -62,7 +64,7 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
         const loadNotesAndHighlights = async () => {
             if (!userId || !lessonId) return;
 
-            // Se já temos notas carregadas e é apenas um refresh do DOM, não precisamos recarregar do banco
+            // Se ja temos notas carregadas e e apenas um refresh do DOM, nao precisamos recarregar do banco
             // A menos que seja a primeira carga (loading is true)
             if (loading) {
                 const dbNotes = await LessonNotesRepository.loadNotes(userId, lessonId);
@@ -96,12 +98,12 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
 
         const restoreDomHighlights = (notesToRestore: Note[]) => {
             // Restaurar destaques no DOM
-            // Aguardar um pouco para garantir que o contúdo da aula renderizou
+            // Aguardar um pouco para garantir que o conteudo da aula renderizou
             setTimeout(() => {
                 notesToRestore.forEach(note => {
                     if (note.hasHighlight && note.xpathStart && note.xpathEnd) {
                         try {
-                            // Verificar se já existe
+                            // Verificar se ja existe
                             const existingMark = document.querySelector(`mark[data-note-id="${note.id}"]`);
                             if (existingMark) return;
 
@@ -127,11 +129,11 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
                                 const contents = range.extractContents();
                                 highlightSpan.appendChild(contents);
                                 range.insertNode(highlightSpan);
-                                console.log('✅ Destaque restaurado via XPath:', note.id);
+                                console.log('Destaque restaurado via XPath:', note.id);
                             }
                         } catch (e) {
-                            // Silencioso se falhar, pode ser que o conteúdo mudou
-                            // console.warn('⚠️ Falha ao restaurar destaque:', note.id, e);
+                            // Silencioso se falhar, pode ser que o conteudo mudou
+                            // console.warn('Falha ao restaurar destaque', note.id, e);
                         }
                     }
                 });
@@ -186,17 +188,17 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
 
                 setNotes([...notes, noteFrontend]);
 
-                // Se for destaque, aplicar visualmente no DOM (se já não estiver aplicado pelo fluxo de seleção)
-                // NOTA: O fluxo de seleção no botão já aplica o visual antes de salvar? 
+                // Se for destaque, aplicar visualmente no DOM (se ja nao estiver aplicado pelo fluxo de selecao)
+                // NOTA: O fluxo de selecao no botao ja aplica o visual antes de salvar?
                 // Vamos ajustar para salvar primeiro ou aplicar visual e depois salvar.
-                // O fluxo ideal do botão "Adicionar Destaque":
+                // O fluxo ideal do botao "Adicionar Destaque":
                 // 1. Aplica visualmente (para feedback imediato)
                 // 2. Salva no banco
                 // 3. Se erro, reverte.
 
-                // Mas aqui estamos recebendo o range já pronto.
-                // Se o componente pai/botão já aplicou o mark, precisamos apenas garantir que o ID esteja correto.
-                // Como o ID vem do banco, o ideal é:
+                // Mas aqui estamos recebendo o range ja pronto.
+                // Se o componente pai/botao ja aplicou o mark, precisamos apenas garantir que o ID esteja correto.
+                // Como o ID vem do banco, o ideal e:
                 // 1. Criar nota no banco
                 // 2. Usar o ID retornado para criar o mark no DOM.
 
@@ -242,7 +244,7 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
             // Remover do banco
             const success = await LessonNotesRepository.deleteNote(noteId);
             if (!success) {
-                alert('Erro ao deletar nota do servidor. Recarregue a página.');
+                alert('Erro ao deletar nota do servidor. Recarregue a pagina.');
                 // Idealmente reverteria o estado local, mas para simplificar vamos deixar assim
             }
         } catch (e) {
@@ -257,7 +259,7 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
             setEditingId(null);
         } catch (e) {
             console.error('Erro ao atualizar:', e);
-            alert('Erro ao salvar alterações.');
+            alert('Erro ao salvar alteracoes.');
         }
     };
 
@@ -292,17 +294,85 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
     };
 
     const scrollToHighlight = (note: Note) => {
-        if (!note.hasHighlight || !note.xpathStart) return;
+        if (!note.hasHighlight) return;
 
-        // Tentar encontrar pelo ID primeiro
-        const mark = document.querySelector(`mark[data-note-id="${note.id}"]`);
-        if (mark) {
-            mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            mark.classList.add('ring-2', 'ring-indigo-500');
-            setTimeout(() => mark.classList.remove('ring-2', 'ring-indigo-500'), 2000);
-        } else {
-            console.warn('Highlight não encontrado no DOM para scroll');
-        }
+        const highlightColorValue = (color?: Note['highlightColor']) => {
+            switch (color) {
+                case 'green': return '#86efac';
+                case 'blue': return '#93c5fd';
+                case 'pink': return '#f9a8d4';
+                default: return '#fef08a';
+            }
+        };
+
+        const applyHighlightStyles = (element: HTMLElement, color?: Note['highlightColor']) => {
+            element.classList.add(`highlight-${color || 'yellow'}`);
+            element.style.backgroundColor = highlightColorValue(color);
+            element.style.padding = '2px 4px';
+            element.style.borderRadius = '4px';
+            element.style.cursor = 'pointer';
+            element.setAttribute('data-note-id', note.id);
+        };
+
+        const createMarkFromRange = (range: Range) => {
+            const highlightSpan = document.createElement('mark');
+            applyHighlightStyles(highlightSpan, note.highlightColor);
+            const contents = range.extractContents();
+            highlightSpan.appendChild(contents);
+            range.insertNode(highlightSpan);
+            return highlightSpan;
+        };
+
+        const tryBuildFromStoredRange = () => {
+            if (note.xpathStart && note.xpathEnd && note.offsetStart !== undefined && note.offsetEnd !== undefined) {
+                const range = deserializeRange({
+                    xpathStart: note.xpathStart,
+                    offsetStart: note.offsetStart,
+                    xpathEnd: note.xpathEnd,
+                    offsetEnd: note.offsetEnd
+                });
+                if (range) {
+                    return createMarkFromRange(range);
+                }
+            }
+            return null;
+        };
+
+        const tryBuildFromText = () => {
+            if (!note.highlightedText) return null;
+            const textRange = findRangeByText(note.highlightedText, document.body);
+            return textRange ? createMarkFromRange(textRange) : null;
+        };
+
+        const ensureVisible = (attempt = 0) => {
+            let mark = document.querySelector(`mark[data-note-id="${note.id}"]`) as HTMLElement | null;
+
+            if (!mark) {
+                mark = tryBuildFromStoredRange() || tryBuildFromText();
+            }
+
+            if (mark) {
+                applyHighlightStyles(mark, note.highlightColor);
+                mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                mark.classList.add('ring-2', 'ring-indigo-500', 'highlight-flash');
+                setTimeout(() => mark?.classList.remove('ring-2', 'ring-indigo-500', 'highlight-flash'), 2000);
+
+                if (onNoteSelect) {
+                    onNoteSelect();
+                }
+                return;
+            }
+
+            // Re-tentar apos pequenos delays para pegar o DOM depois de re-render mobile
+            if (attempt < 2) {
+                const delay = attempt === 0 ? 120 : 400;
+                setTimeout(() => ensureVisible(attempt + 1), delay);
+            } else {
+                console.warn('Highlight nao encontrado no DOM para scroll');
+            }
+        };
+
+        ensureVisible();
     };
 
     const handleAskBuddy = (context: string, noteId: string) => {
@@ -320,10 +390,10 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
         const note = notes.find(n => n.id === activeBuddyNoteId);
         if (!note) return;
 
-        const newContent = note.content ? `${note.content}\n\n🤖 Buddy:\n${text}` : `🤖 Buddy:\n${text}`;
+        const newContent = note.content ? `${note.content}\n\nBuddy:\n${text}` : `Buddy:\n${text}`;
 
         await handleUpdateNote(activeBuddyNoteId, newContent);
-        alert('Resposta adicionada à nota com sucesso! ✅');
+        alert('Resposta adicionada a nota com sucesso!');
     };
 
     const highlightColorClasses = {
@@ -339,6 +409,18 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
         { value: 'blue' as const, label: 'Azul', bgClass: 'bg-blue-400', borderClass: 'border-blue-400' },
         { value: 'pink' as const, label: 'Rosa', bgClass: 'bg-pink-400', borderClass: 'border-pink-400' }
     ];
+
+    // Scroll to note when focusedNoteId changes
+    useEffect(() => {
+        if (focusedNoteId && !loading) {
+            const noteCard = document.getElementById(`note-card-${focusedNoteId}`);
+            if (noteCard) {
+                noteCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                noteCard.classList.add('ring-4', 'ring-indigo-500', 'ring-opacity-50');
+                setTimeout(() => noteCard.classList.remove('ring-4', 'ring-indigo-500', 'ring-opacity-50'), 2000);
+            }
+        }
+    }, [focusedNoteId, loading]);
 
     if (loading) {
         return (
@@ -365,7 +447,7 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
                     </span>
                 </div>
                 <p className="text-xs text-slate-600 dark:text-slate-400">
-                    Clique nas notas destacadas para navegar no conteúdo
+                    Clique nas notas destacadas para navegar no conteudo
                 </p>
             </div>
 
@@ -374,6 +456,7 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
                 {notes.map((note, index) => (
                     <div
                         key={note.id}
+                        id={`note-card-${note.id}`}
                         className={`p-3 rounded-xl border-2 transition-all duration-200 ${note.hasHighlight
                             ? 'cursor-pointer hover:shadow-lg hover:scale-[1.02]'
                             : 'cursor-default'
@@ -383,7 +466,7 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
                             }`}
                         onClick={() => scrollToHighlight(note)}
                     >
-                        {/* Cabeçalho da Nota */}
+                        {/* Cabecalho da Nota */}
                         <div className="flex items-start gap-2 mb-2">
                             {note.hasHighlight && (
                                 <span className="w-6 h-6 rounded-full bg-indigo-600 dark:bg-indigo-500 text-white text-xs flex items-center justify-center font-black flex-shrink-0 shadow-sm">
@@ -416,7 +499,7 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
                             </div>
                         )}
 
-                        {/* Conteúdo da nota (Collapsible) */}
+                        {/* Conteudo da nota (Collapsible) */}
                         {(visibleNotes.has(note.id) || editingId === note.id) && (
                             <div className="mb-2 animate-in slide-in-from-top-2 duration-200">
                                 {editingId === note.id ? (
@@ -435,7 +518,7 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
                             </div>
                         )}
 
-                        {/* Ações */}
+                        {/* Acoes */}
                         <div className="flex gap-2 items-center flex-wrap pt-2 border-t border-slate-100 dark:border-slate-800/50">
                             {/* Toggle Bundle Button */}
                             <button
@@ -534,7 +617,7 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
                 <textarea
                     value={newNoteContent}
                     onChange={(e) => setNewNoteContent(e.target.value)}
-                    placeholder="Digite sua nota aqui... 📝"
+                    placeholder="Digite sua nota aqui..."
                     className="w-full border border-slate-300 dark:border-slate-600 rounded-xl p-3 text-sm text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 mb-2 focus:ring-2 focus:ring-indigo-500 outline-none placeholder-slate-400 dark:placeholder-slate-500 resize-none"
                     rows={3}
                 />
@@ -617,7 +700,7 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
                     </button>
                 </div>
                 <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-2 text-center">
-                    💡 Dica: Selecione texto no conteúdo da aula e clique no destaque
+                    Dica: Selecione texto no conteudo da aula e clique no destaque
                 </p>
             </div>
 
@@ -634,3 +717,4 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
 };
 
 export default NotesPanelPrototype;
+
