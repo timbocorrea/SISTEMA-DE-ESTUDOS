@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { AdminService } from '../services/AdminService';
+import { toast } from 'sonner';
 
 interface SupportDialogProps {
     isOpen: boolean;
@@ -36,7 +37,7 @@ export const SupportDialog: React.FC<SupportDialogProps> = ({ isOpen, onClose, a
 
     const handleSubmitForm = (e: React.FormEvent) => {
         e.preventDefault();
-        alert(`Solicitação enviada!\nAssunto: ${subject}\nMensagem: ${message}`);
+        toast.success(`Solicitação enviada! Assunto: ${subject}`);
         setIsFormOpen(false);
         onClose();
         setSubject('');

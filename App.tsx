@@ -97,7 +97,8 @@ const App: React.FC = () => {
     enrollInCourse,
     updateProgress,
     selectLesson,
-    selectModule
+    selectModule,
+    isLoadingCourses
   } = useCourse();
 
   const location = useLocation();
@@ -291,6 +292,8 @@ const App: React.FC = () => {
         isMobileOpen={isMobileMenuOpen}
         onCloseMobile={() => setIsMobileMenuOpen(false)}
         activeLessonId={activeLesson?.id}
+        activeCourse={activeCourse}
+        onExpandCourse={selectCourse}
       />
 
       {/* Mobile Overlay */}
@@ -329,6 +332,7 @@ const App: React.FC = () => {
                   sectionTitle="Cursos da Plataforma"
                   onManageCourse={user.role === 'INSTRUCTOR' ? (id) => navigate('/admin/content', { state: { courseId: id } }) : undefined}
                   onManageContent={user.role === 'INSTRUCTOR' ? () => navigate('/admin/content') : undefined}
+                  isLoading={isLoadingCourses}
                 />
               } />
               <Route path="/dashboard" element={<Navigate to="/" replace />} />
@@ -343,6 +347,7 @@ const App: React.FC = () => {
                   enrolledCourseIds={enrolledCourses.map(c => c.id)}
                   onManageCourse={user.role === 'INSTRUCTOR' ? (id) => navigate('/admin/content', { state: { courseId: id } }) : undefined}
                   onManageContent={user.role === 'INSTRUCTOR' ? () => navigate('/admin/content') : undefined}
+                  isLoading={isLoadingCourses}
                 />
               } />
 

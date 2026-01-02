@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { createSupabaseClient } from '../services/supabaseClient';
+import { toast } from 'sonner';
 
 interface CreateCourseModalProps {
     isOpen: boolean;
@@ -35,13 +36,13 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
 
         // Validate file type
         if (!file.type.startsWith('image/')) {
-            alert('Por favor, selecione uma imagem válida.');
+            toast.warning('Por favor, selecione uma imagem válida.');
             return;
         }
 
         // Validate file size (max 5MB)
         if (file.size > 5 * 1024 * 1024) {
-            alert('A imagem deve ter no máximo 5MB.');
+            toast.warning('A imagem deve ter no máximo 5MB.');
             return;
         }
 
@@ -70,7 +71,7 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
             setImageUrl(urlData.publicUrl);
         } catch (error) {
             console.error('Erro ao fazer upload:', error);
-            alert(`Erro ao fazer upload: ${(error as any).message || 'Erro desconhecido'}`);
+            toast.error(`Erro ao fazer upload: ${(error as any).message || 'Erro desconhecido'}`);
             setSelectedFile(null);
         } finally {
             setIsUploading(false);

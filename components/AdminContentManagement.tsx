@@ -1,6 +1,7 @@
 ﻿
 import React, { useEffect, useMemo, useState } from 'react';
 import { AdminService } from '../services/AdminService';
+import { toast } from 'sonner';
 import { CourseRecord, LessonRecord, LessonResourceRecord, ModuleRecord } from '../domain/admin';
 import { fileUploadService } from '../services/FileUploadService';
 import { createSupabaseClient } from '../services/supabaseClient';
@@ -136,12 +137,12 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
     if (!file || !editingCourse) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('Por favor, selecione uma imagem válida.');
+      toast.warning('Por favor, selecione uma imagem válida.');
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      alert('A imagem deve ter no máximo 5MB.');
+      toast.warning('A imagem deve ter no máximo 5MB.');
       return;
     }
 
@@ -169,7 +170,7 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
       setEditingCourse({ ...editingCourse, image_url: urlData.publicUrl });
     } catch (error) {
       console.error('Erro ao fazer upload:', error);
-      alert(`Erro ao fazer upload: ${(error as any).message || 'Erro desconhecido'}`);
+      toast.error(`Erro ao fazer upload: ${(error as any).message || 'Erro desconhecido'}`);
     } finally {
       setIsUploading(false);
     }

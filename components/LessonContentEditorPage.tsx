@@ -9,6 +9,7 @@ import { LessonRequirementsEditor } from './LessonRequirementsEditor';
 import { Quiz, QuizQuestion, QuizOption } from '../domain/quiz-entities';
 import { SupabaseCourseRepository } from '../repositories/SupabaseCourseRepository'; // Ajuste conforme necessário recuperando do context
 import { marked } from 'marked'; // Para conversão de Markdown para HTML
+import { toast } from 'sonner';
 
 
 // Componente para gerenciar edição de bloco individual
@@ -284,18 +285,18 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
             if (existingQuiz) {
                 const savedQuiz = await courseRepo.updateQuiz(quiz);
                 setExistingQuiz(savedQuiz);
-                alert('✅ Quiz atualizado com sucesso!');
+                toast.success('✅ Quiz atualizado com sucesso!');
             } else {
                 const savedQuiz = await courseRepo.createQuiz(quiz);
                 setExistingQuiz(savedQuiz);
-                alert('✅ Quiz criado com sucesso!');
+                toast.success('✅ Quiz criado com sucesso!');
             }
 
 
             setShowQuizEditor(false);
         } catch (error) {
             console.error('Erro ao salvar quiz:', error);
-            alert('❌ Erro ao salvar quiz: ' + (error as Error).message);
+            toast.error('❌ Erro ao salvar quiz: ' + (error as Error).message);
         }
     };
 
@@ -319,7 +320,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                 : '�� Quiz bloqueado. Alunos precisam completar 90% da aula.');
         } catch (error) {
             console.error('Erro ao alterar liberação do quiz:', error);
-            alert('❌ Erro ao alterar liberação do quiz');
+            toast.error('❌ Erro ao alterar liberação do quiz');
         } finally {
             setIsTogglingRelease(false);
         }
@@ -360,7 +361,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
             await courseRepo.saveLessonRequirements(requirements);
             setLessonRequirements(requirements);
 
-            alert('✅ Requisitos salvos com sucesso!');
+            toast.success('✅ Requisitos salvos com sucesso!');
         } catch (error) {
             console.error('❌ Erro ao salvar requisitos:', error);
             throw error;
@@ -804,7 +805,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                     <iframe src="https://www.youtube.com/embed/${videoId}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
                 </div><p><br></p>`;
             } else {
-                alert('URL do YouTube inválida!');
+                toast.error('URL do YouTube inválida!');
                 return;
             }
         }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AdminService } from '../services/AdminService';
+import { toast } from 'sonner';
 
 interface AdminSettingsPageProps {
     adminService: AdminService;
@@ -49,7 +50,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({ adminServi
             setTimeout(() => setSuccessMessage(null), 3000);
         } catch (err) {
             console.error("Failed to save settings", err);
-            alert("Erro ao salvar configurações.");
+            toast.error("Erro ao salvar configurações.");
         } finally {
             setSaving(false);
         }

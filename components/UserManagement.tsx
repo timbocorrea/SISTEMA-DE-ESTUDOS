@@ -6,6 +6,7 @@ import ApproveUserModal from './ApproveUserModal';
 import RejectUserModal from './RejectUserModal';
 import UserDetailsModal from './UserDetailsModal';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
+import { toast } from 'sonner';
 
 type Props = {
   adminService: AdminService;
@@ -117,8 +118,9 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
       });
       setEditingUser(null);
       await loadUsers();
+      toast.success('Usuário salvo com sucesso!');
     } catch (e) {
-      alert(`Erro ao salvar: ${(e as Error).message}`);
+      toast.error(`Erro ao salvar: ${(e as Error).message}`);
     } finally {
       setIsSaving(false);
     }

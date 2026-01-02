@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Quiz, QuizQuestion } from '../domain/quiz-entities';
+import { toast } from 'sonner';
 
 interface QuizModalProps {
     quiz: Quiz;
@@ -91,13 +92,13 @@ const QuizModal: React.FC<QuizModalProps> = ({ quiz, isOpen, onClose, onSubmit, 
                 status: 'pending'
             });
 
-            alert('Obrigado! Seu reporte foi enviado para análise.');
+            toast.success('Obrigado! Seu reporte foi enviado para análise.');
             setShowReportModal(false);
             setReportComment('');
             setReportIssueType('no_correct');
         } catch (error) {
             console.error(error);
-            alert('Erro ao enviar reporte. Tente novamente.');
+            toast.error('Erro ao enviar reporte. Tente novamente.');
         } finally {
             setIsReporting(false);
         }
@@ -136,7 +137,7 @@ const QuizModal: React.FC<QuizModalProps> = ({ quiz, isOpen, onClose, onSubmit, 
         const allAnswered = questionsToUse.every(q => answers[q.id]);
 
         if (!allAnswered) {
-            alert('Por favor, responda todas as perguntas antes de enviar.');
+            toast.warning('Por favor, responda todas as perguntas antes de enviar.');
             return;
         }
 

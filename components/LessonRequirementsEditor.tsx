@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Lesson, LessonResource } from '../domain/entities';
 import { LessonProgressRequirements } from '../domain/lesson-requirements';
+import { toast } from 'sonner';
 
 interface Props {
     lesson: Lesson;
@@ -42,7 +43,7 @@ export const LessonRequirementsEditor: React.FC<Props> = ({
             onClose();
         } catch (error) {
             console.error('Erro ao salvar requisitos:', error);
-            alert('Erro ao salvar requisitos. Tente novamente.');
+            toast.error('Erro ao salvar requisitos. Tente novamente.');
         } finally {
             setIsSaving(false);
         }

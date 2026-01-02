@@ -21,14 +21,18 @@ const CourseCard: React.FC<CourseCardProps> = ({
     const totalLessons = course.modules?.reduce((sum, mod) => sum + (mod.lessons?.length || 0), 0) || 0;
 
     return (
-        <div
-            className="group bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden hover:shadow-xl hover:border-indigo-500/50 dark:hover:border-indigo-500/50 transition-all duration-300 cursor-pointer"
+        <motion.div
+            layoutId={`course-card-${course.id}`}
+            className="group bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden hover:shadow-xl hover:border-indigo-500/50 dark:hover:border-indigo-500/50 transition-all duration-300 cursor-pointer flex flex-col h-full"
             onClick={onClick}
+            whileHover={{ y: -5 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
         >
             {/* Course Image */}
             <motion.div
                 layoutId={`course-cover-${course.id}`}
-                className="relative h-48 bg-gradient-to-br from-indigo-500 to-purple-600 overflow-hidden"
+                className="relative h-48 bg-gradient-to-br from-indigo-500 to-purple-600 overflow-hidden flex-shrink-0"
             >
                 {course.imageUrl ? (
                     <img
@@ -70,17 +74,17 @@ const CourseCard: React.FC<CourseCardProps> = ({
             </motion.div>
 
             {/* Course Content */}
-            <div className="p-6">
+            <div className="p-6 flex flex-col flex-1">
                 <h3 className="text-xl font-black text-slate-800 dark:text-white mb-2 line-clamp-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                     {course.title}
                 </h3>
 
-                <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 line-clamp-2 h-10">
+                <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 line-clamp-2 h-10 flex-shrink-0">
                     {course.description || 'Sem descrição disponível.'}
                 </p>
 
                 {/* Stats */}
-                <div className="flex items-center gap-4 mb-4 text-xs text-slate-500 dark:text-slate-400">
+                <div className="flex items-center gap-4 mb-4 text-xs text-slate-500 dark:text-slate-400 mt-auto">
                     <div className="flex items-center gap-1">
                         <i className="fas fa-layer-group"></i>
                         <span>{totalModules} {totalModules === 1 ? 'Módulo' : 'Módulos'}</span>
@@ -92,7 +96,7 @@ const CourseCard: React.FC<CourseCardProps> = ({
                 </div>
 
                 {/* Action Button */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 mt-auto">
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
@@ -130,7 +134,7 @@ const CourseCard: React.FC<CourseCardProps> = ({
                     )}
                 </div>
             </div>
-        </div >
+        </motion.div>
     );
 };
 

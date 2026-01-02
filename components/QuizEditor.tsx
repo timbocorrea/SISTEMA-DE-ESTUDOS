@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Quiz, QuizQuestion, QuizOption } from '../domain/quiz-entities';
 import { LessonResource } from '../domain/entities';
+import { toast } from 'sonner';
 
 interface QuizEditorProps {
     lessonId: string;
@@ -54,7 +55,7 @@ const QuizEditor: React.FC<QuizEditorProps> = ({ lessonId, existingQuiz, onSave,
             setShowReports(true);
         } catch (error) {
             console.error('Erro ao carregar reports:', error);
-            alert('Erro ao carregar relatórios de erro.');
+            toast.error('Erro ao carregar relatórios de erro.');
         } finally {
             setIsLoadingReports(false);
         }
@@ -365,7 +366,7 @@ Requisitos:
 
     const handleGenerateAi = async () => {
         if (!apiKey) {
-            alert('🔑 Chave de API Não Configurada\n\n' +
+            toast.error('🔑 Chave de API Não Configurada\n\n' +
                 'Configure sua chave Groq ou OpenAI nas configurações do sistema.');
             return;
         }
@@ -433,7 +434,7 @@ Requisitos:
 
         } catch (error) {
             console.error('❌ Erro detalhado ao gerar quiz:', error);
-            alert(getUserFriendlyError(error)); // 🆕 FIX 2.3: Mensagem amigável
+            toast.error(getUserFriendlyError(error)); // 🆕 FIX 2.3: Mensagem amigável
         } finally {
             setIsGenerating({ active: false, stage: null, progress: 0 });
         }
@@ -491,28 +492,28 @@ Requisitos:
     const handleSave = async () => {
         // Validações
         if (!title.trim()) {
-            alert('Título do quiz é obrigatório');
+            toast.warning('Título do quiz é obrigatório');
             return;
         }
 
         if (questions.length === 0) {
-            alert('Adicione pelo menos uma pergunta');
+            toast.warning('Adicione pelo menos uma pergunta');
             return;
         }
 
         for (let i = 0; i < questions.length; i++) {
             const q = questions[i];
             if (!q.questionText.trim()) {
-                alert(`Pergunta ${i + 1} está vazia`);
+                toast.warning(`Pergunta ${i + 1} está vazia`);
                 return;
             }
             if (q.options.length < 2) {
-                alert(`Pergunta ${i + 1} precisa de pelo menos 2 opções`);
+                toast.warning(`Pergunta ${i + 1} precisa de pelo menos 2 opções`);
                 return;
             }
             const hasCorrect = q.options.some((o: any) => o.isCorrect);
             if (!hasCorrect) {
-                alert(`Pergunta ${i + 1} precisa ter pelo menos uma resposta correta`);
+                toast.warning(`Pergunta ${i + 1} precisa ter pelo menos uma resposta correta`);
                 return;
             }
         }

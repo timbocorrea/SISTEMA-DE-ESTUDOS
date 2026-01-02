@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { serializeRange, deserializeRange, findRangeByText } from '../utils/xpathUtils';
 import { LessonNotesRepository, LessonNote } from '../repositories/LessonNotesRepository';
 import BuddyContextModal from './BuddyContextModal';
+import { toast } from 'sonner';
 
 interface Note {
     id: string;
@@ -221,7 +222,7 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
             }
         } catch (e) {
             console.error('Erro ao criar nota:', e);
-            alert('Erro ao salvar nota. Tente novamente.');
+            toast.error('Erro ao salvar nota. Tente novamente.');
         }
     };
 
@@ -244,7 +245,7 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
             // Remover do banco
             const success = await LessonNotesRepository.deleteNote(noteId);
             if (!success) {
-                alert('Erro ao deletar nota do servidor. Recarregue a pagina.');
+                toast.error('Erro ao deletar nota do servidor. Recarregue a pagina.');
                 // Idealmente reverteria o estado local, mas para simplificar vamos deixar assim
             }
         } catch (e) {
@@ -259,7 +260,7 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
             setEditingId(null);
         } catch (e) {
             console.error('Erro ao atualizar:', e);
-            alert('Erro ao salvar alteracoes.');
+            toast.error('Erro ao salvar alteracoes.');
         }
     };
 

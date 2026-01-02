@@ -12,6 +12,10 @@ import { createSupabaseClient } from '../services/supabaseClient';
 import { SupabaseCourseRepository } from '../repositories/SupabaseCourseRepository';
 import { deserializeRange, findRangeByText } from '../utils/xpathUtils';
 import { LessonNotesRepository } from '../repositories/LessonNotesRepository';
+import { useLessonStore } from '../stores/useLessonStore';
+import ContentReader from './lesson/ContentReader';
+import { motion } from 'framer-motion';
+import { toast } from 'sonner';
 
 interface LessonViewerProps {
     course: Course;
@@ -44,12 +48,14 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     userProgress = [],
     onTrackAction
 }) => {
-    const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
+    // Global state from Zustand store
+    const { activeBlockId, setActiveBlockId, fontSize, setFontSize, isCinemaMode, toggleCinemaMode } = useLessonStore();
+
+    // Local state (kept here as they're specific to this component instance)
     const [lastAccessedId, setLastAccessedId] = useState<string | null>(null);
     const [audioProgress, setAudioProgress] = useState<number>(0);
     const [playbackSpeed, setPlaybackSpeed] = useState<number>(1.0); // Velocidade de reprodução
     const [audioEnabled, setAudioEnabled] = useState<boolean>(true); // Controle para ativar/desativar áudio
-    const [fontSize, setFontSize] = useState<number>(100); // Tamanho da fonte em % (100 = padrão)
     const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState<boolean>(false);
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const playbackSpeedRef = useRef<number>(playbackSpeed); // Ref para manter valor atualizado nos callbacks
@@ -188,7 +194,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
             }
         } catch (error) {
             console.error('Error submitting quiz:', error);
-            alert('Erro ao enviar quiz. Tente novamente.');
+            toast.error('Erro ao enviar quiz. Tente novamente.');
         } finally {
             setIsSubmittingQuiz(false);
         }
@@ -608,8 +614,12 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
             {/* Layout Principal: 2 Colunas (Conteúdo Esquerda | Sidebar Direita) */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-                {/* Coluna Esquerda: Vídeo + Conteúdo (75%) */}
-                <div className="lg:col-span-9 space-y-8">
+                {/* Coluna Esquerda: Vídeo + Conteúdo (75% normal, 100% cinema mode) */}
+                <motion.div
+                    layoutId={`course-card-${course.id}`}
+                    transition={{ duration: 0.5, type: "spring" }}
+                    className={`space-y-8 ${isCinemaMode ? 'lg:col-span-12' : 'lg:col-span-9'}`}
+                >
 
                     {/* Seção de Vídeo (Condicional) */}
                     {/* Seção de Vídeo (Condicional) */}
@@ -623,6 +633,21 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                     onProgress={handleProgressUpdateInternal}
                                     onPlay={() => onTrackAction?.(`Reproduziu vídeo: ${currentVideoUrl || lesson.title}`)}
                                 />
+                            </div>
+
+                            {/* Cinema Mode Toggle */}
+                            <div className="flex justify-end">
+                                <button
+                                    onClick={() => {
+                                        toggleCinemaMode();
+                                        onTrackAction?.(isCinemaMode ? 'Desativou Modo Cinema' : 'Ativou Modo Cinema');
+                                    }}
+                                    className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors flex items-center gap-2 text-sm font-medium"
+                                    title={isCinemaMode ? 'Sair do Modo Cinema' : 'Ativar Modo Cinema'}
+                                >
+                                    <i className={`fas ${isCinemaMode ? 'fa-compress' : 'fa-expand'}`}></i>
+                                    <span className="hidden sm:inline">{isCinemaMode ? 'Sair do Cinema' : 'Modo Cinema'}</span>
+                                </button>
                             </div>
 
                             {/* Carrossel de Vídeos */}
@@ -687,8 +712,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                     )}
 
                     {/* Conteúdo da Matéria (Texto Rico OU Blocos de Áudio) */}
-                    <div className={`p-4 md:p-8 rounded-3xl border shadow-sm transition-colors ${contentTheme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-white border-slate-200'}`}>
-                        <div className={`flex items-center justify-between mb-6 pb-4 border-b ${contentTheme === 'dark' ? 'border-slate-800' : 'border-slate-200'}`}>
+                    <div className={`rounded-3xl border shadow-sm transition-colors flex flex-col h-[calc(100vh-140px)] ${contentTheme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-white border-slate-200'}`}>
+                        <div className={`flex-shrink-0 flex items-center justify-between p-4 md:p-6 border-b ${contentTheme === 'dark' ? 'border-slate-800' : 'border-slate-200'}`}>
                             <div className="flex items-center gap-3">
                                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${contentTheme === 'dark' ? 'bg-indigo-900/30' : 'bg-indigo-100'}`}>
                                     <i className={`fas fa-book-open ${contentTheme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'}`}></i>
@@ -753,7 +778,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                                 </div>
                                                 <div className="flex items-center justify-between gap-2">
                                                     <button
-                                                        onClick={() => setFontSize(prev => Math.max(80, prev - 10))}
+                                                        onClick={() => setFontSize(Math.max(80, fontSize - 10))}
                                                         disabled={fontSize <= 80}
                                                         className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${contentTheme === 'dark' ? 'bg-slate-700 text-slate-300 hover:bg-slate-600 disabled:opacity-30' : 'bg-white text-slate-600 hover:bg-indigo-50 border border-slate-100 disabled:opacity-30'}`}
                                                     >
@@ -763,7 +788,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                                         {fontSize}%
                                                     </span>
                                                     <button
-                                                        onClick={() => setFontSize(prev => Math.min(150, prev + 10))}
+                                                        onClick={() => setFontSize(Math.min(150, fontSize + 10))}
                                                         disabled={fontSize >= 150}
                                                         className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${contentTheme === 'dark' ? 'bg-slate-700 text-slate-300 hover:bg-slate-600 disabled:opacity-30' : 'bg-white text-slate-600 hover:bg-indigo-50 border border-slate-100 disabled:opacity-30'}`}
                                                     >
@@ -810,79 +835,20 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                             </div>
                         </div>
 
-                        {/* Rendering Logic: If has blocks, render blocks. Else render rich text. */}
-                        {lesson.contentBlocks && lesson.contentBlocks.length > 0 ? (
-                            <div className="max-h-[70vh] overflow-y-auto pr-2 scrollbar-thin">
-                                {lesson.contentBlocks.map((block, index) => {
-                                    // Calcular o espaçamento usando a mesma lógica do editor
-                                    const spacing = block.spacing !== undefined ? block.spacing : 8;
-                                    const spacingClass = `spacing-${spacing}`;
-
-                                    return (
-                                        <div
-                                            key={block.id}
-                                            ref={el => { blockRefs.current[block.id] = el; }}
-                                            className={`relative p-2 md:p-4 rounded-2xl border transition-all duration-500 group ${audioEnabled ? 'cursor-pointer' : 'cursor-text'} ${spacingClass} ${activeBlockId === block.id
-                                                ? 'bg-indigo-50/50 dark:bg-indigo-900/20 border-indigo-500 shadow-lg shadow-indigo-500/10 audio-block-active'
-                                                : lastAccessedId === block.id
-                                                    ? 'bg-slate-50/50 dark:bg-slate-800/30 border-slate-300 dark:border-slate-700'
-                                                    : 'border-transparent'
-                                                }`}
-                                            onClick={() => audioEnabled && playBlock(index)}
-                                        >
-                                            <div className="flex items-start gap-4">
-                                                <div className="flex-1">
-                                                    <div
-                                                        className={`leading-relaxed transition-colors font-medium break-words overflow-hidden lesson-block-content ${activeBlockId === block.id
-                                                            ? (contentTheme === 'light' ? 'text-slate-900' : 'text-indigo-100') // Cor quando tocando (Ativo)
-                                                            : (contentTheme === 'light' ? 'text-slate-700' : 'text-slate-300') // Cor normal (Inativo)
-                                                            } [&_p]:!text-[1em] [&_span]:!text-[1em] [&_li]:!text-[1em] [&_strong]:!text-[1em] [&_em]:!text-[1em]`}
-                                                        style={{ fontSize: `${fontSize}%`, lineHeight: '1.6' }}
-                                                        dangerouslySetInnerHTML={{ __html: block.text }}
-                                                    />
-                                                </div>
-                                            </div>
-
-                                            {/* Barra de Progresso do Áudio Interativa */}
-                                            {activeBlockId === block.id && (
-                                                <div
-                                                    className="mt-4 w-full cursor-pointer group py-2 select-none"
-                                                    onClick={handleSeek}
-                                                    title="Clique para alterar a posição"
-                                                >
-                                                    <div className="h-1 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden relative">
-                                                        <div
-                                                            className="h-full bg-indigo-600 dark:bg-indigo-500 transition-all duration-75 ease-linear relative"
-                                                            style={{ width: `${audioProgress}%` }}
-                                                        >
-                                                            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-indigo-600 dark:bg-indigo-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-md translate-x-1/2 pointer-events-none"></div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {/* Indicador de última posição */}
-                                            {lastAccessedId === block.id && activeBlockId !== block.id && (
-                                                <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-8 bg-indigo-500 rounded-full"></div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        ) : (
-                            <div className="max-h-[70vh] overflow-y-auto pr-2 scrollbar-thin">
-                                <div
-                                    className={`leading-relaxed lesson-content-view break-words overflow-hidden ${contentTheme === 'dark' ? 'text-slate-300' : 'text-slate-700'} [&_p]:!text-[1em] [&_span]:!text-[1em] [&_li]:!text-[1em] [&_strong]:!text-[1em] [&_em]:!text-[1em]`}
-                                    style={{ fontSize: `${fontSize}%`, lineHeight: '1.6' }}
-                                    dangerouslySetInnerHTML={{ __html: lesson.content }}
-                                />
-                            </div>
-                        )}
+                        {/* Content area - Inner Scroll */}
+                        <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-indigo-200 dark:scrollbar-thumb-slate-700 p-6">
+                            <ContentReader
+                                lesson={lesson}
+                                highlights={[]} // TODO: Load highlights from notes if needed
+                                onBlockClick={(blockId, index) => audioEnabled && playBlock(index)}
+                                onTrackAction={onTrackAction}
+                            />
+                        </div>
                     </div>
-                </div>
+                </motion.div>
 
-                {/* Coluna Direita: Sidebar (Materials/Notes/Quiz) - Hidden on Mobile */}
-                <div className="hidden lg:block lg:col-span-3">
+                {/* Coluna Direita: Sidebar (Materials/Notes/Quiz) - Hidden on Mobile and in Cinema Mode */}
+                <div className={`lg:col-span-3 ${isCinemaMode ? 'hidden' : 'hidden lg:block'}`}>
                     <div className="sticky top-4 space-y-6 max-h-[calc(100vh_-_6rem)] overflow-y-auto pr-2 scrollbar-thin">
                         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-1 flex">
                             <button
@@ -970,54 +936,56 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
             </div>
 
             {/* Mobile Drawer */}
-            {activeMobileTab && (
-                <div className="lg:hidden fixed inset-0 z-[60] flex items-end sm:items-center justify-center">
-                    {/* Backdrop */}
-                    <div
-                        className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
-                        onClick={handleCloseDrawer}
-                    ></div>
+            {
+                activeMobileTab && (
+                    <div className="lg:hidden fixed inset-0 z-[60] flex items-end sm:items-center justify-center">
+                        {/* Backdrop */}
+                        <div
+                            className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+                            onClick={handleCloseDrawer}
+                        ></div>
 
-                    {/* Drawer Content */}
-                    <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl max-h-[85vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-300 mb-16 sm:mb-0">
-                        {/* Handle / Header */}
-                        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0">
-                            <div className="w-10"></div> {/* Spacer */}
-                            <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
-                            <button
-                                onClick={handleCloseDrawer}
-                                className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500"
-                            >
-                                <i className="fas fa-times text-lg"></i>
-                            </button>
-                        </div>
+                        {/* Drawer Content */}
+                        <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl max-h-[85vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-300 mb-16 sm:mb-0">
+                            {/* Handle / Header */}
+                            <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0">
+                                <div className="w-10"></div> {/* Spacer */}
+                                <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
+                                <button
+                                    onClick={handleCloseDrawer}
+                                    className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500"
+                                >
+                                    <i className="fas fa-times text-lg"></i>
+                                </button>
+                            </div>
 
-                        {/* Content Area */}
-                        <div className="flex-1 overflow-y-auto p-4 scrollbar-hide">
-                            {activeMobileTab === 'materials' && (
-                                <LessonMaterialsSidebar lesson={lesson} onTrackAction={onTrackAction} />
-                            )}
+                            {/* Content Area */}
+                            <div className="flex-1 overflow-y-auto p-4 scrollbar-hide">
+                                {activeMobileTab === 'materials' && (
+                                    <LessonMaterialsSidebar lesson={lesson} onTrackAction={onTrackAction} />
+                                )}
 
-                            {activeMobileTab === 'notes' && (
-                                <NotesPanelPrototype
-                                    userId={user.id}
-                                    lessonId={lesson.id}
-                                    refreshTrigger={activeBlockId}
-                                    onNoteSelect={handleCloseDrawer}
-                                    focusedNoteId={focusedNoteId}
-                                />
-                            )}
+                                {activeMobileTab === 'notes' && (
+                                    <NotesPanelPrototype
+                                        userId={user.id}
+                                        lessonId={lesson.id}
+                                        refreshTrigger={activeBlockId}
+                                        onNoteSelect={handleCloseDrawer}
+                                        focusedNoteId={focusedNoteId}
+                                    />
+                                )}
 
-                            {activeMobileTab === 'quiz' && (
-                                <div className="space-y-4">
-                                    <h3 className="text-lg font-bold text-center text-slate-800 dark:text-white">Quiz da Aula</h3>
-                                    {renderQuizStatusCard()}
-                                </div>
-                            )}
+                                {activeMobileTab === 'quiz' && (
+                                    <div className="space-y-4">
+                                        <h3 className="text-lg font-bold text-center text-slate-800 dark:text-white">Quiz da Aula</h3>
+                                        {renderQuizStatusCard()}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Espaçamento extra no fundo apenas no mobile para o menu fixo */}
             <div className="h-20 lg:hidden"></div>

@@ -20,6 +20,8 @@ interface SidebarProps {
   onCloseMobile?: () => void;
   activeLessonId?: string; // ID da aula sendo editada no Content Editor
   onNavigateFile?: (path: string) => void;
+  activeCourse?: Course | null;
+  onExpandCourse?: (courseId: string) => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -36,7 +38,9 @@ const Sidebar: React.FC<SidebarProps> = ({
   isMobileOpen = false,
   onCloseMobile,
   activeLessonId,
-  onNavigateFile
+  onNavigateFile,
+  activeCourse,
+  onExpandCourse
 }) => {
   const isAdmin = session.user.role === 'INSTRUCTOR';
 
@@ -192,13 +196,18 @@ const Sidebar: React.FC<SidebarProps> = ({
             <div className="ml-7 pl-3 border-l border-slate-200 dark:border-slate-800 space-y-1 mb-2 animate-in slide-in-from-top-2 duration-200">
               {courses.map(course => {
                 const isCourseOpen = expandedCourseId === course.id;
-                const modules = course.modules || [];
+                // Fallback to activeCourse modules if available and matching
+                const modules = (isCourseOpen && activeCourse?.id === course.id && activeCourse.modules)
+                  ? activeCourse.modules
+                  : (course.modules || []);
                 return (
                   <div key={course.id} className="space-y-1">
                     <button
                       onClick={() => {
-                        setExpandedCourseId(isCourseOpen ? '' : course.id);
+                        const newId = isCourseOpen ? '' : course.id;
+                        setExpandedCourseId(newId);
                         setExpandedModuleId('');
+                        if (newId) onExpandCourse?.(newId);
                       }}
                       className={`w-full text-left px-3 py-2 rounded-lg transition-all text-xs font-black uppercase tracking-widest truncate ${isCourseOpen
                         ? 'bg-indigo-600/10 text-indigo-600 dark:text-indigo-300'

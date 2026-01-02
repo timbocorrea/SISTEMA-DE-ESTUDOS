@@ -141,7 +141,7 @@ const ContentReader: React.FC<ContentReaderProps> = ({
             className={`content-reader ${contentTheme === 'dark' ? 'dark-theme' : 'light-theme'}`}
             style={{
                 padding: '2rem',
-                maxWidth: '800px',
+                maxWidth: '100%',
                 margin: '0 auto',
                 color: contentTheme === 'dark' ? '#e2e8f0' : '#1e293b',
                 backgroundColor: contentTheme === 'dark' ? '#0f172a' : '#ffffff',
