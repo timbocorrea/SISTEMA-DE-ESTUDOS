@@ -348,7 +348,7 @@ const QuizModal: React.FC<QuizModalProps> = ({ quiz, isOpen, onClose, onSubmit, 
                                 ) : (
                                     <>
                                         <i className="fas fa-check-circle mr-2"></i>
-                                        Enviar Respostas
+                                        Enviar
                                     </>
                                 )}
                             </button>
