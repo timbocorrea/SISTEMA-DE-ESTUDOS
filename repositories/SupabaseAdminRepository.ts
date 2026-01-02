@@ -647,4 +647,61 @@ export class SupabaseAdminRepository implements IAdminRepository {
       // Do not throw to avoid blocking UI
     }
   }
+
+  // ============ COURSE ACCESS CONTROL ============
+
+  async getCourseUserAssignments(courseId: string): Promise<string[]> {
+    const { data, error } = await this.client
+      .from('user_course_assignments')
+      .select('user_id')
+      .eq('course_id', courseId);
+
+    if (error) throw new DomainError(`Falha ao buscar usuários do curso: ${error.message}`);
+    return (data || []).map(d => d.user_id);
+  }
+
+  async assignUsersToCourse(courseId: string, userIds: string[], adminId: string): Promise<void> {
+    // 1. Remove current assignments for this course
+    const { error: deleteError } = await this.client
+      .from('user_course_assignments')
+      .delete()
+      .eq('course_id', courseId);
+
+    if (deleteError) throw new DomainError(`Erro ao limpar atribuições antigas: ${deleteError.message}`);
+
+    // 2. Insert new assignments
+    if (userIds.length > 0) {
+      const rows = userIds.map(userId => ({
+        user_id: userId,
+        course_id: courseId,
+        assigned_at: new Date().toISOString(),
+        assigned_by: adminId
+      }));
+
+      const { error: insertError } = await this.client
+        .from('user_course_assignments')
+        .insert(rows);
+
+      if (insertError) throw new DomainError(`Erro ao atribuir usuários ao curso: ${insertError.message}`);
+    }
+  }
+
+  // ============ SYSTEM SETTINGS ============
+  async getSystemSettings(): Promise<{ key: string; value: string; description: string }[]> {
+    const { data, error } = await this.client
+      .from('system_settings')
+      .select('*');
+
+    if (error) throw new DomainError(`Erro ao buscar configurações do sistema: ${error.message}`);
+    return (data || []) as { key: string; value: string; description: string }[];
+  }
+
+  async updateSystemSetting(key: string, value: string): Promise<void> {
+    const { error } = await this.client
+      .from('system_settings')
+      .upsert({ key, value })
+      .select();
+
+    if (error) throw new DomainError(`Erro ao atualizar configuração ${key}: ${error.message}`);
+  }
 }

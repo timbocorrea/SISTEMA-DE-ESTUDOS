@@ -175,4 +175,22 @@ export class AdminService {
     // Wait, AdminService uses IAdminRepository. I should add `logActivity` to IAdminRepository first.
     return this.adminRepository.logActivity(userId, actionType, description);
   }
+
+  // ============ SYSTEM SETTINGS ============
+  getSystemSettings(): Promise<{ key: string; value: string; description: string }[]> {
+    return this.adminRepository.getSystemSettings();
+  }
+
+  updateSystemSetting(key: string, value: string): Promise<void> {
+    return this.adminRepository.updateSystemSetting(key, value);
+  }
+
+  // ============ COURSE ACCESS CONTROL ============
+  getCourseUserAssignments(courseId: string): Promise<string[]> {
+    return this.adminRepository.getCourseUserAssignments(courseId);
+  }
+
+  assignUsersToCourse(courseId: string, userIds: string[], adminId: string): Promise<void> {
+    return this.adminRepository.assignUsersToCourse(courseId, userIds, adminId);
+  }
 }

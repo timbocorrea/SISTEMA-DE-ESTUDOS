@@ -7,6 +7,8 @@ import StudentDashboard from './components/StudentDashboard';
 import AdminContentManagement from './components/AdminContentManagement';
 import UserManagement from './components/UserManagement';
 import FileManagement from './components/FileManagement';
+import { AdminSettingsPage } from './components/AdminSettingsPage';
+import AdminCourseAccessPage from './components/AdminCourseAccessPage';
 import AchievementsPage from './components/AchievementsPage';
 import CourseEnrollmentModal from './components/CourseEnrollmentModal';
 import Breadcrumb from './components/Breadcrumb';
@@ -118,6 +120,8 @@ const App: React.FC = () => {
     if (path.startsWith('/admin/users')) return 'users';
     if (path.startsWith('/admin/files')) return 'files';
     if (path.startsWith('/admin/health')) return 'system-health';
+    if (path.startsWith('/admin/access')) return 'access';
+    if (path.startsWith('/admin/settings')) return 'settings';
     if (path.startsWith('/course/')) return 'lesson';
     if (path.startsWith('/editor/')) return 'content-editor';
     return 'dashboard';
@@ -146,6 +150,8 @@ const App: React.FC = () => {
       case 'users': navigate('/admin/users'); break;
       case 'files': navigate('/admin/files'); break;
       case 'system-health': navigate('/admin/health'); break;
+      case 'access': navigate('/admin/access'); break;
+      case 'settings': navigate('/admin/settings'); break;
       default: navigate('/');
     }
   };
@@ -368,8 +374,10 @@ const App: React.FC = () => {
             } />
             <Route path="/admin/lesson/:lessonId/edit" element={<AdminRoute><LessonContentEditorWrapper adminService={adminService} /></AdminRoute>} />
             <Route path="/admin/users" element={<AdminRoute><UserManagement adminService={adminService} /></AdminRoute>} />
+            <Route path="/admin/access" element={<AdminRoute><AdminCourseAccessPage adminService={adminService} /></AdminRoute>} />
             <Route path="/admin/files" element={<AdminRoute><FileManagement path="" onPathChange={() => { }} /></AdminRoute>} />
             <Route path="/admin/health" element={<AdminRoute><SystemHealth adminService={adminService} /></AdminRoute>} />
+            <Route path="/admin/settings" element={<AdminRoute><AdminSettingsPage adminService={adminService} /></AdminRoute>} />
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
@@ -399,6 +407,8 @@ const App: React.FC = () => {
         userName={user.name}
         systemContext="Você está no StudySystem v2 com Rotas."
       />
+
+      {/* Support Widget removed from here, moved to Sidebar */}
     </div>
   );
 };

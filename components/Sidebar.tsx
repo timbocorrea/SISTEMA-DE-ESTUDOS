@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { IUserSession } from '../domain/auth';
 import { Course, User } from '../domain/entities';
+import { SupportDialog } from './SupportDialog';
+import { AdminService } from '../services/AdminService';
+import { SupabaseAdminRepository } from '../repositories/SupabaseAdminRepository';
 
 interface SidebarProps {
   session: IUserSession;
@@ -40,6 +43,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   /* Sidebar Expanded by Default */
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [themeDropdownOpen, setThemeDropdownOpen] = useState(false);
+  const [isSupportOpen, setIsSupportOpen] = useState(false); // Support Dialog State
 
   // Removido o useEffect de persistência para garantir que sempre inicie fechado
 
@@ -437,6 +441,17 @@ const Sidebar: React.FC<SidebarProps> = ({
               </div>
 
               <button
+                onClick={() => onViewChange('access')}
+                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight mb-1 ${activeView === 'access' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
+                title="Acesso aos Cursos"
+              >
+                <i className="fas fa-lock w-5 text-center"></i>
+                <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
+                  Acesso aos Cursos
+                </span>
+              </button>
+
+              <button
                 onClick={() => onViewChange('system-health')}
                 className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight mb-1 ${activeView === 'system-health' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
                 title="Saúde do Sistema"
@@ -446,12 +461,36 @@ const Sidebar: React.FC<SidebarProps> = ({
                   Saúde do Sistema
                 </span>
               </button>
+
+              <button
+                onClick={() => onViewChange('settings')}
+                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight mb-1 ${activeView === 'settings' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
+                title="Configuração do Suporte"
+              >
+                <i className="fas fa-cogs w-5 text-center"></i>
+                <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
+                  Configuração do Suporte
+                </span>
+              </button>
             </div>
           </>
         )}
       </nav>
 
       <div className={`mt-auto pt-6 space-y-2 border-t border-slate-200 dark:border-slate-800 transition-all ${isActuallyCollapsed ? 'flex flex-col items-center' : ''}`}>
+
+        {/* Support Button */}
+        <button
+          onClick={() => setIsSupportOpen(true)}
+          className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-sm font-bold ${isActuallyCollapsed ? 'justify-center' : ''}`}
+          title="Suporte Técnico"
+        >
+          <i className="fas fa-headset w-5 text-center"></i>
+          <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
+            Suporte
+          </span>
+        </button>
+
         {/* Theme Button with Dropdown */}
         <div className="relative">
           <button
@@ -523,6 +562,13 @@ const Sidebar: React.FC<SidebarProps> = ({
           </span>
         </button>
       </div>
+
+      {/* Support Dialog */}
+      <SupportDialog
+        isOpen={isSupportOpen}
+        onClose={() => setIsSupportOpen(false)}
+        adminService={session.user.role === 'INSTRUCTOR' ? new AdminService(new SupabaseAdminRepository()) : undefined}
+      />
     </aside >
   );
 };

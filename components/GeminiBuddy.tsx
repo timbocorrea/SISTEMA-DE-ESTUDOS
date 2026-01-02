@@ -205,7 +205,9 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
       <button
         onClick={() => setIsOpen(!isOpen)}
         aria-label="Abrir assistente IA"
-        className={`fixed ${mobileBottomClass} md:bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 ${isOpen ? 'bg-red-500 rotate-90' : 'bg-indigo-600 hover:bg-indigo-500'
+        className={`fixed ${mobileBottomClass} md:bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 ${isOpen
+          ? 'bg-red-500 rotate-90'
+          : 'bg-indigo-600 md:bg-indigo-600/40 md:hover:bg-indigo-600 md:hover:shadow-indigo-600/40 backdrop-blur-sm'
           }`}
       >
         <i className={`fas ${isOpen ? 'fa-times' : 'fa-robot'} text-white text-2xl`}></i>

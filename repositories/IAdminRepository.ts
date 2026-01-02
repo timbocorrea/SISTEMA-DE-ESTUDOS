@@ -74,4 +74,12 @@ export interface IAdminRepository {
   // Student Logs
   getXpHistory(userId: string): Promise<import('../domain/admin').XpLogRecord[]>;
   logActivity(userId: string, actionType: string, description: string): Promise<void>;
+
+  // System Settings
+  getSystemSettings(): Promise<{ key: string; value: string; description: string }[]>;
+  updateSystemSetting(key: string, value: string): Promise<void>;
+
+  // Course Access Control
+  getCourseUserAssignments(courseId: string): Promise<string[]>;
+  assignUsersToCourse(courseId: string, userIds: string[], adminId: string): Promise<void>;
 }

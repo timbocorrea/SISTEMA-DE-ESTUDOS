@@ -3,6 +3,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AuthService } from '../services/AuthService';
 import { loginSchema, signupSchema, type LoginFormData, type SignupFormData } from '../domain/schemas/authSchema';
+import { SupportDialog } from './SupportDialog';
+import { AdminService } from '../services/AdminService';
+import { SupabaseAdminRepository } from '../repositories/SupabaseAdminRepository';
 
 interface AuthFormProps {
   authService: AuthService;
@@ -13,6 +16,8 @@ const AuthForm: React.FC<AuthFormProps> = ({ authService, onSuccess }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const [isSupportOpen, setIsSupportOpen] = useState(false);
 
   // Form com validação dinâmica baseada no tipo (login ou signup)
   const {
@@ -229,9 +234,27 @@ const AuthForm: React.FC<AuthFormProps> = ({ authService, onSuccess }) => {
                 {isLogin ? 'Criar agora' : 'Fazer login'}
               </button>
             </p>
+
+            {/* Support Button */}
+            <div className="mt-4">
+              <button
+                onClick={() => setIsSupportOpen(true)}
+                className="text-xs text-slate-500 hover:text-slate-300 transition-colors flex items-center justify-center gap-2 mx-auto"
+              >
+                <i className="fas fa-life-ring"></i>
+                Dificuldade para acessar?
+              </button>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Support Dialog - Public Access */}
+      <SupportDialog
+        isOpen={isSupportOpen}
+        onClose={() => setIsSupportOpen(false)}
+        adminService={new AdminService(new SupabaseAdminRepository())}
+      />
     </div>
   );
 };
