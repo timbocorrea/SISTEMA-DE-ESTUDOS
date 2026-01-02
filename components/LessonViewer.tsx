@@ -14,6 +14,7 @@ import { SupabaseCourseRepository } from '../repositories/SupabaseCourseReposito
 import { LessonNotesRepository } from '../repositories/LessonNotesRepository';
 import { useLessonStore } from '../stores/useLessonStore';
 import ContentReader from './lesson/ContentReader';
+import { useAudioPlayer } from '../hooks/useAudioPlayer';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
@@ -49,16 +50,29 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     onTrackAction
 }) => {
     // Global state from Zustand store
-    const { activeBlockId, setActiveBlockId, fontSize, setFontSize, isCinemaMode, toggleCinemaMode } = useLessonStore();
+    const {
+        activeBlockId,
+        setActiveBlockId,
+        fontSize,
+        setFontSize,
+        isCinemaMode,
+        toggleCinemaMode,
+        playbackSpeed,
+        setPlaybackSpeed,
+        audioEnabled,
+        setAudioEnabled
+    } = useLessonStore();
+
+    // Custom Hooks
+    const { audioProgress, playBlock, seekTo, audioRef } = useAudioPlayer({
+        lesson,
+        onTrackAction,
+        onProgressUpdate: onProgressUpdate
+    });
 
     // Local state (kept here as they're specific to this component instance)
     const [lastAccessedId, setLastAccessedId] = useState<string | null>(null);
-    const [audioProgress, setAudioProgress] = useState<number>(0);
-    const [playbackSpeed, setPlaybackSpeed] = useState<number>(1.0); // Velocidade de reprodução
-    const [audioEnabled, setAudioEnabled] = useState<boolean>(true); // Controle para ativar/desativar áudio
     const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState<boolean>(false);
-    const audioRef = useRef<HTMLAudioElement | null>(null);
-    const playbackSpeedRef = useRef<number>(playbackSpeed); // Ref para manter valor atualizado nos callbacks
     const blockRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
     const optionsMenuRef = useRef<HTMLDivElement | null>(null);
 
@@ -100,10 +114,6 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
     const handleCloseDrawer = () => {
         if (activeMobileTab) {
-            // Using history.back() triggers popstate, which closes the drawer via the effect
-            // We check if state matches to avoid popping base history if manual close
-            // But checking history.state is unreliable across browsers.
-            // Safe bet: if we have drawer open, we likely pushed state.
             window.history.back();
         }
     };
@@ -125,14 +135,6 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                 const lessonQuiz = await courseRepo.getQuizByLessonId(lesson.id);
 
                 if (lessonQuiz) {
-                    console.log('✅ [STUDENT] Quiz carregado:', {
-                        id: lessonQuiz.id,
-                        title: lessonQuiz.title,
-                        questions: lessonQuiz.questions.length,
-                        isManuallyReleased: lessonQuiz.isManuallyReleased,
-                        progressPercentage: lesson.calculateProgressPercentage()
-                    });
-
                     setQuiz(lessonQuiz);
                     lesson.setHasQuiz(true);
 
@@ -141,8 +143,6 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                     if (attempt?.passed) {
                         lesson.setQuizPassed(true);
                     }
-                } else {
-                    console.log('⚠️ [STUDENT] Nenhum quiz encontrado para aula:', lesson.id);
                 }
             } catch (error) {
                 console.error('❌ [STUDENT] Error loading quiz:', error);
@@ -160,19 +160,13 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
             const supabase = createSupabaseClient();
             const courseRepo = new SupabaseCourseRepository(supabase);
 
-            // Validar respostas via RPC no servidor
-            // const result = quiz.validateAttempt(answers); // Removido validação cliente
-
-            // Registrar tentativa no banco (RPC calcula nota e retorna resultado)
             const attempt = await courseRepo.submitQuizAttempt(
                 user.id,
                 quiz.id,
                 answers
             );
 
-            // Converter para formato esperado pelo frontend se necessário, ou usar o retorno direto
             const totalPoints = quiz.getTotalPoints();
-            // Recalcula pontos ganhos baseado no score (já que o backend retorna %)
             const earnedPoints = Math.round((attempt.score / 100) * totalPoints);
 
             const resultWithScore = {
@@ -188,8 +182,6 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
             if (attempt.passed) {
                 lesson.setQuizPassed(true);
-                // Quiz passado! Agora podemos atualizar o progresso para completar a aula
-                // Chamamos onProgressUpdate com o progresso atual para disparar a verificação de conquistas
                 await onProgressUpdate(lesson.watchedSeconds, activeBlockId || undefined);
             }
         } catch (error) {
@@ -204,30 +196,21 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
      * Intercepta a atualização de progresso para verificar se precisa abrir o quiz
      */
     const handleProgressUpdateInternal = async (watchedSeconds: number, lastBlockId?: string) => {
-        // Lógica de conclusão baseada no tempo (ex: 90% da duração) ou se já estava completa
         const duration = lesson.durationSeconds || 1;
         const progressPercent = (watchedSeconds / duration) * 100;
         const isCompletingNow = progressPercent >= 90;
 
-        // Se está completando AGORA e tem quiz e NÃO passou no quiz
         if (isCompletingNow && quiz && !lesson.quizPassed) {
-            // Salva o progresso, mas CourseService NÃO vai dar XP/Conquista ainda porque quiz não passou
             await onProgressUpdate(watchedSeconds, lastBlockId);
 
-            // Abre o modal do quiz para o usuário completar
             if (!showQuizModal && !quizResult) {
                 setShowQuizModal(true);
             }
         } else {
-            // Comportamento normal
             await onProgressUpdate(watchedSeconds, lastBlockId);
         }
     };
 
-    // Estado para o widget flutuante do Buddy AI
-    // const [isBuddyOpen, setIsBuddyOpen] = useState(false); // Removed: Global Buddy used
-
-    // Find progress for this lesson
     const lessonProgress = userProgress.find(p => p.lessonId === lesson.id);
 
     // Initial Resume Logic (Scroll and Focus)
@@ -236,7 +219,6 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
             const blockId = lessonProgress.lastAccessedBlockId;
             setLastAccessedId(blockId);
 
-            // Wait for DOM to be ready
             setTimeout(() => {
                 const element = blockRefs.current[blockId];
                 if (element) {
@@ -246,28 +228,15 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
         }
     }, [lesson.id]);
 
-    // Update playback rate dynamically
-    useEffect(() => {
-        playbackSpeedRef.current = playbackSpeed; // Atualizar ref
-        if (audioRef.current) {
-            audioRef.current.playbackRate = playbackSpeed;
-        }
-    }, [playbackSpeed]);
-
     // Auto-scroll to active block
     useEffect(() => {
         if (activeBlockId) {
             const element = blockRefs.current[activeBlockId];
             if (element) {
-                // Scroll the element into view, centering it for better visibility
                 element.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
         }
     }, [activeBlockId]);
-
-
-
-
 
     // State for highlights
     const [highlights, setHighlights] = useState<{ id: string; text: string; color: 'yellow' | 'green' | 'blue' | 'pink'; onClick: () => void }[]>([]);
@@ -307,78 +276,6 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
         return () => { isMounted = false; };
     }, [lesson.id, user.id]);
 
-    const playBlock = (index: number) => {
-        const blocks = lesson.contentBlocks;
-        if (!blocks || index < 0 || index >= blocks.length) return;
-
-        const block = blocks[index];
-        if (!block.audioUrl) {
-            setActiveBlockId(null);
-            return;
-        }
-
-        // Se clicar no bloco que está tocando, pausar
-        if (activeBlockId === block.id && audioRef.current) {
-            audioRef.current.pause();
-            setActiveBlockId(null);
-            setAudioProgress(0);
-            onTrackAction?.(`Pausou o áudio no bloco de texto`);
-            return;
-        }
-
-        // Cleanup previous audio
-        if (audioRef.current) {
-            audioRef.current.pause();
-        }
-
-        setActiveBlockId(block.id);
-        setAudioProgress(0);
-
-        // Save progress (Resume point)
-        handleProgressUpdateInternal(lesson.watchedSeconds, block.id);
-
-        const audio = new Audio(block.audioUrl);
-        audioRef.current = audio;
-
-        // Aplicar velocidade de reprodução
-        audio.playbackRate = playbackSpeedRef.current;
-
-        // Atualizar progresso do áudio
-        audio.ontimeupdate = () => {
-            if (audio.duration) {
-                const progress = (audio.currentTime / audio.duration) * 100;
-                setAudioProgress(progress);
-            }
-        };
-
-        audio.onended = () => {
-            setAudioProgress(0);
-            // Auto-advance
-            const nextIndex = index + 1;
-            if (nextIndex < blocks.length && blocks[nextIndex].audioUrl) {
-                playBlock(nextIndex);
-            } else {
-                setActiveBlockId(null);
-            }
-        };
-
-        audio.play().catch(err => console.error("Audio playback failed", err));
-
-        // Track the interaction
-        const blockPreview = block.text.replace(/<[^>]*>/g, '').substring(0, 50); // Strip HTML and get first 50 chars
-        onTrackAction?.(`Ativou áudio no bloco: "${blockPreview}..."`);
-    };
-
-    // Cleanup on unmount
-    useEffect(() => {
-        return () => {
-            if (audioRef.current) {
-                audioRef.current.pause();
-                audioRef.current = null;
-            }
-        };
-    }, []);
-
     // Fechar menu de opções ao clicar fora
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -400,7 +297,6 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
     // Seek Functionality
     const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
-        if (!audioRef.current) return;
         e.stopPropagation();
 
         const progressBar = e.currentTarget;
@@ -410,11 +306,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
         if (width > 0) {
             const percentage = Math.max(0, Math.min(100, (offsetX / width) * 100));
-            if (Number.isFinite(audioRef.current.duration)) {
-                const newTime = (audioRef.current.duration * percentage) / 100;
-                audioRef.current.currentTime = newTime;
-                setAudioProgress(percentage);
-            }
+            seekTo(percentage);
         }
     };
 

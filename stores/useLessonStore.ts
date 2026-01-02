@@ -14,6 +14,10 @@ interface LessonStore {
     // UI State
     isCinemaMode: boolean;
 
+    // Media Preferences
+    playbackSpeed: number;
+    audioEnabled: boolean;
+
     // Actions
     setCurrentTime: (time: number) => void;
     setIsPlaying: (playing: boolean) => void;
@@ -21,6 +25,8 @@ interface LessonStore {
     setActiveBlockId: (id: string | null) => void;
     setFontSize: (size: number) => void;
     setContentTheme: (theme: 'light' | 'dark') => void;
+    setPlaybackSpeed: (speed: number) => void;
+    setAudioEnabled: (enabled: boolean) => void;
     toggleCinemaMode: () => void;
     resetLessonState: () => void;
 }
@@ -34,6 +40,8 @@ export const useLessonStore = create<LessonStore>((set) => ({
     fontSize: 16,
     contentTheme: 'light',
     isCinemaMode: false,
+    playbackSpeed: 1.0,
+    audioEnabled: true,
 
     // Actions
     setCurrentTime: (time) => set({ currentTime: time }),
@@ -42,13 +50,14 @@ export const useLessonStore = create<LessonStore>((set) => ({
     setActiveBlockId: (id) => set({ activeBlockId: id }),
     setFontSize: (size) => set({ fontSize: Math.max(12, Math.min(24, size)) }), // Clamp between 12-24
     setContentTheme: (theme) => set({ contentTheme: theme }),
+    setPlaybackSpeed: (speed) => set({ playbackSpeed: speed }),
+    setAudioEnabled: (enabled) => set({ audioEnabled: enabled }),
     toggleCinemaMode: () => set((state) => ({ isCinemaMode: !state.isCinemaMode })),
     resetLessonState: () => set({
         currentTime: 0,
         isPlaying: false,
         currentAudioIndex: null,
         activeBlockId: null,
-        fontSize: 16,
-        isCinemaMode: false,
+        // Preferences like fontSize, playbackSpeed, audioEnabled, contentTheme are NOT reset to preserve user choice
     }),
 }));
