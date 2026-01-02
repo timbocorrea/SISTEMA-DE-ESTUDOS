@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 interface LessonStore {
     // Video/Audio State
@@ -31,33 +32,47 @@ interface LessonStore {
     resetLessonState: () => void;
 }
 
-export const useLessonStore = create<LessonStore>((set) => ({
-    // Initial State
-    currentTime: 0,
-    isPlaying: false,
-    currentAudioIndex: null,
-    activeBlockId: null,
-    fontSize: 16,
-    contentTheme: 'light',
-    isCinemaMode: false,
-    playbackSpeed: 1.0,
-    audioEnabled: true,
+export const useLessonStore = create<LessonStore>()(
+    persist(
+        (set) => ({
+            // Initial State
+            currentTime: 0,
+            isPlaying: false,
+            currentAudioIndex: null,
+            activeBlockId: null,
+            fontSize: 16,
+            contentTheme: 'light',
+            isCinemaMode: false,
+            playbackSpeed: 1.0,
+            audioEnabled: true,
 
-    // Actions
-    setCurrentTime: (time) => set({ currentTime: time }),
-    setIsPlaying: (playing) => set({ isPlaying: playing }),
-    setCurrentAudioIndex: (index) => set({ currentAudioIndex: index }),
-    setActiveBlockId: (id) => set({ activeBlockId: id }),
-    setFontSize: (size) => set({ fontSize: Math.max(12, Math.min(24, size)) }), // Clamp between 12-24
-    setContentTheme: (theme) => set({ contentTheme: theme }),
-    setPlaybackSpeed: (speed) => set({ playbackSpeed: speed }),
-    setAudioEnabled: (enabled) => set({ audioEnabled: enabled }),
-    toggleCinemaMode: () => set((state) => ({ isCinemaMode: !state.isCinemaMode })),
-    resetLessonState: () => set({
-        currentTime: 0,
-        isPlaying: false,
-        currentAudioIndex: null,
-        activeBlockId: null,
-        // Preferences like fontSize, playbackSpeed, audioEnabled, contentTheme are NOT reset to preserve user choice
-    }),
-}));
+            // Actions
+            setCurrentTime: (time) => set({ currentTime: time }),
+            setIsPlaying: (playing) => set({ isPlaying: playing }),
+            setCurrentAudioIndex: (index) => set({ currentAudioIndex: index }),
+            setActiveBlockId: (id) => set({ activeBlockId: id }),
+            setFontSize: (size) => set({ fontSize: Math.max(12, Math.min(24, size)) }), // Clamp between 12-24
+            setContentTheme: (theme) => set({ contentTheme: theme }),
+            setPlaybackSpeed: (speed) => set({ playbackSpeed: speed }),
+            setAudioEnabled: (enabled) => set({ audioEnabled: enabled }),
+            toggleCinemaMode: () => set((state) => ({ isCinemaMode: !state.isCinemaMode })),
+            resetLessonState: () => set({
+                currentTime: 0,
+                isPlaying: false,
+                currentAudioIndex: null,
+                activeBlockId: null,
+                // Preferences like fontSize, playbackSpeed, audioEnabled, contentTheme are NOT reset to preserve user choice
+            }),
+        }),
+        {
+            name: 'study-system-prefs',
+            partialize: (state) => ({
+                playbackSpeed: state.playbackSpeed,
+                audioEnabled: state.audioEnabled,
+                fontSize: state.fontSize,
+                isCinemaMode: state.isCinemaMode,
+                contentTheme: state.contentTheme
+            }),
+        }
+    )
+);

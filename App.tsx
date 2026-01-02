@@ -12,6 +12,7 @@ import FileManagement from './components/FileManagement';
 import { AdminSettingsPage } from './components/AdminSettingsPage';
 import AdminCourseAccessPage from './components/AdminCourseAccessPage';
 import AchievementsPage from './components/AchievementsPage';
+import BuddyFullPage from './components/BuddyFullPage';
 import CourseEnrollmentModal from './components/CourseEnrollmentModal';
 import Breadcrumb from './components/Breadcrumb';
 import LessonContentEditorPage from './components/LessonContentEditorPage';
@@ -112,6 +113,17 @@ const App: React.FC = () => {
   const [isEnrollmentModalOpen, setIsEnrollmentModalOpen] = useState(false);
   const [isEnrolling, setIsEnrolling] = useState(false);
 
+  // Admin Data (Managed Courses with full structure)
+  const [adminCourses, setAdminCourses] = useState<import('./domain/entities').Course[]>([]);
+
+  useEffect(() => {
+    if (user?.role === 'INSTRUCTOR') {
+      adminService.listCoursesFull()
+        .then(setAdminCourses)
+        .catch(err => console.error("Failed to load admin courses", err));
+    }
+  }, [user, adminService]);
+
   // Derive activeView for Sidebar highlighting
   const getActiveView = () => {
     const path = location.pathname;
@@ -119,6 +131,7 @@ const App: React.FC = () => {
     if (path === '/courses') return 'courses';
     if (path === '/achievements') return 'achievements';
     if (path === '/history') return 'history';
+    if (path === '/buddy') return 'buddy';
     if (path.startsWith('/admin/content')) return 'content';
     if (path.startsWith('/admin/users')) return 'users';
     if (path.startsWith('/admin/files')) return 'files';
@@ -149,6 +162,7 @@ const App: React.FC = () => {
       case 'courses': navigate('/courses'); break;
       case 'achievements': navigate('/achievements'); break;
       case 'history': navigate('/history'); break;
+      case 'buddy': navigate('/buddy'); break;
       case 'content': navigate('/admin/content'); break;
       case 'users': navigate('/admin/users'); break;
       case 'files': navigate('/admin/files'); break;
@@ -287,6 +301,7 @@ const App: React.FC = () => {
         user={user}
         onNavigateFile={(path) => navigate('/admin/files', { state: { path } })}
         courses={enrolledCourses}
+        adminCourses={adminCourses}
         onOpenContent={user.role === 'INSTRUCTOR' ? traverseToAdminEditor : verifyEnrollmentAndNavigate}
         onSelectLesson={(courseId, modId, lessId) => navigate(`/course/${courseId}/lesson/${lessId}`)}
         isMobileOpen={isMobileMenuOpen}
@@ -354,6 +369,7 @@ const App: React.FC = () => {
               {/* Feature Routes */}
               <Route path="/achievements" element={<AchievementsPage user={user} course={activeCourse} />} />
               <Route path="/history" element={<HistoryPageWrapper adminService={adminService} userId={user.id} />} />
+              <Route path="/buddy" element={<BuddyFullPage />} />
 
               {/* Course Routes */}
               <Route path="/course/:courseId" element={<CourseLayout />}>
@@ -469,5 +485,5 @@ const HistoryPageWrapper: React.FC<{ adminService: AdminService; userId: string 
   return <HistoryPage history={history} />;
 };
 
-// End of App
+// End of App 
 export default App;

@@ -4,6 +4,7 @@ import { Course, User } from '../domain/entities';
 import { SupportDialog } from './SupportDialog';
 import { AdminService } from '../services/AdminService';
 import { SupabaseAdminRepository } from '../repositories/SupabaseAdminRepository';
+import { Link } from 'react-router-dom';
 
 interface SidebarProps {
   session: IUserSession;
@@ -13,6 +14,7 @@ interface SidebarProps {
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
   courses?: Course[];
+  adminCourses?: Course[];
   onOpenContent?: (courseId: string, moduleId?: string, lessonId?: string) => void;
   onSelectLesson?: (courseId: string, moduleId: string, lessonId: string) => void;
   user?: User | null;
@@ -33,6 +35,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   onToggleTheme,
   user,
   courses = [],
+  adminCourses = [],
   onOpenContent,
   onSelectLesson,
   isMobileOpen = false,
@@ -74,7 +77,8 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const menuItems = [
     { id: 'achievements', label: 'Conquistas', icon: 'fas fa-trophy' },
-    { id: 'history', label: 'Histórico', icon: 'fas fa-history' }
+    { id: 'history', label: 'Histórico', icon: 'fas fa-history' },
+    { id: 'buddy', label: 'Buddy AI', icon: 'fas fa-robot' }
   ];
 
   return (
@@ -157,8 +161,12 @@ const Sidebar: React.FC<SidebarProps> = ({
       <nav className="flex-1 space-y-1 overflow-y-auto scrollbar-hide overflow-x-hidden">
         {!isActuallyCollapsed && <p className="px-3 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 opacity-50 whitespace-nowrap">Menu Principal</p>}
 
-        <button
-          onClick={() => onViewChange('dashboard')}
+        <Link
+          to="/"
+          onClick={(e) => {
+            e.stopPropagation();
+            onViewChange('dashboard');
+          }}
           className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight group relative ${activeView === 'dashboard'
             ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
             : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200'
@@ -169,12 +177,14 @@ const Sidebar: React.FC<SidebarProps> = ({
           <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
             Dashboard
           </span>
-        </button>
+        </Link>
 
         {/* Meus Cursos com Submenu */}
         <div className={`${isActuallyCollapsed ? 'mt-1 pt-1' : ''}`}>
-          <button
-            onClick={() => {
+          <Link
+            to="/courses"
+            onClick={(e) => {
+              e.stopPropagation();
               setCoursesMenuOpen(open => !open);
               onViewChange('courses', true);
               if (isActuallyCollapsed) setIsCollapsed(false);
@@ -190,7 +200,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               <span className={`truncate transition-all duration-300 ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>Meus Cursos</span>
             </div>
             {!isActuallyCollapsed && <i className={`fas fa-chevron-down text-xs transition-transform ${coursesMenuOpen ? 'rotate-180' : ''}`}></i>}
-          </button>
+          </Link>
 
           {!isActuallyCollapsed && coursesMenuOpen && (
             <div className="ml-7 pl-3 border-l border-slate-200 dark:border-slate-800 space-y-1 mb-2 animate-in slide-in-from-top-2 duration-200">
@@ -202,20 +212,23 @@ const Sidebar: React.FC<SidebarProps> = ({
                   : (course.modules || []);
                 return (
                   <div key={course.id} className="space-y-1">
-                    <button
-                      onClick={() => {
+                    <Link
+                      to="/courses"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // const newId = isCourseOpen ? '' : course.id; // Logic handled in setExpanded
                         const newId = isCourseOpen ? '' : course.id;
                         setExpandedCourseId(newId);
                         setExpandedModuleId('');
                         if (newId) onExpandCourse?.(newId);
                       }}
-                      className={`w-full text-left px-3 py-2 rounded-lg transition-all text-xs font-black uppercase tracking-widest truncate ${isCourseOpen
+                      className={`w-full text-left px-3 py-2 rounded-lg transition-all text-xs font-black uppercase tracking-widest truncate block ${isCourseOpen
                         ? 'bg-indigo-600/10 text-indigo-600 dark:text-indigo-300'
                         : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                         }`}
                     >
                       {course.title}
-                    </button>
+                    </Link>
 
                     {isCourseOpen && (
                       <div className="ml-3 pl-3 border-l border-slate-200/70 dark:border-slate-800/70 space-y-1">
@@ -224,17 +237,19 @@ const Sidebar: React.FC<SidebarProps> = ({
                           const lessons = module.lessons || [];
                           return (
                             <div key={module.id} className="space-y-1">
-                              <button
-                                onClick={() => {
+                              <Link
+                                to="/courses"
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   setExpandedModuleId(isModuleOpen ? '' : module.id);
                                 }}
-                                className={`w-full text-left px-3 py-2 rounded-lg transition-all text-[11px] font-bold tracking-tight truncate ${isModuleOpen
+                                className={`w-full text-left px-3 py-2 rounded-lg transition-all text-[11px] font-bold tracking-tight truncate block ${isModuleOpen
                                   ? 'bg-cyan-600/10 text-cyan-600 dark:text-cyan-300'
                                   : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                                   }`}
                               >
                                 {module.title}
-                              </button>
+                              </Link>
 
                               {isModuleOpen && lessons.length > 0 && (
                                 <div className="ml-3 pl-3 border-l border-slate-200/70 dark:border-slate-800/70 space-y-1">
@@ -273,9 +288,13 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {menuItems.map(item => (
-          <button
+          <Link
             key={item.id}
-            onClick={() => onViewChange(item.id)}
+            to={`/${item.id}`} // Assumes path matches id: /achievements, /history
+            onClick={(e) => {
+              e.stopPropagation();
+              onViewChange(item.id);
+            }}
             className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight group relative ${activeView === item.id
               ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
               : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200'
@@ -286,7 +305,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
               {item.label}
             </span>
-          </button>
+          </Link>
         ))}
 
         {isAdmin && (
@@ -295,8 +314,10 @@ const Sidebar: React.FC<SidebarProps> = ({
 
             {/* Admin Section Container */}
             <div className={`${isActuallyCollapsed ? 'mt-4 border-t border-slate-200 dark:border-slate-800 pt-4' : ''}`}>
-              <button
-                onClick={() => {
+              <Link
+                to="/admin/content"
+                onClick={(e) => {
+                  e.stopPropagation();
                   setContentMenuOpen(open => !open);
                   onViewChange('content', true);
                   // Auto-expand sidebar logic is optional, removing strict dependency for cleaner UX
@@ -313,30 +334,33 @@ const Sidebar: React.FC<SidebarProps> = ({
                   <span className={`truncate transition-all duration-300 ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>Gestão de Conteúdo</span>
                 </div>
                 {!isActuallyCollapsed && <i className={`fas fa-chevron-down text-xs transition-transform ${contentMenuOpen ? 'rotate-180' : ''}`}></i>}
-              </button>
+              </Link>
 
               {/* Submenu Tree (Only visible if expanded) */}
               {!isActuallyCollapsed && contentMenuOpen && (
                 <div className="ml-7 pl-3 border-l border-slate-200 dark:border-slate-800 space-y-1 mb-2 animate-in slide-in-from-top-2 duration-200">
-                  {courses.map(course => {
+                  {adminCourses.map(course => {
                     const isCourseOpen = expandedCourseId === course.id;
                     const modules = course.modules || [];
                     return (
                       <div key={course.id} className="space-y-1">
-                        <button
-                          onClick={() => {
+                        <Link
+                          to="/admin/content"
+                          state={{ courseId: course.id }}
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setExpandedCourseId(isCourseOpen ? '' : course.id);
                             setExpandedModuleId('');
                             onOpenContent?.(course.id);
                             onViewChange('content');
                           }}
-                          className={`w-full text-left px-3 py-2 rounded-lg transition-all text-xs font-black uppercase tracking-widest truncate ${isCourseOpen
+                          className={`w-full text-left px-3 py-2 rounded-lg transition-all text-xs font-black uppercase tracking-widest truncate block ${isCourseOpen
                             ? 'bg-indigo-600/10 text-indigo-600 dark:text-indigo-300'
                             : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                             }`}
                         >
                           {course.title}
-                        </button>
+                        </Link>
 
                         {isCourseOpen && (
                           <div className="ml-3 pl-3 border-l border-slate-200/70 dark:border-slate-800/70 space-y-1">
@@ -345,38 +369,43 @@ const Sidebar: React.FC<SidebarProps> = ({
                               const lessons = module.lessons || [];
                               return (
                                 <div key={module.id} className="space-y-1">
-                                  <button
-                                    onClick={() => {
+                                  <Link
+                                    to="/admin/content"
+                                    state={{ courseId: course.id, moduleId: module.id }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
                                       setExpandedModuleId(isModuleOpen ? '' : module.id);
                                       onOpenContent?.(course.id, module.id);
                                       onViewChange('content');
                                     }}
-                                    className={`w-full text-left px-3 py-2 rounded-lg transition-all text-[11px] font-bold tracking-tight truncate ${isModuleOpen
+                                    className={`w-full text-left px-3 py-2 rounded-lg transition-all text-[11px] font-bold tracking-tight truncate block ${isModuleOpen
                                       ? 'bg-cyan-600/10 text-cyan-600 dark:text-cyan-300'
                                       : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                                       }`}
                                   >
                                     {module.title}
-                                  </button>
+                                  </Link>
 
                                   {isModuleOpen && lessons.length > 0 && (
                                     <div className="ml-3 pl-3 border-l border-slate-200/70 dark:border-slate-800/70 space-y-1">
                                       {lessons.map(lesson => {
                                         const isActiveLesson = activeLessonId === lesson.id;
                                         return (
-                                          <button
+                                          <Link
                                             key={lesson.id}
-                                            onClick={() => {
-                                              onOpenContent?.(course.id, module.id, lesson.id);
+                                            to={`/admin/lesson/${lesson.id}/edit`}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              // onOpenContent?.(course.id, module.id, lesson.id); // Redundant if Link works
                                             }}
-                                            className={`w-full text-left px-3 py-2 rounded-lg transition-all text-[11px] font-medium tracking-tight truncate ${isActiveLesson
+                                            className={`w-full text-left px-3 py-2 rounded-lg transition-all text-[11px] font-medium tracking-tight truncate block ${isActiveLesson
                                               ? 'bg-emerald-600/20 text-emerald-700 dark:text-emerald-300 font-bold shadow-sm border border-emerald-600/30'
                                               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                                               }`}
                                           >
                                             {isActiveLesson && <i className="fas fa-pencil-alt mr-2 text-emerald-600 dark:text-emerald-400"></i>}
                                             {lesson.title}
-                                          </button>
+                                          </Link>
                                         );
                                       })}
                                     </div>
@@ -394,12 +423,16 @@ const Sidebar: React.FC<SidebarProps> = ({
                       </div>
                     );
                   })}
-                  {courses.length === 0 && <div className="px-3 py-2 text-[11px] text-slate-400">Nenhum curso</div>}
+                  {adminCourses.length === 0 && <div className="px-3 py-2 text-[11px] text-slate-400">Nenhum curso</div>}
                 </div>
               )}
 
-              <button
-                onClick={() => onViewChange('users')}
+              <Link
+                to="/admin/users"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onViewChange('users');
+                }}
                 className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight ${activeView === 'users' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
                 title="Controle de Usuários"
               >
@@ -407,12 +440,14 @@ const Sidebar: React.FC<SidebarProps> = ({
                 <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
                   Controle de Usuários
                 </span>
-              </button>
+              </Link>
 
               {/* Arquivos Menu with Subfolders */}
               <div>
-                <button
-                  onClick={() => {
+                <Link
+                  to="/admin/files"
+                  onClick={(e) => {
+                    e.stopPropagation();
                     // Toggle if already active view or collapsed
                     if (activeView === 'files') {
                       // Only toggle menu
@@ -431,7 +466,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     </span>
                   </div>
                   {!isActuallyCollapsed && activeView === 'files' && <i className="fas fa-chevron-down text-xs"></i>}
-                </button>
+                </Link>
 
                 {!isActuallyCollapsed && activeView === 'files' && (
                   <div className="ml-7 pl-3 border-l border-slate-200 dark:border-slate-800 space-y-1 mb-2 animate-in slide-in-from-top-2 duration-200">
@@ -449,8 +484,12 @@ const Sidebar: React.FC<SidebarProps> = ({
                 )}
               </div>
 
-              <button
-                onClick={() => onViewChange('access')}
+              <Link
+                to="/admin/access"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onViewChange('access');
+                }}
                 className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight mb-1 ${activeView === 'access' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
                 title="Acesso aos Cursos"
               >
@@ -458,10 +497,14 @@ const Sidebar: React.FC<SidebarProps> = ({
                 <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
                   Acesso aos Cursos
                 </span>
-              </button>
+              </Link>
 
-              <button
-                onClick={() => onViewChange('system-health')}
+              <Link
+                to="/admin/health"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onViewChange('system-health');
+                }}
                 className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight mb-1 ${activeView === 'system-health' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
                 title="Saúde do Sistema"
               >
@@ -469,10 +512,14 @@ const Sidebar: React.FC<SidebarProps> = ({
                 <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
                   Saúde do Sistema
                 </span>
-              </button>
+              </Link>
 
-              <button
-                onClick={() => onViewChange('settings')}
+              <Link
+                to="/admin/settings"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onViewChange('settings');
+                }}
                 className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight mb-1 ${activeView === 'settings' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
                 title="Configuração do Suporte"
               >
@@ -480,7 +527,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
                   Configuração do Suporte
                 </span>
-              </button>
+              </Link>
             </div>
           </>
         )}
@@ -490,7 +537,10 @@ const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Support Button */}
         <button
-          onClick={() => setIsSupportOpen(true)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsSupportOpen(true);
+          }}
           className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-sm font-bold ${isActuallyCollapsed ? 'justify-center' : ''}`}
           title="Suporte Técnico"
         >

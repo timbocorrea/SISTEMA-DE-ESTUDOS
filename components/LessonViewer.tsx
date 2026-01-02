@@ -303,20 +303,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
         };
     }, [isOptionsMenuOpen]);
 
-    // Seek Functionality
-    const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
-        e.stopPropagation();
 
-        const progressBar = e.currentTarget;
-        const rect = progressBar.getBoundingClientRect();
-        const offsetX = e.clientX - rect.left;
-        const width = rect.width;
-
-        if (width > 0) {
-            const percentage = Math.max(0, Math.min(100, (offsetX / width) * 100));
-            seek(percentage);
-        }
-    };
 
     // Helper to render Quiz Status Card (Reused for Desktop and Mobile)
     const renderQuizStatusCard = () => {

@@ -224,7 +224,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
     // 1. Fetch Profile
     const { data: profile, error } = await this.client
       .from('profiles')
-      .select('id, name, email, role, xp_total, current_level, gemini_api_key, approval_status')
+      .select('id, name, email, role, xp_total, current_level, gemini_api_key, approval_status, last_access_at')
       .eq('id', userId)
       .single();
 
@@ -252,7 +252,8 @@ export class SupabaseCourseRepository implements ICourseRepository {
       profile.xp_total || 0,
       achievements,
       profile.gemini_api_key || null,
-      profile.approval_status || 'approved'
+      profile.approval_status || 'approved',
+      profile.last_access_at ? new Date(profile.last_access_at) : null
     );
   }
 
@@ -320,17 +321,28 @@ export class SupabaseCourseRepository implements ICourseRepository {
     return (assignments || []).map(a => a.course_id);
   }
 
-  async getCoursesSummary(userId?: string): Promise<{ id: string; title: string; description: string; imageUrl: string | null; }[]> {
+  async getCoursesSummary(userId?: string): Promise<{ id: string; title: string; description: string; imageUrl: string | null; modules: { id: string; lessons: { id: string }[] }[] }[]> {
     if (!userId) {
       const { data, error } = await this.client
         .from('courses')
-        .select('id, title, description, image_url');
+        .select(`
+          id, 
+          title, 
+          description, 
+          image_url,
+          modules:modules (
+            id,
+            lessons:lessons (id)
+          )
+        `);
       if (error) throw new DomainError('Falha ao buscar resumo dos cursos');
-      return (data || []).map(row => ({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (data || []).map((row: any) => ({
         id: row.id,
         title: row.title,
         description: row.description,
-        imageUrl: row.image_url
+        imageUrl: row.image_url,
+        modules: row.modules || []
       }));
     }
 
@@ -340,16 +352,27 @@ export class SupabaseCourseRepository implements ICourseRepository {
 
     const { data, error } = await this.client
       .from('courses')
-      .select('id, title, description, image_url')
+      .select(`
+        id, 
+        title, 
+        description, 
+        image_url,
+        modules:modules (
+          id,
+          lessons:lessons (id)
+        )
+      `)
       .in('id', assignedIds);
 
     if (error) throw new DomainError('Falha ao buscar resumo dos cursos');
 
-    return (data || []).map(row => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (data || []).map((row: any) => ({
       id: row.id,
       title: row.title,
       description: row.description,
-      imageUrl: row.image_url
+      imageUrl: row.image_url,
+      modules: row.modules || []
     }));
   }
 

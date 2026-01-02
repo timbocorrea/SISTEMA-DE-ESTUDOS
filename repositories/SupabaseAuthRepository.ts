@@ -11,6 +11,7 @@ type ProfileRow = {
   xp_total: number | null;
   current_level: number | null;
   achievements: unknown[] | null;
+  last_access_at: string | null;
 };
 
 export class SupabaseAuthRepository implements IAuthRepository {
@@ -24,7 +25,8 @@ export class SupabaseAuthRepository implements IAuthRepository {
     token: string,
     sessionId: string,
     xp?: number | null,
-    level?: number | null
+    level?: number | null,
+    lastAccessAt?: string | null
   ): IUserSession {
     return {
       user: {
@@ -33,7 +35,8 @@ export class SupabaseAuthRepository implements IAuthRepository {
         email,
         role,
         xp: xp ?? undefined,
-        level: level ?? undefined
+        level: level ?? undefined,
+        lastAccess: lastAccessAt ? new Date(lastAccessAt) : null
       },
       token,
       sessionId
@@ -56,7 +59,7 @@ export class SupabaseAuthRepository implements IAuthRepository {
         },
         { onConflict: 'id' }
       )
-      .select('id, name, email, role, xp_total, current_level, achievements, last_session_id')
+      .select('id, name, email, role, xp_total, current_level, achievements, last_session_id, last_access_at')
       .single();
 
     if (error || !data) {
@@ -69,7 +72,7 @@ export class SupabaseAuthRepository implements IAuthRepository {
   private async fetchProfile(userId: string, email: string, name?: string): Promise<ProfileRow & { last_session_id: string | null }> {
     const { data, error } = await this.client
       .from('profiles')
-      .select('id, name, email, role, xp_total, current_level, achievements, last_session_id')
+      .select('id, name, email, role, xp_total, current_level, achievements, last_session_id, last_access_at')
       .eq('id', userId)
       .maybeSingle();
 
@@ -105,6 +108,12 @@ export class SupabaseAuthRepository implements IAuthRepository {
 
     const profile = await this.fetchProfile(data.user.id, data.user.email || email, data.user.user_metadata?.name);
 
+    // Atualizar last_access_at apenas após capturar o antigo no fetchProfile
+    await this.client
+      .from('profiles')
+      .update({ last_access_at: new Date().toISOString() })
+      .eq('id', data.user.id);
+
     return {
       success: true,
       data: this.buildSession(
@@ -115,7 +124,8 @@ export class SupabaseAuthRepository implements IAuthRepository {
         data.session.access_token,
         sessionId,
         profile.xp_total,
-        profile.current_level
+        profile.current_level,
+        profile.last_access_at
       )
     };
   }
@@ -160,6 +170,12 @@ export class SupabaseAuthRepository implements IAuthRepository {
       .update({ last_session_id: sessionId })
       .eq('id', data.user.id);
 
+    // Atualizar last_access_at
+    await this.client
+      .from('profiles')
+      .update({ last_access_at: new Date().toISOString() })
+      .eq('id', data.user.id);
+
     return {
       success: true,
       data: this.buildSession(
@@ -170,7 +186,8 @@ export class SupabaseAuthRepository implements IAuthRepository {
         data.session.access_token,
         sessionId,
         profile.xp_total,
-        profile.current_level
+        profile.current_level,
+        profile.last_access_at
       )
     };
   }
@@ -196,7 +213,8 @@ export class SupabaseAuthRepository implements IAuthRepository {
       data.session.access_token,
       profile.last_session_id || '', // Se for a primeira vez após migração, pode estar vazio
       profile.xp_total,
-      profile.current_level
+      profile.current_level,
+      profile.last_access_at
     );
   }
 
@@ -241,10 +259,13 @@ export class SupabaseAuthRepository implements IAuthRepository {
       supabaseUser.user_metadata?.full_name || supabaseUser.user_metadata?.name || supabaseUser.email
     );
 
-    // Atualizar last_session_id
+    // Atualizar last_session_id e last_access_at
     await this.client
       .from('profiles')
-      .update({ last_session_id: sessionId })
+      .update({
+        last_session_id: sessionId,
+        last_access_at: new Date().toISOString()
+      })
       .eq('id', supabaseUser.id);
 
     return {
@@ -257,7 +278,8 @@ export class SupabaseAuthRepository implements IAuthRepository {
         data.session.access_token,
         sessionId,
         profile.xp_total,
-        profile.current_level
+        profile.current_level,
+        profile.last_access_at
       )
     };
   }

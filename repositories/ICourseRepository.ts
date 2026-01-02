@@ -20,7 +20,7 @@ export interface ICourseRepository {
   logXpChange(userId: string, amount: number, actionType: string, description: string): Promise<void>;
   getUserById(userId: string): Promise<User>;
   getAllCourses(userId?: string): Promise<Course[]>;
-  getCoursesSummary(userId?: string): Promise<{ id: string; title: string; description: string; imageUrl: string | null; }[]>;
+  getCoursesSummary(userId?: string): Promise<{ id: string; title: string; description: string; imageUrl: string | null; modules: { id: string; lessons: { id: string }[] }[] }[]>;
   getEnrolledCourses(userId: string): Promise<Course[]>;
   enrollInCourse(userId: string, courseId: string): Promise<void>;
   unenrollFromCourse(userId: string, courseId: string): Promise<void>;

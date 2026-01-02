@@ -7,6 +7,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS'
 };
 
 serve(async (req: Request) => {
@@ -15,21 +16,28 @@ serve(async (req: Request) => {
     }
 
     try {
-        const { messages, apiKey: bodyApiKey } = await req.json();
+        const body = await req.json();
+        const { messages, apiKey: bodyApiKey } = body;
+
+        if (!messages || !Array.isArray(messages)) {
+            throw new Error('Formato de requisição inválido: "messages" deve ser um array.');
+        }
 
         // 1. Initialize Supabase Client with User Auth
         const authHeader = req.headers.get('Authorization');
         if (!authHeader) throw new Error('Missing Authorization header');
 
         const supabaseClient = createClient(
+            // @ts-ignore
             Deno.env.get('SUPABASE_URL') ?? '',
+            // @ts-ignore
             Deno.env.get('SUPABASE_ANON_KEY') ?? '',
             { global: { headers: { Authorization: authHeader } } }
         );
 
         // 2. Get User
         const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-        if (userError || !user) throw new Error('Unauthorized user');
+        if (userError || !user) throw new Error('Falha na autenticação do usuário. Por favor, faça login novamente.');
 
         // 3. Fetch API Key from DB (Backend-Side Lookup)
         let resolvedApiKey = bodyApiKey; // Fallback legacy logic if passed, but typically undefined now
@@ -48,16 +56,20 @@ serve(async (req: Request) => {
         if (!resolvedApiKey) {
             // Fallback to System Key if Env is set (Optional, based on requirement)
             // For now, let's assume system requires user key or falls back to system wide key if available
+            // @ts-ignore
             resolvedApiKey = Deno.env.get('GEMINI_API_KEY');
         }
 
         if (!resolvedApiKey) {
-            throw new Error('No API Key found. Please configure your integration key in Settings.');
+            return new Response(
+                JSON.stringify({ error: 'Nenhuma chave de API Gemini encontrada. Adicione sua chave no seu Perfil para usar o Buddy AI.' }),
+                { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+            );
         }
 
         // 4. Determine Provider based on Key Prefix (Server-Side Logic)
         let aiProvider = 'google';
-        let aiModel = 'gemini-1.5-flash';
+        let aiModel = 'gemini-2.5-flash';
 
         if (resolvedApiKey.startsWith('sk-')) {
             aiProvider = 'openai';
@@ -66,34 +78,90 @@ serve(async (req: Request) => {
             aiProvider = 'groq';
             aiModel = 'llama-3.3-70b-versatile';
         } else if (resolvedApiKey.includes('.') && resolvedApiKey.length > 20 && !resolvedApiKey.startsWith('AIza')) {
-            aiProvider = 'zhipu';
-            aiModel = 'glm-4-flash';
+            aiProvider = 'anthropic';
+            aiModel = 'claude-3-5-sonnet-20241022';
         }
 
         let responseText = '';
 
         if (aiProvider === 'google') {
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=${resolvedApiKey}`, {
+            const systemMsg = messages.find((m: any) => m.role === 'system');
+            const systemText = systemMsg ? (systemMsg.text || systemMsg.content) : '';
+
+            const rawUserContent = messages.filter((m: any) => m.role !== 'system').map((m: any) => {
+                const parts: any[] = [];
+                if (m.text || m.content) parts.push({ text: m.text || m.content });
+                if (m.image) {
+                    const match = m.image.match(/^data:(.+);base64,(.+)$/);
+                    if (match) {
+                        parts.push({
+                            inline_data: {
+                                mime_type: match[1],
+                                data: match[2]
+                            }
+                        });
+                    }
+                }
+                return {
+                    role: m.role === 'ai' || m.role === 'assistant' || m.role === 'model' ? 'model' : 'user',
+                    parts
+                };
+            });
+
+            // Merge consecutive same roles for Gemini stability
+            const mergedContent: any[] = [];
+            for (const msg of rawUserContent) {
+                if (msg.parts.length === 0) continue;
+                if (mergedContent.length > 0 && mergedContent[mergedContent.length - 1].role === msg.role) {
+                    mergedContent[mergedContent.length - 1].parts.push(...msg.parts);
+                } else {
+                    mergedContent.push(msg);
+                }
+            }
+
+            // Gemini must start with 'user'
+            let finalContent = mergedContent;
+            while (finalContent.length > 0 && finalContent[0].role !== 'user') {
+                finalContent.shift();
+            }
+
+            if (finalContent.length === 0) throw new Error('Nenhuma mensagem válida encontrada para enviar à IA.');
+
+            // Prepend system instructions to the first message for maximum compatibility with v1
+            if (systemText && finalContent.length > 0 && finalContent[0].role === 'user') {
+                finalContent[0].parts.unshift({ text: `[INSTRUCÃO DE SISTEMA]:\n${systemText}\n\n---\n` });
+            }
+
+            const body: any = {
+                contents: finalContent,
+                generationConfig: {
+                    temperature: 0.7,
+                    maxOutputTokens: 1000,
+                }
+            };
+
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/${aiModel}:generateContent?key=${resolvedApiKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: messages.map((m: any) => ({
-                        role: m.role === 'ai' ? 'model' : 'user',
-                        parts: [{ text: m.text || m.content }]
-                    })).map((m: any) => {
-                        // Gemini expects 'user' or 'model'. Openai sends 'system', 'user', 'assistant'.
-                        // We map 'system' to 'user' with instruction, or use systemInstruction field.
-                        // For simplicity, we just map basic roles.
-                        if (m.role === 'system') return { role: 'user', parts: [{ text: m.parts[0].text }] };
-                        return m;
-                    }).filter((m: any) => m.role === 'user' || m.role === 'model') // Gemini only supports user/model in history
-                    // Note: Real implementation might need better system instruction handling
-                })
+                body: JSON.stringify(body)
             });
 
             const data = await response.json();
-            if (!response.ok) throw new Error(data.error?.message || 'Google API Error');
-            responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || "No response.";
+            console.log('Gemini Full Response:', JSON.stringify(data, null, 2));
+
+            if (!response.ok) {
+                console.error('Google API Error:', data);
+                throw new Error(data.error?.message || JSON.stringify(data.error) || 'Google API Error');
+            }
+
+            const candidate = data.candidates?.[0];
+            if (!candidate) {
+                responseText = `IA_SEM_CANDIDATOS. Debug: ${JSON.stringify(data)}`;
+            } else if (candidate.content?.parts?.[0]?.text) {
+                responseText = candidate.content.parts[0].text;
+            } else {
+                responseText = `IA_SEM_TEXTO. Debug: ${JSON.stringify(data)}`;
+            }
 
         } else if (aiProvider === 'openai') {
             const apiKey = resolvedApiKey;

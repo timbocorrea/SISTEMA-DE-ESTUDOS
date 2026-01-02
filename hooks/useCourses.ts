@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCourse } from '../contexts/CourseContext';
-import { Course } from '../domain/entities';
+import { Course, Module } from '../domain/entities';
 
 // We need to access the repository. 
 // Ideally, avoiding importing Context inside the hook that the Context uses would be circular.
@@ -29,13 +29,27 @@ export const useCoursesList = (service: CourseService, userId: string | undefine
             const summaries = await service.getCoursesSummary(userId);
             // Map summary to Course entity with empty modules to be lightweight
             // This satisfies the UI expectation of Course[] without the heavy load
-            return summaries.map(s => new Course(
-                s.id,
-                s.title,
-                s.description,
-                s.imageUrl,
-                [] // Empty modules for summary view
-            ));
+            return summaries.map(s => {
+                const modules = (s.modules || []).map((m: any) => {
+                    const lessons = (m.lessons || []).map((l: any) => ({
+                        id: l.id,
+                        title: '',
+                        videoUrl: '',
+                        durationSeconds: 0,
+                        isCompleted: false,
+                        position: 0
+                    } as any)); // Stub lesson
+                    return new Module(m.id, '', lessons); // Stub module
+                });
+
+                return new Course(
+                    s.id,
+                    s.title,
+                    s.description,
+                    s.imageUrl,
+                    modules
+                );
+            });
         },
         enabled: enabled && !!userId,
         staleTime: 1000 * 60 * 10, // 10 minutes

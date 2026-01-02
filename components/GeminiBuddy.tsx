@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
-import { createSupabaseClient } from '../services/supabaseClient';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useBuddyStore } from '../stores/useBuddyStore';
+import { useBuddyClient } from '../hooks/useBuddyClient';
+import { useAuth } from '../contexts/AuthContext';
+import { useCourse } from '../contexts/CourseContext';
+import { getRandomSuggestions, BuddySuggestion } from '../utils/buddySuggestions';
 
 interface GeminiBuddyProps {
   currentContext?: string; // Conteúdo da aula (opcional)
@@ -10,9 +14,6 @@ interface GeminiBuddyProps {
   onNavigate?: (courseId: string, lessonId: string) => void;
 }
 
-// Module-level variable to track if welcome message has been shown in this session (resets on page reload)
-let hasShownWelcome = false;
-
 const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
   currentContext = '',
   systemContext = 'Navegando no sistema',
@@ -20,46 +21,34 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
   initialMessage,
   onNavigate
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { activeCourse, activeLesson } = useCourse();
+  const userId = user?.id || 'guest';
+
+  const { threadsByUser, activeThreadIdByUser, welcomeShownByUser, isLoading, isOpen, setIsOpen, addMessage, setWelcomeShown } = useBuddyStore();
+  const { sendMessage, history: messages } = useBuddyClient({
+    userId,
+    currentContext,
+    systemContext,
+    userName: user?.name, // Changed from prop `userName` to `user?.name`
+    threadTitle: activeLesson ? `Aula: ${activeLesson.title}` : undefined
+  });
+
   const [prompt, setPrompt] = useState('');
-  // Enhanced message type to support actions
-  const [messages, setMessages] = useState<{ role: 'user' | 'ai', text: string, action?: { label: string, courseId: string, lessonId: string } }[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<BuddySuggestion[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Supabase Client for Edge Functions
-  const supabase = createSupabaseClient();
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setSelectedImage(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+  // Generate suggestions once per session/thread change or when empty
+  useEffect(() => {
+    if (messages.length === 0) {
+      setSuggestions(getRandomSuggestions(activeCourse?.title, activeLesson?.title, 3)); // Use 3 for widget space
     }
-  };
+  }, [messages.length, activeCourse?.title, activeLesson?.title, isOpen]);
 
-  const handlePaste = (e: React.ClipboardEvent) => {
-    const items = e.clipboardData.items;
-    for (let i = 0; i < items.length; i++) {
-      if (items[i].type.indexOf('image') !== -1) {
-        const file = items[i].getAsFile();
-        if (file) {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            setSelectedImage(reader.result as string);
-          };
-          reader.readAsDataURL(file);
-          e.preventDefault();
-        }
-      }
-    }
-  };
-
+  // Auto-scroll
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -68,23 +57,11 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
     scrollToBottom();
   }, [messages, isOpen]);
 
-  const [isDelayed, setIsDelayed] = useState(true);
-
+  // Handle Initial Message
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsDelayed(false);
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Handle Initial Message with Action Parsing
-  useEffect(() => {
-    if (isDelayed) return; // Wait for delay
-
-    // Check if welcome message was already shown in this session using module variable
-    if (hasShownWelcome) return;
-
-    if (initialMessage && messages.length === 0) {
+    const hasShownWelcome = welcomeShownByUser[userId];
+    // Only if not shown, valid initial message, and empty history
+    if (!hasShownWelcome && initialMessage && messages.length === 0) {
       // Regex to find [[RESUME:courseId:lessonId]]
       const actionMatch = initialMessage.match(/\[\[RESUME:(.+?):(.+?)\]\]/);
       let text = initialMessage;
@@ -99,106 +76,61 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
         };
       }
 
-      setIsOpen(true); // Auto-open for ANY initial message (Welcome or Resume)
-      setMessages([{ role: 'ai', text, action }]);
+      addMessage(userId, { role: 'ai', text, action });
+      setIsOpen(true);
+      setWelcomeShown(userId, true);
 
-      // Mark as shown for this session
-      hasShownWelcome = true;
-
-      // Auto-close após 5 segundos
-      const autoCloseTimer = setTimeout(() => {
-        setIsOpen(false);
-      }, 5000);
-
-      return () => clearTimeout(autoCloseTimer);
+      // Auto-close logic could go here if desired, but user interaction clears it usually
+      // Keeping it simple for now
+      setTimeout(() => setIsOpen(false), 5000);
     }
-  }, [initialMessage, isDelayed]);
+  }, [initialMessage, messages.length, addMessage, setIsOpen, userId, welcomeShownByUser, setWelcomeShown]);
+
+  // Image handling (Duplicate logic for now due to ref-based UI)
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => setSelectedImage(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData.items;
+    for (let i = 0; i < items.length; i++) {
+      const file = items[i].getAsFile();
+      if (file && items[i].type.indexOf('image') !== -1) {
+        const reader = new FileReader();
+        reader.onloadend = () => setSelectedImage(reader.result as string);
+        reader.readAsDataURL(file);
+        e.preventDefault();
+      }
+    }
+  };
 
   const handleAsk = async (e: React.FormEvent) => {
     e.preventDefault();
     if ((!prompt.trim() && !selectedImage) || isLoading) return;
 
-    const userMessage = prompt;
-    // Show image in chat history if present
-    const displayMessage = selectedImage ?
-      (userMessage ? `${userMessage}\n[Imagem enviada]` : '[Imagem enviada]')
-      : userMessage;
-
-    setMessages(prev => [...prev, { role: 'user', text: displayMessage }]);
+    const text = prompt;
+    const image = selectedImage;
     setPrompt('');
-    setIsLoading(true);
+    setSelectedImage(null);
 
-    const fullContext = `
-      Contexto do Sistema: ${systemContext}
-      ${currentContext ? `Conteúdo da Aula Atual: ${currentContext}` : ''}
-    `;
-
-    const systemInstruction = `
-      Você é o 'Study Buddy', um assistente inteligente integrado à plataforma de ensino.
-      Seu objetivo é ajudar o usuário ${userName || 'Estudante'} tanto com dúvidas sobre o conteúdo das aulas quanto com a navegação no sistema.
-      
-      Diretrizes:
-      1. Se a pergunta for sobre a matéria (Java, POO, etc), explique de forma didática.
-      2. Se a pergunta for sobre o sistema (Onde vejo notas? Como saio?), guie o usuário com base no contextos do sistema fornecido.
-      3. IMPORTANTE: Use o HISTÓRICO DE ATIVIDADES para responder perguntas como "onde parei?", "o que fiz?", "qual foi a última aula?". O histórico mostra as ações recentes do usuário com timestamps.
-      4. NAVEGAÇÃO: Quando o usuário pedir para retomar/voltar/acessar uma aula específica que aparece no histórico, você DEVE gerar um link clicável usando o formato: [[RESUME:ID_CURSO:ID_AULA]]. Exemplo: se no histórico aparece "Abriu a aula 'Decreto 7.005' [ID_CURSO:abc123|ID_AULA:xyz789]", você deve incluir na sua resposta: "[[RESUME:abc123:xyz789]]" e dizer algo como "Clique no botão abaixo para retomar."
-      5. Seja sempre encorajador, paciente e educado.
-      6. Responda em português do Brasil.
-      7. IMPORTANTE: Mantenha a conversa natural e fluida. EVITE REPETIR saudações (como "Olá [Nome]") ou formalidades excessivas em cada resposta. Se já estiver conversando, vá direto à resposta.
-      8. VISÃO (Imagens): Se o usuário enviar uma imagem, analise-a detalhadamente. Pode ser um código, um diagrama ou uma captura de tela de erro. Ajudar a resolver o problema mostrado.
-    `;
-
-    try {
-      const { data, error } = await supabase.functions.invoke('ask-ai', {
-        body: {
-          messages: [
-            { role: 'system', text: `${systemInstruction}\nContexto: ${fullContext}` },
-            { role: 'user', text: userMessage || 'Analise a imagem.' }
-          ]
-        }
-      });
-
-      if (error) throw new Error(error.message || 'Erro ao comunicar com a IA');
-
-      const aiResponse = data.response;
-
-      // Parse [[RESUME:courseId:lessonId]] action
-      const actionMatch = aiResponse.match(/\[\[RESUME:(.+?):(.+?)\]\]/);
-      let action: { label: string; courseId: string; lessonId: string } | undefined = undefined;
-
-      if (actionMatch) {
-        const cleanResponse = aiResponse.replace(actionMatch[0], '');
-        action = {
-          label: 'Retomar aula 🚀',
-          courseId: actionMatch[1],
-          lessonId: actionMatch[2]
-        };
-        setMessages(prev => [...prev, { role: 'ai', text: cleanResponse, action }]);
-      } else {
-        setMessages(prev => [...prev, { role: 'ai', text: aiResponse }]);
-      }
-
-    } catch (error) {
-      console.error(error);
-      let errorMessage = "Erro desconhecido";
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      }
-      setMessages(prev => [...prev, { role: 'ai', text: `Erro: ${errorMessage}` }]);
-    } finally {
-      setIsLoading(false);
-      setSelectedImage(null);
-    }
+    await sendMessage(text, image);
   };
 
-  // Determine relative position based on route (Lesson pages have a mobile footer)
+  // Determine relative position based on route
   const location = useLocation();
   const isLessonPage = location.pathname.includes('/lesson/');
+  const isBuddyPage = location.pathname === '/buddy';
+
+  // Hide widget completely on /buddy page
+  if (isBuddyPage) return null;
+
   const mobileBottomClass = isLessonPage ? 'bottom-24' : 'bottom-6';
 
-  if (isDelayed) return null;
-
-  // Render Floating Widget
   return (
     <>
       {/* Toggle Button */}
@@ -214,28 +146,52 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
       </button>
 
       {/* Chat Window */}
-      <div className={`fixed ${isLessonPage ? 'bottom-40' : 'bottom-24'} md:bottom-24 right-4 md:right-6 z-40 w-full max-w-[calc(100vw-2rem)] md:w-[380px] bg-slate-900 border border-slate-700/50 rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 origin-bottom-right ${isOpen ? 'opacity-100 scale-100 translate-y-0 h-[450px] md:h-[500px]' : 'opacity-0 scale-90 translate-y-10 pointer-events-none h-0'
+      <div className={`fixed ${isLessonPage ? 'bottom-40' : 'bottom-24'} md:bottom-24 right-4 md:right-6 z-40 w-full max-w-[calc(100vw-2rem)] md:w-[480px] bg-slate-900 border border-slate-700/50 rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 origin-bottom-right ${isOpen ? 'opacity-100 scale-100 translate-y-0 h-[550px] md:h-[680px]' : 'opacity-0 scale-90 translate-y-10 pointer-events-none h-0'
         }`}>
         {/* Header */}
-        <div className="p-4 bg-slate-800 border-b border-slate-700 flex items-center gap-3 shadow-lg">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-inner">
-            <i className="fas fa-robot text-lg"></i>
+        <div className="p-4 bg-slate-800 border-b border-slate-700 flex items-center justify-between shadow-lg">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-inner">
+              <i className="fas fa-robot text-lg"></i>
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-white">Study Buddy AI</h3>
+              <p className="text-[10px] text-slate-400">Assistente Virtual Inteligente</p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-sm font-bold text-white">Study Buddy AI</h3>
-            <p className="text-[10px] text-slate-400">Assistente Virtual Inteligente</p>
-          </div>
+          {/* Maximize Button */}
+          <button
+            onClick={() => { setIsOpen(false); navigate('/buddy'); }}
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-all"
+            title="Expandir para tela cheia"
+          >
+            <i className="fas fa-expand text-xs"></i>
+          </button>
         </div>
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-900/95 backdrop-blur-sm">
           {messages.length === 0 ? (
-            <div className="text-center py-10 opacity-60">
-              <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto text-indigo-400 mb-4 animate-pulse">
+            <div className="flex flex-col items-center justify-center py-6">
+              <div className="w-14 h-14 bg-slate-800 rounded-full flex items-center justify-center text-indigo-400 mb-4 animate-pulse">
                 <i className="fas fa-comment-dots text-2xl"></i>
               </div>
-              <p className="text-sm text-slate-300 font-medium">Olá! Como posso ajudar você hoje?</p>
-              <p className="text-[10px] text-slate-500 mt-2">Pergunte sobre aulas ou sobre o sistema.</p>
+              <p className="text-sm text-slate-300 font-medium px-6 text-center">Como posso ajudar em seus estudos hoje?</p>
+
+              <div className="mt-6 w-full space-y-2 px-2">
+                {suggestions.map((suggestion, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setPrompt(suggestion.text)}
+                    className="w-full p-2.5 rounded-xl border border-slate-700 bg-slate-800/50 hover:bg-slate-700/50 hover:border-indigo-500/30 transition-all text-left flex items-center gap-3 group"
+                  >
+                    <div className="w-6 h-6 rounded-lg bg-slate-800 flex items-center justify-center text-slate-500 group-hover:text-indigo-400 transition-colors">
+                      <i className={`fas ${suggestion.icon} text-[10px]`}></i>
+                    </div>
+                    <span className="text-[11px] text-slate-400 group-hover:text-slate-200 transition-colors truncate">{suggestion.text}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           ) : (
             messages.map((m, i) => (
@@ -245,9 +201,9 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
                   : 'bg-slate-800 text-slate-200 rounded-tl-none border border-slate-700'
                   }`}>
                   <div className="whitespace-pre-wrap">{m.text}</div>
-                  {m.action && onNavigate && (
+                  {m.action && (
                     <button
-                      onClick={() => onNavigate(m.action!.courseId, m.action!.lessonId)}
+                      onClick={() => onNavigate ? onNavigate(m.action!.courseId, m.action!.lessonId) : navigate(`/course/${m.action!.courseId}/lesson/${m.action!.lessonId}`)}
                       className="mt-3 w-full bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2"
                     >
                       <i className="fas fa-play-circle"></i>
@@ -312,7 +268,7 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               onPaste={handlePaste}
-              placeholder="Digite sua dúvida (IA do Sistema)..."
+              placeholder="Digite sua dúvida..."
               disabled={isLoading}
               className="flex-1 bg-slate-900 border border-slate-700 rounded-xl py-3 pl-4 pr-10 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 disabled:opacity-50"
             />

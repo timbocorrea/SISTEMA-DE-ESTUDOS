@@ -1,4 +1,5 @@
 import { CourseRecord, LessonRecord, LessonResourceRecord, ModuleRecord, ProfileRecord } from '../domain/admin';
+import { Course, Module, Lesson } from '../domain/entities';
 import { IAdminRepository } from '../repositories/IAdminRepository';
 
 export class AdminService {
@@ -6,6 +7,35 @@ export class AdminService {
 
   listCourses(): Promise<CourseRecord[]> {
     return this.adminRepository.listCourses();
+  }
+
+  async listCoursesFull(): Promise<Course[]> {
+    const rawCourses = await this.adminRepository.listCoursesWithContent();
+
+    return rawCourses.map(rc => {
+      const modules = rc.modules.map(rm => {
+        const lessons = rm.lessons.map(rl => {
+          return new Lesson({
+            id: rl.id,
+            title: rl.title,
+            videoUrl: rl.video_url || '',
+            videoUrls: rl.video_urls || [],
+            content: rl.content || '',
+            audioUrl: rl.audio_url || '',
+            imageUrl: rl.image_url || '',
+            durationSeconds: rl.duration_seconds || 0,
+            watchedSeconds: 0,
+            isCompleted: false,
+            position: rl.position || 0,
+            contentBlocks: rl.content_blocks || []
+          });
+        });
+
+        return new Module(rm.id, rm.title, lessons);
+      });
+
+      return new Course(rc.id, rc.title, rc.description || '', rc.image_url || '', modules);
+    });
   }
 
   createCourse(title: string, description?: string, imageUrl?: string): Promise<CourseRecord> {

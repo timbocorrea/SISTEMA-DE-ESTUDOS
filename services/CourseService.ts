@@ -87,7 +87,7 @@ export class CourseService {
     return this.courseRepository.getAllCourses(userId);
   }
 
-  async getCoursesSummary(userId: string): Promise<{ id: string; title: string; description: string; imageUrl: string | null; }[]> {
+  async getCoursesSummary(userId: string): Promise<{ id: string; title: string; description: string; imageUrl: string | null; modules: { id: string; lessons: { id: string }[] }[] }[]> {
     return this.courseRepository.getCoursesSummary(userId);
   }
 

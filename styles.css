@@ -11,8 +11,9 @@ html {
 
 @media (min-width: 1024px) {
   html {
-    font-size: 90%;
-    /* Proporção menor para desktop para aumentar densidade */
+    /* Scalling proportional: 16px @ 1600px width = 1vw */
+    /* Clamp ensures it doesn't get too small (12px) or too huge (24px) */
+    font-size: clamp(12px, 0.9vw, 24px); 
   }
 }
 

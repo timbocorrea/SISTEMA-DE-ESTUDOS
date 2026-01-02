@@ -2,6 +2,7 @@ import { CourseRecord, LessonRecord, LessonResourceRecord, ModuleRecord, Profile
 
 export interface IAdminRepository {
   listCourses(): Promise<CourseRecord[]>;
+  listCoursesWithContent(): Promise<import('../domain/admin').CourseStructure[]>;
   createCourse(title: string, description?: string, imageUrl?: string): Promise<CourseRecord>;
   updateCourse(id: string, patch: { title?: string; description?: string | null; imageUrl?: string | null }): Promise<CourseRecord>;
   deleteCourse(id: string): Promise<void>;

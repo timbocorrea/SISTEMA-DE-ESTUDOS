@@ -6,6 +6,7 @@ export interface IUserSession {
     role: 'STUDENT' | 'INSTRUCTOR';
     xp?: number;
     level?: number;
+    lastAccess?: Date | null;
   };
   token: string;
   sessionId: string;

@@ -75,7 +75,7 @@ const CourseCard: React.FC<CourseCardProps> = ({
 
             {/* Course Content */}
             <div className="p-6 flex flex-col flex-1">
-                <h3 className="text-xl font-black text-slate-800 dark:text-white mb-2 line-clamp-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2 line-clamp-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                     {course.title}
                 </h3>
 

@@ -6,6 +6,12 @@ export type CourseRecord = {
   created_at?: string;
 };
 
+export type CourseStructure = CourseRecord & {
+  modules: (ModuleRecord & {
+    lessons: LessonRecord[]
+  })[]
+};
+
 export type ModuleRecord = {
   id: string;
   course_id: string;

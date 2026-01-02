@@ -1,3 +1,4 @@
+
 import { SupabaseClient } from '@supabase/supabase-js';
 import { DomainError } from '../domain/errors';
 import { CourseRecord, LessonRecord, LessonResourceRecord, ModuleRecord, ProfileRecord } from '../domain/admin';
@@ -19,6 +20,40 @@ export class SupabaseAdminRepository implements IAdminRepository {
 
     if (error) throw new DomainError(`Falha ao listar cursos: ${error.message}`);
     return (data || []) as CourseRecord[];
+  }
+
+  async listCoursesWithContent(): Promise<import('../domain/admin').CourseStructure[]> {
+    const { data, error } = await this.client
+      .from('courses')
+      .select(`
+        *,
+        modules (
+          *,
+          lessons (*)
+        )
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) throw new DomainError(`Falha ao listar cursos completos: ${error.message}`);
+
+    // Client-side sorting for nested arrays (Supabase direct nested ordering is limited)
+    const courses = (data || []) as import('../domain/admin').CourseStructure[];
+
+    courses.forEach(course => {
+      // Sort modules by position
+      if (course.modules) {
+        course.modules.sort((a, b) => (a.position || 0) - (b.position || 0));
+
+        // Sort lessons by position
+        course.modules.forEach(module => {
+          if (module.lessons) {
+            module.lessons.sort((a, b) => (a.position || 0) - (b.position || 0));
+          }
+        });
+      }
+    });
+
+    return courses;
   }
 
   async createCourse(title: string, description?: string, imageUrl?: string): Promise<CourseRecord> {
