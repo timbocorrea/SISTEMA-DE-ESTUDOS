@@ -64,11 +64,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     } = useLessonStore();
 
     // Custom Hooks
-    const { audioProgress, playBlock, seekTo, audioRef } = useAudioPlayer({
-        lesson,
-        onTrackAction,
-        onProgressUpdate: onProgressUpdate
-    });
+    // Audio Player hook moved down to access handleProgressUpdateInternal
 
     // Local state (kept here as they're specific to this component instance)
     const [lastAccessedId, setLastAccessedId] = useState<string | null>(null);
@@ -211,6 +207,18 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
         }
     };
 
+    const {
+        isPlaying,
+        progress,
+        playBlock,
+        toggleAudio,
+        seek
+    } = useAudioPlayer({
+        lesson,
+        onTrackAction,
+        onProgressUpdate: handleProgressUpdateInternal
+    });
+
     const lessonProgress = userProgress.find(p => p.lessonId === lesson.id);
 
     // Initial Resume Logic (Scroll and Focus)
@@ -306,7 +314,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
         if (width > 0) {
             const percentage = Math.max(0, Math.min(100, (offsetX / width) * 100));
-            seekTo(percentage);
+            seek(percentage);
         }
     };
 
