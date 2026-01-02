@@ -877,4 +877,66 @@ export class SupabaseCourseRepository implements ICourseRepository {
       if (error) throw new DomainError(`Erro ao marcar material como acessado: ${error.message}`);
     }
   }
+
+  // ===== ANALYTICS & GAMIFICATION =====
+
+  async getWeeklyXpHistory(userId: string): Promise<{ date: string; xp: number }[]> {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const { data, error } = await this.client
+      .from('xp_history')
+      .select('created_at, amount')
+      .eq('user_id', userId)
+      .gte('created_at', sevenDaysAgo.toISOString())
+      .order('created_at', { ascending: true });
+
+    if (error) throw new DomainError(`Erro ao buscar histórico de XP: ${error.message}`);
+
+    //Group by date
+    const groupedByDate = (data || []).reduce((acc, record) => {
+      const date = new Date(record.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+      if (!acc[date]) {
+        acc[date] = 0;
+      }
+      acc[date] += record.amount;
+      return acc;
+    }, {} as Record<string, number>);
+
+    // Convert to array and fill missing days with 0
+    const result: { date: string; xp: number }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+      result.push({ date: dateStr, xp: groupedByDate[dateStr] || 0 });
+    }
+
+    return result;
+  }
+
+  async getCourseProgressSummary(userId: string): Promise<{ courseId: string; title: string; progress: number }[]> {
+    // Get enrolled courses
+    const enrolledCourses = await this.getEnrolledCourses(userId);
+
+    const summary: { courseId: string; title: string; progress: number }[] = [];
+
+    for (const course of enrolledCourses) {
+      const totalLessons = course.modules.reduce((sum, module) => sum + module.lessons.length, 0);
+      const completedLessons = course.modules.reduce(
+        (sum, module) => sum + module.lessons.filter(lesson => lesson.isCompleted).length,
+        0
+      );
+
+      const progress = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
+
+      summary.push({
+        courseId: course.id,
+        title: course.title,
+        progress
+      });
+    }
+
+    return summary;
+  }
 }

@@ -104,4 +104,18 @@ export interface ICourseRepository {
    * Marca material como acessado
    */
   markMaterialAccessed(userId: string, lessonId: string, materialId: string): Promise<void>;
+
+  // ===== ANALYTICS & GAMIFICATION =====
+
+  /**
+   * Busca histórico de XP dos últimos 7 dias
+   * @returns Array com data e XP ganho por dia
+   */
+  getWeeklyXpHistory(userId: string): Promise<{ date: string; xp: number }[]>;
+
+  /**
+   * Busca resumo de progresso de todos os cursos inscritos
+   * @returns Array com courseId, título e porcentagem de conclusão
+   */
+  getCourseProgressSummary(userId: string): Promise<{ courseId: string; title: string; progress: number }[]>;
 }

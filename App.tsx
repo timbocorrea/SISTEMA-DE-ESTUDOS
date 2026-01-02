@@ -1,5 +1,7 @@
 ﻿import React, { useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
+import { Toaster, toast } from 'sonner';
 import Sidebar from './components/Sidebar';
 import GeminiBuddy from './components/GeminiBuddy';
 import AuthForm from './components/AuthForm';
@@ -245,7 +247,8 @@ const App: React.FC = () => {
   // Loading Screen
   if (authLoading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-slate-50 dark:bg-[#050810]">
+      <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-950">
+        <Toaster theme={theme} richColors position="top-right" />
         <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
@@ -270,6 +273,7 @@ const App: React.FC = () => {
   return (
 
     <div className="flex flex-col lg:flex-row lg:h-screen w-full bg-white dark:bg-[#0a0e14] text-slate-900 dark:text-slate-100 transition-colors duration-300 font-lexend relative overflow-x-hidden">
+      <Toaster theme={theme} richColors position="top-right" />
 
       {/* Sidebar */}
       <Sidebar
@@ -312,75 +316,77 @@ const App: React.FC = () => {
         </header>
 
         <main className="flex-1 overflow-y-auto bg-slate-50/50 dark:bg-transparent scroll-smooth relative pt-[73px] lg:pt-0">
-          <Routes>
-            {/* Dashboard Routes */}
-            <Route path="/" element={
-              <StudentDashboard
-                user={user}
-                courses={availableCourses}
-                onCourseClick={handleEnrollRequest}
-                showEnrollButton={true}
-                enrolledCourseIds={enrolledCourses.map(c => c.id)}
-                sectionTitle="Cursos da Plataforma"
-                onManageCourse={user.role === 'INSTRUCTOR' ? (id) => navigate('/admin/content', { state: { courseId: id } }) : undefined}
-                onManageContent={user.role === 'INSTRUCTOR' ? () => navigate('/admin/content') : undefined}
-              />
-            } />
-            <Route path="/dashboard" element={<Navigate to="/" replace />} />
-
-            <Route path="/courses" element={
-              <StudentDashboard
-                user={user}
-                courses={enrolledCourses}
-                onCourseClick={(id) => navigate(`/course/${id}`)}
-                showEnrollButton={false}
-                sectionTitle="Meus Cursos"
-                enrolledCourseIds={enrolledCourses.map(c => c.id)}
-                onManageCourse={user.role === 'INSTRUCTOR' ? (id) => navigate('/admin/content', { state: { courseId: id } }) : undefined}
-                onManageContent={user.role === 'INSTRUCTOR' ? () => navigate('/admin/content') : undefined}
-              />
-            } />
-
-            {/* Feature Routes */}
-            <Route path="/achievements" element={<AchievementsPage user={user} course={activeCourse} />} />
-            <Route path="/history" element={<HistoryPageWrapper adminService={adminService} userId={user.id} />} />
-
-            {/* Course Routes */}
-            <Route path="/course/:courseId" element={<CourseLayout />}>
-              <Route index element={
-                // Course Overview (Module List)
-                // Reusing logic from old App.tsx where we showed module list if no lesson selected
-                <CourseOverview
+          <AnimatePresence mode="wait">
+            <Routes location={location} key={location.pathname}>
+              {/* Dashboard Routes */}
+              <Route path="/" element={
+                <StudentDashboard
                   user={user}
-                  activeCourse={activeCourse}
-                  onSelectModule={(m: any) => selectModule(m.id)}
-                  onSelectLesson={(l: any) => navigate(`/course/${activeCourse?.id}/lesson/${l.id}`)}
+                  courses={availableCourses}
+                  onCourseClick={handleEnrollRequest}
+                  showEnrollButton={true}
+                  enrolledCourseIds={enrolledCourses.map(c => c.id)}
+                  sectionTitle="Cursos da Plataforma"
+                  onManageCourse={user.role === 'INSTRUCTOR' ? (id) => navigate('/admin/content', { state: { courseId: id } }) : undefined}
+                  onManageContent={user.role === 'INSTRUCTOR' ? () => navigate('/admin/content') : undefined}
                 />
               } />
-              <Route path="lesson/:lessonId" element={
-                <LessonLoader user={user} theme={theme} onTrackAction={handleTrackAction} />
-              } />
-            </Route>
+              <Route path="/dashboard" element={<Navigate to="/" replace />} />
 
-            {/* Admin Routes */}
-            <Route path="/admin/content" element={
-              <AdminRoute>
-                <AdminContentManagement
-                  adminService={adminService}
-                  initialCourseId={undefined}
-                  onOpenContentEditor={(lesson) => navigate(`/admin/lesson/${lesson.id}/edit`)}
+              <Route path="/courses" element={
+                <StudentDashboard
+                  user={user}
+                  courses={enrolledCourses}
+                  onCourseClick={(id) => navigate(`/course/${id}`)}
+                  showEnrollButton={false}
+                  sectionTitle="Meus Cursos"
+                  enrolledCourseIds={enrolledCourses.map(c => c.id)}
+                  onManageCourse={user.role === 'INSTRUCTOR' ? (id) => navigate('/admin/content', { state: { courseId: id } }) : undefined}
+                  onManageContent={user.role === 'INSTRUCTOR' ? () => navigate('/admin/content') : undefined}
                 />
-              </AdminRoute>
-            } />
-            <Route path="/admin/lesson/:lessonId/edit" element={<AdminRoute><LessonContentEditorWrapper adminService={adminService} /></AdminRoute>} />
-            <Route path="/admin/users" element={<AdminRoute><UserManagement adminService={adminService} /></AdminRoute>} />
-            <Route path="/admin/access" element={<AdminRoute><AdminCourseAccessPage adminService={adminService} /></AdminRoute>} />
-            <Route path="/admin/files" element={<AdminRoute><FileManagement path="" onPathChange={() => { }} /></AdminRoute>} />
-            <Route path="/admin/health" element={<AdminRoute><SystemHealth adminService={adminService} /></AdminRoute>} />
-            <Route path="/admin/settings" element={<AdminRoute><AdminSettingsPage adminService={adminService} /></AdminRoute>} />
+              } />
 
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+              {/* Feature Routes */}
+              <Route path="/achievements" element={<AchievementsPage user={user} course={activeCourse} />} />
+              <Route path="/history" element={<HistoryPageWrapper adminService={adminService} userId={user.id} />} />
+
+              {/* Course Routes */}
+              <Route path="/course/:courseId" element={<CourseLayout />}>
+                <Route index element={
+                  // Course Overview (Module List)
+                  // Reusing logic from old App.tsx where we showed module list if no lesson selected
+                  <CourseOverview
+                    user={user}
+                    activeCourse={activeCourse}
+                    onSelectModule={(m: any) => selectModule(m.id)}
+                    onSelectLesson={(l: any) => navigate(`/course/${activeCourse?.id}/lesson/${l.id}`)}
+                  />
+                } />
+                <Route path="lesson/:lessonId" element={
+                  <LessonLoader user={user} theme={theme} onTrackAction={handleTrackAction} />
+                } />
+              </Route>
+
+              {/* Admin Routes */}
+              <Route path="/admin/content" element={
+                <AdminRoute>
+                  <AdminContentManagement
+                    adminService={adminService}
+                    initialCourseId={undefined}
+                    onOpenContentEditor={(lesson) => navigate(`/admin/lesson/${lesson.id}/edit`)}
+                  />
+                </AdminRoute>
+              } />
+              <Route path="/admin/lesson/:lessonId/edit" element={<AdminRoute><LessonContentEditorWrapper adminService={adminService} /></AdminRoute>} />
+              <Route path="/admin/users" element={<AdminRoute><UserManagement adminService={adminService} /></AdminRoute>} />
+              <Route path="/admin/access" element={<AdminRoute><AdminCourseAccessPage adminService={adminService} /></AdminRoute>} />
+              <Route path="/admin/files" element={<AdminRoute><FileManagement path="" onPathChange={() => { }} /></AdminRoute>} />
+              <Route path="/admin/health" element={<AdminRoute><SystemHealth adminService={adminService} /></AdminRoute>} />
+              <Route path="/admin/settings" element={<AdminRoute><AdminSettingsPage adminService={adminService} /></AdminRoute>} />
+
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </AnimatePresence>
         </main>
       </div>
 

@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCourse } from '../contexts/CourseContext';
 import LessonViewer from './LessonViewer';
+import LessonSkeleton from './skeletons/LessonSkeleton';
 import { User } from '../domain/entities';
 
 interface LessonLoaderProps {
@@ -46,11 +47,7 @@ const LessonLoader: React.FC<LessonLoaderProps> = ({ user, theme, onTrackAction 
     }, [theme]);
 
     if (isLoadingCourses) {
-        return (
-            <div className="flex items-center justify-center min-h-[50vh]">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
-            </div>
-        );
+        return <LessonSkeleton />;
     }
 
     if (!activeCourse) {
@@ -66,14 +63,7 @@ const LessonLoader: React.FC<LessonLoaderProps> = ({ user, theme, onTrackAction 
     }
 
     if (!activeLesson) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-4">
-                <div className="animate-pulse flex flex-col items-center">
-                    <i className="fas fa-circle-notch fa-spin text-3xl text-indigo-400 mb-2"></i>
-                    <p className="text-slate-500">Carregando aula...</p>
-                </div>
-            </div>
-        );
+        return <LessonSkeleton />;
     }
 
     return (
