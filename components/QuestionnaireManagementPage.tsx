@@ -171,6 +171,18 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
         loadLessons(id);
     };
 
+    const handleClearFilters = () => {
+        setSelectedCourseId('');
+        setSelectedModuleId('');
+        setSelectedLessonId('');
+        setSelectedDifficulty('');
+        setSearchKeyword('');
+        setModules([]);
+        setLessons([]);
+        setCurrentPage(1);
+        toast.success('Filtros limpos');
+    };
+
     const handleSaveQuestion = async (question: QuizQuestion, h: { courseId?: string; moduleId?: string; lessonId?: string }) => {
         setIsBusy(true);
         try {
@@ -464,10 +476,21 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
 
                         {/* SEARCH FILTER */}
                         <div className="md:col-span-4 space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
-                                <i className="fas fa-search text-indigo-500 text-[12px]"></i>
-                                Buscar por Palavra-Chave
-                            </label>
+                            <div className="flex items-center justify-between ml-1">
+                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                    <i className="fas fa-search text-indigo-500 text-[12px]"></i>
+                                    Buscar por Palavra-Chave
+                                </label>
+                                {(selectedCourseId || selectedModuleId || selectedLessonId || selectedDifficulty || searchKeyword) && (
+                                    <button
+                                        onClick={handleClearFilters}
+                                        className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest hover:text-indigo-700 transition-colors flex items-center gap-1.5"
+                                    >
+                                        <i className="fas fa-filter-circle-xmark"></i>
+                                        Limpar Filtros
+                                    </button>
+                                )}
+                            </div>
                             <div className="relative group">
                                 <input
                                     type="text"
@@ -596,9 +619,20 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
                                 <div className="w-16 h-16 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-2xl text-slate-300 dark:text-slate-600">
                                     <i className="fas fa-clipboard-question"></i>
                                 </div>
-                                <div className="space-y-1">
-                                    <h3 className="text-xl font-black text-slate-800 dark:text-white">Nenhuma questão encontrada</h3>
-                                    <p className="text-slate-500 text-sm">Refine seus filtros ou adicione uma nova questão ao banco.</p>
+                                <div className="space-y-4">
+                                    <div className="space-y-1">
+                                        <h3 className="text-xl font-black text-slate-800 dark:text-white">Nenhuma questão encontrada</h3>
+                                        <p className="text-sm font-bold text-slate-500 dark:text-slate-400">Refine seus filtros ou adicione uma nova questão ao banco.</p>
+                                    </div>
+                                    {(selectedCourseId || selectedModuleId || selectedLessonId || selectedDifficulty || searchKeyword) && (
+                                        <button
+                                            onClick={handleClearFilters}
+                                            className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-indigo-500/20 active:scale-95 flex items-center gap-2 mx-auto"
+                                        >
+                                            <i className="fas fa-filter-circle-xmark"></i>
+                                            Limpar Todos os Filtros
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         )}
