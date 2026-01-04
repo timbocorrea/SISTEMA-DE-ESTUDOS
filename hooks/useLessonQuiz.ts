@@ -22,8 +22,11 @@ interface UseLessonQuizReturn {
     practiceQuestionCount: number;
 
     // Actions
+    setQuiz: (quiz: Quiz | null) => void;
     setShowQuizModal: (show: boolean) => void;
     setQuizResult: (result: QuizAttemptResult | null) => void;
+    setIsSubmittingQuiz: (submitting: boolean) => void;
+    setQuizMode: (mode: 'practice' | 'evaluation' | null) => void;
     setShowPracticeConfigModal: (show: boolean) => void;
     setPracticeQuestionCount: (count: number) => void;
     handleStartQuiz: () => Promise<void>;
@@ -81,9 +84,9 @@ export const useLessonQuiz = ({
             const supabase = createSupabaseClient();
             const courseRepo = new SupabaseCourseRepository(supabase);
 
-            await courseRepo.recordQuizAttempt(
-                lesson.id,
+            await courseRepo.submitQuizAttempt(
                 user.id,
+                quiz.id,
                 answers
             );
 
@@ -253,8 +256,11 @@ export const useLessonQuiz = ({
         practiceQuestionCount,
 
         // Actions
+        setQuiz,
         setShowQuizModal,
         setQuizResult,
+        setIsSubmittingQuiz,
+        setQuizMode,
         setShowPracticeConfigModal,
         setPracticeQuestionCount,
         handleStartQuiz,

@@ -45,11 +45,15 @@ export class QuizQuestionMapper {
      * Maps a database quiz question response to a QuizQuestion domain entity
      */
     static fromDatabase(dto: DatabaseQuizQuestionResponse, options: QuizOption[]): QuizQuestion {
+        // Convert question_type to supported QuestionType
+        // Note: 'short_answer' from DTquestion mapped to 'multiple_choice' for compatibility
+        const questionType = dto.question_type === 'short_answer' ? 'multiple_choice' : dto.question_type as 'multiple_choice' | 'true_false';
+
         return new QuizQuestion(
             dto.id,
             dto.quiz_id,
             dto.question_text,
-            dto.question_type,
+            questionType,
             dto.position,
             dto.points,
             options,
@@ -133,7 +137,6 @@ export class QuizAttemptMapper {
         return {
             score: dto.score,
             passed: dto.passed,
-            answers: dto.answers,
             earnedPoints,
             totalPoints
         };

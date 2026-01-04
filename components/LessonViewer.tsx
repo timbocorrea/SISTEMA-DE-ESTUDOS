@@ -84,8 +84,11 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
         quizMode,
         showPracticeConfigModal,
         practiceQuestionCount,
+        setQuiz,
         setShowQuizModal,
         setQuizResult,
+        setIsSubmittingQuiz,
+        setQuizMode,
         setShowPracticeConfigModal,
         setPracticeQuestionCount,
         handleStartQuiz,
@@ -102,207 +105,27 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
         setFocusedNoteId
     } = useLessonNavigation();
 
-    // Carregar quiz quando aula mudar
+    // Monitorar quiz para atualizar estado do objeto Lesson
     useEffect(() => {
-        async function loadQuiz() {
-            setQuiz(null);
-            setQuizResult(null);
-            setShowQuizModal(false);
+        if (quiz) {
+            lesson.setHasQuiz(true);
 
-            if (!lesson) return;
-
-            try {
+            // Verificar se já passou (opcional, já que o hook poderia prover isso)
+            const checkCompletion = async () => {
+                const { createSupabaseClient } = await import('../services/supabaseClient');
+                const { SupabaseCourseRepository } = await import('../repositories/SupabaseCourseRepository');
                 const supabase = createSupabaseClient();
                 const courseRepo = new SupabaseCourseRepository(supabase);
-
-                console.log('🎯 [STUDENT] Carregando quiz para aula:', lesson.id);
-                const lessonQuiz = await courseRepo.getQuizByLessonId(lesson.id);
-
-                if (lessonQuiz) {
-                    setQuiz(lessonQuiz);
-                    lesson.setHasQuiz(true);
-
-                    // Verificar se já passou
-                    const attempt = await courseRepo.getLatestQuizAttempt(user.id, lessonQuiz.id);
-                    if (attempt?.passed) {
-                        lesson.setQuizPassed(true);
-                    }
+                const attempt = await courseRepo.getLatestQuizAttempt(user.id, quiz.id);
+                if (attempt?.passed) {
+                    lesson.setQuizPassed(true);
                 }
-            } catch (error) {
-                console.error('❌ [STUDENT] Error loading quiz:', error);
-            }
-        }
-
-        loadQuiz();
-    }, [lesson.id, user.id]);
-
-    const handleQuizSubmit = async (answers: Record<string, string>) => {
-        if (!quiz) return;
-
-        setIsSubmittingQuiz(true);
-        try {
-            const supabase = createSupabaseClient();
-            const courseRepo = new SupabaseCourseRepository(supabase);
-
-            const attempt = await courseRepo.submitQuizAttempt(
-                user.id,
-                quiz.id,
-                answers
-            );
-
-            const result = quiz.validateAttempt(answers);
-            setQuizResult(result);
-            setShowQuizModal(false);
-
-            // Only show XP message if in evaluation mode
-            // Note: XP is handled by the parent component/system automatically
-            if (quizMode === 'evaluation') {
-                const pointsEarned = result.passed ? result.earnedPoints : 0;
-                toast.success(`Quiz concluído! ${result.passed ? `${pointsEarned} pontos Ganhos` : 'Tente novamente para ganhar XP'}`);
-            } else {
-                // Practice mode - no XP
-                toast.success('Modo Prática concluído! XP não concedido.');
-            }
-
-            setIsSubmittingQuiz(false);
-        } catch (error) {
-            console.error('Error submitting quiz:', error);
-            toast.error('Erro ao enviar quiz. Tente novamente.');
-        } finally {
-            setIsSubmittingQuiz(false);
-        }
-    };
-
-    const handleStartPracticeQuiz = async () => {
-        if (!quiz) return;
-
-        toast.loading('Preparando modo prática...');
-        try {
-            const { createSupabaseClient } = await import('../services/supabaseClient');
-            const { SupabaseQuestionBankRepository } = await import('../repositories/SupabaseQuestionBankRepository');
-            const { QuizQuestion } = await import('../domain/quiz-entities');
-
-            const supabase = createSupabaseClient();
-            const bankRepo = new SupabaseQuestionBankRepository(supabase);
-
-            const bankQuestions = await bankRepo.getRandomQuestions(
-                practiceQuestionCount,
-                {
-                    courseId: course.id,
-                    lessonId: lesson.id
-                }
-            );
-
-            if (bankQuestions.length === 0) {
-                toast.dismiss();
-                toast.error('Não há questões suficientes no banco para este modo.');
-                return;
-            }
-
-            // Shuffle array utility
-            const shuffleArray = <T,>(array: T[]): T[] => {
-                const shuffled = [...array];
-                for (let i = shuffled.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-                }
-                return shuffled;
             };
-
-            // Create practice quiz with shuffled questions and options
-            const practiceQuestions = shuffleArray(bankQuestions).map((bq, idx) => new QuizQuestion(
-                bq.id,
-                quiz.id,
-                bq.questionText,
-                'multiple_choice',
-                idx,
-                bq.points,
-                shuffleArray(bq.options.map((o, optIdx) => ({
-                    id: o.id,
-                    questionId: bq.id,
-                    optionText: o.optionText,
-                    isCorrect: o.isCorrect,
-                    position: optIdx
-                }))),
-                bq.difficulty,
-                bq.imageUrl
-            ));
-
-            quiz.questions = practiceQuestions;
-            setQuizMode('practice');
-            setShowPracticeConfigModal(false);
-            setShowQuizModal(true);
-
-            toast.dismiss();
-            toast.success(`Modo Prática: ${practiceQuestions.length} questões!`);
-            onTrackAction?.('Iniciou Quiz em Modo Prática');
-        } catch (error) {
-            console.error('Erro ao preparar modo prática:', error);
-            toast.dismiss();
-            toast.error('Erro ao preparar modo prática.');
+            checkCompletion();
         }
-    };
+    }, [quiz, lesson, user.id]);
 
-    const handleStartQuiz = async () => {
-        if (!quiz) return;
-
-        if (quiz.questions.length === 0 && quiz.questionsCount) {
-            // Pool Mode detected
-            toast.loading('Sorteando questões do banco...');
-            try {
-                const { createSupabaseClient } = await import('../services/supabaseClient');
-                const { SupabaseQuestionBankRepository } = await import('../repositories/SupabaseQuestionBankRepository');
-                const { QuizQuestion } = await import('../domain/quiz-entities');
-
-                const supabase = createSupabaseClient();
-                const bankRepo = new SupabaseQuestionBankRepository(supabase);
-
-                const bankQuestions = await bankRepo.getRandomQuestions(
-                    quiz.questionsCount,
-                    {
-                        difficulty: quiz.poolDifficulty || undefined,
-                        courseId: course.id,
-                        lessonId: lesson.id
-                    }
-                );
-
-                if (bankQuestions.length === 0) {
-                    toast.dismiss();
-                    toast.error('Não encontramos questões suficientes no banco para este critério.');
-                    return;
-                }
-
-                // Converter para QuizQuestion entities
-                quiz.questions = bankQuestions.map((bq, idx) => new QuizQuestion(
-                    bq.id,
-                    quiz.id,
-                    bq.questionText,
-                    'multiple_choice',
-                    idx,
-                    bq.points,
-                    bq.options.map((o, optIdx) => ({
-                        id: o.id,
-                        questionId: bq.id,
-                        optionText: o.optionText,
-                        isCorrect: o.isCorrect,
-                        position: optIdx
-                    }))
-                ));
-
-                toast.dismiss();
-                toast.success(`${bankQuestions.length} questões sorteadas!`);
-            } catch (error) {
-                console.error('Erro ao buscar questões do banco:', error);
-                toast.dismiss();
-                toast.error('Erro ao sortear questões do banco.');
-                return;
-            }
-        }
-
-        setQuizMode('evaluation');
-        setShowQuizModal(true);
-        onTrackAction?.('Abriu o Quiz da aula em Modo Avaliativo');
-    };
+    // Handle Resources Display
 
     /**
      * Intercepta a atualização de progresso para verificar se precisa abrir o quiz
