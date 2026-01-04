@@ -26,8 +26,6 @@ interface LessonViewerProps {
     onProgressUpdate: (watchedSeconds: number, lastBlockId?: string) => Promise<void>;
     onBackToLessons: () => void;
     onBackToModules: () => void;
-    contentTheme: 'light' | 'dark';
-    setContentTheme: (theme: 'light' | 'dark') => void;
     sidebarTab: 'materials' | 'notes';
     setSidebarTab: (tab: 'materials' | 'notes') => void;
     userProgress?: UserProgress[];
@@ -42,8 +40,6 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     onProgressUpdate,
     onBackToLessons,
     onBackToModules,
-    contentTheme,
-    setContentTheme,
     sidebarTab,
     setSidebarTab,
     userProgress = [],
@@ -60,7 +56,9 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
         playbackSpeed,
         setPlaybackSpeed,
         audioEnabled,
-        setAudioEnabled
+        setAudioEnabled,
+        contentTheme,
+        setContentTheme
     } = useLessonStore();
 
     // Custom Hooks
@@ -188,6 +186,64 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
         }
     };
 
+    const handleStartQuiz = async () => {
+        if (!quiz) return;
+
+        if (quiz.questions.length === 0 && quiz.questionsCount) {
+            // Pool Mode detected
+            toast.loading('Sorteando questões do banco...');
+            try {
+                const { createSupabaseClient } = await import('../services/supabaseClient');
+                const { SupabaseQuestionBankRepository } = await import('../repositories/SupabaseQuestionBankRepository');
+                const { QuizQuestion } = await import('../domain/quiz-entities');
+
+                const supabase = createSupabaseClient();
+                const bankRepo = new SupabaseQuestionBankRepository(supabase);
+
+                const bankQuestions = await bankRepo.getRandomQuestions(
+                    quiz.questionsCount,
+                    quiz.poolDifficulty || undefined,
+                    course.id,
+                    lesson.moduleId,
+                    lesson.id
+                );
+
+                if (bankQuestions.length === 0) {
+                    toast.dismiss();
+                    toast.error('Não encontramos questões suficientes no banco para este critério.');
+                    return;
+                }
+
+                // Converter para QuizQuestion entities
+                quiz.questions = bankQuestions.map((bq, idx) => new QuizQuestion(
+                    bq.id,
+                    quiz.id,
+                    bq.questionText,
+                    'multiple_choice',
+                    idx,
+                    bq.points,
+                    bq.options.map(o => ({
+                        id: o.id,
+                        questionId: bq.id,
+                        optionText: o.optionText,
+                        isCorrect: o.isCorrect
+                    }))
+                ));
+
+                toast.dismiss();
+                toast.success(`${bankQuestions.length} questões sorteadas!`);
+            } catch (error) {
+                console.error('Erro ao buscar questões do banco:', error);
+                toast.dismiss();
+                toast.error('Erro ao sortear questões do banco.');
+                return;
+            }
+        }
+
+        setShowQuizModal(true);
+        onTrackAction?.('Abriu o Quiz da aula');
+    };
+
     /**
      * Intercepta a atualização de progresso para verificar se precisa abrir o quiz
      */
@@ -200,7 +256,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
             await onProgressUpdate(watchedSeconds, lastBlockId);
 
             if (!showQuizModal && !quizResult) {
-                setShowQuizModal(true);
+                handleStartQuiz();
             }
         } else {
             await onProgressUpdate(watchedSeconds, lastBlockId);
@@ -336,10 +392,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
                 <div className="p-4">
                     <button
-                        onClick={quizAvailable ? () => {
-                            setShowQuizModal(true);
-                            onTrackAction?.('Abriu o Quiz da aula');
-                        } : undefined}
+                        onClick={quizAvailable ? handleStartQuiz : undefined}
                         disabled={!quizAvailable}
                         className={`w-full rounded-xl p-4 transition-all ${quizAvailable
                             ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 cursor-pointer shadow-lg shadow-emerald-500/20'
@@ -545,119 +598,116 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                     </p>
                                 </div>
                             </div>
-                            <div className="relative" ref={optionsMenuRef}>
-                                <motion.button
-                                    whileTap={{ scale: 0.95 }}
-                                    onClick={() => setIsOptionsMenuOpen(!isOptionsMenuOpen)}
-                                    className={`px-4 py-2 rounded-xl flex items-center justify-center gap-2 border transition-all duration-300 font-bold text-xs uppercase tracking-wider shadow-sm hover:shadow-md ${isOptionsMenuOpen
-                                        ? 'bg-indigo-600 border-indigo-500 text-white'
-                                        : (contentTheme === 'dark'
-                                            ? 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
-                                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50')
-                                        }`}
-                                >
-                                    <i className={`fas fa-cog transition-transform duration-500 ${isOptionsMenuOpen ? 'rotate-90' : ''}`}></i>
-                                    <span>Opções</span>
-                                </motion.button>
-
-                                {/* Dropdown Menu */}
-                                {isOptionsMenuOpen && (
-                                    <div className={`absolute right-0 mt-3 w-64 rounded-2xl border shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 ${contentTheme === 'dark'
-                                        ? 'bg-slate-900 border-slate-800'
-                                        : 'bg-white border-slate-100'
-                                        }`}>
-                                        <div className="p-3 space-y-2">
-                                            <p className={`px-3 py-2 text-[10px] font-black uppercase tracking-widest ${contentTheme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>Visualização e Áudio</p>
-
-                                            {/* Velocidade */}
-                                            <div className={`flex flex-col gap-2 p-3 rounded-xl ${contentTheme === 'dark' ? 'bg-slate-800/50' : 'bg-slate-50'}`}>
-                                                <div className="flex items-center gap-2">
-                                                    <i className={`fas fa-tachometer-alt text-xs ${contentTheme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'}`}></i>
-                                                    <span className={`text-[11px] font-bold uppercase tracking-wider ${contentTheme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>Velocidade</span>
-                                                </div>
-                                                <div className="grid grid-cols-4 gap-1">
-                                                    {[0.5, 1.0, 1.5, 2.0].map(speed => (
-                                                        <button
-                                                            key={speed}
-                                                            onClick={() => setPlaybackSpeed(speed)}
-                                                            className={`py-1 text-[10px] font-bold rounded-lg transition-all ${playbackSpeed === speed
-                                                                ? 'bg-indigo-600 text-white'
-                                                                : (contentTheme === 'dark' ? 'bg-slate-700 text-slate-400 hover:bg-slate-600' : 'bg-white text-slate-500 hover:bg-indigo-50 border border-slate-100')
-                                                                }`}
-                                                        >
-                                                            {speed === 1.0 ? '1x' : `${speed}x`}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-
-                                            {/* Tamanho da Fonte */}
-                                            <div className={`flex flex-col gap-2 p-3 rounded-xl ${contentTheme === 'dark' ? 'bg-slate-800/50' : 'bg-slate-50'}`}>
-                                                <div className="flex items-center gap-2">
-                                                    <i className={`fas fa-text-height text-xs ${contentTheme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'}`}></i>
-                                                    <span className={`text-[11px] font-bold uppercase tracking-wider ${contentTheme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>Tamanho da Fonte</span>
-                                                </div>
-                                                <div className="flex items-center justify-between gap-2">
-                                                    <button
-                                                        onClick={() => setFontSize(Math.max(80, fontSize - 10))}
-                                                        disabled={fontSize <= 80}
-                                                        className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${contentTheme === 'dark' ? 'bg-slate-700 text-slate-300 hover:bg-slate-600 disabled:opacity-30' : 'bg-white text-slate-600 hover:bg-indigo-50 border border-slate-100 disabled:opacity-30'}`}
-                                                    >
-                                                        <i className="fas fa-minus"></i>
-                                                    </button>
-                                                    <span className={`text-xs font-bold px-3 ${contentTheme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'}`}>
-                                                        {fontSize}%
-                                                    </span>
-                                                    <button
-                                                        onClick={() => setFontSize(Math.min(150, fontSize + 10))}
-                                                        disabled={fontSize >= 150}
-                                                        className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${contentTheme === 'dark' ? 'bg-slate-700 text-slate-300 hover:bg-slate-600 disabled:opacity-30' : 'bg-white text-slate-600 hover:bg-indigo-50 border border-slate-100 disabled:opacity-30'}`}
-                                                    >
-                                                        <i className="fas fa-plus"></i>
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            {/* Audio Toggle */}
-                                            {lesson.contentBlocks && lesson.contentBlocks.length > 0 && (
-                                                <button
-                                                    onClick={() => setAudioEnabled(!audioEnabled)}
-                                                    className={`w-full px-4 py-3 rounded-xl flex items-center justify-between transition-all ${audioEnabled
-                                                        ? (contentTheme === 'dark' ? 'bg-green-900/20 text-green-400' : 'bg-green-50 text-green-600')
-                                                        : (contentTheme === 'dark' ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500')
-                                                        }`}
-                                                >
-                                                    <div className="flex items-center gap-3">
-                                                        <i className={`fas ${audioEnabled ? 'fa-volume-up' : 'fa-volume-mute'}`}></i>
-                                                        <span className="text-xs font-bold uppercase tracking-wider">Leitura por Áudio</span>
-                                                    </div>
-                                                    <div className={`w-8 h-4 rounded-full relative transition-colors ${audioEnabled ? 'bg-green-500' : 'bg-slate-400'}`}>
-                                                        <div className={`absolute top-1 w-2 h-2 bg-white rounded-full transition-all ${audioEnabled ? 'right-1' : 'left-1'}`}></div>
-                                                    </div>
-                                                </button>
-                                            )}
-
-                                            {/* Theme Toggle */}
-                                            <button
-                                                onClick={() => setContentTheme(contentTheme === 'light' ? 'dark' : 'light')}
-                                                className={`w-full px-4 py-3 rounded-xl flex items-center justify-between transition-all ${contentTheme === 'dark'
-                                                    ? 'bg-indigo-900/20 text-indigo-400'
-                                                    : 'bg-indigo-50 text-indigo-600'
-                                                    }`}
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <i className={`fas ${contentTheme === 'dark' ? 'fa-sun' : 'fa-moon'}`}></i>
-                                                    <span className="text-xs font-bold uppercase tracking-wider">{contentTheme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}</span>
-                                                </div>
-                                            </button>
-                                        </div>
-                                    </div>
+                            <div className="flex items-center gap-2 md:gap-4">
+                                {/* Leitura por Áudio */}
+                                {lesson.contentBlocks && lesson.contentBlocks.length > 0 && (
+                                    <button
+                                        onClick={() => setAudioEnabled(!audioEnabled)}
+                                        className={`h-9 px-2 sm:px-3 rounded-lg font-semibold transition-all active:scale-95 flex items-center gap-1.5 text-[10px] uppercase shadow-sm border ${audioEnabled
+                                            ? (contentTheme === 'dark' ? 'bg-indigo-500/20 border-indigo-500 text-indigo-400' : 'bg-indigo-600 border-indigo-500 text-white')
+                                            : (contentTheme === 'dark' ? 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700' : 'bg-slate-100 border-slate-200 text-slate-500 hover:bg-slate-200')
+                                            }`}
+                                        title={audioEnabled ? 'Desativar Leitura por Áudio' : 'Ativar Leitura por Áudio'}
+                                    >
+                                        <i className={`fas ${audioEnabled ? 'fa-volume-up' : 'fa-volume-mute'} text-[10px]`}></i>
+                                        <span className="hidden sm:inline">Leitura por Áudio</span>
+                                    </button>
                                 )}
+
+                                {/* Theme Toggle */}
+                                <button
+                                    onClick={() => setContentTheme(contentTheme === 'light' ? 'dark' : 'light')}
+                                    className={`h-9 px-2 sm:px-3 rounded-lg font-semibold transition-all active:scale-95 flex items-center gap-1.5 text-[10px] uppercase shadow-sm border ${contentTheme === 'dark'
+                                        ? 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
+                                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                                        }`}
+                                    title={contentTheme === 'dark' ? 'Mudar para Modo Claro' : 'Mudar para Modo Escuro'}
+                                >
+                                    <i className={`fas ${contentTheme === 'dark' ? 'fa-sun' : 'fa-moon'} text-[10px]`}></i>
+                                    <span className="hidden sm:inline">{contentTheme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}</span>
+                                </button>
+
+                                <div className="relative" ref={optionsMenuRef}>
+                                    <motion.button
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={() => setIsOptionsMenuOpen(!isOptionsMenuOpen)}
+                                        className={`h-9 px-2 sm:px-3 rounded-lg font-semibold transition-all active:scale-95 flex items-center justify-center gap-1.5 border transition-all duration-300 text-[10px] uppercase tracking-wider shadow-sm hover:shadow-md ${isOptionsMenuOpen
+                                            ? 'bg-indigo-600 border-indigo-500 text-white'
+                                            : (contentTheme === 'dark'
+                                                ? 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
+                                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50')
+                                            }`}
+                                    >
+                                        <i className={`fas fa-cog text-[10px] transition-transform duration-500 ${isOptionsMenuOpen ? 'rotate-90' : ''}`}></i>
+                                        <span className="hidden sm:inline">Opções</span>
+                                    </motion.button>
+
+                                    {/* Dropdown Menu */}
+                                    {isOptionsMenuOpen && (
+                                        <div className={`absolute right-0 mt-3 w-64 rounded-2xl border shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 ${contentTheme === 'dark'
+                                            ? 'bg-slate-900 border-slate-800'
+                                            : 'bg-white border-slate-100'
+                                            }`}>
+                                            <div className="p-3 space-y-2">
+                                                <p className={`px-3 py-2 text-[10px] font-black uppercase tracking-widest ${contentTheme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>Ajustes do Leitor</p>
+
+                                                {/* Velocidade */}
+                                                <div className={`flex flex-col gap-2 p-3 rounded-xl ${contentTheme === 'dark' ? 'bg-slate-800/50' : 'bg-slate-50'}`}>
+                                                    <div className="flex items-center gap-2">
+                                                        <i className={`fas fa-tachometer-alt text-xs ${contentTheme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'}`}></i>
+                                                        <span className={`text-[11px] font-bold uppercase tracking-wider ${contentTheme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>Velocidade</span>
+                                                    </div>
+                                                    <div className="grid grid-cols-4 gap-1">
+                                                        {[0.5, 1.0, 1.5, 2.0].map(speed => (
+                                                            <button
+                                                                key={speed}
+                                                                onClick={() => setPlaybackSpeed(speed)}
+                                                                className={`py-1 text-[10px] font-bold rounded-lg transition-all ${playbackSpeed === speed
+                                                                    ? 'bg-indigo-600 text-white'
+                                                                    : (contentTheme === 'dark' ? 'bg-slate-700 text-slate-400 hover:bg-slate-600' : 'bg-white text-slate-500 hover:bg-indigo-50 border border-slate-100')
+                                                                    }`}
+                                                            >
+                                                                {speed === 1.0 ? '1x' : `${speed}x`}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                {/* Tamanho da Fonte */}
+                                                <div className={`flex flex-col gap-2 p-3 rounded-xl ${contentTheme === 'dark' ? 'bg-slate-800/50' : 'bg-slate-50'}`}>
+                                                    <div className="flex items-center gap-2">
+                                                        <i className={`fas fa-text-height text-xs ${contentTheme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'}`}></i>
+                                                        <span className={`text-[11px] font-bold uppercase tracking-wider ${contentTheme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>Tamanho da Fonte</span>
+                                                    </div>
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <button
+                                                            onClick={() => setFontSize(Math.max(80, fontSize - 10))}
+                                                            disabled={fontSize <= 80}
+                                                            className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${contentTheme === 'dark' ? 'bg-slate-700 text-slate-300 hover:bg-slate-600 disabled:opacity-30' : 'bg-white text-slate-600 hover:bg-indigo-50 border border-slate-100 disabled:opacity-30'}`}
+                                                        >
+                                                            <i className="fas fa-minus"></i>
+                                                        </button>
+                                                        <span className={`text-xs font-bold px-3 ${contentTheme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'}`}>
+                                                            {fontSize}%
+                                                        </span>
+                                                        <button
+                                                            onClick={() => setFontSize(Math.min(200, fontSize + 10))}
+                                                            disabled={fontSize >= 200}
+                                                            className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${contentTheme === 'dark' ? 'bg-slate-700 text-slate-300 hover:bg-slate-600 disabled:opacity-30' : 'bg-white text-slate-600 hover:bg-indigo-50 border border-slate-100 disabled:opacity-30'}`}
+                                                        >
+                                                            <i className="fas fa-plus"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
 
                         {/* Content area - Inner Scroll */}
-                        <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-indigo-200 dark:scrollbar-thumb-slate-700 p-6">
+                        <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-indigo-200 dark:scrollbar-thumb-slate-700 p-0 md:p-6">
                             <ContentReader
                                 lesson={lesson}
                                 highlights={highlights}
@@ -839,7 +889,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                         onClose={() => setQuizResult(null)}
                         onRetry={() => {
                             setQuizResult(null);
-                            setShowQuizModal(true);
+                            handleStartQuiz();
                         }}
                     />
                 )

@@ -500,6 +500,21 @@ const Sidebar: React.FC<SidebarProps> = ({
               </Link>
 
               <Link
+                to="/admin/questionnaire"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onViewChange('questionnaire');
+                }}
+                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight mb-1 ${activeView === 'questionnaire' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
+                title="Banco de Questões"
+              >
+                <i className="fas fa-clipboard-question w-5 text-center"></i>
+                <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
+                  Banco de Questões
+                </span>
+              </Link>
+
+              <Link
                 to="/admin/health"
                 onClick={(e) => {
                   e.stopPropagation();

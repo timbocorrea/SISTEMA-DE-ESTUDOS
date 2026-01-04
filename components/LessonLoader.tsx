@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useCourse } from '../contexts/CourseContext';
 import LessonViewer from './LessonViewer';
 import LessonSkeleton from './skeletons/LessonSkeleton';
+import { useLessonStore } from '../stores/useLessonStore';
 import { User } from '../domain/entities';
 
 interface LessonLoaderProps {
@@ -23,8 +24,7 @@ const LessonLoader: React.FC<LessonLoaderProps> = ({ user, theme, onTrackAction 
     } = useCourse();
 
     const [sidebarTab, setSidebarTab] = React.useState<'materials' | 'notes'>('materials');
-    // Local state for content theme, initialized with global theme but independent after
-    const [contentTheme, setContentTheme] = React.useState<'light' | 'dark'>(theme);
+    const { contentTheme, setContentTheme } = useLessonStore();
 
     // Sync URL -> Context
     useEffect(() => {
@@ -37,6 +37,9 @@ const LessonLoader: React.FC<LessonLoaderProps> = ({ user, theme, onTrackAction 
     }, [lessonId, activeCourse, activeLesson, selectLesson]);
 
     // Optional: Update local theme if global theme changes, OR keep it strictly independent.
+    useEffect(() => {
+        setContentTheme(theme);
+    }, [theme]);
     // User requested "only inside content field", implies independence.
     // However, a sync on mount or prop change is often expected unless overridden.
     // For now, let's keep it simple: it starts with global theme, then acts independently.
@@ -75,8 +78,6 @@ const LessonLoader: React.FC<LessonLoaderProps> = ({ user, theme, onTrackAction 
             onProgressUpdate={async (secs, blockId) => await updateProgress(secs)}
             onBackToLessons={() => navigate(`/course/${activeCourse.id}`)}
             onBackToModules={() => navigate(`/course/${activeCourse.id}`)}
-            contentTheme={contentTheme}
-            setContentTheme={setContentTheme}
             sidebarTab={sidebarTab}
             setSidebarTab={setSidebarTab}
             onTrackAction={onTrackAction}

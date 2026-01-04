@@ -23,6 +23,7 @@ import PendingApprovalScreen from './components/PendingApprovalScreen';
 import { SystemHealth } from './components/SystemHealth';
 import CourseLayout from './components/CourseLayout';
 import CourseOverview from './components/CourseOverview';
+import QuestionnaireManagementPage from './components/QuestionnaireManagementPage';
 
 import { useAuth } from './contexts/AuthContext';
 import { useCourse } from './contexts/CourseContext';
@@ -137,6 +138,7 @@ const App: React.FC = () => {
     if (path.startsWith('/admin/files')) return 'files';
     if (path.startsWith('/admin/health')) return 'system-health';
     if (path.startsWith('/admin/access')) return 'access';
+    if (path.startsWith('/admin/questionnaire')) return 'questionnaire';
     if (path.startsWith('/admin/settings')) return 'settings';
     if (path.startsWith('/course/')) return 'lesson';
     if (path.startsWith('/editor/')) return 'content-editor';
@@ -168,6 +170,7 @@ const App: React.FC = () => {
       case 'files': navigate('/admin/files'); break;
       case 'system-health': navigate('/admin/health'); break;
       case 'access': navigate('/admin/access'); break;
+      case 'questionnaire': navigate('/admin/questionnaire'); break;
       case 'settings': navigate('/admin/settings'); break;
       default: navigate('/');
     }
@@ -401,6 +404,7 @@ const App: React.FC = () => {
               <Route path="/admin/lesson/:lessonId/edit" element={<AdminRoute><LessonContentEditorWrapper adminService={adminService} /></AdminRoute>} />
               <Route path="/admin/users" element={<AdminRoute><UserManagement adminService={adminService} /></AdminRoute>} />
               <Route path="/admin/access" element={<AdminRoute><AdminCourseAccessPage adminService={adminService} /></AdminRoute>} />
+              <Route path="/admin/questionnaire" element={<AdminRoute><QuestionnaireManagementPage adminService={adminService} /></AdminRoute>} />
               <Route path="/admin/files" element={<AdminRoute><FileManagement /></AdminRoute>} />
               <Route path="/admin/health" element={<AdminRoute><SystemHealth adminService={adminService} /></AdminRoute>} />
               <Route path="/admin/settings" element={<AdminRoute><AdminSettingsPage adminService={adminService} /></AdminRoute>} />

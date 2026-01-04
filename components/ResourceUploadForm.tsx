@@ -236,7 +236,7 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onSubmit, isLoa
                             onChange={e => setUrl(e.target.value)}
                             placeholder={
                                 resourceType === 'PDF' ? 'https://exemplo.com/arquivo.pdf' :
-                                    resourceType === 'AUDIO' ? 'https://exemplo.com/audio.mp3' :
+                                    resourceType === 'AUDIO' ? 'https://exemplo.com/audio.wav ou .mp3' :
                                         resourceType === 'IMAGE' ? 'https://exemplo.com/imagem.jpg' :
                                             resourceType === 'LINK' ? 'https://exemplo.com' :
                                                 'https://exemplo.com/arquivo'

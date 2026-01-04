@@ -94,7 +94,7 @@ const ContentReader: React.FC<ContentReaderProps> = ({
                         className={`content-block ${isActive ? 'active-block' : ''} ${hasAudio ? 'has-audio' : ''}`}
                         style={{
                             marginBottom: `${block.spacing || 1.5}rem`,
-                            fontSize: `${fontSize}px`,
+                            fontSize: `${fontSize / 100}rem`,
                             lineHeight: 1.8,
                             padding: hasAudio ? '1rem' : '0',
                             borderLeft: hasAudio ? '4px solid #6366f1' : 'none',
@@ -151,7 +151,7 @@ const ContentReader: React.FC<ContentReaderProps> = ({
             return (
                 <div
                     dangerouslySetInnerHTML={{ __html: htmlWithHighlights }}
-                    style={{ fontSize: `${fontSize}px`, lineHeight: 1.8 }}
+                    style={{ fontSize: `${fontSize / 100}rem`, lineHeight: 1.8 }}
                     onClick={(e) => {
                         // Check if a highlight was clicked
                         const target = e.target as HTMLElement;
@@ -176,7 +176,7 @@ const ContentReader: React.FC<ContentReaderProps> = ({
             ref={contentRef}
             className={`content-reader ${contentTheme === 'dark' ? 'dark-theme' : 'light-theme'}`}
             style={{
-                padding: '2rem',
+                padding: window.innerWidth < 768 ? '1rem' : '2rem',
                 maxWidth: '100%',
                 margin: '0 auto',
                 color: contentTheme === 'dark' ? '#e2e8f0' : '#1e293b',
@@ -186,7 +186,7 @@ const ContentReader: React.FC<ContentReaderProps> = ({
             }}
         >
             <h2 style={{
-                fontSize: `${fontSize + 8}px`,
+                fontSize: `${(fontSize / 100) * 1.75}rem`,
                 fontWeight: 800,
                 marginBottom: '1.5rem',
                 color: contentTheme === 'dark' ? '#fff' : '#0f172a',

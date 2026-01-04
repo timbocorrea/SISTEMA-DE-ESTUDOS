@@ -11,6 +11,359 @@ import { SupabaseCourseRepository } from '../repositories/SupabaseCourseReposito
 import { marked } from 'marked'; // Para conversão de Markdown para HTML
 import { toast } from 'sonner';
 
+const FONT_FAMILIES = [
+    { name: 'Padrão', value: 'inherit' },
+    { name: 'Lexend', value: 'Lexend, sans-serif' },
+    { name: 'Inter', value: 'Inter, sans-serif' },
+    { name: 'Serif', value: 'serif' },
+    { name: 'Monospace', value: 'monospace' }
+];
+
+// Componente ToolbarButton extraído para melhor performance
+const ToolbarButton: React.FC<{
+    icon: string;
+    title: string;
+    active?: boolean;
+    onClick: () => void;
+}> = ({ icon, title, active = false, onClick }) => (
+    <button
+        onClick={onClick}
+        onMouseDown={(e) => {
+            e.preventDefault(); // Evita perder o foco do editor
+            onClick();
+        }}
+        className={`w-8 h-8 rounded flex items-center justify-center transition-colors ${active
+            ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400'
+            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+        title={title}
+    >
+        <i className={`${icon.includes(' ') ? icon : `fas fa-${icon}`} text-sm`}></i>
+    </button>
+);
+
+const Divider = () => (
+    <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-2"></div>
+);
+
+// Componente BlockItem memoizado para evitar re-renders desnecessários de toda a lista
+const BlockItem = React.memo(({
+    block,
+    index,
+    isExpanded,
+    isSelected,
+    isSelectionMode,
+    isHovered,
+    isMediaMenuOpen,
+    isActive,
+    totalBlocks,
+    handlers
+}: {
+    block: Block;
+    index: number;
+    isExpanded: boolean;
+    isSelected: boolean;
+    isSelectionMode: boolean;
+    isHovered: boolean;
+    isMediaMenuOpen: boolean;
+    isActive: boolean;
+    totalBlocks: number;
+    handlers: {
+        setExpandedBlockId: (id: string | null) => void;
+        toggleBlockSelection: (id: string) => void;
+        setHoveredBlockIndex: (idx: number | null) => void;
+        setMediaMenuIndex: (idx: number | null) => void;
+        setShowMediaMenu: (show: boolean) => void;
+        addBlockAtPosition: (idx: number) => void;
+        setShowImageModal: (show: boolean) => void;
+        setShowTableModal: (show: boolean) => void;
+        setShowVideoModal: (show: boolean) => void;
+        insertVideoEmbed: (idx: number) => void;
+        openAudioModal: (block: any) => void;
+        copyBlockContent: (id: string) => void;
+        cutBlockContent: (id: string) => void;
+        removeBlock: (id: string) => void;
+        moveBlock: (idx: number, dir: 'up' | 'down') => void;
+        updateBlock: (id: string, updates: any) => void;
+        setActiveEditableElement: (el: HTMLElement | null) => void;
+        saveSelection: () => void;
+        execCommand: (cmd: string, val?: string) => void;
+        setCurrentFontSize: (size: string) => void;
+        currentFontSize: string;
+    }
+}) => {
+    const text = block.text || '';
+
+    return (
+        <div
+            style={{
+                contentVisibility: 'auto',
+                containIntrinsicSize: isExpanded ? '400px' : '100px'
+            }}
+            className="w-full"
+        >
+            {/* Botão "+" flutuante que aparece ao hover */}
+            <div
+                className="relative h-8 group/add flex items-center justify-center"
+                onMouseEnter={() => handlers.setHoveredBlockIndex(index)}
+                onMouseLeave={() => handlers.setHoveredBlockIndex(null)}
+            >
+                <div className="absolute inset-x-0 h-px bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-700 to-transparent opacity-0 group-hover/add:opacity-100 transition-opacity"></div>
+
+                <button
+                    onClick={() => {
+                        handlers.setMediaMenuIndex(index);
+                        handlers.setShowMediaMenu(!isMediaMenuOpen);
+                    }}
+                    className={`relative z-10 w-8 h-8 rounded-full bg-white dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 text-slate-400 dark:text-slate-500 hover:border-indigo-500 hover:text-indigo-600 hover:scale-110 shadow-lg transition-all duration-200 ${isHovered ? 'opacity-100 scale-100' : 'opacity-0 scale-75 pointer-events-none'}`}
+                >
+                    <i className="fas fa-plus text-xs"></i>
+                </button>
+
+                <button
+                    onClick={() => handlers.addBlockAtPosition(index)}
+                    className={`relative z-10 w-8 h-8 rounded-full bg-white dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 text-slate-400 dark:text-slate-500 hover:border-green-500 hover:text-green-600 hover:scale-110 shadow-lg transition-all duration-200 ml-2 ${isHovered ? 'opacity-100 scale-100' : 'opacity-0 scale-75 pointer-events-none'}`}
+                    title="Adicionar bloco aqui"
+                >
+                    <i className="fas fa-file-alt text-xs"></i>
+                </button>
+
+                {isMediaMenuOpen && (
+                    <div className="absolute top-10 left-1/2 -translate-x-1/2 z-50 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 p-2 min-w-[200px] animate-in fade-in slide-in-from-top-2 duration-200">
+                        <button
+                            onClick={() => {
+                                handlers.setMediaMenuIndex(index);
+                                handlers.setShowImageModal(true);
+                                handlers.setShowMediaMenu(false);
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 transition-colors"
+                        >
+                            <i className="fas fa-image w-4"></i>
+                            <span>Inserir Imagem</span>
+                        </button>
+                        <button
+                            onClick={() => {
+                                handlers.setMediaMenuIndex(index);
+                                handlers.setShowTableModal(true);
+                                handlers.setShowMediaMenu(false);
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 transition-colors"
+                        >
+                            <i className="fas fa-table w-4"></i>
+                            <span>Inserir Tabela</span>
+                        </button>
+                        <button
+                            onClick={() => {
+                                handlers.setMediaMenuIndex(index);
+                                handlers.setShowVideoModal(true);
+                                handlers.setShowMediaMenu(false);
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 transition-colors"
+                        >
+                            <i className="fas fa-video w-4"></i>
+                            <span>Inserir Vídeo (Youtube/Vimeo)</span>
+                        </button>
+                        <button
+                            onClick={() => {
+                                handlers.insertVideoEmbed(index);
+                                handlers.setShowMediaMenu(false);
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 transition-colors"
+                        >
+                            <i className="fas fa-code w-4"></i>
+                            <span>Inserir Código Embed</span>
+                        </button>
+                    </div>
+                )}
+            </div>
+
+            <div
+                data-block-id={block.id}
+                onClick={() => !isSelectionMode && handlers.setExpandedBlockId(isExpanded ? null : block.id)}
+                className={`group relative bg-white dark:bg-slate-900/50 rounded-2xl border transition-all duration-300 ${isExpanded
+                    ? 'border-indigo-500/50 shadow-xl shadow-indigo-500/10 ring-1 ring-indigo-500/20'
+                    : isSelected
+                        ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/10'
+                        : 'border-slate-100 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                    }`}
+            >
+                {/* Checkbox para Seleção em Massa */}
+                {isSelectionMode && (
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 z-10" onClick={(e) => e.stopPropagation()}>
+                        <button
+                            onClick={() => handlers.toggleBlockSelection(block.id)}
+                            className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${isSelected
+                                ? 'bg-indigo-600 border-indigo-600 text-white'
+                                : 'border-slate-300 dark:border-slate-600 hover:border-indigo-500'
+                                }`}
+                        >
+                            {isSelected && <i className="fas fa-check text-xs"></i>}
+                        </button>
+                    </div>
+                )}
+
+                <div className={`p-6 ${isSelectionMode ? 'pl-14' : ''}`}>
+                    <div className="flex items-start justify-between gap-4 mb-4">
+                        <div className="flex items-center gap-3">
+                            <div className="flex flex-col items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); handlers.moveBlock(index, 'up'); }}
+                                    disabled={index === 0}
+                                    className="p-1 text-slate-400 hover:text-indigo-500 disabled:opacity-30"
+                                >
+                                    <i className="fas fa-chevron-up text-xs"></i>
+                                </button>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); handlers.moveBlock(index, 'down'); }}
+                                    disabled={index === totalBlocks - 1}
+                                    className="p-1 text-slate-400 hover:text-indigo-500 disabled:opacity-30"
+                                >
+                                    <i className="fas fa-chevron-down text-xs"></i>
+                                </button>
+                            </div>
+                            <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[10px] font-black text-slate-400">
+                                {index + 1}
+                            </div>
+                            <div>
+                                <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full ${block.audioUrl
+                                    ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'
+                                    : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                                    }`}>
+                                    {block.audioUrl ? 'Com Áudio' : 'Sem Áudio'}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                            <button
+                                onClick={() => handlers.openAudioModal(block)}
+                                className="w-8 h-8 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center transition-colors"
+                                title="Gerenciar Áudio"
+                            >
+                                <i className="fas fa-music text-sm"></i>
+                            </button>
+                            <button
+                                onClick={() => handlers.copyBlockContent(block.id)}
+                                className="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 flex items-center justify-center transition-colors"
+                                title="Copiar bloco"
+                            >
+                                <i className="fas fa-copy text-sm"></i>
+                            </button>
+                            <button
+                                onClick={() => handlers.cutBlockContent(block.id)}
+                                className="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 flex items-center justify-center transition-colors"
+                                title="Recortar bloco"
+                            >
+                                <i className="fas fa-cut text-sm"></i>
+                            </button>
+                            <button
+                                onClick={() => handlers.removeBlock(block.id)}
+                                className="w-8 h-8 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 text-red-500 flex items-center justify-center transition-colors"
+                                title="Excluir bloco"
+                            >
+                                <i className="fas fa-trash-alt text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="relative pr-48 pt-2" onClick={(e) => e.stopPropagation()}>
+                        {/* Toolbar específica de cada bloco (só aparece quando o bloco está focado) */}
+                        {isActive && (
+                            <div className="absolute -top-12 left-0 z-20 flex items-center gap-1 bg-white dark:bg-slate-800 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl animate-in fade-in zoom-in-95 duration-200">
+                                <div className="flex items-center gap-1 px-1 mr-1 border-r border-slate-200 dark:border-slate-700">
+                                    <input
+                                        type="number"
+                                        min="8"
+                                        max="72"
+                                        value={handlers.currentFontSize}
+                                        onChange={(e) => {
+                                            const size = e.target.value;
+                                            handlers.setCurrentFontSize(size);
+                                            const activeEl = document.querySelector(`[data-block-id="${block.id}"] [contenteditable="true"]`) as HTMLElement;
+                                            if (size && activeEl) {
+                                                const selection = window.getSelection();
+                                                if (!selection || selection.isCollapsed || !activeEl.contains(selection.anchorNode)) {
+                                                    const range = document.createRange();
+                                                    range.selectNodeContents(activeEl);
+                                                    selection?.removeAllRanges();
+                                                    selection?.addRange(range);
+                                                }
+                                                document.execCommand('fontSize', false, '7');
+                                                const fontElements = activeEl.querySelectorAll('font[size="7"]');
+                                                fontElements.forEach(font => {
+                                                    const span = document.createElement('span');
+                                                    span.style.fontSize = `${size}pt`;
+                                                    span.innerHTML = font.innerHTML;
+                                                    font.parentNode?.replaceChild(span, font);
+                                                });
+                                                handlers.updateBlock(block.id, { text: activeEl.innerHTML });
+                                                handlers.saveSelection();
+                                                setTimeout(() => activeEl.focus(), 0);
+                                            }
+                                        }}
+                                        className="w-14 h-7 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs px-2 text-center"
+                                        title="Tamanho da fonte"
+                                    />
+                                    <select
+                                        className="w-24 h-7 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-[10px] px-1 ml-1"
+                                        onChange={(e) => handlers.execCommand('fontName', e.target.value)}
+                                        title="Tipo de fonte"
+                                    >
+                                        {FONT_FAMILIES.map(font => (
+                                            <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>
+                                                {font.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <ToolbarButton icon="bold" title="Negrito" onClick={() => handlers.execCommand('bold')} />
+                                <ToolbarButton icon="italic" title="Itálico" onClick={() => handlers.execCommand('italic')} />
+                                <ToolbarButton icon="underline" title="Sublinhado" onClick={() => handlers.execCommand('underline')} />
+                                <Divider />
+                                <ToolbarButton icon="align-left" title="Esquerda" onClick={() => handlers.execCommand('justifyLeft')} />
+                                <ToolbarButton icon="align-center" title="Centro" onClick={() => handlers.execCommand('justifyCenter')} />
+                                <ToolbarButton icon="align-right" title="Direita" onClick={() => handlers.execCommand('justifyRight')} />
+                                <Divider />
+                                <ToolbarButton icon="list-ul" title="Lista" onClick={() => handlers.execCommand('insertUnorderedList')} />
+                                <ToolbarButton icon="list-ol" title="Numerada" onClick={() => handlers.execCommand('insertOrderedList')} />
+                                <Divider />
+                                <ToolbarButton
+                                    icon="link"
+                                    title="Link"
+                                    onClick={() => {
+                                        const url = prompt('URL:');
+                                        if (url) handlers.execCommand('createLink', url);
+                                    }}
+                                />
+                            </div>
+                        )}
+
+                        <EditableBlock
+                            text={text}
+                            onUpdate={(newText) => handlers.updateBlock(block.id, { text: newText })}
+                            onFocus={(element) => handlers.setActiveEditableElement(element)}
+                            blockId={block.id}
+                        />
+
+                        {isExpanded && (
+                            <div className="mt-4 flex items-center gap-4 border-t border-slate-50 dark:border-slate-800 pt-4">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                                    <i className="fas fa-align-left text-[9px]"></i>
+                                    {text.replace(/<[^>]*>/g, '').length} caracteres
+                                </span>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                                    <i className="fas fa-clock text-[9px]"></i>
+                                    ~{Math.ceil(text.replace(/<[^>]*>/g, '').length / 15)}s de áudio
+                                </span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+});
 
 // Componente para gerenciar edição de bloco individual
 const EditableBlock: React.FC<{ text: string; onUpdate: (newText: string) => void; onFocus?: (element: HTMLDivElement) => void; blockId?: string }> = ({ text, onUpdate, onFocus, blockId }) => {
@@ -156,6 +509,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
     // Quiz Management Modal State
     const [showQuizManagementModal, setShowQuizManagementModal] = useState(false);
     const [showMaterialModal, setShowMaterialModal] = useState(false);
+    const [showImportExportModal, setShowImportExportModal] = useState(false);
 
     // Carregar recursos ao abrir o modal
     useEffect(() => {
@@ -1192,16 +1546,16 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
         await importJsonContent(file);
     };
 
-    const updateBlock = (id: string, updates: any) => {
-        setBlocks(blocks.map(b => b.id === id ? { ...b, ...updates } : b));
-    };
+    const updateBlock = React.useCallback((id: string, updates: any) => {
+        setBlocks(prev => prev.map(b => b.id === id ? { ...b, ...updates } : b));
+    }, []);
 
-    const removeBlock = (id: string) => {
-        setBlocks(blocks.filter(b => b.id !== id));
-    };
+    const removeBlock = React.useCallback((id: string) => {
+        setBlocks(prev => prev.filter(b => b.id !== id));
+    }, []);
 
     // Copiar conteúdo do bloco para clipboard
-    const copyBlockContent = async (blockId: string) => {
+    const copyBlockContent = React.useCallback(async (blockId: string) => {
         const block = blocks.find(b => b.id === blockId);
         if (!block) return;
 
@@ -1220,10 +1574,10 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
             console.error('❌ Erro ao copiar bloco:', error);
             alert('Erro ao copiar conteúdo. Por favor, tente novamente.');
         }
-    };
+    }, [blocks]);
 
     // Recortar bloco (copiar + deletar)
-    const cutBlockContent = async (blockId: string) => {
+    const cutBlockContent = React.useCallback(async (blockId: string) => {
         const block = blocks.find(b => b.id === blockId);
         if (!block) return;
 
@@ -1241,16 +1595,16 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                 await navigator.clipboard.write([clipboardItem]);
 
                 // Depois remover
-                setBlocks(blocks.filter(b => b.id !== blockId));
+                removeBlock(blockId);
             } catch (error) {
                 console.error('❌ Erro ao recortar bloco:', error);
                 alert('Erro ao recortar conteúdo. Por favor, tente novamente.');
             }
         }
-    };
+    }, [blocks, removeBlock]);
 
     // Copiar blocos selecionados em massa
-    const copySelectedBlocks = async () => {
+    const copySelectedBlocks = React.useCallback(async () => {
         if (selectedBlocks.size === 0) return;
 
         try {
@@ -1272,10 +1626,10 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
             console.error('Erro ao copiar blocos:', error);
             alert('Erro ao copiar blocos selecionados.');
         }
-    };
+    }, [blocks, selectedBlocks]);
 
     // Recortar blocos selecionados em massa
-    const cutSelectedBlocks = async () => {
+    const cutSelectedBlocks = React.useCallback(async () => {
         if (selectedBlocks.size === 0) return;
 
         if (window.confirm(`Deseja recortar ${selectedBlocks.size} bloco(s)? Eles serão removidos após serem copiados.`)) {
@@ -1295,17 +1649,17 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                 await navigator.clipboard.write([clipboardItem]);
 
                 // Remover blocos selecionados
-                setBlocks(blocks.filter(b => !selectedBlocks.has(b.id)));
+                setBlocks(prev => prev.filter(b => !selectedBlocks.has(b.id)));
                 setSelectedBlocks(new Set());
             } catch (error) {
                 console.error('Erro ao recortar blocos:', error);
                 alert('Erro ao recortar blocos selecionados.');
             }
         }
-    };
+    }, [blocks, selectedBlocks]);
 
     // Adicionar bloco em posição específica
-    const addBlockAtPosition = (position: number) => {
+    const addBlockAtPosition = React.useCallback((position: number) => {
         const newBlock: Block = {
             id: `block-${Date.now()}-${Math.random()}`,
             text: '<p>Digite aqui...</p>',
@@ -1313,22 +1667,26 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
             spacing: 8
         };
 
-        const newBlocks = [...blocks];
-        newBlocks.splice(position, 0, newBlock); // Insere ANTES do bloco atual
-        setBlocks(newBlocks);
+        setBlocks(prev => {
+            const newBlocks = [...prev];
+            newBlocks.splice(position, 0, newBlock); // Insere ANTES do bloco atual
+            return newBlocks;
+        });
         setExpandedBlockId(newBlock.id);
-    };
+    }, []);
 
-    const moveBlock = (index: number, direction: 'up' | 'down') => {
-        const newBlocks = [...blocks];
-        const targetIndex = direction === 'up' ? index - 1 : index + 1;
-        if (targetIndex < 0 || targetIndex >= newBlocks.length) return;
+    const moveBlock = React.useCallback((index: number, direction: 'up' | 'down') => {
+        setBlocks(prev => {
+            const newBlocks = [...prev];
+            const targetIndex = direction === 'up' ? index - 1 : index + 1;
+            if (targetIndex < 0 || targetIndex >= newBlocks.length) return prev;
 
-        const temp = newBlocks[index];
-        newBlocks[index] = newBlocks[targetIndex];
-        newBlocks[targetIndex] = temp;
-        setBlocks(newBlocks);
-    };
+            const temp = newBlocks[index];
+            newBlocks[index] = newBlocks[targetIndex];
+            newBlocks[targetIndex] = temp;
+            return newBlocks;
+        });
+    }, []);
 
     // Funções de seleção em massa
     const toggleBlockSelection = (blockId: string) => {
@@ -1360,6 +1718,46 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
         }
     };
 
+    const applyBulkFormatting = React.useCallback((command: string, value: string = '') => {
+        if (selectedBlocks.size === 0) return;
+
+        setBlocks(prev => prev.map(block => {
+            if (selectedBlocks.has(block.id)) {
+                // Criar um elemento temporário fora do DOM visível
+                const container = document.createElement('div');
+                container.innerHTML = block.text;
+                container.contentEditable = 'true';
+                container.style.position = 'fixed';
+                container.style.left = '-9999px';
+                document.body.appendChild(container);
+
+                const range = document.createRange();
+                range.selectNodeContents(container);
+                const selection = window.getSelection();
+                selection?.removeAllRanges();
+                selection?.addRange(range);
+
+                if (command === 'fontSize') {
+                    document.execCommand('fontSize', false, '7');
+                    const fontElements = container.querySelectorAll('font[size="7"]');
+                    fontElements.forEach(font => {
+                        const span = document.createElement('span');
+                        span.style.fontSize = `${value}pt`;
+                        span.innerHTML = font.innerHTML;
+                        font.parentNode?.replaceChild(span, font);
+                    });
+                } else {
+                    document.execCommand(command, false, value);
+                }
+
+                const newText = container.innerHTML;
+                document.body.removeChild(container);
+                return { ...block, text: newText };
+            }
+            return block;
+        }));
+    }, [selectedBlocks]);
+
     const openAudioModal = (block: any) => {
         setEditingBlockForAudio(block);
         // Converte a URL existente para garantir formato correto
@@ -1383,9 +1781,30 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
         return url;
     };
 
+    const convertDropboxUrl = (url: string): string => {
+        if (!url) return url;
+
+        // Detecta links do Dropbox
+        if (url.includes('dropbox.com')) {
+            // Caso seja link de compartilhamento padrão
+            // Muda dl=0 para dl=1 para forçar download/stream direto
+            if (url.includes('dl=0')) {
+                return url.replace('dl=0', 'dl=1');
+            }
+            // Se não tiver o parâmetro dl, adiciona
+            if (!url.includes('dl=')) {
+                const separator = url.includes('?') ? '&' : '?';
+                return `${url}${separator}dl=1`;
+            }
+        }
+
+        return url;
+    };
+
     const handleAudioUrlChange = (url: string) => {
-        // Converte automaticamente se for URL do Google Drive
-        const convertedUrl = convertGoogleDriveUrl(url);
+        // Converte automaticamente se for URL do Google Drive ou Dropbox
+        let convertedUrl = convertGoogleDriveUrl(url);
+        convertedUrl = convertDropboxUrl(convertedUrl);
         setTempAudioUrl(convertedUrl);
     };
 
@@ -1688,41 +2107,21 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
     const { wordCount, charCount } = getTextStats();
 
 
-    const ToolbarButton = ({
-        icon,
-        command,
-        value = '',
-        title,
-        active = false,
-        onClick
-    }: {
-        icon: string;
-        command: string;
-        value?: string;
-        title: string;
-        active?: boolean;
-        onClick?: () => void;
-    }) => (
-        <button
-            onClick={onClick || (() => execCommand(command, value))}
-            className={`w-8 h-8 rounded flex items-center justify-center transition-colors ${active
-                ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400'
-                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-            title={title}
-        >
-            <i className={`${icon.includes(' ') ? icon : `fas fa-${icon}`} text-sm`}></i>
-        </button>
-    );
 
     const handleSaveResource = async (data: { title: string; resourceType: LessonResourceRecord['resource_type']; url: string; category: string }) => {
         if (!lesson.id) return;
         try {
             const repo = new SupabaseAdminRepository();
+            let finalUrl = data.url;
+            if (data.resourceType === 'AUDIO') {
+                finalUrl = convertGoogleDriveUrl(finalUrl);
+                finalUrl = convertDropboxUrl(finalUrl);
+            }
+
             await repo.createLessonResource(lesson.id, {
                 title: data.title,
                 resourceType: data.resourceType,
-                url: data.url,
+                url: finalUrl,
                 category: data.category,
                 position: lessonResources.length + 1
             });
@@ -1747,9 +2146,6 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
         }
     };
 
-    const Divider = () => (
-        <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-2"></div>
-    );
 
     return (
         <div className="h-screen bg-white dark:bg-slate-950 flex flex-col overflow-hidden">
@@ -1789,6 +2185,15 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                             >
                                 <i className="fas fa-clipboard-question text-[10px]"></i>
                                 QUIZ
+                            </button>
+
+                            <button
+                                onClick={() => setShowImportExportModal(true)}
+                                className="h-9 px-3 rounded-lg font-semibold transition-all active:scale-95 flex items-center gap-1.5 text-[10px] uppercase bg-teal-600 text-white border border-transparent hover:bg-teal-700 dark:bg-transparent dark:border-teal-500 dark:text-teal-400 dark:hover:bg-teal-500/20 dark:hover:border-teal-400"
+                                title="Importar ou exportar conteúdo (DOCX, JSON, MD)"
+                            >
+                                <i className="fas fa-file-import text-[10px]"></i>
+                                IMPORTAR/EXPORTAR
                             </button>
 
 
@@ -1985,257 +2390,124 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                             </div>
                         </div>
 
-                        {docImportError && (
-                            <div className="mb-3 px-4 py-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-xs text-red-700 dark:text-red-200 font-semibold flex items-start gap-2">
-                                <i className="fas fa-exclamation-triangle mt-0.5"></i>
-                                <span>{docImportError}</span>
-                            </div>
-                        )}
-
-                        {jsonImportError && (
-                            <div className="mb-3 px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-xs text-amber-700 dark:text-amber-200 font-semibold flex items-start gap-2">
-                                <i className="fas fa-exclamation-circle mt-0.5"></i>
-                                <span>{jsonImportError}</span>
-                            </div>
-                        )}
-
-                        {/* Importação rápida (DOCX ou JSON) - Layout em Duas Colunas */}
-                        <div
-                            className={`mb-4 px-4 py-3 rounded-xl border ${isDocDragActive ? 'border-teal-500 bg-teal-50 dark:bg-teal-900/10' : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40'} transition-colors`}
-                            onDrop={handleDocxDrop}
-                            onDragOver={handleDocxDragOver}
-                            onDragLeave={handleDocxDragLeave}
-                        >
-                            {/* Layout em Grid de 2 colunas */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {/* Coluna 1: Importar Conteúdo */}
-                                <div className="flex flex-col gap-3">
-                                    <div>
-                                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Importar Conteúdo</p>
-                                        <p className="text-xs text-slate-500 dark:text-slate-400">Arraste um DOCX ou use os botões abaixo. JSON recria os blocos exatamente como salvos.</p>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <button
-                                            onClick={() => document.getElementById('docx-upload')?.click()}
-                                            className="px-3 py-2 rounded-lg bg-teal-600 text-white text-xs font-semibold flex items-center justify-center gap-2 hover:bg-teal-700 transition-colors"
-                                        >
-                                            <i className="fas fa-file-word"></i> DOCX
-                                        </button>
-                                        <button
-                                            onClick={() => jsonUploadInputRef.current?.click()}
-                                            disabled={isJsonImporting}
-                                            className="px-3 py-2 rounded-lg bg-slate-800 text-white text-xs font-semibold flex items-center justify-center gap-2 hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            {isJsonImporting ? (
-                                                <>
-                                                    <i className="fas fa-spinner fa-spin"></i> Importando...
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <i className="fas fa-file-code"></i> Importar JSON
-                                                </>
-                                            )}
-                                        </button>
-                                        <button
-                                            onClick={handleJsonExport}
-                                            className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold flex items-center justify-center gap-2 hover:bg-indigo-700 transition-colors"
-                                        >
-                                            <i className="fas fa-download"></i> Exportar JSON
-                                        </button>
-                                        <button
-                                            onClick={() => document.getElementById('markdown-upload')?.click()}
-                                            className="px-3 py-2 rounded-lg bg-purple-600 text-white text-xs font-semibold flex items-center justify-center gap-2 hover:bg-purple-700 transition-colors"
-                                        >
-                                            <i className="fab fa-markdown"></i> .md
-                                        </button>
-                                    </div>
-                                    <input
-                                        id="docx-upload"
-                                        type="file"
-                                        accept=".docx"
-                                        ref={docUploadInputRef}
-                                        onChange={handleDocFileInput}
-                                        className="hidden"
-                                    />
-                                    <input
-                                        ref={jsonUploadInputRef}
-                                        type="file"
-                                        accept="application/json"
-                                        className="hidden"
-                                        onChange={handleJsonFileInput}
-                                    />
-                                    <input
-                                        id="markdown-upload"
-                                        type="file"
-                                        accept=".md"
-                                        className="hidden"
-                                        onChange={handleMarkdownFileInput}
-                                    />
-                                </div>
-
-                                {/* Coluna 2: Modo de Importação */}
-                                <div className="flex flex-col gap-3">
-                                    <div>
-                                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Modo de Importação</p>
-                                        <p className="text-xs text-slate-500 dark:text-slate-400">Escolha como deseja processar o conteúdo importado.</p>
-                                    </div>
-                                    <div className="flex flex-col gap-2">
-                                        <button
-                                            onClick={() => setJsonImportMode('replace')}
-                                            className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 ${jsonImportMode === 'replace'
-                                                ? 'bg-red-600 text-white shadow-md'
-                                                : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-600'
-                                                }`}
-                                            title="Substituir todo o conteúdo existente"
-                                        >
-                                            <i className="fas fa-sync-alt"></i>
-                                            Substituir
-                                        </button>
-                                        <button
-                                            onClick={() => setJsonImportMode('append')}
-                                            className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 ${jsonImportMode === 'append'
-                                                ? 'bg-green-600 text-white shadow-md'
-                                                : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-600'
-                                                }`}
-                                            title="Adicionar blocos ao final do conteúdo existente"
-                                        >
-                                            <i className="fas fa-arrow-down"></i>
-                                            Adicionar ao Final
-                                        </button>
-                                        <button
-                                            onClick={() => setJsonImportMode('prepend')}
-                                            className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 ${jsonImportMode === 'prepend'
-                                                ? 'bg-blue-600 text-white shadow-md'
-                                                : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-600'
-                                                }`}
-                                            title="Adicionar blocos no início, antes do conteúdo existente"
-                                        >
-                                            <i className="fas fa-arrow-up"></i>
-                                            Adicionar ao Início
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Feedback de Sucesso */}
-                            {jsonImportSuccess && (
-                                <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg animate-in fade-in slide-in-from-top-2">
-                                    <div className="flex items-center gap-2">
-                                        <i className="fas fa-check-circle text-green-600 dark:text-green-400"></i>
-                                        <p className="text-xs font-semibold text-green-700 dark:text-green-400">
-                                            {jsonImportSuccess}
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Feedback de Erro */}
-                            {jsonImportError && (
-                                <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                                    <div className="flex items-center justify-between gap-2">
-                                        <div className="flex items-center gap-2">
-                                            <i className="fas fa-exclamation-triangle text-red-600 dark:text-red-400"></i>
-                                            <p className="text-xs font-semibold text-red-700 dark:text-red-400">
-                                                Erro ao importar JSON: {jsonImportError}
-                                            </p>
-                                        </div>
-                                        <button
-                                            onClick={() => setJsonImportError(null)}
-                                            className="text-xs text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 underline font-medium"
-                                        >
-                                            Dispensar
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                            {docPreviewHtml && (
-                                <div className="mt-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 p-3 max-h-64 overflow-auto">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">Prévia do DOCX importado</p>
-                                        <button
-                                            onClick={() => setDocPreviewHtml(null)}
-                                            className="text-xs text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
-                                        >
-                                            Limpar
-                                        </button>
-                                    </div>
-                                    <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: docPreviewHtml }} />
-                                </div>
-                            )}
-                        </div>
 
                         {/* Barra de Ferramentas de Seleção em Massa */}
                         {blocks.length > 0 && (
-                            <div className="mb-4 px-2 flex items-center justify-between gap-3">
+                            <div className="mb-4 px-2 flex flex-wrap items-center justify-start gap-3 gap-y-4">
                                 <div className="flex items-center gap-2">
                                     <button
                                         onClick={() => {
                                             setIsSelectionMode(!isSelectionMode);
-                                            if (isSelectionMode) {
-                                                deselectAllBlocks();
-                                            }
+                                            if (isSelectionMode) setSelectedBlocks(new Set());
                                         }}
-                                        className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${isSelectionMode
-                                            ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
-                                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                                        className={`h-9 px-3 rounded-lg font-semibold transition-all active:scale-95 flex items-center gap-1.5 text-[10px] uppercase shadow-lg ${isSelectionMode
+                                            ? 'bg-indigo-600 text-white border border-transparent hover:bg-indigo-700 dark:bg-transparent dark:border-indigo-500 dark:text-indigo-400 dark:hover:bg-indigo-500/20 dark:hover:border-indigo-400'
+                                            : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:border-indigo-400 shadow-sm'
                                             }`}
                                         title="Ativar modo de seleção"
                                     >
-                                        <i className={`fas fa-${isSelectionMode ? 'check-square' : 'square'}`}></i>
+                                        {isSelectionMode ? (
+                                            <i className="fas fa-check-square text-[10px] animate-in zoom-in duration-300"></i>
+                                        ) : (
+                                            <i className="far fa-square text-[10px]"></i>
+                                        )}
                                         {isSelectionMode ? 'Selecionando' : 'Selecionar'}
                                     </button>
 
                                     {isSelectionMode && (
-                                        <>
+                                        <div className="flex items-center gap-2 animate-in slide-in-from-left-4 duration-300">
                                             <button
                                                 onClick={selectAllBlocks}
-                                                className="px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 text-[10px] font-black uppercase tracking-widest transition-all"
+                                                className="h-9 px-3 rounded-lg font-semibold transition-all active:scale-95 flex items-center gap-1.5 text-[10px] uppercase bg-slate-800 dark:bg-transparent dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-600/20 text-white"
                                                 title="Selecionar todos os blocos"
                                             >
-                                                <i className="fas fa-check-double mr-1.5"></i>
+                                                <i className="fas fa-check-double text-[10px]"></i>
                                                 Todos
                                             </button>
                                             <button
                                                 onClick={deselectAllBlocks}
-                                                className="px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 text-[10px] font-black uppercase tracking-widest transition-all"
+                                                className="h-9 px-3 rounded-lg font-semibold transition-all active:scale-95 flex items-center gap-1.5 text-[10px] uppercase bg-slate-800 dark:bg-transparent dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-600/20 text-white"
                                                 title="Desmarcar todos"
                                             >
-                                                <i className="fas fa-times mr-1.5"></i>
+                                                <i className="fas fa-times text-[10px]"></i>
                                                 Limpar
                                             </button>
-                                        </>
+                                        </div>
                                     )}
                                 </div>
 
                                 {isSelectionMode && selectedBlocks.size > 0 && (
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                                            {selectedBlocks.size} selecionado{selectedBlocks.size !== 1 ? 's' : ''}
-                                        </span>
+                                    <div className="flex flex-wrap items-center gap-3 animate-in slide-in-from-right-4 duration-300">
+                                        <div className="h-9 px-3 flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800">
+                                            <span className="text-sm font-black text-indigo-600 dark:text-indigo-400 leading-tight">{selectedBlocks.size}</span>
+                                            <span className="text-[7px] font-black text-slate-500 uppercase tracking-tighter">itens</span>
+                                        </div>
+
                                         <button
                                             onClick={copySelectedBlocks}
-                                            className="px-4 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-blue-500/20 flex items-center gap-2"
+                                            className="h-9 px-3 rounded-lg font-semibold transition-all active:scale-95 flex items-center gap-1.5 text-[10px] uppercase bg-blue-600 text-white border border-transparent hover:bg-blue-700 dark:bg-transparent dark:border-blue-500 dark:text-blue-400 dark:hover:bg-blue-500/20 dark:hover:border-blue-400 shadow-lg shadow-blue-500/10"
                                             title="Copiar blocos selecionados"
                                         >
-                                            <i className="fas fa-copy"></i>
-                                            Copiar {selectedBlocks.size}
+                                            <i className="fas fa-copy text-[10px]"></i>
+                                            Copiar
                                         </button>
+
                                         <button
                                             onClick={cutSelectedBlocks}
-                                            className="px-4 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-orange-500/20 flex items-center gap-2"
+                                            className="h-9 px-3 rounded-lg font-semibold transition-all active:scale-95 flex items-center gap-1.5 text-[10px] uppercase bg-orange-600 text-white border border-transparent hover:bg-orange-700 dark:bg-transparent dark:border-orange-500 dark:text-orange-400 dark:hover:bg-orange-500/20 dark:hover:border-orange-400 shadow-lg shadow-orange-500/10"
                                             title="Recortar blocos selecionados"
                                         >
-                                            <i className="fas fa-cut"></i>
-                                            Recortar {selectedBlocks.size}
+                                            <i className="fas fa-cut text-[10px]"></i>
+                                            Recortar
                                         </button>
+
                                         <button
                                             onClick={deleteSelectedBlocks}
-                                            className="px-4 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-red-500/20 flex items-center gap-2"
+                                            className="h-9 px-3 rounded-lg font-semibold transition-all active:scale-95 flex items-center gap-1.5 text-[10px] uppercase bg-red-600 text-white border border-transparent hover:bg-red-700 dark:bg-transparent dark:border-red-500 dark:text-red-400 dark:hover:bg-red-500/20 dark:hover:border-red-400 shadow-lg shadow-red-500/10"
                                             title="Excluir blocos selecionados"
                                         >
-                                            <i className="fas fa-trash-alt"></i>
-                                            Excluir {selectedBlocks.size}
+                                            <i className="fas fa-trash-alt text-[10px]"></i>
+                                            Excluir
                                         </button>
+
+                                        <Divider />
+
+                                        {/* Bulk Formatting Toolbar */}
+                                        <div className="flex flex-wrap items-center gap-1 bg-white dark:bg-slate-800 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-lg">
+                                            <div className="flex items-center gap-1 px-1 mr-1 border-r border-slate-200 dark:border-slate-700">
+                                                <input
+                                                    type="number"
+                                                    min="8"
+                                                    max="72"
+                                                    defaultValue="12"
+                                                    onChange={(e) => applyBulkFormatting('fontSize', e.target.value)}
+                                                    className="w-12 h-7 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-[10px] px-1 text-center"
+                                                    title="Tamanho da fonte em massa"
+                                                />
+                                                <select
+                                                    className="w-20 h-7 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-[9px] px-1"
+                                                    onChange={(e) => applyBulkFormatting('fontName', e.target.value)}
+                                                    title="Tipo de fonte em massa"
+                                                >
+                                                    {FONT_FAMILIES.map(font => (
+                                                        <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>
+                                                            {font.name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            <ToolbarButton icon="bold" title="Negrito em massa" onClick={() => applyBulkFormatting('bold')} />
+                                            <ToolbarButton icon="italic" title="Itálico em massa" onClick={() => applyBulkFormatting('italic')} />
+                                            <ToolbarButton icon="underline" title="Sublinhado em massa" onClick={() => applyBulkFormatting('underline')} />
+                                            <Divider />
+                                            <ToolbarButton icon="align-left" title="Alinhar Esquerda" onClick={() => applyBulkFormatting('justifyLeft')} />
+                                            <ToolbarButton icon="align-center" title="Alinhar Centro" onClick={() => applyBulkFormatting('justifyCenter')} />
+                                            <ToolbarButton icon="align-right" title="Alinhar Direita" onClick={() => applyBulkFormatting('justifyRight')} />
+                                            <Divider />
+                                            <ToolbarButton icon="list-ul" title="Lista em massa" onClick={() => applyBulkFormatting('insertUnorderedList')} />
+                                            <ToolbarButton icon="list-ol" title="Lista ordenada em massa" onClick={() => applyBulkFormatting('insertOrderedList')} />
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -2259,392 +2531,46 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                 </div>
                             ) : (
                                 blocks.map((rawBlock, index) => {
-                                    // Garantir que block seja um objeto com as propriedades necessárias (suporte a legado)
                                     const block = typeof rawBlock === 'string'
                                         ? { id: `legacy-${index}`, text: rawBlock, audioUrl: '' }
                                         : rawBlock;
 
-                                    const text = block.text || '';
-
                                     return (
-                                        <div key={block.id || index}>
-                                            {/* Botão "+" flutuante que aparece ao hover */}
-                                            <div
-                                                className="relative h-8 group/add flex items-center justify-center"
-                                                onMouseEnter={() => setHoveredBlockIndex(index)}
-                                                onMouseLeave={() => setHoveredBlockIndex(null)}
-                                            >
-                                                <div className="absolute inset-x-0 h-px bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-700 to-transparent opacity-0 group-hover/add:opacity-100 transition-opacity"></div>
-
-                                                {/* Botão "+" */}
-                                                <button
-                                                    onClick={() => {
-                                                        setMediaMenuIndex(index);
-                                                        setShowMediaMenu(!showMediaMenu);
-                                                    }}
-                                                    className={`relative z-10 w-8 h-8 rounded-full bg-white dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 text-slate-400 dark:text-slate-500 hover:border-indigo-500 hover:text-indigo-600 hover:scale-110 shadow-lg transition-all duration-200 ${hoveredBlockIndex === index ? 'opacity-100 scale-100' : 'opacity-0 scale-75 pointer-events-none'
-                                                        }`}
-                                                >
-                                                    <i className="fas fa-plus text-xs"></i>
-                                                </button>
-
-                                                {/* Botão de Adicionar Bloco - ao lado do botão de espaçamento */}
-                                                <button
-                                                    onClick={() => {
-                                                        addBlockAtPosition(index);
-                                                    }}
-                                                    className={`relative z-10 w-8 h-8 rounded-full bg-white dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 text-slate-400 dark:text-slate-500 hover:border-green-500 hover:text-green-600 hover:scale-110 shadow-lg transition-all duration-200 ml-2 ${hoveredBlockIndex === index ? 'opacity-100 scale-100' : 'opacity-0 scale-75 pointer-events-none'
-                                                        }`}
-                                                    title="Adicionar bloco aqui"
-                                                >
-                                                    <i className="fas fa-file-alt text-xs"></i>
-                                                </button>
-
-                                                {/* Menu Popup - Multimídia */}
-                                                {showMediaMenu && mediaMenuIndex === index && (
-                                                    <div className="absolute top-10 left-1/2 -translate-x-1/2 z-50 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 p-2 min-w-[200px] animate-in fade-in slide-in-from-top-2 duration-200">
-                                                        <button
-                                                            onClick={() => {
-                                                                setMediaMenuIndex(index);
-                                                                setShowImageModal(true);
-                                                                setShowMediaMenu(false);
-                                                            }}
-                                                            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 transition-colors"
-                                                        >
-                                                            <i className="fas fa-image w-4"></i>
-                                                            <span>Inserir Imagem</span>
-                                                        </button>
-                                                        <button
-                                                            onClick={() => {
-                                                                setMediaMenuIndex(index);
-                                                                setShowTableModal(true);
-                                                                setShowMediaMenu(false);
-                                                            }}
-                                                            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 transition-colors"
-                                                        >
-                                                            <i className="fas fa-table w-4"></i>
-                                                            <span>Inserir Tabela</span>
-                                                        </button>
-                                                        <button
-                                                            onClick={() => {
-                                                                setMediaMenuIndex(index);
-                                                                setShowVideoModal(true);
-                                                                setShowMediaMenu(false);
-                                                            }}
-                                                            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 transition-colors"
-                                                        >
-                                                            <i className="fas fa-video w-4"></i>
-                                                            <span>Inserir Vídeo</span>
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            <div
-                                                key={block.id || index}
-                                                data-block-id={block.id}
-                                                onClick={() => !isSelectionMode && setExpandedBlockId(expandedBlockId === block.id ? null : block.id)}
-                                                className={`group relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm hover:shadow-xl hover:shadow-indigo-500/5 hover:border-indigo-400/50 dark:hover:border-indigo-500/50 transition-all duration-300 cursor-pointer ${expandedBlockId === block.id ? 'p-12' : 'p-6'} ${selectedBlocks.has(block.id) ? 'ring-2 ring-indigo-500 border-indigo-500' : ''
-                                                    }`}
-                                            >
-                                                {/* Checkbox de Seleção - Aparece quando modo de seleção está ativo */}
-                                                {isSelectionMode && (
-                                                    <div
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            toggleBlockSelection(block.id);
-                                                        }}
-                                                        className={`absolute ${expandedBlockId === block.id ? 'top-8' : 'top-4'} left-12 w-6 h-6 rounded-lg border-2 flex items-center justify-center cursor-pointer transition-all z-20 ${selectedBlocks.has(block.id)
-                                                            ? 'bg-indigo-600 border-indigo-600 text-white'
-                                                            : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 hover:border-indigo-400'
-                                                            }`}
-                                                        title={selectedBlocks.has(block.id) ? 'Desmarcar bloco' : 'Selecionar bloco'}
-                                                    >
-                                                        {selectedBlocks.has(block.id) && (
-                                                            <i className="fas fa-check text-xs"></i>
-                                                        )}
-                                                    </div>
-                                                )}
-
-                                                {/* Badge de Ordem */}
-                                                <div className={`absolute -left-3 w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-[10px] font-black text-slate-400 z-10 shadow-sm group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-500 transition-all ${expandedBlockId === block.id ? 'top-8' : 'top-4'
-                                                    }`}>
-                                                    {String(index + 1).padStart(2, '0')}
-                                                </div>
-
-                                                {/* Indicador de Configurações - Mostra que há ferramentas disponíveis */}
-                                                <div className={`absolute right-4 top-4 text-slate-300 dark:text-slate-600 transition-all duration-300 ${expandedBlockId === block.id ? 'rotate-90 text-indigo-500 dark:text-indigo-400' : 'group-hover:text-slate-400 dark:group-hover:text-slate-500'}`}>
-                                                    <i className="fas fa-cog"></i>
-                                                </div>
-
-                                                {/* Botão de Áudio - Aparece ao lado da engrenagem */}
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        openAudioModal(block);
-                                                    }}
-                                                    className={`absolute right-40 top-4 w-7 h-7 rounded-lg border border-slate-200 dark:border-slate-700 transition-all duration-200 flex items-center justify-center shadow-sm z-20 hover:scale-110 ${block.audioUrl
-                                                        ? 'bg-green-50 text-green-600 hover:bg-green-100 hover:border-green-300 dark:bg-green-900/20 dark:text-green-400 dark:hover:bg-green-900/30 dark:hover:border-green-800'
-                                                        : 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:bg-indigo-50 hover:text-indigo-500 hover:border-indigo-300 dark:hover:bg-indigo-900/20 dark:hover:text-indigo-400 dark:hover:border-indigo-800'
-                                                        }`}
-                                                    title={block.audioUrl ? 'Editar áudio' : 'Adicionar áudio'}
-                                                >
-                                                    <i className={`fas ${block.audioUrl ? 'fa-microphone' : 'fa-microphone-slash'} text-[11px]`}></i>
-                                                </button>
-
-                                                {/* Botão de Copiar - Aparece ao lado da engrenagem */}
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        copyBlockContent(block.id);
-                                                    }}
-                                                    className="absolute right-32 top-4 w-7 h-7 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:bg-blue-50 hover:text-blue-500 hover:border-blue-300 dark:hover:bg-blue-900/20 dark:hover:text-blue-400 dark:hover:border-blue-800 transition-all duration-200 flex items-center justify-center shadow-sm z-20 hover:scale-110"
-                                                    title="Copiar bloco"
-                                                >
-                                                    <i className="fas fa-copy text-[11px]"></i>
-                                                </button>
-
-                                                {/* Botão de Recortar - Aparece ao lado da engrenagem */}
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        cutBlockContent(block.id);
-                                                    }}
-                                                    className="absolute right-24 top-4 w-7 h-7 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:bg-orange-50 hover:text-orange-500 hover:border-orange-300 dark:hover:bg-orange-900/20 dark:hover:text-orange-400 dark:hover:border-orange-800 transition-all duration-200 flex items-center justify-center shadow-sm z-20 hover:scale-110"
-                                                    title="Recortar bloco"
-                                                >
-                                                    <i className="fas fa-cut text-[11px]"></i>
-                                                </button>
-
-                                                {/* Botão de Exclusão Rápida - Aparece ao lado da engrenagem */}
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation(); // Evita expandir o bloco
-                                                        if (window.confirm('Deseja realmente excluir este bloco?')) {
-                                                            removeBlock(block.id);
-                                                        }
-                                                    }}
-                                                    className="absolute right-14 top-4 w-7 h-7 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:bg-red-50 hover:text-red-500 hover:border-red-300 dark:hover:bg-red-900/20 dark:hover:text-red-400 dark:hover:border-red-800 transition-all duration-200 flex items-center justify-center shadow-sm z-20 hover:scale-110"
-                                                    title="Excluir bloco"
-                                                >
-                                                    <i className="fas fa-trash-alt text-[11px]"></i>
-                                                </button>
-
-                                                {/* Controles de Movimentação Flutuantes - só aparecem quando expandido */}
-                                                {expandedBlockId === block.id && (
-                                                    <div className="absolute -right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0 z-20">
-                                                        <button
-                                                            onClick={() => moveBlock(index, 'up')}
-                                                            disabled={index === 0}
-                                                            className="w-10 h-10 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:scale-110 disabled:opacity-30 transition-all"
-                                                        >
-                                                            <i className="fas fa-chevron-up text-xs"></i>
-                                                        </button>
-                                                        <button
-                                                            onClick={() => moveBlock(index, 'down')}
-                                                            disabled={index === blocks.length - 1}
-                                                            className="w-10 h-10 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:scale-110 disabled:opacity-30 transition-all"
-                                                        >
-                                                            <i className="fas fa-chevron-down text-xs"></i>
-                                                        </button>
-                                                    </div>
-                                                )}
-
-
-                                                <div className="relative pr-48 pt-2" onClick={(e) => e.stopPropagation()}>
-                                                    {/* Inline Toolbar - Aparece quando este bloco está ativo */}
-                                                    {activeEditableElement?.closest(`[data-block-id="${block.id}"]`) && (
-                                                        <div className="mb-3 bg-white dark:bg-slate-900 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 p-2 flex items-center gap-1 flex-wrap">
-                                                            {/* Font controls */}
-                                                            <select
-                                                                onFocus={saveSelection}
-                                                                onChange={(e) => execCommand('fontName', e.target.value)}
-                                                                className="h-7 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs px-2"
-                                                                defaultValue="Arial"
-                                                            >
-                                                                <option value="Arial">Arial</option>
-                                                                <option value="Times New Roman">Times</option>
-                                                                <option value="Georgia">Georgia</option>
-                                                            </select>
-
-                                                            <div className="w-px h-4 bg-slate-300 dark:bg-slate-700" />
-
-                                                            <div className="flex items-center gap-1">
-                                                                <span className="text-[10px] text-slate-500 font-medium">Px:</span>
-                                                                <input
-                                                                    type="number"
-                                                                    min="8"
-                                                                    max="72"
-                                                                    value={currentFontSize}
-                                                                    onChange={(e) => {
-                                                                        const target = e.target;
-                                                                        const newVal = target.value;
-                                                                        setCurrentFontSize(newVal);
-
-                                                                        const size = parseInt(newVal);
-                                                                        if (size >= 8 && size <= 72 && activeEditableElement) {
-                                                                            // 1. Restaurar seleção anterior para aplicar no lugar certo
-                                                                            restoreSelection();
-
-                                                                            const selection = window.getSelection();
-
-                                                                            // 2. Se seleção inválida ou apenas cursor, selecionar todo o bloco para feedback visual imediato
-                                                                            if (!selection || selection.isCollapsed || !activeEditableElement.contains(selection.anchorNode)) {
-                                                                                const range = document.createRange();
-                                                                                range.selectNodeContents(activeEditableElement);
-                                                                                selection?.removeAllRanges();
-                                                                                selection?.addRange(range);
-                                                                            }
-
-                                                                            // 3. Aplicar Tamanho
-                                                                            document.execCommand('fontSize', false, '7');
-
-                                                                            // 4. Substituir <font> legado por <span> com estilo pt exato
-                                                                            const fontElements = activeEditableElement.querySelectorAll('font[size="7"]');
-                                                                            fontElements.forEach(font => {
-                                                                                const span = document.createElement('span');
-                                                                                span.style.fontSize = `${size}pt`;
-                                                                                span.innerHTML = font.innerHTML;
-                                                                                font.parentNode?.replaceChild(span, font);
-                                                                            });
-
-                                                                            // 5. Persistir no estado do componente pai
-                                                                            updateBlock(block.id, { text: activeEditableElement.innerHTML });
-
-                                                                            // 6. Atualizar a referência de seleção salva (pois o DOM mudou) e devolver foco ao input
-                                                                            saveSelection();
-                                                                            setTimeout(() => {
-                                                                                target.focus();
-                                                                            }, 0);
-                                                                        }
-                                                                    }}
-                                                                    onMouseDown={(e) => {
-                                                                        // Salvar seleção antes do input receber foco
-                                                                        saveSelection();
-                                                                    }}
-                                                                    onKeyDown={(e) => {
-                                                                        if (e.key === 'Enter') {
-                                                                            e.preventDefault();
-                                                                            const size = parseInt(e.currentTarget.value);
-                                                                            if (size >= 8 && size <= 72 && activeEditableElement) {
-                                                                                const selection = window.getSelection();
-                                                                                // Se não houver seleção ou se for apenas um cursor, seleciona todo o bloco
-                                                                                if (!selection || selection.isCollapsed || !activeEditableElement.contains(selection.anchorNode)) {
-                                                                                    const range = document.createRange();
-                                                                                    range.selectNodeContents(activeEditableElement);
-                                                                                    selection?.removeAllRanges();
-                                                                                    selection?.addRange(range);
-                                                                                }
-
-                                                                                document.execCommand('fontSize', false, '7');
-                                                                                const fontElements = activeEditableElement.querySelectorAll('font[size="7"]');
-                                                                                fontElements.forEach(font => {
-                                                                                    const span = document.createElement('span');
-                                                                                    span.style.fontSize = `${size}pt`;
-                                                                                    span.innerHTML = font.innerHTML;
-                                                                                    font.parentNode?.replaceChild(span, font);
-                                                                                });
-
-                                                                                // Persistir alterações
-                                                                                updateBlock(block.id, { text: activeEditableElement.innerHTML });
-                                                                            }
-                                                                        }
-                                                                    }}
-                                                                    onBlur={(e) => {
-                                                                        const size = parseInt(e.target.value);
-                                                                        if (size >= 8 && size <= 72 && activeEditableElement) {
-                                                                            const selection = window.getSelection();
-                                                                            // Se não houver seleção ou se for apenas um cursor, seleciona todo o bloco
-                                                                            if (!selection || selection.isCollapsed || !activeEditableElement.contains(selection.anchorNode)) {
-                                                                                const range = document.createRange();
-                                                                                range.selectNodeContents(activeEditableElement);
-                                                                                selection?.removeAllRanges();
-                                                                                selection?.addRange(range);
-                                                                            }
-
-                                                                            document.execCommand('fontSize', false, '7');
-                                                                            const fontElements = activeEditableElement.querySelectorAll('font[size="7"]');
-                                                                            fontElements.forEach(font => {
-                                                                                const span = document.createElement('span');
-                                                                                span.style.fontSize = `${size}pt`;
-                                                                                span.innerHTML = font.innerHTML;
-                                                                                font.parentNode?.replaceChild(span, font);
-                                                                            });
-
-                                                                            // Persistir alterações
-                                                                            updateBlock(block.id, { text: activeEditableElement.innerHTML });
-                                                                        }
-                                                                    }}
-                                                                    className="w-14 h-7 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs px-2 text-center"
-                                                                    title="Tamanho da fonte (Enter para aplicar)"
-                                                                />
-                                                            </div>
-
-                                                            <div className="w-px h-4 bg-slate-300 dark:bg-slate-700" />
-
-                                                            <div className="w-px h-4 bg-slate-300 dark:bg-slate-700" />
-
-                                                            {/* Format buttons */}
-                                                            <ToolbarButton icon="bold" command="bold" title="Negrito" />
-                                                            <ToolbarButton icon="italic" command="italic" title="Itálico" />
-                                                            <ToolbarButton icon="underline" command="underline" title="Sublinhado" />
-
-                                                            <div className="w-px h-4 bg-slate-300 dark:bg-slate-700" />
-
-                                                            {/* Alignment */}
-                                                            <ToolbarButton icon="align-left" command="justifyLeft" title="Esquerda" />
-                                                            <ToolbarButton icon="align-center" command="justifyCenter" title="Centro" />
-                                                            <ToolbarButton icon="align-right" command="justifyRight" title="Direita" />
-
-                                                            <div className="w-px h-4 bg-slate-300 dark:bg-slate-700" />
-
-                                                            {/* Lists */}
-                                                            <ToolbarButton icon="list-ul" command="insertUnorderedList" title="Lista" />
-                                                            <ToolbarButton icon="list-ol" command="insertOrderedList" title="Numerada" />
-
-                                                            <div className="w-px h-4 bg-slate-300 dark:bg-slate-700" />
-
-                                                            <ToolbarButton icon="indent" command="indent" title="Aumentar Recuo" />
-                                                            <ToolbarButton icon="outdent" command="outdent" title="Diminuir Recuo" />
-
-                                                            <div className="w-px h-4 bg-slate-300 dark:bg-slate-700" />
-
-                                                            {/* Link */}
-                                                            <ToolbarButton
-                                                                icon="link"
-                                                                command=""
-                                                                title="Link"
-                                                                onClick={() => {
-                                                                    const url = prompt('URL:');
-                                                                    if (url) execCommand('createLink', url);
-                                                                }}
-                                                            />
-                                                        </div>
-                                                    )}
-
-                                                    <EditableBlock
-                                                        text={text}
-                                                        onUpdate={(newText) => updateBlock(block.id, { text: newText })}
-                                                        onFocus={(element) => setActiveEditableElement(element)}
-                                                        blockId={block.id}
-                                                    />
-
-                                                    {/* Indicador visual de texto - só aparece quando expandido */}
-                                                    {expandedBlockId === block.id && (
-                                                        <div className="mt-4 flex items-center gap-4 border-t border-slate-50 dark:border-slate-800 pt-4">
-                                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                                                                <i className="fas fa-align-left text-[9px]"></i>
-                                                                {text.replace(/<[^>]*>/g, '').length} caracteres
-                                                            </span>
-                                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                                                                <i className="fas fa-clock text-[9px]"></i>
-                                                                ~{Math.ceil(text.replace(/<[^>]*>/g, '').length / 15)}s de áudio
-                                                            </span>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
+                                        <BlockItem
+                                            key={block.id || index}
+                                            block={block}
+                                            index={index}
+                                            isExpanded={expandedBlockId === block.id}
+                                            isSelected={selectedBlocks.has(block.id)}
+                                            isSelectionMode={isSelectionMode}
+                                            isHovered={hoveredBlockIndex === index}
+                                            isMediaMenuOpen={showMediaMenu && mediaMenuIndex === index}
+                                            isActive={activeEditableElement !== null && activeEditableElement.getAttribute('data-block-id') === block.id}
+                                            totalBlocks={blocks.length}
+                                            handlers={{
+                                                setExpandedBlockId,
+                                                toggleBlockSelection,
+                                                setHoveredBlockIndex,
+                                                setMediaMenuIndex,
+                                                setShowMediaMenu,
+                                                addBlockAtPosition,
+                                                setShowImageModal,
+                                                setShowTableModal,
+                                                setShowVideoModal,
+                                                insertVideoEmbed,
+                                                openAudioModal,
+                                                copyBlockContent,
+                                                cutBlockContent,
+                                                removeBlock,
+                                                moveBlock,
+                                                updateBlock,
+                                                setActiveEditableElement,
+                                                saveSelection,
+                                                execCommand,
+                                                setCurrentFontSize,
+                                                currentFontSize
+                                            }}
+                                        />
                                     );
                                 })
                             )}
@@ -2834,6 +2760,27 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                 />
                             </div>
                             <p className="text-[10px] text-slate-400">Cole a URL do vídeo ou o ID do YouTube.</p>
+                        </div>
+
+                        {/* Audio URL */}
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">URL do Áudio (Principal)</label>
+                            <div className="relative">
+                                <i className="fas fa-headphones absolute left-3 top-2.5 text-slate-400"></i>
+                                <input
+                                    type="text"
+                                    value={audioUrl}
+                                    onChange={(e) => {
+                                        let val = e.target.value;
+                                        val = convertGoogleDriveUrl(val);
+                                        val = convertDropboxUrl(val);
+                                        setAudioUrl(val);
+                                    }}
+                                    className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                                    placeholder="https://..."
+                                />
+                            </div>
+                            <p className="text-[10px] text-slate-400">Áudio principal da aula para leitura automática.</p>
                         </div>
 
                         {/* Duration */}
@@ -3840,6 +3787,165 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                 )
             }
 
+            {/* Modal de Importar/Exportar Conteúdo */}
+            {showImportExportModal && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300" onClick={() => setShowImportExportModal(false)}>
+                    <div className="bg-[#0f172a] border border-slate-800 rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+                        {/* Header */}
+                        <div className="flex items-center justify-between p-6 border-b border-slate-800/50">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-teal-500/10 flex items-center justify-center">
+                                    <i className="fas fa-file-import text-teal-400"></i>
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-black text-white tracking-tight uppercase">Configurações de Conteúdo</h3>
+                                    <p className="text-xs text-slate-400 font-medium tracking-wide">Gerencie a importação e exportação da sua aula.</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setShowImportExportModal(false)} className="w-10 h-10 rounded-full flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-all">
+                                <i className="fas fa-times text-xl"></i>
+                            </button>
+                        </div>
+
+                        {/* Body */}
+                        <div className="p-8">
+                            <div
+                                className={`rounded-2xl border-2 border-dashed ${isDocDragActive ? 'border-teal-500 bg-teal-500/5' : 'border-slate-800 bg-slate-900/50'} transition-all p-8`}
+                                onDrop={handleDocxDrop}
+                                onDragOver={handleDocxDragOver}
+                                onDragLeave={handleDocxDragLeave}
+                            >
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                                    {/* Coluna 1: Importar Conteúdo */}
+                                    <div className="flex flex-col gap-6">
+                                        <div>
+                                            <p className="text-base font-black text-white mb-1">Importar Conteúdo</p>
+                                            <p className="text-[11px] text-slate-400 leading-relaxed">Arraste um DOCX ou use os botões abaixo. JSON recria os blocos exatamente como salvos.</p>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <button
+                                                onClick={() => document.getElementById('docx-upload-modal')?.click()}
+                                                className="h-12 rounded-xl bg-[#10b981] text-white text-xs font-black flex items-center justify-center gap-2 hover:bg-[#059669] transition-all active:scale-[0.98] shadow-lg shadow-teal-500/20"
+                                            >
+                                                <i className="fas fa-file-word text-sm"></i> DOCX
+                                            </button>
+                                            <button
+                                                onClick={() => jsonUploadInputRef.current?.click()}
+                                                disabled={isJsonImporting}
+                                                className="h-12 rounded-xl bg-[#1e293b] text-white text-xs font-black flex items-center justify-center gap-2 hover:bg-[#334155] transition-all active:scale-[0.98] disabled:opacity-50"
+                                            >
+                                                {isJsonImporting ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-file-code text-sm"></i>} Importar JSON
+                                            </button>
+                                            <button
+                                                onClick={handleJsonExport}
+                                                className="h-12 rounded-xl bg-[#4f46e5] text-white text-xs font-black flex items-center justify-center gap-2 hover:bg-[#4338ca] transition-all active:scale-[0.98] shadow-lg shadow-indigo-500/20"
+                                            >
+                                                <i className="fas fa-download text-sm"></i> Exportar JSON
+                                            </button>
+                                            <button
+                                                onClick={() => document.getElementById('markdown-upload-modal')?.click()}
+                                                className="h-12 rounded-xl bg-[#a855f7] text-white text-xs font-black flex items-center justify-center gap-2 hover:bg-[#9333ea] transition-all active:scale-[0.98] shadow-lg shadow-purple-500/20"
+                                            >
+                                                <i className="fab fa-markdown text-sm"></i> .md
+                                            </button>
+                                        </div>
+
+                                        {/* Hidden Inputs with unique IDs for modal */}
+                                        <input id="docx-upload-modal" type="file" accept=".docx" ref={docUploadInputRef} onChange={handleDocFileInput} className="hidden" />
+                                        <input id="markdown-upload-modal" type="file" accept=".md" onChange={handleMarkdownFileInput} className="hidden" />
+                                        <input ref={jsonUploadInputRef} type="file" accept="application/json" onChange={handleJsonFileInput} className="hidden" />
+                                    </div>
+
+                                    {/* Coluna 2: Modo de Importação */}
+                                    <div className="flex flex-col gap-6">
+                                        <div>
+                                            <p className="text-base font-black text-white mb-1">Modo de Importação</p>
+                                            <p className="text-[11px] text-slate-400 leading-relaxed">Escolha como deseja processar o conteúdo importado.</p>
+                                        </div>
+                                        <div className="flex flex-col gap-3">
+                                            <button
+                                                onClick={() => setJsonImportMode('replace')}
+                                                className={`h-12 rounded-xl text-xs font-black transition-all flex items-center gap-3 px-4 active:scale-[0.98] ${jsonImportMode === 'replace'
+                                                    ? 'bg-[#ef4444] text-white shadow-lg shadow-red-500/20'
+                                                    : 'bg-[#1e293b] text-slate-400 hover:text-white hover:bg-[#334155]'
+                                                    }`}
+                                            >
+                                                <i className={`fas fa-sync-alt ${jsonImportMode === 'replace' ? 'animate-spin-slow' : ''}`}></i>
+                                                Substituir
+                                            </button>
+                                            <button
+                                                onClick={() => setJsonImportMode('append')}
+                                                className={`h-12 rounded-xl text-xs font-black transition-all flex items-center gap-3 px-4 active:scale-[0.98] ${jsonImportMode === 'append'
+                                                    ? 'bg-[#10b981] text-white shadow-lg shadow-teal-500/20'
+                                                    : 'bg-[#1e293b] text-slate-400 hover:text-white hover:bg-[#334155]'
+                                                    }`}
+                                            >
+                                                <i className="fas fa-arrow-down"></i>
+                                                Adicionar ao Final
+                                            </button>
+                                            <button
+                                                onClick={() => setJsonImportMode('prepend')}
+                                                className={`h-12 rounded-xl text-xs font-black transition-all flex items-center gap-3 px-4 active:scale-[0.98] ${jsonImportMode === 'prepend'
+                                                    ? 'bg-[#3b82f6] text-white shadow-lg shadow-blue-500/20'
+                                                    : 'bg-[#1e293b] text-slate-400 hover:text-white hover:bg-[#334155]'
+                                                    }`}
+                                            >
+                                                <i className="fas fa-arrow-up"></i>
+                                                Adicionar ao Início
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Alert/Feedback */}
+                            {(jsonImportError || docImportError) && (
+                                <div className="mt-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400 font-bold flex items-center gap-3">
+                                    <i className="fas fa-exclamation-circle text-lg"></i>
+                                    <span>{jsonImportError || docImportError}</span>
+                                </div>
+                            )}
+
+                            {jsonImportSuccess && (
+                                <div className="mt-6 p-4 rounded-xl bg-teal-500/10 border border-teal-500/20 text-xs text-teal-400 font-bold flex items-center gap-3 animate-bounce">
+                                    <i className="fas fa-check-circle text-lg"></i>
+                                    <span>Importação concluída com sucesso!</span>
+                                </div>
+                            )}
+
+                            {docPreviewHtml && (
+                                <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-900/80 p-6 shadow-inner">
+                                    <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-800">
+                                        <div className="flex items-center gap-2">
+                                            <i className="fas fa-eye text-teal-400"></i>
+                                            <p className="text-xs font-black text-white uppercase tracking-tighter">Prévia do DOCX importado</p>
+                                        </div>
+                                        <button
+                                            onClick={() => setDocPreviewHtml(null)}
+                                            className="text-[10px] font-black text-red-400 hover:text-red-300 uppercase tracking-widest"
+                                        >
+                                            Limpar Prévia
+                                        </button>
+                                    </div>
+                                    <div className="max-h-48 overflow-auto px-2 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
+                                        <div className="prose prose-invert prose-xs max-w-none text-slate-300" dangerouslySetInnerHTML={{ __html: docPreviewHtml }} />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-6 bg-slate-950/50 border-t border-slate-800/50 flex justify-end">
+                            <button
+                                onClick={() => setShowImportExportModal(false)}
+                                className="px-8 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-black transition-all active:scale-95"
+                            >
+                                FECHAR
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 };

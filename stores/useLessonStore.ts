@@ -40,7 +40,7 @@ export const useLessonStore = create<LessonStore>()(
             isPlaying: false,
             currentAudioIndex: null,
             activeBlockId: null,
-            fontSize: 16,
+            fontSize: 100,
             contentTheme: 'light',
             isCinemaMode: false,
             playbackSpeed: 1.0,
@@ -51,7 +51,7 @@ export const useLessonStore = create<LessonStore>()(
             setIsPlaying: (playing) => set({ isPlaying: playing }),
             setCurrentAudioIndex: (index) => set({ currentAudioIndex: index }),
             setActiveBlockId: (id) => set({ activeBlockId: id }),
-            setFontSize: (size) => set({ fontSize: Math.max(12, Math.min(24, size)) }), // Clamp between 12-24
+            setFontSize: (size) => set({ fontSize: Math.max(80, Math.min(200, size)) }), // Clamp between 80-200%
             setContentTheme: (theme) => set({ contentTheme: theme }),
             setPlaybackSpeed: (speed) => set({ playbackSpeed: speed }),
             setAudioEnabled: (enabled) => set({ audioEnabled: enabled }),

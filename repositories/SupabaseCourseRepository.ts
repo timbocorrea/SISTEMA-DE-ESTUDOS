@@ -509,6 +509,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
         passing_score,
         is_manually_released,
         questions_count,
+        pool_difficulty,
         quiz_questions (
           id,
           quiz_id,
@@ -550,7 +551,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
       questionsCount: questions.length
     });
 
-    return new Quiz(quizData.id, quizData.lesson_id, quizData.title, quizData.description, quizData.passing_score, questions, quizData.is_manually_released ?? false, quizData.questions_count);
+    return new Quiz(quizData.id, quizData.lesson_id, quizData.title, quizData.description, quizData.passing_score, questions, quizData.is_manually_released ?? false, quizData.questions_count, quizData.pool_difficulty);
   }
 
   async createQuiz(quiz: Quiz): Promise<Quiz> {
@@ -562,7 +563,8 @@ export class SupabaseCourseRepository implements ICourseRepository {
         description: quiz.description,
         passing_score: quiz.passingScore,
         is_manually_released: quiz.isManuallyReleased,
-        questions_count: quiz.questionsCount
+        questions_count: quiz.questionsCount,
+        pool_difficulty: quiz.poolDifficulty
       })
       .select()
       .single();
@@ -610,7 +612,8 @@ export class SupabaseCourseRepository implements ICourseRepository {
         title: quiz.title,
         description: quiz.description,
         passing_score: quiz.passingScore,
-        questions_count: quiz.questionsCount
+        questions_count: quiz.questionsCount,
+        pool_difficulty: quiz.poolDifficulty
       })
       .eq('id', quiz.id);
 

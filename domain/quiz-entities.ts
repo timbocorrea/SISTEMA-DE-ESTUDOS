@@ -10,6 +10,7 @@ export interface QuizAttemptResult {
 }
 
 export type QuestionType = 'multiple_choice' | 'true_false';
+export type QuestionDifficulty = 'easy' | 'medium' | 'hard';
 
 // ============ QUIZ ENTITIES ============
 
@@ -51,7 +52,9 @@ export class QuizQuestion {
         public readonly questionType: QuestionType,
         public readonly position: number,
         public readonly points: number,
-        public readonly options: QuizOption[]
+        public readonly options: QuizOption[],
+        public readonly difficulty: QuestionDifficulty = 'medium',
+        public readonly imageUrl?: string
     ) {
         if (points <= 0) {
             throw new ValidationError('Pontos da questão devem ser maiores que zero.');
@@ -93,7 +96,8 @@ export class Quiz {
         public passingScore: number,
         public questions: QuizQuestion[],
         public isManuallyReleased: boolean = false,
-        public questionsCount: number | null = null
+        public questionsCount: number | null = null,
+        public poolDifficulty: QuestionDifficulty | null = null
     ) {
         if (passingScore < 0 || passingScore > 100) {
             throw new ValidationError('Nota de aprovação deve estar entre 0 e 100.');
