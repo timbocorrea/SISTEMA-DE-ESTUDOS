@@ -78,6 +78,9 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     const [showQuizModal, setShowQuizModal] = useState(false);
     const [quizResult, setQuizResult] = useState<QuizAttemptResult | null>(null);
     const [isSubmittingQuiz, setIsSubmittingQuiz] = useState(false);
+    const [quizMode, setQuizMode] = useState<'practice' | 'evaluation' | null>(null);
+    const [showPracticeConfigModal, setShowPracticeConfigModal] = useState(false);
+    const [practiceQuestionCount, setPracticeQuestionCount] = useState<number>(10);
 
     // Mobile Navigation State
     const [activeMobileTab, setActiveMobileTab] = useState<'materials' | 'notes' | 'quiz' | null>(null);
@@ -160,29 +163,96 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                 answers
             );
 
-            const totalPoints = quiz.getTotalPoints();
-            const earnedPoints = Math.round((attempt.score / 100) * totalPoints);
-
-            const resultWithScore = {
-                score: attempt.score,
-                passed: attempt.passed,
-                answers: attempt.answers,
-                earnedPoints,
-                totalPoints
-            };
-
+            const result = quiz.validateAttempt(answers);
+            setQuizResult(result);
             setShowQuizModal(false);
-            setQuizResult(resultWithScore);
 
-            if (attempt.passed) {
-                lesson.setQuizPassed(true);
-                await onProgressUpdate(lesson.watchedSeconds, activeBlockId || undefined);
+            // Only show XP message if in evaluation mode
+            // Note: XP is handled by the parent component/system automatically
+            if (quizMode === 'evaluation') {
+                const pointsEarned = result.passed ? result.earnedPoints : 0;
+                toast.success(`Quiz concluído! ${result.passed ? `${pointsEarned} pontos Ganhos` : 'Tente novamente para ganhar XP'}`);
+            } else {
+                // Practice mode - no XP
+                toast.success('Modo Prática concluído! XP não concedido.');
             }
+
+            setIsSubmittingQuiz(false);
         } catch (error) {
             console.error('Error submitting quiz:', error);
             toast.error('Erro ao enviar quiz. Tente novamente.');
         } finally {
             setIsSubmittingQuiz(false);
+        }
+    };
+
+    const handleStartPracticeQuiz = async () => {
+        if (!quiz) return;
+
+        toast.loading('Preparando modo prática...');
+        try {
+            const { createSupabaseClient } = await import('../services/supabaseClient');
+            const { SupabaseQuestionBankRepository } = await import('../repositories/SupabaseQuestionBankRepository');
+            const { QuizQuestion } = await import('../domain/quiz-entities');
+
+            const supabase = createSupabaseClient();
+            const bankRepo = new SupabaseQuestionBankRepository(supabase);
+
+            const bankQuestions = await bankRepo.getRandomQuestions(
+                practiceQuestionCount,
+                {
+                    courseId: course.id,
+                    lessonId: lesson.id
+                }
+            );
+
+            if (bankQuestions.length === 0) {
+                toast.dismiss();
+                toast.error('Não há questões suficientes no banco para este modo.');
+                return;
+            }
+
+            // Shuffle array utility
+            const shuffleArray = <T,>(array: T[]): T[] => {
+                const shuffled = [...array];
+                for (let i = shuffled.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+                }
+                return shuffled;
+            };
+
+            // Create practice quiz with shuffled questions and options
+            const practiceQuestions = shuffleArray(bankQuestions).map((bq, idx) => new QuizQuestion(
+                bq.id,
+                quiz.id,
+                bq.questionText,
+                'multiple_choice',
+                idx,
+                bq.points,
+                shuffleArray(bq.options.map((o, optIdx) => ({
+                    id: o.id,
+                    questionId: bq.id,
+                    optionText: o.optionText,
+                    isCorrect: o.isCorrect,
+                    position: optIdx
+                }))),
+                bq.difficulty,
+                bq.imageUrl
+            ));
+
+            quiz.questions = practiceQuestions;
+            setQuizMode('practice');
+            setShowPracticeConfigModal(false);
+            setShowQuizModal(true);
+
+            toast.dismiss();
+            toast.success(`Modo Prática: ${practiceQuestions.length} questões!`);
+            onTrackAction?.('Iniciou Quiz em Modo Prática');
+        } catch (error) {
+            console.error('Erro ao preparar modo prática:', error);
+            toast.dismiss();
+            toast.error('Erro ao preparar modo prática.');
         }
     };
 
@@ -202,10 +272,11 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
                 const bankQuestions = await bankRepo.getRandomQuestions(
                     quiz.questionsCount,
-                    quiz.poolDifficulty || undefined,
-                    course.id,
-                    lesson.moduleId,
-                    lesson.id
+                    {
+                        difficulty: quiz.poolDifficulty || undefined,
+                        courseId: course.id,
+                        lessonId: lesson.id
+                    }
                 );
 
                 if (bankQuestions.length === 0) {
@@ -222,11 +293,12 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                     'multiple_choice',
                     idx,
                     bq.points,
-                    bq.options.map(o => ({
+                    bq.options.map((o, optIdx) => ({
                         id: o.id,
                         questionId: bq.id,
                         optionText: o.optionText,
-                        isCorrect: o.isCorrect
+                        isCorrect: o.isCorrect,
+                        position: optIdx
                     }))
                 ));
 
@@ -240,8 +312,9 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
             }
         }
 
+        setQuizMode('evaluation');
         setShowQuizModal(true);
-        onTrackAction?.('Abriu o Quiz da aula');
+        onTrackAction?.('Abriu o Quiz da aula em Modo Avaliativo');
     };
 
     /**
@@ -390,36 +463,63 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                     </div>
                 </div>
 
-                <div className="p-4">
-                    <button
-                        onClick={quizAvailable ? handleStartQuiz : undefined}
-                        disabled={!quizAvailable}
-                        className={`w-full rounded-xl p-4 transition-all ${quizAvailable
-                            ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 cursor-pointer shadow-lg shadow-emerald-500/20'
-                            : 'bg-slate-800 cursor-not-allowed opacity-60'
-                            }`}
-                        title={quizAvailable ? `Iniciar: ${quiz.title}` : `Complete 90% da aula para desbloquear`}
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className={`w-12 h-12 rounded-xl border-2 flex items-center justify-center flex-shrink-0 ${quizAvailable
-                                ? 'border-white/20 bg-white/10'
-                                : 'border-slate-700 bg-slate-700/50'
-                                }`}>
-                                <i className={`fas ${quizAvailable ? 'fa-play' : 'fa-lock'} text-xl ${quizAvailable ? 'text-white' : 'text-slate-500'}`}></i>
+                <div className="p-4 space-y-3">
+                    {/* Dual-Mode Buttons */}
+                    <div className="grid grid-cols-2 gap-3">
+                        {/* Practice Mode Button */}
+                        <button
+                            onClick={() => setShowPracticeConfigModal(true)}
+                            className="rounded-xl p-4 transition-all bg-gradient-to-br from-blue-600/20 to-indigo-600/20 border-2 border-blue-500/30 hover:border-blue-400/50 hover:from-blue-600/30 hover:to-indigo-600/30"
+                            title="Modo Prática - Sem XP"
+                        >
+                            <div className="flex flex-col items-center gap-2">
+                                <div className="w-10 h-10 rounded-lg bg-blue-500/20 border border-blue-400/30 flex items-center justify-center">
+                                    <i className="fas fa-dumbbell text-lg text-blue-400"></i>
+                                </div>
+                                <div className="text-center">
+                                    <p className="font-bold text-sm text-slate-100">Prática</p>
+                                    <p className="text-[9px] text-blue-300 font-semibold uppercase tracking-wider">Sem XP</p>
+                                </div>
                             </div>
-                            <div className="flex-1 text-left">
-                                <h4 className={`font-bold text-sm mb-1 ${quizAvailable ? 'text-white' : 'text-slate-400'}`}>
-                                    {quiz.title}
-                                </h4>
-                                <p className={`text-xs ${quizAvailable ? 'text-emerald-200' : 'text-slate-500'}`}>
-                                    {quiz.questions.length} {quiz.questions.length === 1 ? 'Pergunta' : 'Perguntas'}
-                                </p>
+                        </button>
+
+                        {/* Evaluation Mode Button */}
+                        <button
+                            onClick={quizAvailable ? handleStartQuiz : undefined}
+                            disabled={!quizAvailable}
+                            className={`rounded-xl p-4 transition-all ${quizAvailable
+                                ? 'bg-gradient-to-br from-emerald-600/30 to-teal-600/30 border-2 border-emerald-500/40 hover:border-emerald-400/60 hover:from-emerald-600/40 hover:to-teal-600/40 cursor-pointer'
+                                : 'bg-slate-800/50 border-2 border-slate-700/50 cursor-not-allowed opacity-60'
+                                }`}
+                            title={quizAvailable ? "Modo Avaliativo - Ganhe XP" : "Complete 90% da aula para desbloquear"}
+                        >
+                            <div className="flex flex-col items-center gap-2">
+                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${quizAvailable
+                                    ? 'bg-emerald-500/20 border border-emerald-400/30'
+                                    : 'bg-slate-700/50 border border-slate-600'
+                                    }`}>
+                                    <i className={`fas ${quizAvailable ? 'fa-trophy' : 'fa-lock'} text-lg ${quizAvailable ? 'text-emerald-400' : 'text-slate-500'}`}></i>
+                                </div>
+                                <div className="text-center">
+                                    <p className={`font-bold text-sm ${quizAvailable ? 'text-slate-100' : 'text-slate-400'}`}>Avaliativo</p>
+                                    <p className={`text-[9px] font-semibold uppercase tracking-wider ${quizAvailable ? 'text-emerald-300' : 'text-slate-500'}`}>
+                                        {quizAvailable ? 'Ganhe XP' : 'Bloqueado'}
+                                    </p>
+                                </div>
                             </div>
-                            {quizAvailable && (
-                                <i className="fas fa-arrow-right text-white text-xl"></i>
-                            )}
+                        </button>
+                    </div>
+
+                    {/* Quiz Info */}
+                    <div className="p-3 bg-slate-800/30 rounded-xl border border-slate-700/50">
+                        <div className="flex items-center justify-between text-xs mb-1">
+                            <span className="text-slate-400 font-semibold">{quiz.title}</span>
+                            <span className="text-slate-300 font-bold">{quiz.questions.length || quiz.questionsCount || 0} questões</span>
                         </div>
-                    </button>
+                        {quizAvailable && (
+                            <p className="text-[10px] text-slate-500">Nota de aprovação: {quiz.passingScore}%</p>
+                        )}
+                    </div>
 
                     {!quizAvailable && (
                         <div className="mt-4 p-3 bg-slate-800/50 rounded-xl border border-slate-700">
@@ -867,6 +967,81 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
             {/* Espaçamento extra no fundo apenas no mobile para o menu fixo */}
             <div className="h-20 lg:hidden"></div>
+
+            {/* Practice Configuration Modal */}
+            {showPracticeConfigModal && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-md w-full border border-slate-200 dark:border-slate-800 animate-in slide-in-from-bottom-4 duration-300">
+                        {/* Header */}
+                        <div className="p-6 border-b border-slate-200 dark:border-slate-800">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+                                        <i className="fas fa-dumbbell text-2xl text-blue-500"></i>
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xl font-black text-slate-900 dark:text-white">Modo Prática</h3>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400">Configure seu treino</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setShowPracticeConfigModal(false)}
+                                    className="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"
+                                >
+                                    <i className="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-6 space-y-6">
+                            {/* Info Alert */}
+                            <div className="p-4 bg-blue-50 dark:bg-blue-500/5 border border-blue-200 dark:border-blue-500/20 rounded-2xl">
+                                <div className="flex gap-3">
+                                    <i className="fas fa-info-circle text-blue-500 mt-0.5"></i>
+                                    <div className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
+                                        <p className="font-bold">Este modo NÃO concede XP nem afeta seu ranking.</p>
+                                        <p className="text-blue-600 dark:text-blue-400">Use para treinar e testar seus conhecimentos!</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Question Quantity Selector */}
+                            <div className="space-y-3">
+                                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300">
+                                    Quantas questões você quer praticar?
+                                </label>
+                                <div className="grid grid-cols-3 gap-3">
+                                    {[5, 10, 15, 20, 25, 30].map(count => (
+                                        <button
+                                            key={count}
+                                            onClick={() => setPracticeQuestionCount(count)}
+                                            className={`p-4 rounded-xl font-bold text-sm transition-all ${practiceQuestionCount === count
+                                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 scale-105'
+                                                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                                                }`}
+                                        >
+                                            {count}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Start Button */}
+                            <button
+                                onClick={handleStartPracticeQuiz}
+                                className="w-full py-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold shadow-lg shadow-blue-600/20 transition-all active:scale-95"
+                            >
+                                <div className="flex items-center justify-center gap-2">
+                                    <i className="fas fa-play"></i>
+                                    <span>Iniciar Prática ({practiceQuestionCount} questões)</span>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {
                 showQuizModal && quiz && (
                     <QuizModal
@@ -887,9 +1062,14 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                         passingScore={quiz.passingScore}
                         isOpen={!!quizResult}
                         onClose={() => setQuizResult(null)}
+                        quizMode={quizMode}
                         onRetry={() => {
                             setQuizResult(null);
-                            handleStartQuiz();
+                            if (quizMode === 'practice') {
+                                setShowPracticeConfigModal(true);
+                            } else {
+                                handleStartQuiz();
+                            }
                         }}
                     />
                 )

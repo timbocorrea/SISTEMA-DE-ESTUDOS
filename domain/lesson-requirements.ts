@@ -10,6 +10,8 @@ export interface ILessonProgressRequirements {
     requiredPdfs: string[];
     requiredAudios: string[];
     requiredMaterials: string[];
+    minEvaluationQuestions?: number; // Minimum questions for evaluation mode to earn XP
+    evaluationPassingScore?: number; // Passing score percentage for evaluation mode
 }
 
 export class LessonProgressRequirements {
@@ -19,7 +21,9 @@ export class LessonProgressRequirements {
         public readonly textBlocksRequiredPercent: number = 0,
         public readonly requiredPdfs: string[] = [],
         public readonly requiredAudios: string[] = [],
-        public readonly requiredMaterials: string[] = []
+        public readonly requiredMaterials: string[] = [],
+        public readonly minEvaluationQuestions: number = 10, // Default: 10 questões mínimas
+        public readonly evaluationPassingScore: number = 70 // Default: 70% para aprovação
     ) {
         // Validações
         if (videoRequiredPercent < 0 || videoRequiredPercent > 100) {
@@ -27,6 +31,12 @@ export class LessonProgressRequirements {
         }
         if (textBlocksRequiredPercent < 0 || textBlocksRequiredPercent > 100) {
             throw new Error('Text blocks percent must be between 0 and 100');
+        }
+        if (minEvaluationQuestions < 1) {
+            throw new Error('Min evaluation questions must be at least 1');
+        }
+        if (evaluationPassingScore < 0 || evaluationPassingScore > 100) {
+            throw new Error('Evaluation passing score must be between 0 and 100');
         }
     }
 

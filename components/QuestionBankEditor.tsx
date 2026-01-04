@@ -1,5 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { QuizQuestion, QuizOption, QuestionDifficulty } from '../domain/quiz-entities';
+import { AdminService } from '../services/AdminService';
+import { CourseRecord, ModuleRecord, LessonRecord } from '../domain/admin';
 import { toast } from 'sonner';
 
 interface QuestionBankEditorProps {
@@ -9,11 +11,22 @@ interface QuestionBankEditorProps {
         moduleId?: string;
         lessonId?: string;
     };
-    onSave: (question: QuizQuestion) => Promise<void>;
+    adminService: AdminService;
+    onSave: (question: QuizQuestion, h: { courseId?: string; moduleId?: string; lessonId?: string }) => Promise<void>;
     onClose: () => void;
 }
 
-const QuestionBankEditor: React.FC<QuestionBankEditorProps> = ({ existingQuestion, hierarchy, onSave, onClose }) => {
+const QuestionBankEditor: React.FC<QuestionBankEditorProps> = ({ existingQuestion, hierarchy, adminService, onSave, onClose }) => {
+    // Current Hierarchy State - Prioritize existing question data over current filter
+    const [selectedCourseId, setSelectedCourseId] = useState(existingQuestion?.courseId || hierarchy.courseId || '');
+    const [selectedModuleId, setSelectedModuleId] = useState(existingQuestion?.moduleId || hierarchy.moduleId || '');
+    const [selectedLessonId, setSelectedLessonId] = useState(existingQuestion?.lessonId || hierarchy.lessonId || '');
+
+    // Lists for selectors
+    const [courses, setCourses] = useState<CourseRecord[]>([]);
+    const [modules, setModules] = useState<ModuleRecord[]>([]);
+    const [lessons, setLessons] = useState<LessonRecord[]>([]);
+
     const [questionText, setQuestionText] = useState(existingQuestion?.questionText || '');
     const [difficulty, setDifficulty] = useState<QuestionDifficulty>(existingQuestion?.difficulty || 'medium');
     const [imageUrl, setImageUrl] = useState(existingQuestion?.imageUrl || '');
@@ -30,6 +43,47 @@ const QuestionBankEditor: React.FC<QuestionBankEditorProps> = ({ existingQuestio
     const [isSaving, setIsSaving] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [pendingQuestions, setPendingQuestions] = useState<any[] | null>(null);
+
+    // Load available data
+    useEffect(() => {
+        loadCourses();
+        if (selectedCourseId) loadModules(selectedCourseId);
+        if (selectedModuleId) loadLessons(selectedModuleId);
+    }, []);
+
+    const loadCourses = async () => {
+        try {
+            const list = await adminService.listCourses();
+            setCourses(list);
+        } catch (e) { console.error(e); }
+    };
+
+    const loadModules = async (cid: string) => {
+        try {
+            const list = await adminService.listModules(cid);
+            setModules(list);
+        } catch (e) { console.error(e); }
+    };
+
+    const loadLessons = async (mid: string) => {
+        try {
+            const list = await adminService.listLessons(mid);
+            setLessons(list);
+        } catch (e) { console.error(e); }
+    };
+
+    const handleCourseChange = (id: string) => {
+        setSelectedCourseId(id);
+        setSelectedModuleId('');
+        setSelectedLessonId('');
+        if (id) loadModules(id);
+    };
+
+    const handleModuleChange = (id: string) => {
+        setSelectedModuleId(id);
+        setSelectedLessonId('');
+        if (id) loadLessons(id);
+    };
 
     const addOption = () => {
         setOptions([...options, { optionText: '', isCorrect: false }]);
@@ -67,21 +121,71 @@ const QuestionBankEditor: React.FC<QuestionBankEditorProps> = ({ existingQuestio
             try {
                 let parsed: any[] = [];
                 if (file.name.endsWith('.json')) {
-                    parsed = JSON.parse(content);
-                    if (!Array.isArray(parsed)) parsed = [parsed];
+                    const raw = JSON.parse(content);
+
+                    // Handle specific structure where questions are inside a "questions" key
+                    let data: any[] = [];
+                    if (raw.questions && Array.isArray(raw.questions)) {
+                        data = raw.questions;
+                    } else {
+                        data = Array.isArray(raw) ? raw : [raw];
+                    }
+
+                    // Normalize JSON formats
+                    parsed = data.map((item) => {
+                        // Support for multiple key variations including "prompt" (PDF extraction)
+                        const question = item.question || item.questao || item.questionText || item.text || item.prompt;
+
+                        // Detect and convert choices object { a: "...", b: "..." } to options array
+                        let optionsRaw = item.options || item.opcoes || item.choices || [];
+                        if (optionsRaw && !Array.isArray(optionsRaw) && typeof optionsRaw === 'object') {
+                            optionsRaw = Object.entries(optionsRaw).map(([key, val]) => ({
+                                optionText: String(val),
+                                isCorrect: false, // Will be set by index match below
+                                key: key.toLowerCase() // 'a', 'b', 'c', etc.
+                            }));
+                        }
+
+                        const correctAnswerIndex = item.correctAnswerIndex !== undefined ? item.correctAnswerIndex :
+                            item.resposta !== undefined ? item.resposta : -1;
+
+                        const normalizedOptions = Array.isArray(optionsRaw) ? optionsRaw.map((opt: any, idx: number) => {
+                            const isString = typeof opt === 'string';
+                            const text = isString ? opt : (opt.optionText || opt.texto || opt.text || '');
+
+                            // Check for correct answer by numeric index or letter key
+                            const isCorrect = isString
+                                ? String(idx) === String(correctAnswerIndex)
+                                : (!!opt.isCorrect || String(idx) === String(correctAnswerIndex) || (opt.key && String(opt.key) === String(correctAnswerIndex).toLowerCase()));
+
+                            return {
+                                optionText: text,
+                                isCorrect
+                            };
+                        }) : [];
+
+                        return {
+                            questionText: String(question || ''),
+                            difficulty: (item.difficulty || item.dificuldade || 'medium').toLowerCase(),
+                            points: item.points || item.pontos || 1,
+                            options: normalizedOptions
+                        };
+                    });
                 } else if (file.name.endsWith('.md')) {
                     parsed = parseMarkdown(content);
+                } else {
+                    toast.error('Formato de arquivo não suportado. Use .json ou .md');
+                    return;
                 }
 
-                // Filter valid questions
+                // Filter valid questions: Must have text and at least 2 options.
                 const validQuestions = parsed.filter(q =>
                     q.questionText?.trim() &&
-                    (q.options || []).length >= 2 &&
-                    (q.options || []).some((o: any) => o.isCorrect)
+                    (q.options || []).length >= 2
                 );
 
                 if (validQuestions.length === 0) {
-                    toast.error('Nenhuma questão válida encontrada (mínimo 2 opções e 1 correta).');
+                    toast.error('Nenhuma questão válida encontrada. Verifique o formato do arquivo.');
                     return;
                 }
 
@@ -90,17 +194,14 @@ const QuestionBankEditor: React.FC<QuestionBankEditorProps> = ({ existingQuestio
                 }
 
                 setPendingQuestions(validQuestions.map(q => ({
-                    questionText: q.questionText || '',
-                    difficulty: q.difficulty || 'medium',
-                    points: q.points || 1,
-                    options: (q.options || []).map((o: any) => ({
-                        optionText: o.optionText || '',
-                        isCorrect: !!o.isCorrect
-                    }))
+                    questionText: q.questionText,
+                    difficulty: q.difficulty as QuestionDifficulty,
+                    points: q.points,
+                    options: q.options
                 })));
             } catch (error) {
-                console.error(error);
-                toast.error('Erro ao processar arquivo.');
+                console.error("Erro no processamento do JSON:", error);
+                toast.error('Erro ao processar arquivo JSON.');
             }
         };
         reader.readAsText(file);
@@ -147,8 +248,29 @@ const QuestionBankEditor: React.FC<QuestionBankEditorProps> = ({ existingQuestio
         return questions;
     };
 
+    const togglePendingCorrect = (qIdx: number, oIdx: number) => {
+        if (!pendingQuestions) return;
+        const updated = [...pendingQuestions];
+        updated[qIdx] = {
+            ...updated[qIdx],
+            options: updated[qIdx].options.map((opt: any, i: number) => ({
+                ...opt,
+                isCorrect: i === oIdx
+            }))
+        };
+        setPendingQuestions(updated);
+    };
+
     const handleImportAll = async () => {
         if (!pendingQuestions) return;
+
+        // Final validation: all questions must have a correct answer
+        const invalidQuestionIdx = pendingQuestions.findIndex(q => !q.options.some((o: any) => o.isCorrect));
+        if (invalidQuestionIdx !== -1) {
+            toast.error(`A questão ${invalidQuestionIdx + 1} não tem uma resposta correta selecionada.`);
+            return;
+        }
+
         setIsSaving(true);
         try {
             for (const qData of pendingQuestions) {
@@ -168,7 +290,11 @@ const QuestionBankEditor: React.FC<QuestionBankEditorProps> = ({ existingQuestio
                     ''
                 );
 
-                await onSave(question);
+                await onSave(question, {
+                    courseId: selectedCourseId || undefined,
+                    moduleId: selectedModuleId || undefined,
+                    lessonId: selectedLessonId || undefined
+                });
             }
             toast.success(`${pendingQuestions.length} questões importadas!`);
             setPendingQuestions(null);
@@ -226,7 +352,11 @@ const QuestionBankEditor: React.FC<QuestionBankEditorProps> = ({ existingQuestio
                 imageUrl
             );
 
-            await onSave(question);
+            await onSave(question, {
+                courseId: selectedCourseId || undefined,
+                moduleId: selectedModuleId || undefined,
+                lessonId: selectedLessonId || undefined
+            });
             toast.success('Questão salva com sucesso!');
             onClose();
         } catch (error) {
@@ -284,6 +414,45 @@ const QuestionBankEditor: React.FC<QuestionBankEditorProps> = ({ existingQuestio
                             </button>
                         </div>
                     )}
+
+                    {/* Hierarchy Selection */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 bg-slate-50 dark:bg-slate-950/30 rounded-2xl border border-slate-100 dark:border-slate-800">
+                        <div className="space-y-1.5">
+                            <label className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Curso Alvo</label>
+                            <select
+                                value={selectedCourseId}
+                                onChange={(e) => handleCourseChange(e.target.value)}
+                                className="w-full bg-white dark:bg-slate-800 border-none rounded-xl px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none appearance-none cursor-pointer"
+                            >
+                                <option value="">Nenhum Curso</option>
+                                {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
+                            </select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Módulo Alvo</label>
+                            <select
+                                value={selectedModuleId}
+                                onChange={(e) => handleModuleChange(e.target.value)}
+                                disabled={!selectedCourseId}
+                                className="w-full bg-white dark:bg-slate-800 border-none rounded-xl px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none appearance-none cursor-pointer disabled:opacity-50"
+                            >
+                                <option value="">Nenhum Módulo</option>
+                                {modules.map(m => <option key={m.id} value={m.id}>{m.title}</option>)}
+                            </select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Aula Alvo</label>
+                            <select
+                                value={selectedLessonId}
+                                onChange={(e) => setSelectedLessonId(e.target.value)}
+                                disabled={!selectedModuleId}
+                                className="w-full bg-white dark:bg-slate-800 border-none rounded-xl px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none appearance-none cursor-pointer disabled:opacity-50"
+                            >
+                                <option value="">Nenhuma Aula</option>
+                                {lessons.map(l => <option key={l.id} value={l.id}>{l.title}</option>)}
+                            </select>
+                        </div>
+                    </div>
 
                     {/* Basic Info */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -454,17 +623,21 @@ const QuestionBankEditor: React.FC<QuestionBankEditorProps> = ({ existingQuestio
                                         </button>
                                     </div>
 
-                                    <p className="font-black text-slate-800 dark:text-white leading-tight">{i + 1}. {q.questionText}</p>
+                                    <p className="font-black text-slate-800 dark:text-white leading-tight whitespace-pre-wrap">{i + 1}. {q.questionText}</p>
 
                                     <div className="grid grid-cols-1 gap-2">
                                         {q.options.map((o: any, j: number) => (
-                                            <div key={j} className={`px-3 py-2 rounded-xl text-xs font-medium border flex items-center gap-2 ${o.isCorrect
-                                                ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800/50 text-emerald-700 dark:text-emerald-400 font-bold'
-                                                : 'bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-800 text-slate-500 dark:text-slate-400'
-                                                }`}>
+                                            <button
+                                                key={j}
+                                                onClick={() => togglePendingCorrect(i, j)}
+                                                className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium border flex items-center gap-2 transition-all ${o.isCorrect
+                                                    ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800/50 text-emerald-700 dark:text-emerald-400 font-bold shadow-sm'
+                                                    : 'bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:border-indigo-300'
+                                                    }`}
+                                            >
                                                 <i className={`fas ${o.isCorrect ? 'fa-check-circle' : 'fa-circle'} text-[10px]`}></i>
-                                                {o.optionText}
-                                            </div>
+                                                <span className="whitespace-pre-wrap">{o.optionText}</span>
+                                            </button>
                                         ))}
                                     </div>
                                 </div>

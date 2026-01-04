@@ -19,7 +19,13 @@ export class SupabaseQuestionBankRepository implements IQuestionBankRepository {
             row.points || 1,
             options,
             row.difficulty as QuestionDifficulty,
-            row.image_url
+            row.image_url,
+            row.course_id,
+            row.module_id,
+            row.lesson_id,
+            row.courses?.title,
+            row.modules?.title,
+            row.lessons?.title
         );
     }
 
@@ -28,24 +34,38 @@ export class SupabaseQuestionBankRepository implements IQuestionBankRepository {
         moduleId?: string;
         lessonId?: string;
         difficulty?: QuestionDifficulty;
+        keyword?: string;
     }): Promise<QuizQuestion[]> {
         let query = this.client
             .from('question_bank')
             .select(`
                 *,
-                question_bank_options ( id, question_id, option_text, is_correct, position )
+                question_bank_options ( id, question_id, option_text, is_correct, position ),
+                courses:course_id ( title ),
+                modules:module_id ( title ),
+                lessons:lesson_id ( title )
             `);
 
         if (filters.courseId) query = query.eq('course_id', filters.courseId);
         if (filters.moduleId) query = query.eq('module_id', filters.moduleId);
         if (filters.lessonId) query = query.eq('lesson_id', filters.lessonId);
         if (filters.difficulty) query = query.eq('difficulty', filters.difficulty);
+        if (filters.keyword) query = query.ilike('question_text', `%${filters.keyword}%`);
 
         const { data, error } = await query.order('created_at', { ascending: false });
 
         if (error) throw new DomainError(`Erro ao buscar questões do banco: ${error.message}`);
 
-        return (data || []).map(row => this.mapQuestion(row));
+        const questions: QuizQuestion[] = [];
+        (data || []).forEach(row => {
+            try {
+                questions.push(this.mapQuestion(row));
+            } catch (e) {
+                console.warn(`[SupabaseQuestionBankRepository] Skipping invalid question ${row.id}:`, e);
+            }
+        });
+
+        return questions;
     }
 
     async getQuestionById(id: string): Promise<QuizQuestion | null> {
@@ -53,7 +73,10 @@ export class SupabaseQuestionBankRepository implements IQuestionBankRepository {
             .from('question_bank')
             .select(`
                 *,
-                question_bank_options ( id, question_id, option_text, is_correct, position )
+                question_bank_options ( id, question_id, option_text, is_correct, position ),
+                courses:course_id ( title ),
+                modules:module_id ( title ),
+                lessons:lesson_id ( title )
             `)
             .eq('id', id)
             .maybeSingle();
@@ -85,11 +108,11 @@ export class SupabaseQuestionBankRepository implements IQuestionBankRepository {
 
         if (error) throw new DomainError(`Erro ao criar questão no banco: ${error.message}`);
 
-        const options = question.options.map(o => ({
+        const options = question.options.map((o, idx) => ({
             question_id: data.id,
             option_text: o.optionText,
             is_correct: o.isCorrect,
-            position: o.position
+            position: o.position ?? idx
         }));
 
         const { error: optionsError } = await this.client
@@ -101,6 +124,19 @@ export class SupabaseQuestionBankRepository implements IQuestionBankRepository {
         const created = await this.getQuestionById(data.id);
         if (!created) throw new DomainError('Erro ao recuperar questão criada');
         return created;
+    }
+
+    async createQuestions(questions: QuizQuestion[], hierarchy: {
+        courseId?: string;
+        moduleId?: string;
+        lessonId?: string;
+    }): Promise<void> {
+        // We do this in a loop because we need the ID of each question to insert options.
+        // For very large imports, this could be optimized with a single RPC or bulk insert if IDs were pre-generated,
+        // but for typical quiz sizes (5-20), sequential or Promise.all is fine.
+        for (const q of questions) {
+            await this.createQuestion(q, hierarchy);
+        }
     }
 
     async updateQuestion(question: QuizQuestion, hierarchy: {
@@ -176,6 +212,15 @@ export class SupabaseQuestionBankRepository implements IQuestionBankRepository {
             );
         }
 
-        return (data || []).map((row: any) => this.mapQuestion(row));
+        const questions: QuizQuestion[] = [];
+        (data || []).forEach((row: any) => {
+            try {
+                questions.push(this.mapQuestion(row));
+            } catch (e) {
+                console.warn(`[SupabaseQuestionBankRepository] Skipping invalid random question ${row.id}:`, e);
+            }
+        });
+
+        return questions;
     }
 }

@@ -555,6 +555,26 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
     const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
     const [bulkCount, setBulkCount] = useState(3);
 
+    // Hierarchy State for Quiz Bank Preview
+    const [courseId, setCourseId] = useState<string | undefined>(undefined);
+    const [moduleId, setModuleId] = useState<string | undefined>(lesson.module_id);
+
+    useEffect(() => {
+        if (lesson.module_id) {
+            setModuleId(lesson.module_id);
+            const fetchHierarchy = async () => {
+                try {
+                    const repo = new SupabaseAdminRepository();
+                    const mod = await repo.getModule(lesson.module_id);
+                    setCourseId(mod.course_id);
+                } catch (error) {
+                    console.error('Error fetching hierarchy:', error);
+                }
+            };
+            fetchHierarchy();
+        }
+    }, [lesson.id, lesson.module_id]);
+
     // Carregar quiz existente ao montar componente
     useEffect(() => {
         async function loadExistingQuiz() {
@@ -616,23 +636,26 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                 quizData.passingScore,
                 quizData.questions.map((q: any, idx: number) =>
                     new QuizQuestion(
-                        crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2),
-                        'temp-quiz-id', // ID temporário, será substituído no backend
+                        q.id || (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2)),
+                        existingQuiz?.id || 'temp-quiz-id',
                         q.questionText,
                         q.questionType,
                         idx,
                         q.points,
                         q.options.map((o: any, oIdx: number) =>
                             new QuizOption(
-                                crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2),
-                                'temp-q-id',
+                                o.id || (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2)),
+                                q.id || 'temp-q-id',
                                 o.optionText,
                                 o.isCorrect,
                                 oIdx
                             )
                         )
                     )
-                )
+                ),
+                existingQuiz?.isManuallyReleased || false,
+                quizData.questionsCount,
+                quizData.poolDifficulty
             );
 
             // UPDATE se já existe, CREATE se novo
@@ -3475,6 +3498,8 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                             }
                         })()}
                         lessonResources={(lesson as any).resources || []}
+                        courseId={courseId}
+                        moduleId={moduleId}
                     />
                 )
             }

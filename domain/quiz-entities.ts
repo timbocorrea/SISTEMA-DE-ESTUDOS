@@ -54,7 +54,13 @@ export class QuizQuestion {
         public readonly points: number,
         public readonly options: QuizOption[],
         public readonly difficulty: QuestionDifficulty = 'medium',
-        public readonly imageUrl?: string
+        public readonly imageUrl?: string,
+        public readonly courseId?: string,
+        public readonly moduleId?: string,
+        public readonly lessonId?: string,
+        public readonly courseName?: string,
+        public readonly moduleName?: string,
+        public readonly lessonName?: string
     ) {
         if (points <= 0) {
             throw new ValidationError('Pontos da questão devem ser maiores que zero.');
@@ -101,9 +107,6 @@ export class Quiz {
     ) {
         if (passingScore < 0 || passingScore > 100) {
             throw new ValidationError('Nota de aprovação deve estar entre 0 e 100.');
-        }
-        if (questions.length === 0) {
-            throw new ValidationError('Quiz deve ter pelo menos uma pergunta.');
         }
     }
 

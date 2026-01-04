@@ -129,6 +129,17 @@ export class SupabaseAdminRepository implements IAdminRepository {
     return data as ModuleRecord;
   }
 
+  async getModule(id: string): Promise<ModuleRecord> {
+    const { data, error } = await this.client
+      .from('modules')
+      .select('id,course_id,title,position,created_at')
+      .eq('id', id)
+      .single();
+
+    if (error || !data) throw new DomainError(`Falha ao buscar módulo: ${error?.message || 'módulo não encontrado'}`);
+    return data as ModuleRecord;
+  }
+
   async deleteModule(id: string): Promise<void> {
     const { data, error } = await this.client.from('modules').delete().eq('id', id).select('id');
     if (error) throw new DomainError(`Falha ao excluir módulo: ${error.message}`);

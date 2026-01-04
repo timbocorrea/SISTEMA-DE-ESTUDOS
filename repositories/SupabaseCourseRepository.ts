@@ -606,18 +606,119 @@ export class SupabaseCourseRepository implements ICourseRepository {
   }
 
   async updateQuiz(quiz: Quiz): Promise<Quiz> {
-    const { error } = await this.client
+    console.log('🔄 [REPOSITORY] Iniciando atualização do Quiz:', quiz.id);
+
+    // 1. Atualizar cabeçalho do Quiz
+    const { error: quizError } = await this.client
       .from('quizzes')
       .update({
         title: quiz.title,
         description: quiz.description,
         passing_score: quiz.passingScore,
         questions_count: quiz.questionsCount,
-        pool_difficulty: quiz.poolDifficulty
+        pool_difficulty: quiz.poolDifficulty,
+        is_manually_released: quiz.isManuallyReleased
       })
       .eq('id', quiz.id);
 
-    if (error) throw new DomainError(`Erro ao atualizar quiz: ${error.message}`);
+    if (quizError) throw new DomainError(`Erro ao atualizar quiz: ${quizError.message}`);
+    console.log('✅ [REPOSITORY] Cabeçalho do Quiz atualizado.');
+
+    // 2. Sincronizar Questões
+    const { data: currentQuestions, error: qFetchError } = await this.client
+      .from('quiz_questions')
+      .select('id')
+      .eq('quiz_id', quiz.id);
+
+    if (qFetchError) throw new DomainError(`Erro ao sincronizar questões (fetch): ${qFetchError.message}`);
+
+    const currentQIds = (currentQuestions || []).map(q => q.id);
+    const incomingQIds = quiz.questions.map(q => q.id);
+
+    console.log('📊 [REPOSITORY] Sync Questões:', {
+      existentesNoBanco: currentQIds.length,
+      recebidasDoFrontend: incomingQIds.length
+    });
+
+    // Questões a deletar - Deletar opções primeiro para evitar restrição de chave estrangeira
+    const qIdsToDelete = currentQIds.filter(id => !incomingQIds.includes(id));
+    if (qIdsToDelete.length > 0) {
+      console.log('🗑️ [REPOSITORY] Deletando questões removidas:', qIdsToDelete);
+
+      // Deletar todas as opções das questões que serão removidas
+      const { error: oDelError } = await this.client
+        .from('quiz_options')
+        .delete()
+        .in('question_id', qIdsToDelete);
+
+      if (oDelError) throw new DomainError(`Erro ao limpar opções das questões removidas: ${oDelError.message}`);
+
+      // Agora deletar as questões
+      const { error: delError } = await this.client
+        .from('quiz_questions')
+        .delete()
+        .in('id', qIdsToDelete);
+
+      if (delError) throw new DomainError(`Erro ao deletar questões removidas: ${delError.message}`);
+      console.log('✅ [REPOSITORY] Questões removidas deletadas com sucesso.');
+    }
+
+    // Upsert das questões atuais/novas
+    for (const question of quiz.questions) {
+      console.log('📝 [REPOSITORY] Processando questão:', question.id);
+
+      const { error: qUpsertError } = await this.client
+        .from('quiz_questions')
+        .upsert({
+          id: question.id,
+          quiz_id: quiz.id,
+          question_text: question.questionText,
+          question_type: question.questionType,
+          position: question.position,
+          points: question.points
+        });
+
+      if (qUpsertError) throw new DomainError(`Erro ao salvar questão ${question.id}: ${qUpsertError.message}`);
+
+      // Sincronizar Opções para esta questão
+      const { data: currentOptions, error: oFetchError } = await this.client
+        .from('quiz_options')
+        .select('id')
+        .eq('question_id', question.id);
+
+      if (oFetchError) throw new DomainError(`Erro ao sincronizar opções da questão ${question.id}: ${oFetchError.message}`);
+
+      const currentOIds = (currentOptions || []).map(o => o.id);
+      const incomingOIds = question.options.map(o => o.id);
+
+      // Opções a deletar
+      const oIdsToDelete = currentOIds.filter(id => !incomingOIds.includes(id));
+      if (oIdsToDelete.length > 0) {
+        console.log(`  🗑️ Deletando ${oIdsToDelete.length} opções da questão ${question.id}`);
+        const { error: oDelError } = await this.client
+          .from('quiz_options')
+          .delete()
+          .in('id', oIdsToDelete);
+        if (oDelError) throw new DomainError(`Erro ao deletar opções removidas da questão ${question.id}: ${oDelError.message}`);
+      }
+
+      // Upsert das opções atuais/novas
+      const optionsToUpsert = question.options.map(o => ({
+        id: o.id,
+        question_id: question.id,
+        option_text: o.optionText,
+        is_correct: o.isCorrect,
+        position: o.position
+      }));
+
+      const { error: oUpsertError } = await this.client
+        .from('quiz_options')
+        .upsert(optionsToUpsert);
+
+      if (oUpsertError) throw new DomainError(`Erro ao salvar opções da questão ${question.id}: ${oUpsertError.message}`);
+    }
+
+    console.log('🎉 [REPOSITORY] Sincronização de Quiz concluída!');
 
     const updated = await this.getQuizByLessonId(quiz.lessonId);
     if (!updated) throw new NotFoundError('Quiz', quiz.id);
@@ -630,7 +731,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
       .delete()
       .eq('id', quizId);
 
-    if (error) throw new DomainError(`Erro ao deletar quiz: ${error.message}`);
+    if (error) throw new DomainError(`Erro ao deletar quiz: ${error.message} `);
   }
 
   async toggleQuizRelease(quizId: string, released: boolean): Promise<void> {
@@ -649,7 +750,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
         p_answers: answers
       });
 
-    if (error) throw new DomainError(`Erro ao registrar tentativa: ${error.message}`);
+    if (error) throw new DomainError(`Erro ao registrar tentativa: ${error.message} `);
 
     // Map the returned JSON to QuizAttempt entity
     return new QuizAttempt(
@@ -674,7 +775,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
       .limit(1)
       .maybeSingle();
 
-    if (error) throw new DomainError(`Erro ao buscar tentativa: ${error.message}`);
+    if (error) throw new DomainError(`Erro ao buscar tentativa: ${error.message} `);
     if (!data) return null;
 
     return new QuizAttempt(
@@ -697,7 +798,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
       .eq('quiz_id', quizId)
       .order('completed_at', { ascending: false });
 
-    if (error) throw new DomainError(`Erro ao buscar tentativas: ${error.message}`);
+    if (error) throw new DomainError(`Erro ao buscar tentativas: ${error.message} `);
 
     const attempts: QuizAttempt[] = (data || []).map(row =>
       new QuizAttempt(
@@ -729,7 +830,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
         status: report.status || 'pending'
       });
 
-    if (error) throw new DomainError(`Erro ao criar reporte de erro: ${error.message}`);
+    if (error) throw new DomainError(`Erro ao criar reporte de erro: ${error.message} `);
   }
 
   async getQuizReports(quizId: string): Promise<import('../domain/quiz-entities').QuizReport[]> {
@@ -739,7 +840,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
       .eq('quiz_id', quizId)
       .order('created_at', { ascending: false });
 
-    if (error) throw new DomainError(`Erro ao buscar reportes: ${error.message}`);
+    if (error) throw new DomainError(`Erro ao buscar reportes: ${error.message} `);
 
     return (data || []).map(row => ({
       id: row.id,
@@ -764,7 +865,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
       .eq('lesson_id', lessonId)
       .maybeSingle();
 
-    if (error) throw new DomainError(`Erro ao buscar requisitos: ${error.message}`);
+    if (error) throw new DomainError(`Erro ao buscar requisitos: ${error.message} `);
 
     // Se não configurado, retorna padrão (90% vídeo)
     if (!data) {
@@ -793,7 +894,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
         required_materials: requirements.requiredMaterials
       });
 
-    if (error) throw new DomainError(`Erro ao salvar requisitos: ${error.message}`);
+    if (error) throw new DomainError(`Erro ao salvar requisitos: ${error.message} `);
   }
 
   // ===== DETAILED PROGRESS TRACKING =====
@@ -822,7 +923,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
           last_updated: new Date().toISOString()
         });
 
-      if (error) throw new DomainError(`Erro ao marcar bloco como lido: ${error.message}`);
+      if (error) throw new DomainError(`Erro ao marcar bloco como lido: ${error.message} `);
     }
   }
 
@@ -848,7 +949,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
           last_updated: new Date().toISOString()
         });
 
-      if (error) throw new DomainError(`Erro ao marcar PDF como visualizado: ${error.message}`);
+      if (error) throw new DomainError(`Erro ao marcar PDF como visualizado: ${error.message} `);
     }
   }
 
@@ -874,7 +975,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
           last_updated: new Date().toISOString()
         });
 
-      if (error) throw new DomainError(`Erro ao marcar áudio como reproduzido: ${error.message}`);
+      if (error) throw new DomainError(`Erro ao marcar áudio como reproduzido: ${error.message} `);
     }
   }
 
@@ -900,7 +1001,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
           last_updated: new Date().toISOString()
         });
 
-      if (error) throw new DomainError(`Erro ao marcar material como acessado: ${error.message}`);
+      if (error) throw new DomainError(`Erro ao marcar material como acessado: ${error.message} `);
     }
   }
 
@@ -917,7 +1018,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
       .gte('created_at', sevenDaysAgo.toISOString())
       .order('created_at', { ascending: true });
 
-    if (error) throw new DomainError(`Erro ao buscar histórico de XP: ${error.message}`);
+    if (error) throw new DomainError(`Erro ao buscar histórico de XP: ${error.message} `);
 
     //Group by date
     const groupedByDate = (data || []).reduce((acc, record) => {

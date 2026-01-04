@@ -21,6 +21,8 @@ export const LessonRequirementsEditor: React.FC<Props> = ({
     const [requiredPdfs, setRequiredPdfs] = useState<Set<string>>(
         new Set(requirements.requiredPdfs)
     );
+    const [minEvalQuestions, setMinEvalQuestions] = useState(requirements.minEvaluationQuestions || 10);
+    const [evalPassingScore, setEvalPassingScore] = useState(requirements.evaluationPassingScore || 70);
     const [isSaving, setIsSaving] = useState(false);
 
     // Safe access to resources
@@ -37,7 +39,9 @@ export const LessonRequirementsEditor: React.FC<Props> = ({
                 textPercent,
                 Array.from(requiredPdfs),
                 [], // audios - futuro
-                [] // materials - futuro
+                [], // materials - futuro
+                minEvalQuestions,
+                evalPassingScore
             );
             await onSave(newRequirements);
             onClose();
@@ -179,6 +183,56 @@ export const LessonRequirementsEditor: React.FC<Props> = ({
                         </div>
                     )}
 
+                    {/* Configurações de Avaliação (Quiz para XP) */}
+                    <div className="space-y-3 p-4 bg-emerald-50 dark:bg-emerald-900/10 rounded-xl border border-emerald-200 dark:border-emerald-800">
+                        <div className="flex items-center gap-2 mb-2">
+                            <i className="fas fa-trophy text-emerald-600 dark:text-emerald-400"></i>
+                            <h3 className="text-xs font-bold text-slate-900 dark:text-white">
+                                Configuração do Quiz Avaliativo (XP)
+                            </h3>
+                        </div>
+
+                        {/* Minimum Questions */}
+                        <div className="space-y-2">
+                            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                                <span>📊 Questões Mínimas para Ganhar XP</span>
+                                <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">{minEvalQuestions}</span>
+                            </label>
+                            <input
+                                type="range"
+                                min="5"
+                                max="50"
+                                step="5"
+                                value={minEvalQuestions}
+                                onChange={(e) => setMinEvalQuestions(Number(e.target.value))}
+                                className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-600"
+                            />
+                            <p className="text-[10px] text-slate-600 dark:text-slate-400">
+                                O aluno deve responder pelo menos {minEvalQuestions} questões no modo avaliativo para ganhar XP
+                            </p>
+                        </div>
+
+                        {/* Passing Score */}
+                        <div className="space-y-2">
+                            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                                <span>✅ Nota Mínima para Aprovação</span>
+                                <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">{evalPassingScore}%</span>
+                            </label>
+                            <input
+                                type="range"
+                                min="50"
+                                max="100"
+                                step="5"
+                                value={evalPassingScore}
+                                onChange={(e) => setEvalPassingScore(Number(e.target.value))}
+                                className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-600"
+                            />
+                            <p className="text-[10px] text-slate-600 dark:text-slate-400">
+                                O aluno precisa acertar pelo menos {evalPassingScore}% para ser aprovado e ganhar XP
+                            </p>
+                        </div>
+                    </div>
+
                     {/* Preview */}
                     <div className="p-3 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-lg border border-indigo-200 dark:border-indigo-800">
                         <h4 className="text-xs font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-1.5">
@@ -205,11 +259,21 @@ export const LessonRequirementsEditor: React.FC<Props> = ({
                                         <span>Visualizar <strong>{requiredPdfs.size}</strong> material(is)</span>
                                     </li>
                                 )}
+                                {/* Quiz Evaluation Settings Always Shown */}
+                                <li className="text-[10px] text-emerald-700 dark:text-emerald-300 flex items-start gap-1.5 mt-2 pt-2 border-t border-emerald-300 dark:border-emerald-700">
+                                    <span className="text-emerald-600 dark:text-emerald-400 mt-0.5">🏆</span>
+                                    <span>Quiz avaliativo: <strong>{minEvalQuestions}</strong> questões mínimas, nota mínima <strong>{evalPassingScore}%</strong></span>
+                                </li>
                             </ul>
                         ) : (
-                            <p className="text-[10px] text-amber-700 dark:text-amber-400">
-                                ⚠️ Sem requisitos. Quiz sempre disponível.
-                            </p>
+                            <div className="space-y-1">
+                                <p className="text-[10px] text-amber-700 dark:text-amber-400">
+                                    ⚠️ Sem requisitos. Quiz sempre disponível.
+                                </p>
+                                <p className="text-[10px] text-emerald-700 dark:text-emerald-300 pt-2 border-t border-amber-300 dark:border-amber-700">
+                                    🏆 Quiz avaliativo: <strong>{minEvalQuestions}</strong> questões mínimas, nota mínima <strong>{evalPassingScore}%</strong>
+                                </p>
+                            </div>
                         )}
                     </div>
                 </div>

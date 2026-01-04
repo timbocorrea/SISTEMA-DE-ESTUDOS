@@ -6,6 +6,7 @@ export interface IQuestionBankRepository {
         moduleId?: string;
         lessonId?: string;
         difficulty?: QuestionDifficulty;
+        keyword?: string;
     }): Promise<QuizQuestion[]>;
 
     getQuestionById(id: string): Promise<QuizQuestion | null>;
@@ -15,6 +16,12 @@ export interface IQuestionBankRepository {
         moduleId?: string;
         lessonId?: string;
     }): Promise<QuizQuestion>;
+
+    createQuestions(questions: QuizQuestion[], hierarchy: {
+        courseId?: string;
+        moduleId?: string;
+        lessonId?: string;
+    }): Promise<void>;
 
     updateQuestion(question: QuizQuestion, hierarchy: {
         courseId?: string;

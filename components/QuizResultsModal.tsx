@@ -7,6 +7,7 @@ interface QuizResultsModalProps {
     isOpen: boolean;
     onClose: () => void;
     onRetry?: () => void;
+    quizMode?: 'practice' | 'evaluation' | null;
 }
 
 const QuizResultsModal: React.FC<QuizResultsModalProps> = ({
@@ -14,7 +15,8 @@ const QuizResultsModal: React.FC<QuizResultsModalProps> = ({
     passingScore,
     isOpen,
     onClose,
-    onRetry
+    onRetry,
+    quizMode
 }) => {
     if (!isOpen) return null;
 
@@ -26,8 +28,8 @@ const QuizResultsModal: React.FC<QuizResultsModalProps> = ({
             <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
                 {/* Header com resultado */}
                 <div className={`p-8 text-center ${isPassing
-                        ? 'bg-gradient-to-br from-green-500 to-emerald-600'
-                        : 'bg-gradient-to-br from-amber-500 to-orange-600'
+                    ? 'bg-gradient-to-br from-green-500 to-emerald-600'
+                    : 'bg-gradient-to-br from-amber-500 to-orange-600'
                     }`}>
                     <div className="w-20 h-20 mx-auto mb-4 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
                         <i className={`fas text-4xl text-white ${isPassing ? 'fa-trophy' : 'fa-book-open'
@@ -37,6 +39,17 @@ const QuizResultsModal: React.FC<QuizResultsModalProps> = ({
                     <h2 className="text-3xl font-black text-white mb-2">
                         {isPassing ? 'Parabéns!' : 'Quase lá!'}
                     </h2>
+
+                    {/* Quiz Mode Badge */}
+                    {quizMode && (
+                        <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest ${quizMode === 'evaluation'
+                                ? 'bg-emerald-500/20 text-white border border-white/20'
+                                : 'bg-blue-500/20 text-white border border-white/20'
+                            }`}>
+                            <i className={`fas ${quizMode === 'evaluation' ? 'fa-trophy' : 'fa-dumbbell'}`}></i>
+                            {quizMode === 'evaluation' ? '🎯 Modo Avaliativo - XP Concedido' : '💪 Modo Prática - Sem XP'}
+                        </div>
+                    )}
 
                     <p className="text-white/90 text-sm font-medium">
                         {isPassing
@@ -111,12 +124,12 @@ const QuizResultsModal: React.FC<QuizResultsModalProps> = ({
 
                     {/* Message */}
                     <div className={`p-4 rounded-xl mb-6 ${isPassing
-                            ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
-                            : 'bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800'
+                        ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
+                        : 'bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800'
                         }`}>
                         <p className={`text-sm font-medium text-center ${isPassing
-                                ? 'text-green-800 dark:text-green-300'
-                                : 'text-orange-800 dark:text-orange-300'
+                            ? 'text-green-800 dark:text-green-300'
+                            : 'text-orange-800 dark:text-orange-300'
                             }`}>
                             {isPassing ? (
                                 <>
@@ -147,8 +160,8 @@ const QuizResultsModal: React.FC<QuizResultsModalProps> = ({
                         <button
                             onClick={onClose}
                             className={`px-6 py-3 rounded-xl font-bold transition-colors ${isPassing
-                                    ? 'flex-1 bg-green-600 text-white hover:bg-green-700 shadow-lg shadow-green-500/30'
-                                    : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700'
+                                ? 'flex-1 bg-green-600 text-white hover:bg-green-700 shadow-lg shadow-green-500/30'
+                                : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700'
                                 }`}
                         >
                             {isPassing ? (
