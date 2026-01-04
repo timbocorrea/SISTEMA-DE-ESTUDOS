@@ -4,6 +4,7 @@ import { Course, Module, Lesson, ILessonData, LessonResource, LessonResourceType
 import { Quiz, QuizQuestion, QuizOption, QuizAttempt } from '../domain/quiz-entities';
 import { NotFoundError, DomainError } from '../domain/errors';
 import { createSupabaseClient } from '../services/supabaseClient';
+import { DatabaseLessonResponse, DatabaseResourceResponse, DatabaseModuleResponse, DatabaseAchievementResponse } from '../types/supabase-dtos';
 
 type LessonProgressRow = {
   lesson_id: string;
@@ -47,9 +48,9 @@ export class SupabaseCourseRepository implements ICourseRepository {
     return progressMap;
   }
 
-  private mapLesson(row: any, progressMap: Map<string, LessonProgressRow>): Lesson {
+  private mapLesson(row: DatabaseLessonResponse, progressMap: Map<string, LessonProgressRow>): Lesson {
     const progress = progressMap.get(row.id);
-    const resources = this.mapResources(row.resources || row.lesson_resources || []);
+    const resources = this.mapResources((row as any).resources || (row as any).lesson_resources || []);
     const payload: ILessonData = {
       id: row.id,
       title: row.title,
@@ -64,40 +65,38 @@ export class SupabaseCourseRepository implements ICourseRepository {
       isCompleted: progress?.is_completed || false,
       position: row.position || 0,
       lastAccessedBlockId: progress?.last_accessed_block_id || null,
-      contentBlocks: row.content_blocks || []
+      contentBlocks: (row as any).content_blocks || []
     };
     return new Lesson(payload);
   }
 
-  private mapResources(raw: any[] = []): LessonResource[] {
+  private mapResources(raw: DatabaseResourceResponse[] = []): LessonResource[] {
     return (raw || [])
-      .sort((a: any, b: any) => (a.position || 0) - (b.position || 0))
-      .map((r: any) => ({
+      .sort((a, b) => (a.position || 0) - (b.position || 0))
+      .map((r) => ({
         id: r.id,
         title: r.title,
-        type: (r.resource_type || r.type) as LessonResourceType,
+        type: r.type as LessonResourceType,
         url: r.url,
         position: r.position ?? 0
       }));
   }
 
-  private mapModule(row: any, progressMap: Map<string, LessonProgressRow>): Module {
+  private mapModule(row: DatabaseModuleResponse, progressMap: Map<string, LessonProgressRow>): Module {
     const lessons = (row.lessons || [])
-      .sort((a: any, b: any) => (a.position || 0) - (b.position || 0))
-      .map((lesson: any) => this.mapLesson(lesson, progressMap));
+      .sort((a, b) => (a.position || 0) - (b.position || 0))
+      .map((lesson) => this.mapLesson(lesson, progressMap));
     return new Module(row.id, row.title, lessons);
   }
 
-  private mapAchievements(rawAchievements: any[] = []): Achievement[] {
-    return rawAchievements.map((ach: any) => ({
+  private mapAchievements(rawAchievements: DatabaseAchievementResponse[] = []): Achievement[] {
+    return rawAchievements.map((ach) => ({
       id: ach.id,
       title: ach.title,
       description: ach.description,
-      dateEarned: ach.dateEarned
-        ? new Date(ach.dateEarned)
-        : ach.date_earned
-          ? new Date(ach.date_earned)
-          : new Date(),
+      dateEarned: ach.earned_at
+        ? new Date(ach.earned_at)
+        : new Date(),
       icon: ach.icon
     }));
   }

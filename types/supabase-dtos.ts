@@ -119,3 +119,56 @@ export interface DatabaseLessonRequirementsResponse {
     created_at: string;
     updated_at: string;
 }
+
+// ===== Course DTOs =====
+
+export interface DatabaseCourseResponse {
+    id: string;
+    title: string;
+    description: string;
+    image_url: string | null;
+    instructor_id: string;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface DatabaseModuleResponse {
+    id: string;
+    course_id: string;
+    title: string;
+    description: string;
+    position: number;
+    created_at: string;
+    updated_at: string;
+    lessons?: DatabaseLessonResponse[];
+}
+
+export interface DatabaseResourceResponse {
+    id: string;
+    lesson_id: string;
+    title: string;
+    type: 'PDF' | 'FILE' | 'LINK' | 'VIDEO';
+    url: string;
+    position: number;
+    created_at: string;
+}
+
+export interface DatabaseAchievementResponse {
+    id: string;
+    user_id: string;
+    title: string;
+    description: string;
+    icon: string;
+    earned_at: string;
+}
+
+// ===== Content Block DTOs =====
+
+export interface DatabaseContentBlockResponse {
+    id: string;
+    lesson_id: string;
+    type: 'text' | 'video' | 'image' | 'audio' | 'quiz';
+    content: string | null;
+    position: number;
+    created_at: string;
+}
