@@ -7,7 +7,7 @@ import LessonMaterialsSidebar from './LessonMaterialsSidebar';
 import NotesPanelPrototype from './NotesPanelPrototype';
 import QuizModal from './QuizModal';
 import QuizResultsModal from './QuizResultsModal';
-import { Quiz, QuizAttemptResult } from '../domain/quiz-entities';
+import { QuizAttemptResult } from '../domain/quiz-entities';
 import { createSupabaseClient } from '../services/supabaseClient';
 import { SupabaseCourseRepository } from '../repositories/SupabaseCourseRepository';
 
@@ -15,6 +15,8 @@ import { LessonNotesRepository } from '../repositories/LessonNotesRepository';
 import { useLessonStore } from '../stores/useLessonStore';
 import ContentReader from './lesson/ContentReader';
 import { useAudioPlayer } from '../hooks/useAudioPlayer';
+import { useLessonQuiz } from '../hooks/useLessonQuiz';
+import { useLessonNavigation } from '../hooks/useLessonNavigation';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
@@ -73,47 +75,32 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     // Video switcher state
     const [activeVideoIndex, setActiveVideoIndex] = useState<number>(0);
 
-    // Quiz State
-    const [quiz, setQuiz] = useState<Quiz | null>(null);
-    const [showQuizModal, setShowQuizModal] = useState(false);
-    const [quizResult, setQuizResult] = useState<QuizAttemptResult | null>(null);
-    const [isSubmittingQuiz, setIsSubmittingQuiz] = useState(false);
-    const [quizMode, setQuizMode] = useState<'practice' | 'evaluation' | null>(null);
-    const [showPracticeConfigModal, setShowPracticeConfigModal] = useState(false);
-    const [practiceQuestionCount, setPracticeQuestionCount] = useState<number>(10);
+    // Quiz State - Managed by custom hook
+    const {
+        quiz,
+        showQuizModal,
+        quizResult,
+        isSubmittingQuiz,
+        quizMode,
+        showPracticeConfigModal,
+        practiceQuestionCount,
+        setShowQuizModal,
+        setQuizResult,
+        setShowPracticeConfigModal,
+        setPracticeQuestionCount,
+        handleStartQuiz,
+        handleStartPracticeQuiz,
+        handleQuizSubmit
+    } = useLessonQuiz({ lesson, course, user, onTrackAction });
 
-    // Mobile Navigation State
-    const [activeMobileTab, setActiveMobileTab] = useState<'materials' | 'notes' | 'quiz' | null>(null);
-    const [focusedNoteId, setFocusedNoteId] = useState<string | null>(null);
-
-    // History & Drawer Management
-    useEffect(() => {
-        const handlePopState = () => {
-            if (activeMobileTab) {
-                setActiveMobileTab(null);
-            }
-        };
-
-        window.addEventListener('popstate', handlePopState);
-        return () => window.removeEventListener('popstate', handlePopState);
-    }, [activeMobileTab]);
-
-    const handleOpenDrawer = (tab: 'materials' | 'notes' | 'quiz') => {
-        if (activeMobileTab === tab) {
-            handleCloseDrawer();
-        } else {
-            if (!activeMobileTab) {
-                window.history.pushState({ drawer: true }, '', window.location.href);
-            }
-            setActiveMobileTab(tab);
-        }
-    };
-
-    const handleCloseDrawer = () => {
-        if (activeMobileTab) {
-            window.history.back();
-        }
-    };
+    // Mobile Navigation State - Managed by custom hook
+    const {
+        activeMobileTab,
+        focusedNoteId,
+        handleOpenDrawer,
+        handleCloseDrawer,
+        setFocusedNoteId
+    } = useLessonNavigation();
 
     // Carregar quiz quando aula mudar
     useEffect(() => {
