@@ -2173,8 +2173,8 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
     return (
         <div className="h-screen bg-white dark:bg-slate-950 flex flex-col overflow-hidden">
             {/* Header fixo */}
-            <div className="sticky top-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 shadow-sm relative">
-                <div className="px-8 py-3">
+            <div className="z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 shadow-sm">
+                <div className="px-8 py-4">
                     <div className="flex items-center justify-between">
                         {/* Título e botão voltar */}
                         <div className="flex items-center gap-4">
