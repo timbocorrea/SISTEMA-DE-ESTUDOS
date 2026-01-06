@@ -24,6 +24,7 @@ interface SidebarProps {
   onNavigateFile?: (path: string) => void;
   activeCourse?: Course | null;
   onExpandCourse?: (courseId: string) => void;
+  isOnline?: boolean; // Network connection status
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -43,7 +44,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   activeLessonId,
   onNavigateFile,
   activeCourse,
-  onExpandCourse
+  onExpandCourse,
+  isOnline = true // Default to online
 }) => {
   const isAdmin = session.user.role === 'INSTRUCTOR';
 
@@ -620,6 +622,19 @@ const Sidebar: React.FC<SidebarProps> = ({
             </div>
           )}
         </div>
+
+        {/* Network Status Indicator - Only shown when offline */}
+        {!isOnline && (
+          <div className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm font-bold ${isActuallyCollapsed ? 'justify-center' : ''}`}>
+            <div className="relative flex items-center justify-center w-5">
+              <span className="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-red-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+            </div>
+            <span className={`transition-all duration-300 text-red-700 dark:text-red-400 uppercase tracking-wider ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
+              Sem Conexão
+            </span>
+          </div>
+        )}
 
         {/* Logout Button with Red Glow */}
         <button

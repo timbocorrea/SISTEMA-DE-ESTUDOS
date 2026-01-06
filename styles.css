@@ -163,3 +163,30 @@ body {
     box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
   }
 }
+
+/* Image Link Styles */
+.image-link {
+  position: relative;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.image-link:hover {
+  text-decoration-style: solid !important;
+  color: #4f46e5;
+}
+
+.dark .image-link:hover {
+  color: #818cf8;
+}
+
+.image-link::after {
+  content: '🖼️';
+  margin-left: 4px;
+  font-size: 0.85em;
+  opacity: 0.7;
+}
+
+.image-link:hover::after {
+  opacity: 1;
+}

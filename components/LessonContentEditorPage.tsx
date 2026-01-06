@@ -110,23 +110,71 @@ const BlockItem = React.memo(({
             >
                 <div className="absolute inset-x-0 h-px bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-700 to-transparent opacity-0 group-hover/add:opacity-100 transition-opacity"></div>
 
-                <button
-                    onClick={() => {
-                        handlers.setMediaMenuIndex(index);
-                        handlers.setShowMediaMenu(!isMediaMenuOpen);
-                    }}
-                    className={`relative z-10 w-8 h-8 rounded-full bg-white dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 text-slate-400 dark:text-slate-500 hover:border-indigo-500 hover:text-indigo-600 hover:scale-110 shadow-lg transition-all duration-200 ${isHovered ? 'opacity-100 scale-100' : 'opacity-0 scale-75 pointer-events-none'}`}
-                >
-                    <i className="fas fa-plus text-xs"></i>
-                </button>
+                {/* Spacing Controls - Appear on hover */}
+                <div className={`relative z-10 flex items-center gap-2 transition-all duration-200 ${isHovered ? 'opacity-100 scale-100' : 'opacity-0 scale-75 pointer-events-none'}`}>
+                    {/* Decrease Spacing */}
+                    <button
+                        onClick={() => {
+                            const currentSpacing = block.spacing || 0;
+                            const spacingOptions = [0, 4, 8, 12, 16, 24];
+                            const currentIndex = spacingOptions.indexOf(currentSpacing);
+                            const newSpacing = currentIndex > 0 ? spacingOptions[currentIndex - 1] : 0;
+                            handlers.updateBlock(block.id, { spacing: newSpacing });
+                        }}
+                        disabled={!block.spacing || block.spacing === 0}
+                        className="w-8 h-8 rounded-full bg-white dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 text-slate-400 dark:text-slate-500 hover:border-orange-500 hover:text-orange-600 hover:scale-110 shadow-lg transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                        title="Diminuir espaçamento"
+                    >
+                        <i className="fas fa-minus text-xs"></i>
+                    </button>
 
-                <button
-                    onClick={() => handlers.addBlockAtPosition(index)}
-                    className={`relative z-10 w-8 h-8 rounded-full bg-white dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 text-slate-400 dark:text-slate-500 hover:border-green-500 hover:text-green-600 hover:scale-110 shadow-lg transition-all duration-200 ml-2 ${isHovered ? 'opacity-100 scale-100' : 'opacity-0 scale-75 pointer-events-none'}`}
-                    title="Adicionar bloco aqui"
-                >
-                    <i className="fas fa-file-alt text-xs"></i>
-                </button>
+                    {/* Current Spacing Indicator */}
+                    <div className="px-2 py-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg shadow-lg">
+                        <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400">
+                            {block.spacing || 0}px
+                        </span>
+                    </div>
+
+                    {/* Increase Spacing */}
+                    <button
+                        onClick={() => {
+                            const currentSpacing = block.spacing || 0;
+                            const spacingOptions = [0, 4, 8, 12, 16, 24];
+                            const currentIndex = spacingOptions.indexOf(currentSpacing);
+                            const newSpacing = currentIndex < spacingOptions.length - 1 ? spacingOptions[currentIndex + 1] : 24;
+                            handlers.updateBlock(block.id, { spacing: newSpacing });
+                        }}
+                        disabled={block.spacing === 24}
+                        className="w-8 h-8 rounded-full bg-white dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 text-slate-400 dark:text-slate-500 hover:border-green-500 hover:text-green-600 hover:scale-110 shadow-lg transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                        title="Aumentar espaçamento"
+                    >
+                        <i className="fas fa-plus text-xs"></i>
+                    </button>
+
+                    {/* Divider */}
+                    <div className="w-px h-6 bg-slate-300 dark:bg-slate-600"></div>
+
+                    {/* Media Menu Button */}
+                    <button
+                        onClick={() => {
+                            handlers.setMediaMenuIndex(index);
+                            handlers.setShowMediaMenu(!isMediaMenuOpen);
+                        }}
+                        className="w-8 h-8 rounded-full bg-white dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 text-slate-400 dark:text-slate-500 hover:border-indigo-500 hover:text-indigo-600 hover:scale-110 shadow-lg transition-all duration-200"
+                        title="Inserir mídia"
+                    >
+                        <i className="fas fa-image text-xs"></i>
+                    </button>
+
+                    {/* Add Block Button */}
+                    <button
+                        onClick={() => handlers.addBlockAtPosition(index)}
+                        className="w-8 h-8 rounded-full bg-white dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 text-slate-400 dark:text-slate-500 hover:border-blue-500 hover:text-blue-600 hover:scale-110 shadow-lg transition-all duration-200"
+                        title="Adicionar bloco aqui"
+                    >
+                        <i className="fas fa-file-alt text-xs"></i>
+                    </button>
+                </div>
 
                 {isMediaMenuOpen && (
                     <div className="absolute top-10 left-1/2 -translate-x-1/2 z-50 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 p-2 min-w-[200px] animate-in fade-in slide-in-from-top-2 duration-200">
@@ -325,6 +373,9 @@ const BlockItem = React.memo(({
                                 <ToolbarButton icon="align-center" title="Centro" onClick={() => handlers.execCommand('justifyCenter')} />
                                 <ToolbarButton icon="align-right" title="Direita" onClick={() => handlers.execCommand('justifyRight')} />
                                 <Divider />
+                                <ToolbarButton icon="indent" title="Recuo à Direita" onClick={() => handlers.execCommand('indent')} />
+                                <ToolbarButton icon="outdent" title="Recuo à Esquerda" onClick={() => handlers.execCommand('outdent')} />
+                                <Divider />
                                 <ToolbarButton icon="list-ul" title="Lista" onClick={() => handlers.execCommand('insertUnorderedList')} />
                                 <ToolbarButton icon="list-ol" title="Numerada" onClick={() => handlers.execCommand('insertOrderedList')} />
                                 <Divider />
@@ -334,6 +385,47 @@ const BlockItem = React.memo(({
                                     onClick={() => {
                                         const url = prompt('URL:');
                                         if (url) handlers.execCommand('createLink', url);
+                                    }}
+                                />
+                                <ToolbarButton
+                                    icon="image"
+                                    title="Inserir Imagem (URL)"
+                                    onClick={() => {
+                                        const url = prompt('URL da Imagem:');
+                                        if (url) {
+                                            // Convert Dropbox URLs to direct download
+                                            let finalUrl = url;
+                                            if (url.includes('dropbox.com')) {
+                                                finalUrl = url.replace('dl=0', 'dl=1');
+                                                if (!finalUrl.includes('dl=')) {
+                                                    finalUrl += (finalUrl.includes('?') ? '&' : '?') + 'dl=1';
+                                                }
+                                                console.log('🔄 Dropbox URL:', url, '→', finalUrl);
+                                            }
+                                            // Create a special link that opens image modal
+                                            const selection = window.getSelection();
+                                            if (selection && !selection.isCollapsed) {
+                                                const range = selection.getRangeAt(0);
+                                                const selectedText = range.toString();
+
+                                                // Create link with inline onclick that will be preserved
+                                                const escapedUrl = finalUrl.replace(/'/g, "\\'");
+                                                const linkHtml = `<a href="#" class="image-link text-indigo-600 dark:text-indigo-400 underline decoration-dotted hover:decoration-solid cursor-pointer" data-image-url="${finalUrl}" onclick="console.log('🖱️ Clicou'); event.preventDefault(); if(window.openImageModal) { console.log('✅ Chamando modal'); window.openImageModal('${escapedUrl}'); } else { console.error('❌ openImageModal não existe'); } return false;" title="Clique para ver a imagem">${selectedText}</a>`;
+                                                console.log('📝 Link HTML criado:', linkHtml);
+
+                                                range.deleteContents();
+                                                const fragment = range.createContextualFragment(linkHtml);
+                                                range.insertNode(fragment);
+
+                                                // Update block content
+                                                const activeEl = document.querySelector(`[data-block-id="${block.id}"] [contenteditable="true"]`) as HTMLElement;
+                                                if (activeEl) {
+                                                    handlers.updateBlock(block.id, { text: activeEl.innerHTML });
+                                                }
+                                            } else {
+                                                alert('Por favor, selecione um texto antes de inserir a imagem.');
+                                            }
+                                        }
                                     }}
                                 />
                             </div>
@@ -468,6 +560,10 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
     const [tableRows, setTableRows] = useState(3);
     const [tableCols, setTableCols] = useState(3);
 
+    // Image Viewer Modal State
+    const [showImageViewerModal, setShowImageViewerModal] = useState(false);
+    const [viewerImageUrl, setViewerImageUrl] = useState('');
+
     // Menu flutuante entre blocos
     const [hoveredBlockIndex, setHoveredBlockIndex] = useState<number | null>(null);
     const [showMediaMenu, setShowMediaMenu] = useState(false);
@@ -501,6 +597,9 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
     const [blocks, setBlocks] = useState<any[]>(lesson.content_blocks || []);
     const [editingBlockForAudio, setEditingBlockForAudio] = useState<any | null>(null);
     const [tempAudioUrl, setTempAudioUrl] = useState('');
+    const [audioFilter, setAudioFilter] = useState<'all' | 'with-audio' | 'without-audio'>('all');
+    const [blocksPerPage, setBlocksPerPage] = useState<number | 'all'>('all');
+    const [currentPage, setCurrentPage] = useState(1);
 
     // Lesson Resources
     const [lessonResources, setLessonResources] = useState<LessonResourceRecord[]>([]);
@@ -554,6 +653,16 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
     const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
     const [bulkCount, setBulkCount] = useState(3);
+
+    // Unsaved Changes Tracking
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const initialBlocksRef = useRef(JSON.stringify(blocks));
+    const [changedBlocks, setChangedBlocks] = useState<Map<string, { before: Block; after: Block }>>(new Map());
+    const [showChangesModal, setShowChangesModal] = useState(false);
+
+    // Network Connection Monitoring
+    const [isOnline, setIsOnline] = useState(navigator.onLine);
+    const [showOfflineModal, setShowOfflineModal] = useState(false);
 
     // Hierarchy State for Quiz Bank Preview
     const [courseId, setCourseId] = useState<string | undefined>(undefined);
@@ -622,6 +731,134 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
         }
         loadRequirements();
     }, [lesson.id]);
+
+    // Setup global function for opening image modal
+    useEffect(() => {
+        (window as any).openImageModal = (imageUrl: string) => {
+            console.log('🖼️ openImageModal chamada com URL:', imageUrl);
+            setViewerImageUrl(imageUrl);
+            setShowImageViewerModal(true);
+        };
+
+        // Add global click listener for image links
+        const handleImageLinkClick = (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            if (target.classList?.contains('image-link') || target.closest('.image-link')) {
+                e.preventDefault();
+                const link = target.classList?.contains('image-link') ? target : target.closest('.image-link');
+                const imageUrl = link?.getAttribute('data-image-url');
+                if (imageUrl) {
+                    setViewerImageUrl(imageUrl);
+                    setShowImageViewerModal(true);
+                }
+            }
+        };
+
+        document.addEventListener('click', handleImageLinkClick);
+
+        return () => {
+            delete (window as any).openImageModal;
+            document.removeEventListener('click', handleImageLinkClick);
+        };
+    }, []);
+
+    // Reset to page 1 when filter changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [audioFilter]);
+
+    // Track unsaved changes when blocks are modified
+    useEffect(() => {
+        const currentBlocksStr = JSON.stringify(blocks);
+        if (currentBlocksStr !== initialBlocksRef.current) {
+            setHasUnsavedChanges(true);
+
+            // Track which specific blocks changed
+            try {
+                const initialBlocks = JSON.parse(initialBlocksRef.current) as Block[];
+                const changes = new Map<string, { before: Block; after: Block }>();
+
+                blocks.forEach((currentBlock) => {
+                    const originalBlock = initialBlocks.find(b => b.id === currentBlock.id);
+                    if (originalBlock) {
+                        // Check if block was modified
+                        if (JSON.stringify(originalBlock) !== JSON.stringify(currentBlock)) {
+                            changes.set(currentBlock.id, { before: originalBlock, after: currentBlock });
+                        }
+                    } else {
+                        // New block added
+                        changes.set(currentBlock.id, {
+                            before: { id: currentBlock.id, text: '', audioUrl: '', spacing: 0 },
+                            after: currentBlock
+                        });
+                    }
+                });
+
+                // Check for deleted blocks
+                initialBlocks.forEach((originalBlock) => {
+                    if (!blocks.find(b => b.id === originalBlock.id)) {
+                        changes.set(originalBlock.id, {
+                            before: originalBlock,
+                            after: { id: originalBlock.id, text: '[REMOVIDO]', audioUrl: '', spacing: 0 }
+                        });
+                    }
+                });
+
+                setChangedBlocks(changes);
+            } catch (error) {
+                console.error('Error tracking changes:', error);
+            }
+        }
+    }, [blocks]);
+
+    // Network Connection Monitoring
+    useEffect(() => {
+        console.log('🔍 Network monitoring initialized. Current state:', navigator.onLine ? 'ONLINE' : 'OFFLINE');
+
+        const handleOnline = () => {
+            console.log('🌐 Conexão restaurada');
+            setIsOnline(true);
+            setShowOfflineModal(false);
+            toast.success('✅ Conexão com a internet restaurada!');
+        };
+
+        const handleOffline = () => {
+            console.log('📵 Conexão perdida');
+            console.log('📵 Atualizando estados: isOnline=false, showOfflineModal=true');
+            setIsOnline(false);
+            setShowOfflineModal(true);
+            toast.error('❌ Conexão com a internet perdida!');
+        };
+
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+
+        // Check initial state and trigger modal if offline
+        if (!navigator.onLine) {
+            console.log('⚠️ App iniciou OFFLINE - mostrando modal');
+            setIsOnline(false);
+            setShowOfflineModal(true);
+        }
+
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
+    }, []);
+
+    // Prevent accidental page close/reload when there are unsaved changes
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (hasUnsavedChanges) {
+                e.preventDefault();
+                e.returnValue = 'Você tem alterações não salvas. Tem certeza que deseja sair?';
+                return e.returnValue;
+            }
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [hasUnsavedChanges]);
 
     const handleCreateQuiz = async (quizData: any) => {
         try {
@@ -1086,11 +1323,20 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
             console.log('📤 SALVANDO - Metadata completa:', JSON.stringify(metadataToSave, null, 2));
 
+            // Executar o save primeiro
             await onSave(htmlContent, metadataToSave);
 
+            // APENAS reset unsaved changes tracking AFTER successful save
+            initialBlocksRef.current = JSON.stringify(normalizedBlocks);
+            setHasUnsavedChanges(false);
+            setChangedBlocks(new Map());
+
             console.log('✅ Salvamento concluído com sucesso!');
+            toast.success('✅ Aula salva com sucesso!');
         } catch (error) {
             console.error('❌ Erro ao salvar:', error);
+            toast.error('❌ Erro ao salvar a aula. Verifique o console para detalhes.');
+            // NÃO resetar hasUnsavedChanges aqui - manter o indicador de mudanças pendentes
         } finally {
             setIsSaving(false);
         }
@@ -2231,11 +2477,43 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                 Material
                             </button>
 
+                            {/* Unsaved Changes Indicator */}
+                            {hasUnsavedChanges && (
+                                <button
+                                    onClick={() => setShowChangesModal(true)}
+                                    className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg animate-in slide-in-from-left-2 duration-300 hover:bg-amber-100 dark:hover:bg-amber-900/30 hover:border-amber-300 dark:hover:border-amber-700 transition-all cursor-pointer"
+                                    title="Clique para ver detalhes das alterações"
+                                >
+                                    <div className="relative flex h-3 w-3">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
+                                    </div>
+                                    <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider">
+                                        {changedBlocks.size} Alteraç{changedBlocks.size === 1 ? 'ão' : 'ões'} não salva{changedBlocks.size === 1 ? '' : 's'}
+                                    </span>
+                                    <i className="fas fa-chevron-right text-[8px] text-amber-600 dark:text-amber-500"></i>
+                                </button>
+                            )}
+
+                            {/* Network Status Indicator */}
+                            {!isOnline && (
+                                <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg animate-in slide-in-from-left-2 duration-300">
+                                    <div className="relative flex h-3 w-3">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                                    </div>
+                                    <span className="text-[10px] font-bold text-red-700 dark:text-red-400 uppercase tracking-wider">
+                                        Sem conexão
+                                    </span>
+                                </div>
+                            )}
+
                             {/* 6. Botão Salvar */}
                             <button
                                 onClick={handleSave}
-                                disabled={isSaving}
+                                disabled={isSaving || !isOnline}
                                 className="h-9 px-3 rounded-lg bg-blue-600 text-white border border-transparent hover:bg-blue-700 dark:bg-transparent dark:border-blue-500 dark:text-blue-400 dark:hover:bg-blue-500/20 dark:hover:border-blue-400 font-semibold transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 text-[10px] uppercase"
+                                title={!isOnline ? 'Não é possível salvar sem conexão com a internet' : ''}
                             >
                                 {isSaving ? (
                                     <>
@@ -2378,27 +2656,84 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                     </p>
                                 </div>
                             ) : (
-                                blocks.map((rawBlock, index) => {
-                                    const block = typeof rawBlock === 'string'
-                                        ? { id: `legacy-${index}`, text: rawBlock, audioUrl: '' }
-                                        : rawBlock;
+                                // Apply same filters as block manager, but always include expanded block
+                                blocks
+                                    .filter((rawBlock) => {
+                                        const block = typeof rawBlock === 'string'
+                                            ? { id: `legacy-${blocks.indexOf(rawBlock)}`, text: rawBlock, audioUrl: '' }
+                                            : rawBlock;
 
-                                    const text = block.text || '';
-                                    const spacing = block.spacing !== undefined ? block.spacing : 0;
-                                    const spacingClass = spacing === 0 ? 'mb-0' : spacing === 4 ? 'mb-4' : spacing === 8 ? 'mb-8' : spacing === 12 ? 'mb-12' : spacing === 16 ? 'mb-16' : spacing === 24 ? 'mb-24' : 'mb-8';
+                                        // Always include the expanded block
+                                        if (expandedBlockId && block.id === expandedBlockId) {
+                                            return true;
+                                        }
 
-                                    return (
-                                        <div
-                                            key={block.id || index}
-                                            className={`relative p-2 md:p-4 rounded-2xl border transition-all ${spacingClass} ${previewTheme === 'light'
-                                                ? 'bg-white border-transparent text-slate-700'
-                                                : 'bg-slate-900/30 border-transparent text-slate-200'
-                                                }`}
-                                        >
-                                            {text && <div className="w-full text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: text }} />}
-                                        </div>
-                                    );
-                                })
+                                        // Otherwise apply audio filter
+                                        if (audioFilter === 'all') return true;
+
+                                        if (audioFilter === 'with-audio') {
+                                            return block.audioUrl && block.audioUrl.trim() !== '';
+                                        } else if (audioFilter === 'without-audio') {
+                                            return !block.audioUrl || block.audioUrl.trim() === '';
+                                        }
+                                        return true;
+                                    })
+                                    .slice(
+                                        blocksPerPage === 'all' ? 0 : (currentPage - 1) * blocksPerPage,
+                                        blocksPerPage === 'all' ? undefined : currentPage * blocksPerPage
+                                    )
+                                    .map((rawBlock, filteredIndex) => {
+                                        // Find original index to preserve block ID and data
+                                        const originalIndex = blocks.indexOf(rawBlock);
+                                        const block = typeof rawBlock === 'string'
+                                            ? { id: `legacy-${originalIndex}`, text: rawBlock, audioUrl: '' }
+                                            : rawBlock;
+
+                                        const text = block.text || '';
+                                        const spacing = block.spacing !== undefined ? block.spacing : 0;
+                                        const spacingClass = spacing === 0 ? 'mb-0' : spacing === 4 ? 'mb-4' : spacing === 8 ? 'mb-8' : spacing === 12 ? 'mb-12' : spacing === 16 ? 'mb-16' : spacing === 24 ? 'mb-24' : 'mb-8';
+
+                                        return (
+                                            <div
+                                                key={block.id || originalIndex}
+                                                data-block-id={block.id}
+                                                onClick={() => {
+                                                    // Scroll to corresponding block in manager
+                                                    const blockElement = document.querySelector(`[data-block-id="${block.id}"][class*="bg-white dark:bg-slate-900/50"]`);
+                                                    if (blockElement) {
+                                                        blockElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                        // Expand the block
+                                                        setExpandedBlockId(block.id);
+                                                        // Add highlight flash animation
+                                                        blockElement.classList.add('highlight-flash');
+                                                        setTimeout(() => {
+                                                            blockElement.classList.remove('highlight-flash');
+                                                        }, 1200);
+                                                    }
+                                                }}
+                                                className={`relative p-2 md:p-4 rounded-2xl border transition-all cursor-pointer duration-300 ${spacingClass} ${expandedBlockId === block.id
+                                                    ? previewTheme === 'light'
+                                                        ? 'bg-indigo-50 border-indigo-400 ring-4 ring-indigo-300/50 shadow-lg shadow-indigo-500/20 text-slate-700'
+                                                        : 'bg-indigo-900/30 border-indigo-500 ring-4 ring-indigo-500/30 shadow-lg shadow-indigo-500/30 text-slate-200'
+                                                    : previewTheme === 'light'
+                                                        ? 'bg-white border-transparent text-slate-700 hover:bg-indigo-50/30 hover:ring-2 hover:ring-indigo-500/50'
+                                                        : 'bg-slate-900/30 border-transparent text-slate-200 hover:bg-slate-800/50 hover:ring-2 hover:ring-indigo-500/50'
+                                                    }`}
+                                                title={expandedBlockId === block.id ? "Este bloco está sendo editado" : "Clique para localizar este bloco no gerenciador"}
+                                            >
+                                                {/* Active Block Indicator */}
+                                                {expandedBlockId === block.id && (
+                                                    <div className="absolute -top-3 -right-3 z-10">
+                                                        <div className="bg-indigo-600 dark:bg-indigo-500 text-white text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-full shadow-lg border-2 border-white dark:border-slate-900 animate-pulse">
+                                                            <i className="fas fa-edit mr-1"></i>
+                                                            Editando
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                {text && <div className="w-full text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: text }} />}
+                                            </div>
+                                        );
+                                    })
                             )}
                         </div>
                     </div>
@@ -2436,6 +2771,137 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                         )}
                                         {isSelectionMode ? 'Selecionando' : 'Selecionar'}
                                     </button>
+
+                                    {/* Audio Filter Dropdown */}
+                                    <div className="relative">
+                                        <select
+                                            value={audioFilter}
+                                            onChange={(e) => setAudioFilter(e.target.value as 'all' | 'with-audio' | 'without-audio')}
+                                            className="h-9 px-3 pr-8 rounded-lg font-semibold transition-all active:scale-95 text-[10px] uppercase shadow-sm bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:border-indigo-400 cursor-pointer appearance-none"
+                                            title="Filtrar blocos por áudio"
+                                        >
+                                            <option value="all">📋 Todos os Blocos</option>
+                                            <option value="with-audio">🔊 Com Áudio</option>
+                                            <option value="without-audio">🔇 Sem Áudio</option>
+                                        </select>
+                                        <i className="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-[8px] text-slate-400 pointer-events-none"></i>
+                                    </div>
+
+                                    {/* Filter Count Indicator */}
+                                    {audioFilter !== 'all' && (
+                                        <div className="h-9 px-3 flex flex-col items-center justify-center bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-200 dark:border-indigo-800 animate-in slide-in-from-left-2 duration-300">
+                                            <span className="text-sm font-black text-indigo-600 dark:text-indigo-400 leading-tight">
+                                                {blocks.filter((rawBlock) => {
+                                                    const block = typeof rawBlock === 'string' ? { audioUrl: '' } : rawBlock;
+                                                    if (audioFilter === 'with-audio') return block.audioUrl && block.audioUrl.trim() !== '';
+                                                    if (audioFilter === 'without-audio') return !block.audioUrl || block.audioUrl.trim() === '';
+                                                    return true;
+                                                }).length}
+                                            </span>
+                                            <span className="text-[7px] font-black text-indigo-500 dark:text-indigo-600 uppercase tracking-tighter">
+                                                de {blocks.length}
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {/* Pagination Dropdown with Custom Input */}
+                                    <div className="flex items-center gap-2">
+                                        <div className="relative">
+                                            <select
+                                                value={typeof blocksPerPage === 'number' && ![10, 20, 50].includes(blocksPerPage) ? 'custom' : blocksPerPage}
+                                                onChange={(e) => {
+                                                    const value = e.target.value;
+                                                    if (value === 'all') {
+                                                        setBlocksPerPage('all');
+                                                        setCurrentPage(1);
+                                                    } else if (value === 'custom') {
+                                                        // Prompt user for custom value
+                                                        const currentCustomValue = typeof blocksPerPage === 'number' && ![10, 20, 50].includes(blocksPerPage) ? blocksPerPage : 15;
+                                                        const input = prompt('Quantos blocos você deseja exibir por página?', currentCustomValue.toString());
+
+                                                        if (input !== null) { // User didn't cancel
+                                                            const customValue = parseInt(input);
+                                                            if (!isNaN(customValue) && customValue >= 1 && customValue <= 999) {
+                                                                setBlocksPerPage(customValue);
+                                                                setCurrentPage(1);
+                                                                toast.success(`✅ Exibindo ${customValue} blocos por página`);
+                                                            } else {
+                                                                toast.error('❌ Valor inválido! Digite um número entre 1 e 999.');
+                                                                // Revert to previous value or 'all'
+                                                                if (blocksPerPage === 'all' || typeof blocksPerPage !== 'number') {
+                                                                    setBlocksPerPage('all');
+                                                                }
+                                                            }
+                                                        } else {
+                                                            // User cancelled - revert to previous value
+                                                            if (blocksPerPage === 'all' || typeof blocksPerPage !== 'number') {
+                                                                setBlocksPerPage('all');
+                                                            }
+                                                        }
+                                                    } else {
+                                                        setBlocksPerPage(parseInt(value));
+                                                        setCurrentPage(1);
+                                                    }
+                                                }}
+                                                className="h-9 px-3 pr-8 rounded-lg font-semibold transition-all active:scale-95 text-[10px] uppercase shadow-sm bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:border-indigo-400 cursor-pointer appearance-none"
+                                                title="Quantidade de blocos por página"
+                                            >
+                                                <option value="10">📄 10 por página</option>
+                                                <option value="20">📄 20 por página</option>
+                                                <option value="50">📄 50 por página</option>
+                                                <option value="custom">✏️ Personalizado</option>
+                                                <option value="all">📚 Todos</option>
+                                            </select>
+                                            <i className="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-[8px] text-slate-400 pointer-events-none"></i>
+                                        </div>
+
+                                        {/* Edit button - shown when custom value is active */}
+                                        {typeof blocksPerPage === 'number' && ![10, 20, 50].includes(blocksPerPage) && (
+                                            <div className="flex items-center gap-2 animate-in slide-in-from-left-2 duration-300">
+                                                <div className="h-9 px-3 flex items-center justify-center bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-200 dark:border-indigo-800">
+                                                    <span className="text-sm font-black text-indigo-600 dark:text-indigo-400">
+                                                        {blocksPerPage}
+                                                    </span>
+                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        const input = prompt('Quantos blocos você deseja exibir por página?', blocksPerPage.toString());
+
+                                                        if (input !== null) {
+                                                            const customValue = parseInt(input);
+                                                            if (!isNaN(customValue) && customValue >= 1 && customValue <= 999) {
+                                                                setBlocksPerPage(customValue);
+                                                                setCurrentPage(1);
+                                                                toast.success(`✅ Exibindo ${customValue} blocos por página`);
+                                                            } else {
+                                                                toast.error('❌ Valor inválido! Digite um número entre 1 e 999.');
+                                                            }
+                                                        }
+                                                    }}
+                                                    className="h-9 w-9 rounded-lg font-semibold transition-all active:scale-95 flex items-center justify-center text-xs shadow-sm bg-indigo-600 hover:bg-indigo-700 text-white border border-indigo-600 dark:bg-transparent dark:border-indigo-500 dark:text-indigo-400 dark:hover:bg-indigo-500/20 dark:hover:border-indigo-400"
+                                                    title="Editar quantidade personalizada"
+                                                >
+                                                    <i className="fas fa-edit text-xs"></i>
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Clear Filter Button */}
+                                    {(audioFilter !== 'all' || blocksPerPage !== 'all') && (
+                                        <button
+                                            onClick={() => {
+                                                setAudioFilter('all');
+                                                setBlocksPerPage('all');
+                                                setCurrentPage(1);
+                                            }}
+                                            className="h-9 px-3 rounded-lg font-semibold transition-all active:scale-95 flex items-center gap-1.5 text-[10px] uppercase shadow-sm bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/30 hover:border-red-300 dark:hover:border-red-700 animate-in slide-in-from-left-2 duration-300"
+                                            title="Limpar todos os filtros e voltar ao estado original"
+                                        >
+                                            <i className="fas fa-eraser text-[10px]"></i>
+                                            Limpar Filtro
+                                        </button>
+                                    )}
 
                                     {isSelectionMode && (
                                         <div className="flex items-center gap-2 animate-in slide-in-from-left-4 duration-300">
@@ -2553,50 +3019,117 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                     {/* Removed button - no longer needed with two-column layout */}
                                 </div>
                             ) : (
-                                blocks.map((rawBlock, index) => {
-                                    const block = typeof rawBlock === 'string'
-                                        ? { id: `legacy-${index}`, text: rawBlock, audioUrl: '' }
-                                        : rawBlock;
+                                // Filter blocks based on audio presence
+                                blocks
+                                    .filter((rawBlock) => {
+                                        if (audioFilter === 'all') return true;
+                                        const block = typeof rawBlock === 'string'
+                                            ? { id: `legacy-${blocks.indexOf(rawBlock)}`, text: rawBlock, audioUrl: '' }
+                                            : rawBlock;
 
-                                    return (
-                                        <BlockItem
-                                            key={block.id || index}
-                                            block={block}
-                                            index={index}
-                                            isExpanded={expandedBlockId === block.id}
-                                            isSelected={selectedBlocks.has(block.id)}
-                                            isSelectionMode={isSelectionMode}
-                                            isHovered={hoveredBlockIndex === index}
-                                            isMediaMenuOpen={showMediaMenu && mediaMenuIndex === index}
-                                            isActive={activeEditableElement !== null && activeEditableElement.getAttribute('data-block-id') === block.id}
-                                            totalBlocks={blocks.length}
-                                            handlers={{
-                                                setExpandedBlockId,
-                                                toggleBlockSelection,
-                                                setHoveredBlockIndex,
-                                                setMediaMenuIndex,
-                                                setShowMediaMenu,
-                                                addBlockAtPosition,
-                                                setShowImageModal,
-                                                setShowTableModal,
-                                                setShowVideoModal,
-                                                insertVideoEmbed,
-                                                openAudioModal,
-                                                copyBlockContent,
-                                                cutBlockContent,
-                                                removeBlock,
-                                                moveBlock,
-                                                updateBlock,
-                                                setActiveEditableElement,
-                                                saveSelection,
-                                                execCommand,
-                                                setCurrentFontSize,
-                                                currentFontSize
-                                            }}
-                                        />
-                                    );
-                                })
+                                        if (audioFilter === 'with-audio') {
+                                            return block.audioUrl && block.audioUrl.trim() !== '';
+                                        } else if (audioFilter === 'without-audio') {
+                                            return !block.audioUrl || block.audioUrl.trim() === '';
+                                        }
+                                        return true;
+                                    })
+                                    // Apply pagination
+                                    .slice(
+                                        blocksPerPage === 'all' ? 0 : (currentPage - 1) * blocksPerPage,
+                                        blocksPerPage === 'all' ? undefined : currentPage * blocksPerPage
+                                    )
+                                    .map((rawBlock, filteredIndex) => {
+                                        // Find original index to preserve block ID and data
+                                        const originalIndex = blocks.indexOf(rawBlock);
+                                        const block = typeof rawBlock === 'string'
+                                            ? { id: `legacy-${originalIndex}`, text: rawBlock, audioUrl: '' }
+                                            : rawBlock;
+
+                                        return (
+                                            <BlockItem
+                                                key={block.id || originalIndex}
+                                                block={block}
+                                                index={originalIndex}
+                                                isExpanded={expandedBlockId === block.id}
+                                                isSelected={selectedBlocks.has(block.id)}
+                                                isSelectionMode={isSelectionMode}
+                                                isHovered={hoveredBlockIndex === originalIndex}
+                                                isMediaMenuOpen={showMediaMenu && mediaMenuIndex === originalIndex}
+                                                isActive={activeEditableElement !== null && activeEditableElement.getAttribute('data-block-id') === block.id}
+                                                totalBlocks={blocks.length}
+                                                handlers={{
+                                                    setExpandedBlockId,
+                                                    toggleBlockSelection,
+                                                    setHoveredBlockIndex,
+                                                    setMediaMenuIndex,
+                                                    setShowMediaMenu,
+                                                    addBlockAtPosition,
+                                                    setShowImageModal,
+                                                    setShowTableModal,
+                                                    setShowVideoModal,
+                                                    insertVideoEmbed,
+                                                    openAudioModal,
+                                                    copyBlockContent,
+                                                    cutBlockContent,
+                                                    removeBlock,
+                                                    moveBlock,
+                                                    updateBlock,
+                                                    setActiveEditableElement,
+                                                    saveSelection,
+                                                    execCommand,
+                                                    setCurrentFontSize,
+                                                    currentFontSize
+                                                }}
+                                            />
+                                        );
+                                    })
                             )}
+
+                            {/* Pagination Controls */}
+                            {blocksPerPage !== 'all' && blocks.length > 0 && (() => {
+                                const filteredBlocks = blocks.filter((rawBlock) => {
+                                    if (audioFilter === 'all') return true;
+                                    const block = typeof rawBlock === 'string' ? { audioUrl: '' } : rawBlock;
+                                    if (audioFilter === 'with-audio') return block.audioUrl && block.audioUrl.trim() !== '';
+                                    if (audioFilter === 'without-audio') return !block.audioUrl || block.audioUrl.trim() === '';
+                                    return true;
+                                });
+                                const totalPages = Math.ceil(filteredBlocks.length / (blocksPerPage as number));
+
+                                return totalPages > 1 ? (
+                                    <div className="mt-8 pb-4 flex items-center justify-center gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                        <button
+                                            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                                            disabled={currentPage === 1}
+                                            className="h-10 px-4 rounded-xl font-bold transition-all active:scale-95 flex items-center gap-2 text-xs uppercase bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:border-indigo-400 disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
+                                            title="Página anterior"
+                                        >
+                                            <i className="fas fa-chevron-left text-xs"></i>
+                                            Anterior
+                                        </button>
+
+                                        <div className="flex items-center gap-2">
+                                            <div className="h-10 px-4 flex flex-col items-center justify-center bg-indigo-600 dark:bg-indigo-500/20 rounded-xl border-2 border-indigo-600 dark:border-indigo-500 shadow-lg shadow-indigo-500/20">
+                                                <span className="text-sm font-black text-white dark:text-indigo-400 leading-tight">{currentPage}</span>
+                                                <span className="text-[7px] font-black text-indigo-200 dark:text-indigo-600 uppercase tracking-tighter">
+                                                    de {totalPages}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                                            disabled={currentPage === totalPages}
+                                            className="h-10 px-4 rounded-xl font-bold transition-all active:scale-95 flex items-center gap-2 text-xs uppercase bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:border-indigo-400 disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
+                                            title="Próxima página"
+                                        >
+                                            Próxima
+                                            <i className="fas fa-chevron-right text-xs"></i>
+                                        </button>
+                                    </div>
+                                ) : null;
+                            })()}
                         </div>
                     </div>
                 </div>
@@ -3966,6 +4499,293 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                 className="px-8 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-black transition-all active:scale-95"
                             >
                                 FECHAR
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Image Viewer Modal */}
+            {showImageViewerModal && (
+                <div
+                    className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-in fade-in duration-200"
+                    onClick={() => setShowImageViewerModal(false)}
+                >
+                    <div className="relative max-w-7xl max-h-[90vh] w-full h-full flex items-center justify-center">
+                        {/* Close Button */}
+                        <button
+                            onClick={() => setShowImageViewerModal(false)}
+                            className="absolute top-4 right-4 z-10 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md text-white flex items-center justify-center transition-all hover:scale-110 shadow-2xl border border-white/20"
+                            title="Fechar"
+                        >
+                            <i className="fas fa-times text-xl"></i>
+                        </button>
+
+                        {/* Image */}
+                        <img
+                            src={viewerImageUrl}
+                            alt="Visualização"
+                            className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl transition-transform duration-300 hover:scale-105"
+                            onClick={(e) => e.stopPropagation()}
+                        />
+
+                        {/* Image Info */}
+                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-md px-6 py-3 rounded-full border border-white/10">
+                            <p className="text-xs text-white/80 font-medium">
+                                Clique fora da imagem para fechar
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Changes Diff Modal */}
+            {showChangesModal && (
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-slate-200 dark:border-slate-700 animate-in zoom-in-95 duration-300">
+                        {/* Header */}
+                        <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center">
+                                    <i className="fas fa-code-branch text-white"></i>
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-black text-slate-900 dark:text-white">
+                                        Alterações Não Salvas
+                                    </h2>
+                                    <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">
+                                        {changedBlocks.size} bloco{changedBlocks.size === 1 ? '' : 's'} modificado{changedBlocks.size === 1 ? '' : 's'}
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowChangesModal(false)}
+                                className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition-colors text-slate-600 dark:text-slate-300"
+                                title="Fechar"
+                            >
+                                <i className="fas fa-times"></i>
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-6 max-h-[calc(90vh-180px)] overflow-y-auto space-y-4">
+                            {Array.from(changedBlocks.entries()).map(([blockId, { before, after }], index) => {
+                                const isDeleted = after.text === '[REMOVIDO]';
+                                const isNew = before.text === '';
+                                const beforeText = before.text.replace(/<[^>]*>/g, '').trim() || '[Vazio]';
+                                const afterText = isDeleted ? '[REMOVIDO]' : after.text.replace(/<[^>]*>/g, '').trim() || '[Vazio]';
+
+                                return (
+                                    <div key={blockId} className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+                                        {/* Block Header */}
+                                        <div className="bg-slate-50 dark:bg-slate-800/50 px-4 py-3 flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-xs font-black text-slate-500 dark:text-slate-400 bg-slate-200 dark:bg-slate-700 px-2 py-1 rounded">
+                                                    #{index + 1}
+                                                </span>
+                                                {isNew && (
+                                                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                                        <i className="fas fa-plus mr-1"></i>
+                                                        Novo
+                                                    </span>
+                                                )}
+                                                {isDeleted && (
+                                                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                                                        <i className="fas fa-trash mr-1"></i>
+                                                        Removido
+                                                    </span>
+                                                )}
+                                                {!isNew && !isDeleted && (
+                                                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                                                        <i className="fas fa-edit mr-1"></i>
+                                                        Modificado
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <button
+                                                onClick={() => {
+                                                    const blockElement = document.querySelector(`[data-block-id="${blockId}"]`);
+                                                    if (blockElement) {
+                                                        setShowChangesModal(false);
+                                                        blockElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                        setExpandedBlockId(blockId);
+                                                    }
+                                                }}
+                                                className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 uppercase tracking-wider"
+                                            >
+                                                <i className="fas fa-arrow-right mr-1"></i>
+                                                Ir para bloco
+                                            </button>
+                                        </div>
+
+                                        {/* Before/After Comparison */}
+                                        <div className="grid grid-cols-2 divide-x divide-slate-200 dark:divide-slate-700">
+                                            {/* Before */}
+                                            {!isNew && (
+                                                <div className="p-4 bg-red-50/30 dark:bg-red-900/10">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <i className="fas fa-chevron-left text-xs text-red-600 dark:text-red-400"></i>
+                                                        <span className="text-[10px] font-black uppercase tracking-wider text-red-600 dark:text-red-400">
+                                                            Antes
+                                                        </span>
+                                                    </div>
+                                                    <div className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed line-clamp-6">
+                                                        {beforeText}
+                                                    </div>
+                                                    {before.audioUrl && (
+                                                        <div className="mt-2 text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                                                            <i className="fas fa-music"></i>
+                                                            Áudio: Sim
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {/* After */}
+                                            {!isDeleted && (
+                                                <div className={`p-4 ${isNew ? 'col-span-2 bg-green-50/30 dark:bg-green-900/10' : 'bg-green-50/30 dark:bg-green-900/10'}`}>
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <i className="fas fa-chevron-right text-xs text-green-600 dark:text-green-400"></i>
+                                                        <span className="text-[10px] font-black uppercase tracking-wider text-green-600 dark:text-green-400">
+                                                            Depois
+                                                        </span>
+                                                    </div>
+                                                    <div className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed line-clamp-6">
+                                                        {afterText}
+                                                    </div>
+                                                    {after.audioUrl && (
+                                                        <div className="mt-2 text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                                                            <i className="fas fa-music"></i>
+                                                            Áudio: Sim
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {/* Deleted - Full Width */}
+                                            {isDeleted && (
+                                                <div className="col-span-2 p-4 bg-red-50/30 dark:bg-red-900/10">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <i className="fas fa-trash text-xs text-red-600 dark:text-red-400"></i>
+                                                        <span className="text-[10px] font-black uppercase tracking-wider text-red-600 dark:text-red-400">
+                                                            Conteúdo Removido
+                                                        </span>
+                                                    </div>
+                                                    <div className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed line-through opacity-60">
+                                                        {beforeText}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+
+                            {changedBlocks.size === 0 && (
+                                <div className="text-center py-12">
+                                    <i className="fas fa-check-circle text-5xl text-green-500 mb-4"></i>
+                                    <p className="text-lg font-bold text-slate-700 dark:text-slate-300">
+                                        Nenhuma alteração pendente
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4">
+                            <button
+                                onClick={() => setShowChangesModal(false)}
+                                className="px-6 py-3 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-sm font-bold transition-all active:scale-95"
+                            >
+                                <i className="fas fa-times mr-2"></i>
+                                Fechar
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setShowChangesModal(false);
+                                    handleSave();
+                                }}
+                                className="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold transition-all active:scale-95 flex items-center gap-2"
+                            >
+                                <i className="fas fa-save"></i>
+                                Salvar Alterações
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Offline Connection Modal */}
+            {showOfflineModal && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[150] flex items-center justify-center p-4 animate-in fade-in duration-300">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border-2 border-red-500 animate-in zoom-in-95 duration-300">
+                        {/* Header */}
+                        <div className="bg-gradient-to-r from-red-500 to-orange-500 p-6 text-center">
+                            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center animate-pulse">
+                                <i className="fas fa-wifi-slash text-4xl text-white"></i>
+                            </div>
+                            <h2 className="text-2xl font-black text-white mb-2">
+                                Conexão Perdida
+                            </h2>
+                            <p className="text-sm text-white/90 font-medium">
+                                Sem acesso à internet
+                            </p>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-6 space-y-4">
+                            <div className="flex items-start gap-3 p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
+                                <i className="fas fa-exclamation-triangle text-red-500 text-xl mt-1"></i>
+                                <div>
+                                    <h3 className="font-bold text-slate-900 dark:text-white mb-1">
+                                        Não é possível salvar
+                                    </h3>
+                                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                                        Você perdeu a conexão com a internet. Suas alterações não serão salvas até que a conexão seja restaurada.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <h4 className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                    O que fazer:
+                                </h4>
+                                <ul className="space-y-2 text-sm text-slate-700 dark:text-slate-300">
+                                    <li className="flex items-start gap-2">
+                                        <i className="fas fa-check text-green-500 mt-1 text-xs"></i>
+                                        <span>Verifique sua conexão Wi-Fi ou dados móveis</span>
+                                    </li>
+                                    <li className="flex items-start gap-2">
+                                        <i className="fas fa-check text-green-500 mt-1 text-xs"></i>
+                                        <span>Mantenha esta página aberta - não recarregue!</span>
+                                    </li>
+                                    <li className="flex items-start gap-2">
+                                        <i className="fas fa-check text-green-500 mt-1 text-xs"></i>
+                                        <span>O sistema tentará reconectar automaticamente</span>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            {/* Connection Status */}
+                            <div className="flex items-center justify-center gap-2 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                                <div className="flex gap-1">
+                                    <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></span>
+                                    <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" style={{ animationDelay: '150ms' }}></span>
+                                    <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" style={{ animationDelay: '300ms' }}></span>
+                                </div>
+                                <span className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                                    Aguardando conexão...
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-700">
+                            <button
+                                onClick={() => setShowOfflineModal(false)}
+                                className="w-full px-6 py-3 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-sm font-bold transition-all active:scale-95"
+                            >
+                                Entendi, vou aguardar
                             </button>
                         </div>
                     </div>

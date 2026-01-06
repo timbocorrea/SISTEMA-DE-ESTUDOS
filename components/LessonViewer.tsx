@@ -72,6 +72,10 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     const blockRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
     const optionsMenuRef = useRef<HTMLDivElement | null>(null);
 
+    // Image Viewer Modal State
+    const [showImageViewerModal, setShowImageViewerModal] = useState(false);
+    const [viewerImageUrl, setViewerImageUrl] = useState('');
+
     // Video switcher state
     const [activeVideoIndex, setActiveVideoIndex] = useState<number>(0);
 
@@ -241,6 +245,19 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
             document.removeEventListener('mousedown', handleClickOutside);
         };
     }, [isOptionsMenuOpen]);
+
+    // Setup global function for opening image modal
+    useEffect(() => {
+        (window as any).openImageModal = (imageUrl: string) => {
+            console.log('🖼️ openImageModal chamada com URL:', imageUrl);
+            setViewerImageUrl(imageUrl);
+            setShowImageViewerModal(true);
+        };
+
+        return () => {
+            delete (window as any).openImageModal;
+        };
+    }, []);
 
 
 
@@ -884,6 +901,40 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                     />
                 )
             }
+
+            {/* Image Viewer Modal */}
+            {showImageViewerModal && (
+                <div
+                    className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-in fade-in duration-200"
+                    onClick={() => setShowImageViewerModal(false)}
+                >
+                    <div className="relative max-w-7xl max-h-[90vh] w-full h-full flex items-center justify-center">
+                        {/* Close Button */}
+                        <button
+                            onClick={() => setShowImageViewerModal(false)}
+                            className="absolute top-4 right-4 z-10 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md text-white flex items-center justify-center transition-all hover:scale-110 shadow-2xl border border-white/20"
+                            title="Fechar"
+                        >
+                            <i className="fas fa-times text-xl"></i>
+                        </button>
+
+                        {/* Image */}
+                        <img
+                            src={viewerImageUrl}
+                            alt="Visualização"
+                            className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl transition-transform duration-300 hover:scale-105"
+                            onClick={(e) => e.stopPropagation()}
+                        />
+
+                        {/* Image Info */}
+                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-md px-6 py-3 rounded-full border border-white/10">
+                            <p className="text-xs text-white/80 font-medium">
+                                Clique fora da imagem para fechar
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 };
