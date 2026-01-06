@@ -117,6 +117,10 @@ const App: React.FC = () => {
   // Admin Data (Managed Courses with full structure)
   const [adminCourses, setAdminCourses] = useState<import('./domain/entities').Course[]>([]);
 
+  // Network Connection Monitoring
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [showOfflineModal, setShowOfflineModal] = useState(false);
+
   useEffect(() => {
     if (user?.role === 'INSTRUCTOR') {
       adminService.listCoursesFull()
@@ -146,6 +150,41 @@ const App: React.FC = () => {
   };
 
   const activeView = getActiveView();
+
+  // Network Connection Monitoring
+  useEffect(() => {
+    console.log('🔍 Network monitoring initialized in App.tsx. Current state:', navigator.onLine ? 'ONLINE' : 'OFFLINE');
+
+    const handleOnline = () => {
+      console.log('🌐 Conexão restaurada');
+      setIsOnline(true);
+      setShowOfflineModal(false);
+      toast.success('✅ Conexão com a internet restaurada!');
+    };
+
+    const handleOffline = () => {
+      console.log('📵 Conexão perdida');
+      console.log('📵 Atualizando estados: isOnline=false, showOfflineModal=true');
+      setIsOnline(false);
+      setShowOfflineModal(true);
+      toast.error('❌ Conexão com a internet perdida!');
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    // Check initial state and trigger modal if offline
+    if (!navigator.onLine) {
+      console.log('⚠️ App iniciou OFFLINE - mostrando modal');
+      setIsOnline(false);
+      setShowOfflineModal(true);
+    }
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // Theme Logic
   useEffect(() => {
@@ -312,6 +351,7 @@ const App: React.FC = () => {
         activeLessonId={activeLesson?.id}
         activeCourse={activeCourse}
         onExpandCourse={selectCourse}
+        isOnline={isOnline}
       />
 
       {/* Mobile Overlay */}
@@ -440,6 +480,83 @@ const App: React.FC = () => {
       />
 
       {/* Support Widget removed from here, moved to Sidebar */}
+
+      {/* Offline Connection Modal */}
+      {showOfflineModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[150] flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border-2 border-red-500 animate-in zoom-in-95 duration-300">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-red-500 to-orange-500 p-6 text-center">
+              <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center animate-pulse">
+                <i className="fas fa-wifi-slash text-4xl text-white"></i>
+              </div>
+              <h2 className="text-2xl font-black text-white mb-2">
+                Conexão Perdida
+              </h2>
+              <p className="text-sm text-white/90 font-medium">
+                Sem acesso à internet
+              </p>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-4">
+              <div className="flex items-start gap-3 p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
+                <i className="fas fa-exclamation-triangle text-red-500 text-xl mt-1"></i>
+                <div>
+                  <h3 className="font-bold text-slate-900 dark:text-white mb-1">
+                    Não é possível acessar o sistema
+                  </h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                    Você perdeu a conexão com a internet. Suas alterações não serão salvas até que a conexão seja restaurada.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  O que fazer:
+                </h4>
+                <ul className="space-y-2 text-sm text-slate-700 dark:text-slate-300">
+                  <li className="flex items-start gap-2">
+                    <i className="fas fa-check text-green-500 mt-1 text-xs"></i>
+                    <span>Verifique sua conexão Wi-Fi ou dados móveis</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <i className="fas fa-check text-green-500 mt-1 text-xs"></i>
+                    <span>Mantenha esta página aberta - não recarregue!</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <i className="fas fa-check text-green-500 mt-1 text-xs"></i>
+                    <span>O sistema tentará reconectar automaticamente</span>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Connection Status */}
+              <div className="flex items-center justify-center gap-2 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                <div className="flex gap-1">
+                  <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></span>
+                  <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" style={{ animationDelay: '150ms' }}></span>
+                  <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" style={{ animationDelay: '300ms' }}></span>
+                </div>
+                <span className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                  Aguardando conexão...
+                </span>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-700">
+              <button
+                onClick={() => setShowOfflineModal(false)}
+                className="w-full px-6 py-3 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-sm font-bold transition-all active:scale-95"
+              >
+                Entendi, vou aguardar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
