@@ -23,6 +23,7 @@
     "pdfjs-dist": "^4.8.69",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
+    "react-dropbox-chooser": "^0.0.5",
     "react-highlight-words": "^0.21.0",
     "react-hook-form": "^7.69.0",
     "react-router-dom": "^7.11.0",
