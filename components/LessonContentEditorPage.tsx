@@ -10,6 +10,8 @@ import { Quiz, QuizQuestion, QuizOption } from '../domain/quiz-entities';
 import { SupabaseCourseRepository } from '../repositories/SupabaseCourseRepository'; // Ajuste conforme necessário recuperando do context
 import { marked } from 'marked'; // Para conversão de Markdown para HTML
 import { toast } from 'sonner';
+import DropboxAudioBrowser, { DropboxFile } from './DropboxAudioBrowser';
+import { DropboxService } from '../services/dropbox/DropboxService';
 
 const FONT_FAMILIES = [
     { name: 'Padrão', value: 'inherit' },
@@ -560,6 +562,24 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
     const [tableRows, setTableRows] = useState(3);
     const [tableCols, setTableCols] = useState(3);
 
+    // Dropbox Integration State
+    const [showDropboxBrowser, setShowDropboxBrowser] = useState(false);
+    // Verificação inicial de Autenticação do Dropbox (Callback) e Inicialização
+    useEffect(() => {
+        // Initialize service
+        DropboxService.initialize();
+
+        // Check if we just returned from a successful login
+        const justLoggedIn = localStorage.getItem('dropbox_just_logged_in');
+        if (justLoggedIn) {
+            localStorage.removeItem('dropbox_just_logged_in');
+            if (DropboxService.isAuthenticated()) {
+                setShowDropboxBrowser(true);
+                toast.success('Conectado ao Dropbox com sucesso!');
+            }
+        }
+    }, []);
+
     // Image Viewer Modal State
     const [showImageViewerModal, setShowImageViewerModal] = useState(false);
     const [viewerImageUrl, setViewerImageUrl] = useState('');
@@ -598,6 +618,13 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
     const [editingBlockForAudio, setEditingBlockForAudio] = useState<any | null>(null);
     const [tempAudioUrl, setTempAudioUrl] = useState('');
     const [audioFilter, setAudioFilter] = useState<'all' | 'with-audio' | 'without-audio'>('all');
+
+    // Handler for Dropbox Audio Selection
+    const handleDropboxAudioSelected = (url: string, filename: string) => {
+        setTempAudioUrl(url);
+        toast.success(`✅ ${filename} selecionado do Dropbox!`);
+        setShowDropboxBrowser(false);
+    };
     const [blocksPerPage, setBlocksPerPage] = useState<number | 'all'>('all');
     const [currentPage, setCurrentPage] = useState(1);
 
@@ -3139,129 +3166,153 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
             {
                 editingBlockForAudio && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
-                        <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
-                            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-                                        <i className="fas fa-music"></i>
-                                    </div>
-                                    <h3 className="font-bold text-slate-800 dark:text-white">Gerenciar Áudio</h3>
-                                </div>
-                                <button
-                                    onClick={() => setEditingBlockForAudio(null)}
-                                    className="w-8 h-8 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center text-slate-400 transition-colors"
-                                >
-                                    <i className="fas fa-times"></i>
-                                </button>
-                            </div>
+                        {/* Wrapper Relativo para posicionamento do Painel Lateral */}
+                        <div className="relative flex items-center justify-center w-full max-w-md">
 
-                            <div className="p-6 space-y-4">
-                                <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-slate-800">
-                                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium line-clamp-2 italic">
-                                        "{editingBlockForAudio.text}"
-                                    </p>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">URL do Arquivo</label>
-                                    <div className="relative">
-                                        <i className="fas fa-link absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                                        <input
-                                            type="text"
-                                            value={tempAudioUrl}
-                                            onChange={(e) => handleAudioUrlChange(e.target.value)}
-                                            autoFocus
-                                            className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
-                                            placeholder="Cole a URL do áudio ou link do Google Drive"
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Divider OR */}
-                                <div className="relative flex items-center py-2">
-                                    <div className="flex-1 border-t border-slate-200 dark:border-slate-800"></div>
-                                    <span className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">OU</span>
-                                    <div className="flex-1 border-t border-slate-200 dark:border-slate-800"></div>
-                                </div>
-
-                                {/* Upload de Arquivo */}
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
-                                        Upload de Arquivo
-                                    </label>
-                                    <label className="block">
-                                        <input
-                                            type="file"
-                                            accept="audio/*,.mp3,.wav,.ogg,.m4a"
-                                            onChange={(e) => {
-                                                const file = e.target.files?.[0];
-                                                if (file) handleAudioUpload(file);
-                                            }}
-                                            disabled={uploadingAudio}
-                                            className="hidden"
-                                            id="audioFileInput"
-                                        />
-                                        <div className={`w-full px-4 py-3 rounded-2xl border-2 border-dashed text-sm font-bold text-center cursor-pointer transition-all ${uploadingAudio
-                                            ? 'border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 text-slate-400 cursor-not-allowed'
-                                            : 'border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/30'
-                                            }`}>
-                                            <i className={`fas ${uploadingAudio ? 'fa-spinner fa-spin' : 'fa-cloud-upload-alt'} mr-2`}></i>
-                                            {uploadingAudio ? 'Fazendo upload...' : 'Selecionar Arquivo de Áudio'}
+                            {/* Conteúdo do Modal (Card Principal) */}
+                            <div className="bg-white dark:bg-slate-900 w-full rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200 relative z-20">
+                                <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                                            <i className="fas fa-music"></i>
                                         </div>
-                                    </label>
+                                        <h3 className="font-bold text-slate-800 dark:text-white">Gerenciar Áudio</h3>
+                                    </div>
+                                    <button
+                                        onClick={() => setEditingBlockForAudio(null)}
+                                        className="w-8 h-8 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center text-slate-400 transition-colors"
+                                    >
+                                        <i className="fas fa-times"></i>
+                                    </button>
+                                </div>
 
-                                    {/* Progress Bar */}
-                                    {uploadingAudio && (
-                                        <div className="space-y-1">
-                                            <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
-                                                <div
-                                                    className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full transition-all duration-300"
-                                                    style={{ width: `${uploadProgress}%` }}
-                                                ></div>
+                                <div className="p-6 space-y-4">
+                                    <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-slate-800">
+                                        <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium line-clamp-2 italic">
+                                            "{editingBlockForAudio.text}"
+                                        </p>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">URL do Arquivo</label>
+                                        <div className="relative">
+                                            <i className="fas fa-link absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                            <input
+                                                type="text"
+                                                value={tempAudioUrl}
+                                                onChange={(e) => handleAudioUrlChange(e.target.value)}
+                                                autoFocus
+                                                className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                                                placeholder="Cole a URL do áudio ou link do Google Drive"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Divider OR */}
+                                    <div className="relative flex items-center py-2">
+                                        <div className="flex-1 border-t border-slate-200 dark:border-slate-800"></div>
+                                        <span className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">OU</span>
+                                        <div className="flex-1 border-t border-slate-200 dark:border-slate-800"></div>
+                                    </div>
+
+                                    {/* Upload de Arquivo */}
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                                            Upload de Arquivo
+                                        </label>
+                                        <label className="block">
+                                            <input
+                                                type="file"
+                                                accept="audio/*,.mp3,.wav,.ogg,.m4a"
+                                                onChange={(e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) handleAudioUpload(file);
+                                                }}
+                                                disabled={uploadingAudio}
+                                                className="hidden"
+                                                id="audioFileInput"
+                                            />
+                                            <div className={`w-full px-4 py-3 rounded-2xl border-2 border-dashed text-sm font-bold text-center cursor-pointer transition-all ${uploadingAudio
+                                                ? 'border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 text-slate-400 cursor-not-allowed'
+                                                : 'border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/30'
+                                                }`}>
+                                                <i className={`fas ${uploadingAudio ? 'fa-spinner fa-spin' : 'fa-cloud-upload-alt'} mr-2`}></i>
+                                                {uploadingAudio ? 'Fazendo upload...' : 'Selecionar Arquivo de Áudio'}
                                             </div>
-                                            <p className="text-[10px] text-center text-slate-500">{uploadProgress}% concluído</p>
+                                        </label>
+
+                                        {/* Progress Bar */}
+                                        {uploadingAudio && (
+                                            <div className="space-y-1">
+                                                <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
+                                                    <div
+                                                        className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full transition-all duration-300"
+                                                        style={{ width: `${uploadProgress}%` }}
+                                                    ></div>
+                                                </div>
+                                                <p className="text-[10px] text-center text-slate-500">{uploadProgress}% concluído</p>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Botão Importar do Dropbox */}
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowDropboxBrowser(true)}
+                                        className="w-full px-4 py-3 bg-blue-50 dark:bg-blue-900/20 border-2 border-dashed border-blue-300 dark:border-blue-700 rounded-xl hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-all flex items-center justify-center gap-2 font-bold text-blue-700 dark:text-blue-300"
+                                    >
+                                        <i className="fab fa-dropbox text-xl"></i>
+                                        Importar do Dropbox
+                                    </button>
+
+                                    {tempAudioUrl && (
+                                        <div className="space-y-3">
+                                            <div className="flex items-center gap-3 p-3 bg-indigo-50 dark:bg-indigo-900/10 rounded-2xl border border-indigo-100 dark:border-indigo-800/50">
+                                                <i className="fas fa-volume-up text-indigo-500"></i>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-[10px] font-bold text-indigo-700 dark:text-indigo-400 truncate">{tempAudioUrl}</p>
+                                                </div>
+                                            </div>
+
+                                            <button
+                                                onClick={togglePreviewAudio}
+                                                type="button"
+                                                className={`w-full px-4 py-3 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 transition-all ${isPlayingPreview
+                                                    ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20'
+                                                    : 'bg-green-500 hover:bg-green-600 text-white shadow-lg shadow-green-500/20'
+                                                    }`}
+                                            >
+                                                <i className={`fas ${isPlayingPreview ? 'fa-pause' : 'fa-play'}`}></i>
+                                                {isPlayingPreview ? 'Pausar Teste' : 'Testar Áudio'}
+                                            </button>
                                         </div>
                                     )}
                                 </div>
 
-                                {tempAudioUrl && (
-                                    <div className="space-y-3">
-                                        <div className="flex items-center gap-3 p-3 bg-indigo-50 dark:bg-indigo-900/10 rounded-2xl border border-indigo-100 dark:border-indigo-800/50">
-                                            <i className="fas fa-volume-up text-indigo-500"></i>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-[10px] font-bold text-indigo-700 dark:text-indigo-400 truncate">{tempAudioUrl}</p>
-                                            </div>
-                                        </div>
-
-                                        <button
-                                            onClick={togglePreviewAudio}
-                                            type="button"
-                                            className={`w-full px-4 py-3 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 transition-all ${isPlayingPreview
-                                                ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20'
-                                                : 'bg-green-500 hover:bg-green-600 text-white shadow-lg shadow-green-500/20'
-                                                }`}
-                                        >
-                                            <i className={`fas ${isPlayingPreview ? 'fa-pause' : 'fa-play'}`}></i>
-                                            {isPlayingPreview ? 'Pausar Teste' : 'Testar Áudio'}
-                                        </button>
-                                    </div>
-                                )}
+                                <div className="p-6 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800 flex gap-3">
+                                    <button
+                                        onClick={() => setEditingBlockForAudio(null)}
+                                        className="flex-1 px-4 py-3 rounded-2xl text-sm font-bold text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        onClick={saveAudioUrl}
+                                        className="flex-1 px-4 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl text-sm font-bold shadow-lg shadow-indigo-600/20 transition-all active:scale-95"
+                                    >
+                                        Salvar Áudio
+                                    </button>
+                                </div>
                             </div>
 
-                            <div className="p-6 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800 flex gap-3">
-                                <button
-                                    onClick={() => setEditingBlockForAudio(null)}
-                                    className="flex-1 px-4 py-3 rounded-2xl text-sm font-bold text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
-                                >
-                                    Cancelar
-                                </button>
-                                <button
-                                    onClick={saveAudioUrl}
-                                    className="flex-1 px-4 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl text-sm font-bold shadow-lg shadow-indigo-600/20 transition-all active:scale-95"
-                                >
-                                    Salvar Áudio
-                                </button>
-                            </div>
+                            {/* Sliding Panel: Dropbox Audio Browser */}
+                            <DropboxAudioBrowser
+                                isOpen={showDropboxBrowser}
+                                onClose={() => setShowDropboxBrowser(false)}
+                                onSelectAudio={handleDropboxAudioSelected}
+                                appKey={import.meta.env.VITE_DROPBOX_APP_KEY || ''}
+                                variant="panel"
+                            />
                         </div>
                     </div>
                 )
@@ -4791,6 +4842,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                     </div>
                 </div>
             )}
+
         </div >
     );
 };

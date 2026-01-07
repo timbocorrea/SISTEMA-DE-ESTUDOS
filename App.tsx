@@ -24,6 +24,7 @@ import { SystemHealth } from './components/SystemHealth';
 import CourseLayout from './components/CourseLayout';
 import CourseOverview from './components/CourseOverview';
 import QuestionnaireManagementPage from './components/QuestionnaireManagementPage';
+import DropboxCallbackPage from './components/DropboxCallbackPage';  // [NEW]
 
 import { useAuth } from './contexts/AuthContext';
 import { useCourse } from './contexts/CourseContext';
@@ -448,6 +449,7 @@ const App: React.FC = () => {
               <Route path="/admin/files" element={<AdminRoute><FileManagement /></AdminRoute>} />
               <Route path="/admin/health" element={<AdminRoute><SystemHealth adminService={adminService} /></AdminRoute>} />
               <Route path="/admin/settings" element={<AdminRoute><AdminSettingsPage adminService={adminService} /></AdminRoute>} />
+              <Route path="/oauth/dropbox" element={<DropboxCallbackPage />} />
 
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

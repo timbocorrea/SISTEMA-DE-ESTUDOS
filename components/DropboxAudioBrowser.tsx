@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import DropboxChooser from 'react-dropbox-chooser';
+import { DropboxService, DropboxItem } from '../services/dropbox/DropboxService';
 
-interface DropboxFile {
+export interface DropboxFile {
   id: string;
   name: string;
   link: string;
@@ -15,274 +15,314 @@ interface DropboxAudioBrowserProps {
   onClose: () => void;
   onSelectAudio: (url: string, filename: string) => void;
   appKey: string;
+  initialFile?: DropboxFile | null;
+  variant?: 'modal' | 'panel';
 }
 
 const DropboxAudioBrowser: React.FC<DropboxAudioBrowserProps> = ({
   isOpen,
   onClose,
   onSelectAudio,
-  appKey
+  variant = 'modal'
 }) => {
-  const [selectedFile, setSelectedFile] = useState<DropboxFile | null>(null);
+  // Estado de Autenticação e Navegação
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentPath, setCurrentPath] = useState('');
+  const [items, setItems] = useState<DropboxItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Estado de Seleção e Preview
+  const [selectedItem, setSelectedItem] = useState<DropboxItem | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
 
-  // Converter Preview Link para Direct Download URL
-  const convertToDirectLink = (previewLink: string): string => {
-    if (previewLink.includes('dl=0')) {
-      return previewLink.replace('dl=0', 'dl=1');
+  // Inicialização
+  useEffect(() => {
+    if (isOpen) {
+      const auth = DropboxService.isAuthenticated();
+      setIsAuthenticated(auth);
+      if (auth) {
+        loadFolder(currentPath);
+      }
     }
-    const separator = previewLink.includes('?') ? '&' : '?';
-    return `${previewLink}${separator}dl=1`;
+  }, [isOpen]);
+
+  // Carregar pasta
+  const loadFolder = async (path: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const entries = await DropboxService.listFolder(path);
+
+      // Filtrar apenas pastas e arquivos de áudio
+      const filtered = entries.filter(item => {
+        if (item.tag === 'folder') return true;
+        const ext = item.name.split('.').pop()?.toLowerCase();
+        return ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'].includes(ext || '');
+      });
+
+      // Ordenar: Pastas primeiro, depois arquivos
+      filtered.sort((a, b) => {
+        if (a.tag === b.tag) return a.name.localeCompare(b.name);
+        return a.tag === 'folder' ? -1 : 1;
+      });
+
+      setItems(filtered);
+      setCurrentPath(path);
+    } catch (err) {
+      console.error(err);
+      setError('Falha ao carregar arquivos. Tente reconectar.');
+      if ((err as any).message === 'Sessão expirada') {
+        setIsAuthenticated(false);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Handler para quando arquivos são selecionados do Dropbox
-  const handleSuccess = (files: any[]) => {
-    console.log('📦 Arquivos selecionados do Dropbox:', files);
-    
-    // Filtrar apenas arquivos de áudio
-    const audioFiles = files.filter(file => {
-      const ext = file.name.split('.').pop()?.toLowerCase();
-      return ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'].includes(ext || '');
-    });
+  // Autenticação
+  const handleLogin = async () => {
+    try {
+      // Save current URL to return to after auth
+      localStorage.setItem('dropbox_return_url', window.location.href);
 
-    if (audioFiles.length === 0) {
-      alert('⚠️ Nenhum arquivo de áudio encontrado. Por favor, selecione arquivos MP3, WAV, OGG, M4A, AAC ou FLAC.');
-      return;
+      // Redirect to Dropbox using the stable Redirect URI
+      const authUrl = await DropboxService.getAuthUrl();
+      window.location.href = authUrl;
+    } catch (err) {
+      console.error('Erro ao iniciar login:', err);
+      // Assuming 'toast' is available globally or imported
+      // If not, replace with a simple setError or alert
+      // setError('Erro ao conectar com Dropbox');
+      // toast.error('Erro ao conectar com Dropbox'); 
     }
-
-    // Usar o primeiro arquivo de áudio
-    const file = audioFiles[0];
-    const directLink = convertToDirectLink(file.link);
-
-    setSelectedFile({
-      id: file.id || Date.now().toString(),
-      name: file.name,
-      link: file.link,
-      bytes: file.bytes,
-      icon: file.icon,
-      isDir: false
-    });
-
-    // Configurar preview
-    setPreviewUrl(directLink);
   };
 
-  // Preview do áudio
-  const handlePreview = () => {
-    if (audioRef.current && previewUrl) {
-      if (isPlaying) {
-        audioRef.current.pause();
-        setIsPlaying(false);
-      } else {
-        audioRef.current.play();
-        setIsPlaying(true);
+  // Navegação
+  const handleItemClick = async (item: DropboxItem) => {
+    if (item.tag === 'folder') {
+      // Entrar na pasta
+      loadFolder(item.path_lower || item.id);
+    } else {
+      // Selecionar arquivo
+      setSelectedItem(item);
+      setLoading(true);
+      try {
+        // Obter link temporário
+        const link = await DropboxService.getTemporaryLink(item.path_lower || item.id);
+        setPreviewUrl(link);
+      } catch (err) {
+        console.error(err);
+        setError('Erro ao obter link do arquivo');
+      } finally {
+        setLoading(false);
       }
     }
   };
 
-  // Aplicar áudio selecionado
-  const handleUseAudio = () => {
-    if (selectedFile && previewUrl) {
-      onSelectAudio(previewUrl, selectedFile.name);
+  const handleBreadcrumbClick = (index: number) => {
+    if (index === -1) {
+      loadFolder(''); // Raiz
+      return;
+    }
+    // Reconstrói o caminho baseado nos segmentos atuais
+    // Obs: Isso é simplificado. O ideal seria manter um array de objetos path/name
+    // Para simplicidade, vamos assumir navegação simples ou resetar para raiz
+    // Melhor implementação: Botão "Voltar" ou "Raiz"
+    loadFolder('');
+  };
+
+  const handleBack = () => {
+    // Lógica simples para voltar um nível (exige persistência de histórico ou manipulação de string)
+    if (currentPath === '') return;
+
+    const parentPath = currentPath.substring(0, currentPath.lastIndexOf('/'));
+    loadFolder(parentPath);
+  };
+
+  // Audio Controls
+  const togglePreview = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  const confirmSelection = () => {
+    if (selectedItem && previewUrl) {
+      onSelectAudio(previewUrl, selectedItem.name);
       onClose();
     }
   };
 
-  // Reset ao fechar
-  const handleClose = () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-    }
-    setSelectedFile(null);
-    setPreviewUrl(null);
-    setIsPlaying(false);
-    onClose();
-  };
-
-  // Atualizar estado de reprodução
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    const handlePlay = () => setIsPlaying(true);
-    const handlePause = () => setIsPlaying(false);
-    const handleEnded = () => setIsPlaying(false);
-
-    audio.addEventListener('play', handlePlay);
-    audio.addEventListener('pause', handlePause);
-    audio.addEventListener('ended', handleEnded);
-
-    return () => {
-      audio.removeEventListener('play', handlePlay);
-      audio.removeEventListener('pause', handlePause);
-      audio.removeEventListener('ended', handleEnded);
-    };
-  }, []);
-
   if (!isOpen) return null;
 
+  // Renderização Exclusiva do Painel (Variant Panel)
+  // Se precisarmos do modal, podemos manter o código antigo, mas focaremos no Panel
+  const isPanel = variant === 'panel';
+
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-in fade-in duration-300">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden border border-slate-200 dark:border-slate-700 animate-in zoom-in-95 duration-300">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center">
-              <i className="fab fa-dropbox text-white text-xl"></i>
+    <div className={`absolute top-4 right-0 bottom-4 w-[320px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl transition-all duration-500 ease-in-out transform ${isOpen ? 'translate-x-[100%] opacity-100 z-10' : 'translate-x-[20%] opacity-0 -z-10'} flex flex-col rounded-r-3xl overflow-hidden`}>
+
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
+        <div className="flex items-center gap-2">
+          <i className="fab fa-dropbox text-[#0061FE] text-lg"></i>
+          <h3 className="font-bold text-sm text-slate-800 dark:text-white">Dropbox</h3>
+        </div>
+        <button onClick={onClose} className="w-6 h-6 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 flex items-center justify-center text-slate-400">
+          <i className="fas fa-times text-xs"></i>
+        </button>
+      </div>
+
+      {/* Conteúdo Principal */}
+      <div className="flex-1 flex flex-col overflow-hidden relative">
+
+        {/* Tela de Login (Se não autenticado) */}
+        {!isAuthenticated ? (
+          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-6">
+            <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center mb-2">
+              <i className="fab fa-dropbox text-3xl text-[#0061FE]"></i>
             </div>
             <div>
-              <h2 className="text-xl font-black text-slate-900 dark:text-white">
-                Dropbox - Selecionar Áudio
-              </h2>
-              <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">
-                Selecione um arquivo de áudio do seu Dropbox
+              <h4 className="font-bold text-slate-800 dark:text-white">Conectar Conta</h4>
+              <p className="text-xs text-slate-500 mt-2">
+                Conecte-se para acessar seus arquivos de áudio diretamente aqui.
               </p>
             </div>
+            <button
+              onClick={handleLogin}
+              className="w-full py-3 bg-[#0061FE] hover:bg-blue-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-blue-500/20 transition-all active:scale-95 flex items-center justify-center gap-2"
+            >
+              <i className="fas fa-sign-in-alt"></i>
+              Conectar Dropbox
+            </button>
           </div>
-          <button
-            onClick={handleClose}
-            className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition-colors text-slate-600 dark:text-slate-300"
-            title="Fechar"
-          >
-            <i className="fas fa-times"></i>
-          </button>
-        </div>
+        ) : (
+          // Navegador de Arquivos (Se autenticado)
+          <div className="flex-1 flex flex-col h-full">
 
-        {/* Content */}
-        <div className="p-6 space-y-6 max-h-[calc(90vh-240px)] overflow-y-auto">
-          {/* Dropbox Chooser Button */}
-          {!selectedFile ? (
-            <div className="text-center py-12">
-              <div className="mb-6">
-                <i className="fab fa-dropbox text-6xl text-blue-500 mb-4"></i>
-                <h3 className="text-lg font-bold text-slate-700 dark:text-slate-300 mb-2">
-                  Conecte-se ao Dropbox
-                </h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Clique no botão abaixo para selecionar um arquivo de áudio
+            {/* Barra de Navegação */}
+            <div className="p-3 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2 bg-slate-50/50 dark:bg-slate-900/50">
+              {currentPath !== '' && (
+                <button onClick={handleBack} className="w-8 h-8 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center text-slate-500">
+                  <i className="fas fa-arrow-left text-xs"></i>
+                </button>
+              )}
+              <div className="flex-1 overflow-hidden">
+                <p className="text-xs font-bold text-slate-600 dark:text-slate-300 truncate">
+                  {currentPath === '' ? 'Arquivos' : currentPath.split('/').pop()}
                 </p>
               </div>
-
-              <DropboxChooser
-                appKey={appKey}
-                success={handleSuccess}
-                cancel={() => console.log('Seleção cancelada')}
-                multiselect={false}
-                extensions={['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac']}
-                linkType="preview"
-              >
-                <button className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm transition-all active:scale-95 shadow-lg shadow-blue-600/30">
-                  <i className="fab fa-dropbox mr-2"></i>
-                  Conectar ao Dropbox
-                </button>
-              </DropboxChooser>
-
-              <p className="text-xs text-slate-400 dark:text-slate-500 mt-4">
-                Formatos suportados: MP3, WAV, OGG, M4A, AAC, FLAC
-              </p>
+              <button onClick={loadFolder.bind(null, currentPath)} className="w-8 h-8 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center text-slate-500">
+                <i className="fas fa-sync-alt text-xs"></i>
+              </button>
             </div>
-          ) : (
-            <>
-              {/* Selected File Info */}
-              <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800">
-                <div className="flex items-start gap-3">
-                  <i className="fas fa-check-circle text-green-500 text-xl mt-1"></i>
-                  <div className="flex-1">
-                    <h4 className="font-bold text-slate-900 dark:text-white mb-1">
-                      Arquivo Selecionado
-                    </h4>
-                    <p className="text-sm text-slate-700 dark:text-slate-300 font-medium">
-                      {selectedFile.name}
-                    </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                      Tamanho: {(selectedFile.bytes / 1024 / 1024).toFixed(2)} MB
-                    </p>
-                  </div>
+
+            {/* Lista de Arquivos */}
+            <div className="flex-1 overflow-y-auto p-2">
+              {loading ? (
+                <div className="flex flex-col items-center justify-center h-40 gap-3">
+                  <i className="fas fa-spinner fa-spin text-indigo-500"></i>
+                  <span className="text-xs text-slate-400">Carregando...</span>
+                </div>
+              ) : error ? (
+                <div className="flex flex-col items-center justify-center h-40 text-red-500 gap-2 p-4 text-center">
+                  <i className="fas fa-exclamation-circle text-2xl"></i>
+                  <span className="text-xs font-bold">{error}</span>
                   <button
                     onClick={() => {
-                      setSelectedFile(null);
-                      setPreviewUrl(null);
-                      if (audioRef.current) {
-                        audioRef.current.pause();
-                      }
-                      setIsPlaying(false);
+                      localStorage.removeItem('dropbox_access_token');
+                      setIsAuthenticated(false);
+                      handleLogin();
                     }}
-                    className="px-3 py-1 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                    className="text-[10px] underline mt-2 hover:text-red-700"
                   >
-                    Trocar
+                    Tentar reconectar
                   </button>
                 </div>
-              </div>
-
-              {/* Audio Preview Player */}
-              {previewUrl && (
-                <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
-                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-4">
-                    🎧 Preview do Áudio
-                  </h4>
-                  
-                  <audio ref={audioRef} src={previewUrl} className="hidden" />
-
-                  <div className="flex items-center gap-4">
-                    {/* Play/Pause Button */}
-                    <button
-                      onClick={handlePreview}
-                      className="w-12 h-12 rounded-full bg-indigo-600 hover:bg-indigo-700 flex items-center justify-center text-white transition-all active:scale-95 shadow-lg shadow-indigo-600/30"
+              ) : items.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-40 text-slate-400 gap-2">
+                  <i className="far fa-folder-open text-2xl opacity-50"></i>
+                  <span className="text-xs">Pasta vazia</span>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {items.map(item => (
+                    <div
+                      key={item.id}
+                      onClick={() => handleItemClick(item)}
+                      className={`p-3 rounded-xl flex items-center gap-3 cursor-pointer transition-colors group ${selectedItem?.id === item.id
+                        ? 'bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800'
+                        : 'hover:bg-slate-50 dark:hover:bg-slate-800 border border-transparent'
+                        }`}
                     >
-                      <i className={`fas fa-${isPlaying ? 'pause' : 'play'} ${!isPlaying ? 'ml-1' : ''}`}></i>
-                    </button>
-
-                    {/* File Name */}
-                    <div className="flex-1">
-                      <p className="font-bold text-slate-900 dark:text-white text-sm">
-                        {selectedFile.name}
-                      </p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                        {isPlaying ? '▶️ Reproduzindo...' : '⏸️ Pausado'}
-                      </p>
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-lg ${item.tag === 'folder'
+                        ? 'bg-amber-100 text-amber-500 dark:bg-amber-900/30'
+                        : 'bg-indigo-100 text-indigo-500 dark:bg-indigo-900/30'
+                        }`}>
+                        <i className={`fas ${item.tag === 'folder' ? 'fa-folder' : 'fa-music'}`}></i>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-xs font-bold truncate ${selectedItem?.id === item.id
+                          ? 'text-indigo-700 dark:text-indigo-400'
+                          : 'text-slate-700 dark:text-slate-200'
+                          }`}>
+                          {item.name}
+                        </p>
+                        {item.size && (
+                          <p className="text-[10px] text-slate-400">
+                            {(item.size / 1024 / 1024).toFixed(1)} MB
+                          </p>
+                        )}
+                      </div>
+                      {item.tag === 'folder' && (
+                        <i className="fas fa-chevron-right text-xs text-slate-300 group-hover:text-slate-400"></i>
+                      )}
                     </div>
-
-                    {/* Volume Icon */}
-                    <i className="fas fa-volume-up text-slate-400 text-xl"></i>
-                  </div>
+                  ))}
                 </div>
               )}
+            </div>
 
-              {/* Info Alert */}
-              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                <div className="flex items-start gap-2">
-                  <i className="fas fa-info-circle text-blue-500 text-sm mt-0.5"></i>
-                  <p className="text-xs text-slate-600 dark:text-slate-400">
-                    A URL será automaticamente aplicada ao campo de áudio quando você clicar em "Usar Este Áudio"
-                  </p>
-                </div>
+            {/* Preview e Ação */}
+            {selectedItem && selectedItem.tag === 'file' && (
+              <div className="p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+                {loading && !previewUrl ? (
+                  <div className="h-10 flex items-center justify-center text-xs text-slate-400">
+                    <i className="fas fa-circle-notch fa-spin mr-2"></i> Preparando...
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <audio ref={audioRef} src={previewUrl || ''} onEnded={() => setIsPlaying(false)} className="hidden" />
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={togglePreview}
+                        className="flex-1 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center justify-center gap-2"
+                      >
+                        <i className={`fas ${isPlaying ? 'fa-pause' : 'fa-play'}`}></i>
+                        {isPlaying ? 'Pausar' : 'Ouvir'}
+                      </button>
+                      <button
+                        onClick={confirmSelection}
+                        className="flex-[2] py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow-lg shadow-indigo-500/20 active:scale-95"
+                      >
+                        Usar Arquivo
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
-            </>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4">
-          <button
-            onClick={handleClose}
-            className="px-6 py-3 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-sm font-bold transition-all active:scale-95"
-          >
-            <i className="fas fa-times mr-2"></i>
-            Cancelar
-          </button>
-          
-          {selectedFile && (
-            <button
-              onClick={handleUseAudio}
-              className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold transition-all active:scale-95 flex items-center gap-2 shadow-lg shadow-indigo-600/30"
-            >
-              <i className="fas fa-check"></i>
-              Usar Este Áudio
-            </button>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
