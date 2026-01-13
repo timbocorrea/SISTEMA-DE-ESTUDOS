@@ -375,11 +375,11 @@ export class SupabaseAdminRepository implements IAdminRepository {
       user_id: userId,
       course_id: cid,
       assigned_at: new Date().toISOString(),
-      assigned_by: adminId, // Also adding assigned_by since we have adminId
+      // assigned_by removed as it's not in course_enrollments
       is_active: true
     }));
 
-    const { error } = await this.client.from('user_course_assignments').upsert(records);
+    const { error } = await this.client.from('course_enrollments').upsert(records, { onConflict: 'user_id,course_id' });
     if (error) throw new DomainError(`Falha ao atribuir cursos: ${error.message}`);
   }
 
@@ -388,7 +388,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
   }
 
   async removeAllUserCourseAssignments(userId: string): Promise<void> {
-    const { error } = await this.client.from('user_course_assignments').delete().eq('user_id', userId);
+    const { error } = await this.client.from('course_enrollments').delete().eq('user_id', userId);
     if (error) throw new DomainError(`Falha ao remover todos os cursos do usuário: ${error.message}`);
   }
 
