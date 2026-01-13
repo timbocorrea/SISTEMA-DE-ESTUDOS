@@ -253,7 +253,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             }`}
                         >
                           {course.imageUrl ? (
-                            <img src={course.imageUrl} alt="" className="w-full h-full object-cover rounded-2xl opacity-50 mix-blend-overlay" />
+                            <img src={course.imageUrl} alt="" className="w-full h-full object-cover rounded-2xl" />
                           ) : (<i className="fas fa-book-open"></i>)}
                         </motion.div>
                         {isEnrolled && (
