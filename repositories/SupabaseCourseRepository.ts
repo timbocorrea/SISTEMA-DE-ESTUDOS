@@ -312,11 +312,12 @@ export class SupabaseCourseRepository implements ICourseRepository {
       return (allCourses || []).map(c => c.id);
     }
 
-    // Estudantes veem apenas cursos atribuídos
+    // Estudantes veem apenas cursos atribuídos/ativos
     const { data: assignments } = await this.client
-      .from('user_course_assignments')
+      .from('course_enrollments')
       .select('course_id')
-      .eq('user_id', userId);
+      .eq('user_id', userId)
+      .eq('is_active', true);
 
     return (assignments || []).map(a => a.course_id);
   }

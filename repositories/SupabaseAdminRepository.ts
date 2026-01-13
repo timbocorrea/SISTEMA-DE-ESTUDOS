@@ -374,7 +374,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
     const records = courseIds.map(cid => ({
       user_id: userId,
       course_id: cid,
-      assigned_at: new Date().toISOString(),
+      enrolled_at: new Date().toISOString(),
       // assigned_by removed as it's not in course_enrollments
       is_active: true
     }));
