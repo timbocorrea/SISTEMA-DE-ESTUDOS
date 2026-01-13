@@ -295,4 +295,12 @@ export class SupabaseAuthRepository implements IAuthRepository {
     }
     await this.client.auth.signOut();
   }
+
+  async completePasswordReset(newPassword: string): Promise<void> {
+    const { error } = await this.client.rpc('complete_password_reset', {
+      new_password: newPassword
+    });
+
+    if (error) throw new DomainError(`Erro ao atualizar senha: ${error.message}`);
+  }
 }

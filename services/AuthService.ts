@@ -46,6 +46,10 @@ export class AuthService {
     localStorage.removeItem('study_system_session');
   }
 
+  async completePasswordReset(newPassword: string): Promise<void> {
+    return this.authRepo.completePasswordReset(newPassword);
+  }
+
   getCachedSession(): IUserSession | null {
     const session = localStorage.getItem('study_system_session');
     return session ? JSON.parse(session) : null;

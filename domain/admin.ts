@@ -55,6 +55,7 @@ export type ProfileRecord = {
   current_level: number | null;
   gemini_api_key?: string | null;
   updated_at?: string;
+  is_temp_password?: boolean;
 };
 
 export type CourseEnrollmentRecord = {

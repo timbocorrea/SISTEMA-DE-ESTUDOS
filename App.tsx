@@ -36,6 +36,7 @@ import { useCourse } from './contexts/CourseContext';
 import { SupabaseAdminRepository } from './repositories/SupabaseAdminRepository';
 import { AdminService } from './services/AdminService';
 import LessonLoader from './components/LessonLoader';
+import ForcePasswordChangeModal from './components/ForcePasswordChangeModal';
 
 const LessonContentEditorWrapper: React.FC<{ adminService: AdminService }> = ({ adminService }) => {
   const { lessonId } = useParams<{ lessonId: string }>();
@@ -319,9 +320,46 @@ const App: React.FC = () => {
     );
   }
 
+
+
+  // App Component Logic
+  // ...
   // Pending/Rejected Screens (Keep logic similar to before)
   if (user.isPending()) return <PendingApprovalScreen userEmail={user.email} onLogout={logout} />;
   if (user.isRejected()) { logout(); return null; }
+
+  // Force Password Change Check
+  if (user.isTempPassword) {
+    return (
+      <>
+        <Toaster theme={theme} richColors position="top-right" />
+        <ForcePasswordChangeModal
+          authService={authService}
+          onSuccess={async () => {
+            // Refresh session to update user profile (isTempPassword should come back false)
+            await refreshSession();
+          }}
+        />
+      </>
+    );
+  }
+
+  // Force Password Change Check
+  if (user.isTempPassword) {
+    return (
+      <>
+        <Toaster theme={theme} richColors position="top-right" />
+        <ForcePasswordChangeModal
+          authService={authService}
+          onSuccess={async () => {
+            // Refresh session to update user profile (isTempPassword should become false)
+            await refreshSession();
+          }}
+        />
+      </>
+    );
+  }
+
 
   // Admin Check Helper
   const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {

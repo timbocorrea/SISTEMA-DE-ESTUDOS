@@ -10,6 +10,7 @@ import UserDetailsModal from './UserDetailsModal';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
 import { toast } from 'sonner';
 import UserCourseAccessModal from './UserCourseAccessModal';
+import AdminResetPasswordModal from './AdminResetPasswordModal';
 
 type Props = {
   adminService: AdminService;
@@ -25,6 +26,7 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
   const [busyId, setBusyId] = useState<string>('');
   const [editingUser, setEditingUser] = useState<{ id: string; name: string; email: string; role: 'STUDENT' | 'INSTRUCTOR'; apiKey: string } | null>(null);
   const [managingAccessUser, setManagingAccessUser] = useState<ProfileRecord | null>(null);
+  const [resettingUser, setResettingUser] = useState<{ id: string; name: string; email: string } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   // Approval system state
@@ -149,6 +151,14 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
 
   const handleAccessClick = (user: ProfileRecord) => {
     setManagingAccessUser(user);
+  };
+
+  const handleResetPasswordClick = (user: ProfileRecord) => {
+    setResettingUser({
+      id: user.id,
+      name: user.name || '',
+      email: user.email
+    });
   };
 
   const toggleSelectMode = () => {
@@ -537,6 +547,13 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
                 >
                   <i className="fas fa-lock"></i> Acesso
                 </button>
+                <button
+                  onClick={() => handleResetPasswordClick(u)}
+                  className="px-4 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/20 dark:hover:bg-amber-900/30 text-amber-600 dark:text-amber-400 font-bold text-xs transition-colors"
+                  title="Resetar Senha"
+                >
+                  <i className="fas fa-key"></i>
+                </button>
               </div>
             </div>
           );
@@ -584,8 +601,8 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
                 <tr
                   key={u.id}
                   className={`group transition-colors cursor-pointer ${isSelected
-                      ? 'bg-indigo-50 dark:bg-indigo-900/10'
-                      : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                    ? 'bg-indigo-50 dark:bg-indigo-900/10'
+                    : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
                     }`}
                   onClick={() => {
                     if (isSelectMode) toggleUserSelection(u.id);
@@ -597,8 +614,8 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
                       <div
                         onClick={() => toggleUserSelection(u.id)}
                         className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors cursor-pointer ${isSelected
-                            ? 'bg-indigo-600 border-indigo-600 text-white'
-                            : 'border-slate-300 dark:border-slate-600'
+                          ? 'bg-indigo-600 border-indigo-600 text-white'
+                          : 'border-slate-300 dark:border-slate-600'
                           }`}>
                         {isSelected && <i className="fas fa-check text-[10px]"></i>}
                       </div>
@@ -607,8 +624,8 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
                   <td className="p-4">
                     <div className="flex items-center gap-3">
                       <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${u.role === 'INSTRUCTOR'
-                          ? 'bg-cyan-100 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-400'
-                          : 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400'
+                        ? 'bg-cyan-100 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-400'
+                        : 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400'
                         }`}>
                         <i className={`fas ${u.role === 'INSTRUCTOR' ? 'fa-chalkboard-teacher' : 'fa-user-graduate'}`}></i>
                       </div>
@@ -620,8 +637,8 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
                   </td>
                   <td className="p-4">
                     <span className={`text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-wider ${u.role === 'INSTRUCTOR'
-                        ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300'
-                        : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                      ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300'
+                      : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
                       }`}>
                       {u.role === 'INSTRUCTOR' ? 'Admin' : 'Aluno'}
                     </span>
@@ -688,6 +705,13 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
                       >
                         <i className="fas fa-lock"></i>
                       </button>
+                      <button
+                        onClick={() => handleResetPasswordClick(u)}
+                        className="p-2 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+                        title="Resetar Senha"
+                      >
+                        <i className="fas fa-key"></i>
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -701,197 +725,224 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
         Se der erro de permissão, crie policies RLS para INSTRUCTOR ler/atualizar `profiles`.
       </div>
 
+      {/* Modal de Reset de Senha */}
+      {
+        resettingUser && (
+          <AdminResetPasswordModal
+            user={resettingUser}
+            adminService={adminService}
+            onClose={() => setResettingUser(null)}
+            onSuccess={() => {
+              setResettingUser(null);
+              // No need to reload users really, but ok
+            }}
+          />
+        )
+      }
+
       {/* Modal de Visualização Detalhada */}
-      {viewingUser && (
-        <UserDetailsModal
-          user={viewingUser}
-          adminService={adminService}
-          onClose={() => setViewingUser(null)}
-          onRefresh={() => {
-            setViewingUser(null);
-            loadUsers();
-          }}
-          onApprove={handleApproveClick}
-          onReject={handleRejectClick}
-        />
-      )}
+      {
+        viewingUser && (
+          <UserDetailsModal
+            user={viewingUser}
+            adminService={adminService}
+            onClose={() => setViewingUser(null)}
+            onRefresh={() => {
+              setViewingUser(null);
+              loadUsers();
+            }}
+            onApprove={handleApproveClick}
+            onReject={handleRejectClick}
+          />
+        )
+      }
 
       {/* Modal de Aprovação */}
-      {approvingUser && (
-        <ApproveUserModal
-          user={approvingUser}
-          adminId={adminId}
-          adminService={adminService}
-          onClose={() => setApprovingUser(null)}
-          onSuccess={() => {
-            setApprovingUser(null);
-            loadUsers();
-          }}
-        />
-      )}
+      {
+        approvingUser && (
+          <ApproveUserModal
+            user={approvingUser}
+            adminId={adminId}
+            adminService={adminService}
+            onClose={() => setApprovingUser(null)}
+            onSuccess={() => {
+              setApprovingUser(null);
+              loadUsers();
+            }}
+          />
+        )
+      }
 
       {/* Modal de Rejeição */}
-      {rejectingUser && (
-        <RejectUserModal
-          user={rejectingUser}
-          adminId={adminId}
-          adminService={adminService}
-          onClose={() => setRejectingUser(null)}
-          onSuccess={() => {
-            setRejectingUser(null);
-            loadUsers();
-          }}
-        />
-      )}
+      {
+        rejectingUser && (
+          <RejectUserModal
+            user={rejectingUser}
+            adminId={adminId}
+            adminService={adminService}
+            onClose={() => setRejectingUser(null)}
+            onSuccess={() => {
+              setRejectingUser(null);
+              loadUsers();
+            }}
+          />
+        )
+      }
 
       {/* Modal de Acesso aos Cursos */}
-      {managingAccessUser && (
-        <UserCourseAccessModal
-          user={managingAccessUser}
-          adminService={adminService}
-          onClose={() => setManagingAccessUser(null)}
-          onSuccess={() => {
-            toast.success(`Acessos de ${managingAccessUser.name} atualizados!`);
-            setManagingAccessUser(null);
-          }}
-        />
-      )}
+      {
+        managingAccessUser && (
+          <UserCourseAccessModal
+            user={managingAccessUser}
+            adminService={adminService}
+            onClose={() => setManagingAccessUser(null)}
+            onSuccess={() => {
+              toast.success(`Acessos de ${managingAccessUser.name} atualizados!`);
+              setManagingAccessUser(null);
+            }}
+          />
+        )
+      }
 
       {/* Modal de Confirmação de Exclusão */}
-      {showDeleteConfirmation && (
-        <DeleteConfirmationModal
-          userCount={selectedUserIds.length}
-          onConfirm={handleBulkDelete}
-          onCancel={() => setShowDeleteConfirmation(false)}
-        />
-      )}
+      {
+        showDeleteConfirmation && (
+          <DeleteConfirmationModal
+            userCount={selectedUserIds.length}
+            onConfirm={handleBulkDelete}
+            onCancel={() => setShowDeleteConfirmation(false)}
+          />
+        )
+      }
 
       {/* Modal de Edição */}
-      {editingUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
-            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
-              <h3 className="text-xl font-black text-slate-800 dark:text-white">Gerenciar Usuário</h3>
-              <button
-                onClick={() => setEditingUser(null)}
-                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white flex items-center justify-center transition-colors"
-              >
-                <i className="fas fa-times"></i>
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveUser} className="p-6 space-y-6">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-12 h-12 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xl">
-                  <i className="fas fa-user-circle"></i>
-                </div>
-                <div>
-                  <h4 className="font-bold text-slate-800 dark:text-white">{editingUser.name || 'Sem nome'}</h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">{editingUser.email}</p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">
-                    Tipo de Acesso
-                  </label>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (editingUser) {
-                          setEditingUser({
-                            id: editingUser.id,
-                            name: editingUser.name,
-                            email: editingUser.email,
-                            apiKey: editingUser.apiKey,
-                            role: 'STUDENT'
-                          });
-                        }
-                      }}
-                      className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold border transition-all ${editingUser.role === 'STUDENT'
-                        ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-900/20 dark:border-indigo-800 dark:text-indigo-300'
-                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-400'
-                        }`}
-                    >
-                      <i className="fas fa-user-graduate mr-2"></i> Estudante
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (editingUser) {
-                          setEditingUser({
-                            id: editingUser.id,
-                            name: editingUser.name,
-                            email: editingUser.email,
-                            apiKey: editingUser.apiKey,
-                            role: 'INSTRUCTOR'
-                          });
-                        }
-                      }}
-                      className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold border transition-all ${editingUser.role === 'INSTRUCTOR'
-                        ? 'bg-cyan-50 border-cyan-200 text-cyan-700 dark:bg-cyan-900/20 dark:border-cyan-800 dark:text-cyan-300'
-                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-400'
-                        }`}
-                    >
-                      <i className="fas fa-chalkboard-teacher mr-2"></i> Admin / Instrutor
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">
-                    AI API Key (Google / OpenAI / Z.ai / Groq)
-                  </label>
-                  <div className="relative">
-                    <i className="fas fa-key absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                    <input
-                      type="text"
-                      value={editingUser.apiKey}
-                      onChange={e => {
-                        if (editingUser) {
-                          setEditingUser({
-                            id: editingUser.id,
-                            name: editingUser.name,
-                            email: editingUser.email,
-                            role: editingUser.role,
-                            apiKey: e.target.value
-                          });
-                        }
-                      }}
-                      placeholder="AIza... | sk... | gsk... | id.secret"
-                      className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-mono text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-                    />
-                  </div>
-                  <p className="mt-2 text-[10px] text-slate-500">
-                    Suporte: Google Gemini, OpenAI, Zhipu AI e Groq (Grátis: Llama 3).
-                  </p>
-                </div>
-              </div>
-
-              <div className="pt-4 flex gap-3">
+      {
+        editingUser && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
+              <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                <h3 className="text-xl font-black text-slate-800 dark:text-white">Gerenciar Usuário</h3>
                 <button
-                  type="button"
                   onClick={() => setEditingUser(null)}
-                  className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                  className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white flex items-center justify-center transition-colors"
                 >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="flex-1 py-3 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-500 shadow-lg shadow-indigo-600/20 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {isSaving && <i className="fas fa-circle-notch animate-spin"></i>}
-                  Salvar Alterações
+                  <i className="fas fa-times"></i>
                 </button>
               </div>
-            </form>
+
+              <form onSubmit={handleSaveUser} className="p-6 space-y-6">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-12 h-12 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xl">
+                    <i className="fas fa-user-circle"></i>
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-800 dark:text-white">{editingUser.name || 'Sem nome'}</h4>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{editingUser.email}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">
+                      Tipo de Acesso
+                    </label>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (editingUser) {
+                            setEditingUser({
+                              id: editingUser.id,
+                              name: editingUser.name,
+                              email: editingUser.email,
+                              apiKey: editingUser.apiKey,
+                              role: 'STUDENT'
+                            });
+                          }
+                        }}
+                        className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold border transition-all ${editingUser.role === 'STUDENT'
+                          ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-900/20 dark:border-indigo-800 dark:text-indigo-300'
+                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-400'
+                          }`}
+                      >
+                        <i className="fas fa-user-graduate mr-2"></i> Estudante
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (editingUser) {
+                            setEditingUser({
+                              id: editingUser.id,
+                              name: editingUser.name,
+                              email: editingUser.email,
+                              apiKey: editingUser.apiKey,
+                              role: 'INSTRUCTOR'
+                            });
+                          }
+                        }}
+                        className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold border transition-all ${editingUser.role === 'INSTRUCTOR'
+                          ? 'bg-cyan-50 border-cyan-200 text-cyan-700 dark:bg-cyan-900/20 dark:border-cyan-800 dark:text-cyan-300'
+                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-400'
+                          }`}
+                      >
+                        <i className="fas fa-chalkboard-teacher mr-2"></i> Admin / Instrutor
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">
+                      AI API Key (Google / OpenAI / Z.ai / Groq)
+                    </label>
+                    <div className="relative">
+                      <i className="fas fa-key absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                      <input
+                        type="text"
+                        value={editingUser.apiKey}
+                        onChange={e => {
+                          if (editingUser) {
+                            setEditingUser({
+                              id: editingUser.id,
+                              name: editingUser.name,
+                              email: editingUser.email,
+                              role: editingUser.role,
+                              apiKey: e.target.value
+                            });
+                          }
+                        }}
+                        placeholder="AIza... | sk... | gsk... | id.secret"
+                        className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-mono text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                      />
+                    </div>
+                    <p className="mt-2 text-[10px] text-slate-500">
+                      Suporte: Google Gemini, OpenAI, Zhipu AI e Groq (Grátis: Llama 3).
+                    </p>
+                  </div>
+                </div>
+
+                <div className="pt-4 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setEditingUser(null)}
+                    className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSaving}
+                    className="flex-1 py-3 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-500 shadow-lg shadow-indigo-600/20 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {isSaving && <i className="fas fa-circle-notch animate-spin"></i>}
+                    Salvar Alterações
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 };
 

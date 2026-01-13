@@ -144,6 +144,10 @@ export class AdminService {
     return this.adminRepository.updateProfile(id, patch);
   }
 
+  resetUserPassword(userId: string, newPassword: string): Promise<void> {
+    return this.adminRepository.resetUserPassword(userId, newPassword);
+  }
+
   // ========================================
   // USER APPROVAL SYSTEM
   // ========================================

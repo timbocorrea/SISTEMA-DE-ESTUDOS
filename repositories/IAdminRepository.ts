@@ -68,6 +68,7 @@ export interface IAdminRepository {
   removeUserCourseAssignment(userId: string, courseId: string): Promise<void>;
   removeAllUserCourseAssignments(userId: string): Promise<void>;
   deleteProfile(userId: string): Promise<void>;
+  resetUserPassword(userId: string, newPassword: string): Promise<void>;
 
   // System Stats
   getSystemStats(): Promise<any>;

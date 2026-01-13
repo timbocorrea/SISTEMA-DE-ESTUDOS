@@ -417,6 +417,15 @@ export class SupabaseAdminRepository implements IAdminRepository {
     if (error) throw new DomainError(`Falha ao aprovar usuário: ${error.message}`);
   }
 
+  async resetUserPassword(userId: string, newPassword: string): Promise<void> {
+    const { error } = await this.client.rpc('admin_reset_password', {
+      target_user_id: userId,
+      new_password: newPassword
+    });
+
+    if (error) throw new DomainError(`Falha ao resetar senha: ${error.message}`);
+  }
+
   async rejectUser(userId: string, adminId: string, reason?: string): Promise<void> {
     const { error } = await this.client
       .from('profiles')
@@ -433,7 +442,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
 
   async getUserCourseAssignments(userId: string): Promise<string[]> {
     const { data, error } = await this.client
-      .from('user_course_assignments')
+      .from('course_enrollments')
       .select('course_id')
       .eq('user_id', userId);
 
@@ -443,7 +452,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
 
   async removeUserCourseAssignment(userId: string, courseId: string): Promise<void> {
     const { error } = await this.client
-      .from('user_course_assignments')
+      .from('course_enrollments')
       .delete()
       .eq('user_id', userId)
       .eq('course_id', courseId);
