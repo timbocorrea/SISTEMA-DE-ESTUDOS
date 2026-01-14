@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Lesson, LessonResourceType } from '../domain/entities';
 
 const iconByType: Record<LessonResourceType, string> = {
@@ -125,8 +126,9 @@ const LessonMaterialsSidebar: React.FC<Props> = ({ lesson, onTrackAction }) => {
     return () => window.removeEventListener('keydown', handleEsc);
   }, [modalImage, modalPDF]);
 
-  // State to track active audio player (accordion style)
-  const [activeAudioId, setActiveAudioId] = useState<string | null>(null);
+  // State to track active audio player (Drawer style)
+  const [currentAudio, setCurrentAudio] = useState<MaterialItem | null>(null);
+  const [isMinimized, setIsMinimized] = useState(false);
 
   const handleItemClick = (item: MaterialItem) => {
     // Helper to check extensions
@@ -141,10 +143,9 @@ const LessonMaterialsSidebar: React.FC<Props> = ({ lesson, onTrackAction }) => {
 
     switch (effectiveType) {
       case 'AUDIO':
-        setActiveAudioId(prev => prev === item.id ? null : item.id);
-        if (activeAudioId !== item.id) {
-          onTrackAction?.(`Expandiu áudio: ${item.title}`);
-        }
+        setCurrentAudio(item);
+        setIsMinimized(false); // Always expand when selecting new
+        onTrackAction?.(`Abriu Player Áudio: ${item.title}`);
         break;
       case 'IMAGE':
         setModalImage(item.url);
@@ -163,7 +164,7 @@ const LessonMaterialsSidebar: React.FC<Props> = ({ lesson, onTrackAction }) => {
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl flex flex-col h-[500px] overflow-hidden">
+    <div className="bg-slate-900 border border-slate-800 rounded-xl flex flex-col h-[500px] overflow-hidden relative">
       <div className="p-4 bg-slate-800 border-b border-slate-700 flex items-center gap-3">
         <div className="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center text-white">
           <i className="fas fa-folder-open"></i>
@@ -184,118 +185,108 @@ const LessonMaterialsSidebar: React.FC<Props> = ({ lesson, onTrackAction }) => {
           </div>
         )}
 
-        {groups.map(type => {
-          const items = groupedMaterials[type];
-          if (items.length === 0) return null;
+        <div className="space-y-2">
+          {groups.flatMap(type => groupedMaterials[type]).map(item => {
+            // Determine effective type for rendering logic
+            let effectiveType = item.type;
+            const lowerUrl = item.url.toLowerCase();
+            if (item.type === 'FILE') {
+              if (lowerUrl.endsWith('.pdf')) effectiveType = 'PDF';
+              else if (/\.(jpg|jpeg|png|gif|webp)$/i.test(lowerUrl)) effectiveType = 'IMAGE';
+              else if (/\.(mp3|wav|ogg|m4a|aac)$/i.test(lowerUrl)) effectiveType = 'AUDIO';
+            }
 
-          const isExpanded = expandedGroups[type];
-
-          return (
-            <div key={type} className="border border-slate-800 rounded-xl overflow-hidden">
-              {/* Group Header */}
-              <button
-                onClick={() => toggleGroup(type)}
-                className={`w-full flex items-center justify-between p-3 transition-colors ${isExpanded ? 'bg-slate-800' : 'bg-slate-900 hover:bg-slate-800/50'
-                  }`}
-              >
-                <div className="flex items-center gap-2">
-                  <i className={`fas ${iconByType[type as LessonResourceType]} text-indigo-400 w-5 text-center`}></i>
-                  <span className="text-xs font-bold text-slate-300 uppercase tracking-widest">
-                    {labelByType[type as LessonResourceType]}
-                  </span>
-                  <span className="text-[10px] bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded-full">
-                    {items.length}
-                  </span>
-                </div>
-                <i className={`fas fa-chevron-down text-xs text-slate-500 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}></i>
-              </button>
-
-              {/* Group Content */}
-              <div
-                className={`transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'
-                  }`}
-              >
-                <div className="p-2 space-y-2 bg-slate-900/50">
-                  {items.map(item => {
-                    // Determine effective type for rendering logic
-                    let effectiveType = item.type;
-                    const lowerUrl = item.url.toLowerCase();
-                    if (item.type === 'FILE') {
-                      if (lowerUrl.endsWith('.pdf')) effectiveType = 'PDF';
-                      else if (/\.(jpg|jpeg|png|gif|webp)$/i.test(lowerUrl)) effectiveType = 'IMAGE';
-                      else if (/\.(mp3|wav|ogg|m4a|aac)$/i.test(lowerUrl)) effectiveType = 'AUDIO';
-                    }
-
-                    return (
-                      <div key={item.id} className="group">
-                        {/* Item Card */}
-                        <div className={`bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 hover:border-indigo-500/30 rounded-lg transition-all ${activeAudioId === item.id ? 'bg-slate-800 border-indigo-500/50' : ''}`}>
-                          <div className="flex items-start justify-between p-2 gap-2">
-                            {/* Icon & Title - Clickable Area */}
-                            <div
-                              className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
-                              onClick={() => handleItemClick(item)}
-                            >
-                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${item.isMain || activeAudioId === item.id ? 'bg-indigo-500/20 text-indigo-400' : 'bg-slate-700/50 text-slate-400 group-hover:bg-slate-700 group-hover:text-slate-300'}`}>
-                                <i className={`fas ${activeAudioId === item.id ? 'fa-chevron-down' : iconByType[effectiveType] || iconByType.FILE}`}></i>
-                              </div>
-                              <div className="min-w-0">
-                                <p className={`text-sm font-semibold truncate transition-colors ${activeAudioId === item.id ? 'text-indigo-400' : 'text-slate-200 group-hover:text-white'}`} title={item.title}>
-                                  {item.title}
-                                </p>
-                                {item.isMain && (
-                                  <span className="text-[9px] text-indigo-400 font-bold uppercase tracking-wider border border-indigo-500/20 px-1 rounded">
-                                    Principal
-                                  </span>
-                                )}
-                                {effectiveType === 'AUDIO' && (
-                                  <span className="text-[10px] text-slate-500 ml-2">
-                                    {activeAudioId === item.id ? 'Clique para fechar' : 'Clique para ouvir'}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Open/View Action */}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleItemClick(item);
-                              }}
-                              className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
-                              title={effectiveType === 'LINK' || effectiveType === 'FILE' ? "Abrir Link/Arquivo" : "Visualizar/Ouvir"}
-                            >
-                              <i className={`fas ${effectiveType === 'LINK' || effectiveType === 'FILE' ? 'fa-external-link-alt' : effectiveType === 'AUDIO' ? (activeAudioId === item.id ? 'fa-stop' : 'fa-play') : 'fa-eye'} text-xs`}></i>
-                            </button>
-                          </div>
-
-                          {/* Dropdowns / Content Area */}
-
-                          {/* Audio Player Dropdown */}
-                          {effectiveType === 'AUDIO' && (
-                            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${activeAudioId === item.id ? 'max-h-20 opacity-100 border-t border-slate-700/50' : 'max-h-0 opacity-0'}`}>
-                              <div className="p-2 bg-slate-900/40">
-                                <audio
-                                  controls
-                                  src={item.url}
-                                  className="w-full h-8"
-                                  autoPlay={activeAudioId === item.id}
-                                  onPlay={() => onTrackAction?.(`Iniciou áudio material: ${item.title}`)}
-                                />
-                              </div>
-                            </div>
-                          )}
-                        </div>
+            return (
+              <div key={item.id} className="group">
+                {/* Item Card */}
+                <div className={`bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 hover:border-indigo-500/30 rounded-lg transition-all ${currentAudio?.id === item.id ? 'bg-slate-800 border-indigo-500/50' : ''}`}>
+                  <div className="flex items-start justify-between p-2 gap-2">
+                    {/* Icon & Title - Clickable Area */}
+                    <div
+                      className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
+                      onClick={() => handleItemClick(item)}
+                    >
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${item.isMain || currentAudio?.id === item.id ? 'bg-indigo-500/20 text-indigo-400' : 'bg-slate-700/50 text-slate-400 group-hover:bg-slate-700 group-hover:text-slate-300'}`}>
+                        <i className={`fas ${currentAudio?.id === item.id ? 'fa-volume-high animate-pulse' : iconByType[effectiveType] || iconByType.FILE}`}></i>
                       </div>
-                    );
-                  })}
+                      <div className="min-w-0">
+                        <p className={`text-sm font-semibold truncate transition-colors ${currentAudio?.id === item.id ? 'text-indigo-400' : 'text-slate-200 group-hover:text-white'}`} title={item.title}>
+                          {item.title}
+                        </p>
+                        {item.isMain && (
+                          <span className="text-[9px] text-indigo-400 font-bold uppercase tracking-wider border border-indigo-500/20 px-1 rounded">
+                            Principal
+                          </span>
+                        )}
+                        {effectiveType === 'AUDIO' && (
+                          <span className="text-[10px] text-slate-500 ml-2">
+                            {currentAudio?.id === item.id ? 'Ouvindo agora...' : 'Clique para ouvir'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Open/View Action */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleItemClick(item);
+                      }}
+                      className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                      title={effectiveType === 'LINK' || effectiveType === 'FILE' ? "Abrir Link/Arquivo" : "Visualizar/Ouvir"}
+                    >
+                      <i className={`fas ${effectiveType === 'LINK' || effectiveType === 'FILE' ? 'fa-external-link-alt' : effectiveType === 'AUDIO' ? (currentAudio?.id === item.id ? 'fa-chart-simple' : 'fa-play') : 'fa-eye'} text-xs`}></i>
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
 
       </div>
+
+      {/* Portal for Audio Player to break out of sidebar overflow/z-index */}
+      {currentAudio && createPortal(
+        <>
+          {/* Backdrop for minimizing by clicking outside */}
+          {!isMinimized && (
+            <div
+              className="fixed inset-0 z-[9998] bg-black/10 backdrop-blur-[1px] transition-opacity"
+              onClick={() => setIsMinimized(true)}
+              title="Clique para minimizar o player"
+            ></div>
+          )}
+
+          {/* Audio Player Drawer */}
+          <div className={`fixed inset-y-0 right-0 z-[9999] w-80 bg-slate-900/95 backdrop-blur-xl border-l border-white/10 shadow-2xl transform transition-transform duration-500 ease-spring ${!isMinimized ? 'translate-x-0' : 'translate-x-full'}`}>
+            <AudioPlayerContent
+              item={currentAudio}
+              onClose={() => setCurrentAudio(null)}
+              onMinimize={() => setIsMinimized(true)}
+              onTrackAction={onTrackAction}
+            />
+          </div>
+
+          {/* Floating Restore Button (Mini Player) */}
+          {isMinimized && (
+            <button
+              onClick={() => setIsMinimized(false)}
+              className="fixed right-0 top-1/2 -translate-y-1/2 z-[9999] bg-indigo-600 text-white p-3 rounded-l-xl shadow-lg border-l border-t border-b border-indigo-400 hover:bg-indigo-500 transition-all group"
+              title="Expandir Player"
+            >
+              <div className="relative">
+                <i className="fas fa-compact-disc animate-spin-slow text-xl group-hover:scale-110 transition-transform"></i>
+                <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                </span>
+              </div>
+            </button>
+          )}
+        </>,
+        document.body
+      )}
 
       {/* Modal de Visualização de Imagem */}
       {modalImage && (
@@ -353,6 +344,153 @@ const LessonMaterialsSidebar: React.FC<Props> = ({ lesson, onTrackAction }) => {
     </div>
   );
 };
+
+// Sub-component for the robust Audio Player
+const AudioPlayerContent: React.FC<{ item: MaterialItem, onClose: () => void, onMinimize: () => void, onTrackAction?: (a: string) => void }> = ({ item, onClose, onMinimize, onTrackAction }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(1);
+  const audioRef = React.useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    if (onTrackAction) onTrackAction(`Abriu Player: ${item.title}`);
+    setIsPlaying(true); // Auto-play on open
+  }, [item, onTrackAction]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (isPlaying) audio.play().catch(e => console.error("Play error:", e));
+    else audio.pause();
+
+  }, [isPlaying, item]); // Re-run when item changes to play new track
+
+  const formatTime = (time: number) => {
+    if (isNaN(time)) return "0:00";
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  const skip = (amount: number) => {
+    if (audioRef.current) audioRef.current.currentTime += amount;
+  };
+
+  return (
+    <div className="h-full flex flex-col bg-gradient-to-b from-slate-900 via-slate-900 to-indigo-950/20">
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b border-white/5">
+        <h4 className="text-xs font-bold text-slate-400 tracking-wider">REPRODUZINDO AGORA</h4>
+        <div className="flex items-center gap-2">
+          {/* Minimize Button */}
+          <button onClick={onMinimize} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors" title="Minimizar">
+            <i className="fas fa-chevron-right"></i>
+          </button>
+          {/* Stop & Close Button */}
+          <button
+            onClick={() => {
+              setIsPlaying(false);
+              onClose();
+            }}
+            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors"
+            title="Parar e Fechar"
+          >
+            <i className="fas fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+
+      {/* Main Body */}
+      <div className="flex-1 flex flex-col items-center justify-center p-6 space-y-8">
+
+        {/* "Album Art" Placeholder */}
+        <div className="w-48 h-48 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-2xl flex items-center justify-center relative group">
+          <div className="absolute inset-0 bg-black/20 rounded-2xl"></div>
+          <i className="fas fa-music text-6xl text-white/90 drop-shadow-lg"></i>
+          {/* Pulse Effect */}
+          {isPlaying && (
+            <div className="absolute -inset-4 bg-indigo-500/20 rounded-full blur-xl animate-pulse -z-10"></div>
+          )}
+        </div>
+
+        {/* Info */}
+        <div className="text-center w-full">
+          <h3 className="text-lg font-bold text-white mb-1 line-clamp-2 leading-tight">{item.title}</h3>
+          <p className="text-sm text-indigo-300">Material de Aula</p>
+        </div>
+
+        {/* Progress Bar */}
+        <div className="w-full space-y-2">
+          <input
+            type="range"
+            min={0}
+            max={duration || 100}
+            value={progress}
+            onChange={(e) => {
+              const val = Number(e.target.value);
+              setProgress(val);
+              if (audioRef.current) audioRef.current.currentTime = val;
+            }}
+            className="w-full h-1 bg-slate-700/50 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-indigo-500 hover:[&::-webkit-slider-thumb]:scale-125 hover:[&::-webkit-slider-thumb]:shadow-[0_0_10px_rgba(99,102,241,0.5)] transition-all"
+          />
+          <div className="flex justify-between text-xs text-slate-500 font-mono">
+            <span>{formatTime(progress)}</span>
+            <span>{formatTime(duration)}</span>
+          </div>
+        </div>
+
+        {/* Controls */}
+        <div className="flex items-center gap-6">
+          <button onClick={() => skip(-10)} className="text-slate-400 hover:text-white transition-colors transform hover:scale-110 active:scale-95">
+            <i className="fas fa-rotate-left text-xl"></i>
+          </button>
+
+          <button
+            onClick={() => setIsPlaying(!isPlaying)}
+            className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-slate-900 hover:scale-105 active:scale-95 transition-all shadow-lg hover:shadow-indigo-500/20"
+          >
+            <i className={`fas ${isPlaying ? 'fa-pause' : 'fa-play'} text-2xl ml-1`}></i>
+          </button>
+
+          <button onClick={() => skip(10)} className="text-slate-400 hover:text-white transition-colors transform hover:scale-110 active:scale-95">
+            <i className="fas fa-rotate-right text-xl"></i>
+          </button>
+        </div>
+      </div>
+
+      {/* Footer / Volume */}
+      <div className="p-6 bg-black/20 border-t border-white/5 space-y-3">
+        <div className="flex items-center gap-3">
+          <i className={`fas ${volume === 0 ? 'fa-volume-mute' : volume < 0.5 ? 'fa-volume-low' : 'fa-volume-high'} text-xs text-slate-400 w-4`}></i>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.01"
+            value={volume}
+            onChange={(e) => {
+              const v = Number(e.target.value);
+              setVolume(v);
+              if (audioRef.current) audioRef.current.volume = v;
+            }}
+            className="flex-1 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2.5 [&::-webkit-slider-thumb]:h-2.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-slate-400"
+          />
+        </div>
+      </div>
+
+      <audio
+        ref={audioRef}
+        src={item.url}
+        onTimeUpdate={(e) => setProgress(e.currentTarget.currentTime)}
+        onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
+        onEnded={() => setIsPlaying(false)}
+        className="hidden"
+      />
+    </div>
+  );
+}
 
 export default LessonMaterialsSidebar;
 

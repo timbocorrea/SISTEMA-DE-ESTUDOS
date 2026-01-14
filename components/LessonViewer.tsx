@@ -640,6 +640,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                 highlights={highlights}
                                 onBlockClick={(blockId, index) => audioEnabled && playBlock(index)}
                                 onTrackAction={onTrackAction}
+                                currentProgress={progress}
                             />
                         </div>
                     </div>

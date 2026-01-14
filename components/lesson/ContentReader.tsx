@@ -15,13 +15,15 @@ interface ContentReaderProps {
     highlights: HighlightData[];
     onBlockClick?: (blockId: string, index: number) => void;
     onTrackAction?: (action: string) => void;
+    currentProgress?: number; // 0 to 100
 }
 
 const ContentReader: React.FC<ContentReaderProps> = ({
     lesson,
     highlights,
     onBlockClick,
-    onTrackAction
+    onTrackAction,
+    currentProgress = 0
 }) => {
     const { activeBlockId, fontSize, contentTheme } = useLessonStore();
     const contentRef = useRef<HTMLDivElement>(null);
@@ -94,7 +96,7 @@ const ContentReader: React.FC<ContentReaderProps> = ({
                         className={`content-block ${isActive ? 'active-block' : ''} ${hasAudio ? 'has-audio' : ''}`}
                         style={{
                             marginBottom: `${block.spacing || 1.5}rem`,
-                            fontSize: `${fontSize / 100}rem`,
+                            fontSize: '1rem', // Fixed base size, scaled by zoom
                             lineHeight: 1.8,
                             padding: hasAudio ? '1rem' : '0',
                             borderLeft: hasAudio ? '4px solid #6366f1' : 'none',
@@ -141,6 +143,18 @@ const ContentReader: React.FC<ContentReaderProps> = ({
                             dangerouslySetInnerHTML={{ __html: htmlWithHighlights }}
                             style={{ display: 'inline' }}
                         />
+
+                        {/* Audio Progress Bar for Active Block */}
+                        {isActive && hasAudio && (
+                            <div className="mt-3 w-full h-1.5 bg-indigo-500/10 rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-indigo-500 transition-all duration-200 ease-linear"
+                                    style={{
+                                        width: `${currentProgress}%`,
+                                    }}
+                                ></div>
+                            </div>
+                        )}
                     </div>
                 );
             });
@@ -151,7 +165,7 @@ const ContentReader: React.FC<ContentReaderProps> = ({
             return (
                 <div
                     dangerouslySetInnerHTML={{ __html: htmlWithHighlights }}
-                    style={{ fontSize: `${fontSize / 100}rem`, lineHeight: 1.8 }}
+                    style={{ fontSize: '1rem', lineHeight: 1.8 }}
                     onClick={(e) => {
                         // Check if a highlight was clicked
                         const target = e.target as HTMLElement;
@@ -183,10 +197,13 @@ const ContentReader: React.FC<ContentReaderProps> = ({
                 backgroundColor: contentTheme === 'dark' ? '#0f172a' : '#ffffff',
                 borderRadius: '12px',
                 transition: 'all 0.3s ease',
+                // Use zoom for robust scaling of all content (including external HTML/Tailwind classes)
+                // @ts-ignore - Zoom is non-standard but widely supported in browsers for this use case
+                zoom: fontSize / 100
             }}
         >
             <h2 style={{
-                fontSize: `${(fontSize / 100) * 1.75}rem`,
+                fontSize: '1.75rem', // Fixed base size, scaled by zoom
                 fontWeight: 800,
                 marginBottom: '1.5rem',
                 color: contentTheme === 'dark' ? '#fff' : '#0f172a',
