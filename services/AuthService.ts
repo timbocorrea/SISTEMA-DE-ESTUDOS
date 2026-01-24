@@ -26,7 +26,9 @@ export class AuthService {
       localStorage.setItem('study_system_session', JSON.stringify(activeSession));
       return activeSession;
     }
-    return this.getCachedSession();
+    // Se o Supabase diz que não há sessão (token inválido/expirado), não devemos usar o cache local
+    localStorage.removeItem('study_system_session');
+    return null;
   }
 
   async signInWithGoogle(): Promise<AuthResponse> {

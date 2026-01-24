@@ -39,6 +39,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
         } catch (err) {
             console.error('Failed to restore session', err);
+            // Se o usuário não for encontrado (ex: deletado do banco), fazer logout para limpar estado
+            if ((err as Error).name === 'NotFoundError' || (err as any).message?.includes('User not found')) {
+                await logout();
+            }
         } finally {
             setIsLoading(false);
         }

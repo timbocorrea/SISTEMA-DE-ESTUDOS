@@ -220,6 +220,7 @@ export class SupabaseAuthRepository implements IAuthRepository {
 
   async signInWithGoogle(): Promise<AuthResponse> {
     const redirectTo = typeof window !== 'undefined' ? window.location.origin : undefined;
+    console.log('🔵 [AUTH] Iniciando login com Google. RedirectTo:', redirectTo);
 
     const { data, error } = await this.client.auth.signInWithOAuth({
       provider: 'google',
