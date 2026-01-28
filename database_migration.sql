@@ -50,6 +50,7 @@ create table if not exists public.lesson_resources (
   resource_type text not null check (resource_type in ('PDF', 'AUDIO', 'IMAGE', 'LINK', 'FILE')),
   url text not null,
   position int not null default 0,
+  category text not null default 'Outros',
   created_at timestamptz not null default now()
 );
 
