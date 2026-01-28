@@ -8,6 +8,7 @@ type ProfileRow = {
   name: string | null;
   email: string | null;
   role: 'STUDENT' | 'INSTRUCTOR' | null;
+  approval_status: 'pending' | 'approved' | 'rejected' | null;
   xp_total: number | null;
   current_level: number | null;
   achievements: unknown[] | null;
@@ -26,7 +27,8 @@ export class SupabaseAuthRepository implements IAuthRepository {
     sessionId: string,
     xp?: number | null,
     level?: number | null,
-    lastAccessAt?: string | null
+    lastAccessAt?: string | null,
+    approvalStatus?: 'pending' | 'approved' | 'rejected' | null
   ): IUserSession {
     return {
       user: {
@@ -34,6 +36,7 @@ export class SupabaseAuthRepository implements IAuthRepository {
         name,
         email,
         role,
+        approvalStatus: approvalStatus ?? undefined,
         xp: xp ?? undefined,
         level: level ?? undefined,
         lastAccess: lastAccessAt ? new Date(lastAccessAt) : null
@@ -59,7 +62,7 @@ export class SupabaseAuthRepository implements IAuthRepository {
         },
         { onConflict: 'id' }
       )
-      .select('id, name, email, role, xp_total, current_level, achievements, last_session_id, last_access_at')
+      .select('id, name, email, role, approval_status, xp_total, current_level, achievements, last_session_id, last_access_at')
       .single();
 
     if (error || !data) {
@@ -72,7 +75,7 @@ export class SupabaseAuthRepository implements IAuthRepository {
   private async fetchProfile(userId: string, email: string, name?: string): Promise<ProfileRow & { last_session_id: string | null }> {
     const { data, error } = await this.client
       .from('profiles')
-      .select('id, name, email, role, xp_total, current_level, achievements, last_session_id, last_access_at')
+      .select('id, name, email, role, approval_status, xp_total, current_level, achievements, last_session_id, last_access_at')
       .eq('id', userId)
       .maybeSingle();
 
@@ -125,7 +128,8 @@ export class SupabaseAuthRepository implements IAuthRepository {
         sessionId,
         profile.xp_total,
         profile.current_level,
-        profile.last_access_at
+        profile.last_access_at,
+        profile.approval_status
       )
     };
   }
@@ -187,7 +191,8 @@ export class SupabaseAuthRepository implements IAuthRepository {
         sessionId,
         profile.xp_total,
         profile.current_level,
-        profile.last_access_at
+        profile.last_access_at,
+        profile.approval_status
       )
     };
   }
@@ -214,7 +219,8 @@ export class SupabaseAuthRepository implements IAuthRepository {
       profile.last_session_id || '', // Se for a primeira vez após migração, pode estar vazio
       profile.xp_total,
       profile.current_level,
-      profile.last_access_at
+      profile.last_access_at,
+      profile.approval_status
     );
   }
 
@@ -280,7 +286,8 @@ export class SupabaseAuthRepository implements IAuthRepository {
         sessionId,
         profile.xp_total,
         profile.current_level,
-        profile.last_access_at
+        profile.last_access_at,
+        profile.approval_status
       )
     };
   }

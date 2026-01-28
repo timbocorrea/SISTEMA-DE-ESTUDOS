@@ -4,6 +4,7 @@ export interface IUserSession {
     name: string;
     email: string;
     role: 'STUDENT' | 'INSTRUCTOR';
+    approvalStatus?: 'pending' | 'approved' | 'rejected';
     xp?: number;
     level?: number;
     lastAccess?: Date | null;

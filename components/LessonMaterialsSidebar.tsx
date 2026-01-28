@@ -136,9 +136,9 @@ const LessonMaterialsSidebar: React.FC<Props> = ({ lesson, onTrackAction }) => {
     const lowerUrl = item.url.toLowerCase();
 
     if (item.type === 'FILE') {
-      if (lowerUrl.endsWith('.pdf')) effectiveType = 'PDF';
-      else if (/\.(jpg|jpeg|png|gif|webp)$/i.test(lowerUrl)) effectiveType = 'IMAGE';
-      else if (/\.(mp3|wav|ogg|m4a|aac)$/i.test(lowerUrl)) effectiveType = 'AUDIO';
+      if (lowerUrl.includes('.pdf')) effectiveType = 'PDF';
+      else if (/\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(lowerUrl)) effectiveType = 'IMAGE';
+      else if (/\.(mp3|wav|ogg|m4a|aac)(\?.*)?$/i.test(lowerUrl)) effectiveType = 'AUDIO';
     }
 
     switch (effectiveType) {
@@ -481,8 +481,8 @@ const AudioPlayerContent: React.FC<{ item: MaterialItem, onClose: () => void, on
                   if (audioRef.current) audioRef.current.playbackRate = rate;
                 }}
                 className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${playbackRate === rate
-                    ? 'bg-indigo-600 text-white shadow-md'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                  ? 'bg-indigo-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
                   }`}
               >
                 {rate}x

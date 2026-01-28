@@ -132,7 +132,7 @@ interface UseBlockEditorProps {
 export const useBlockEditor = ({ initialBlocks = [] }: UseBlockEditorProps = {}) => {
     const [state, dispatch] = useReducer(blockReducer, {
         blocks: initialBlocks,
-        selectedBlocks: new Set()
+        selectedBlocks: new Set<string>()
     });
 
     const setBlocks = useCallback((blocks: Block[]) => {

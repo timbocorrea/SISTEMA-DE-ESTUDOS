@@ -20,6 +20,7 @@ const ApproveUserModal: React.FC<ApproveUserModalProps> = ({ user, adminId, admi
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
+    const [instructions, setInstructions] = useState('');
 
     useEffect(() => {
         const loadCourses = async () => {
@@ -61,6 +62,18 @@ const ApproveUserModal: React.FC<ApproveUserModalProps> = ({ user, adminId, admi
             // Atribuir cursos
             await adminService.assignCoursesToUser(user.id, selectedCourseIds, adminId);
 
+            // Preparar e abrir cliente de email
+            const subject = encodeURIComponent("Acesso Aprovado - StudySystem");
+            const body = encodeURIComponent(
+                `Olá ${user.name},\n\n` +
+                `Seu acesso à plataforma StudySystem foi aprovado!\n\n` +
+                `${instructions}\n\n` +
+                `Atenciosamente,\n` +
+                `Equipe Administrativa`
+            );
+
+            window.open(`mailto:${user.email}?subject=${subject}&body=${body}`, '_blank');
+
             onSuccess();
             onClose();
         } catch (e) {
@@ -81,7 +94,7 @@ const ApproveUserModal: React.FC<ApproveUserModalProps> = ({ user, adminId, admi
                             Aprovar Usuário
                         </h3>
                         <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-                            Selecione os cursos que <strong>{user.name || user.email}</strong> poderá acessar
+                            Selecione os cursos e envie as instruções de acesso.
                         </p>
                     </div>
                     <button
@@ -105,71 +118,77 @@ const ApproveUserModal: React.FC<ApproveUserModalProps> = ({ user, adminId, admi
                     </div>
                 </div>
 
-                {/* Content - Courses List */}
-                <div className="flex-1 overflow-y-auto p-6">
+                {/* Content */}
+                <div className="flex-1 overflow-y-auto p-6 space-y-6">
                     {error && (
-                        <div className="mb-4 bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs p-3 rounded-xl flex items-center gap-2">
+                        <div className="bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs p-3 rounded-xl flex items-center gap-2">
                             <i className="fas fa-exclamation-circle"></i>
                             <span>{error}</span>
                         </div>
                     )}
 
-                    {loading ? (
-                        <div className="text-center py-8 text-slate-400">
-                            <i className="fas fa-circle-notch animate-spin text-2xl mb-2"></i>
-                            <p className="text-sm">Carregando cursos...</p>
-                        </div>
-                    ) : courses.length === 0 ? (
-                        <div className="text-center py-8 text-slate-400">
-                            <i className="fas fa-inbox text-3xl mb-2"></i>
-                            <p className="text-sm">Nenhum curso cadastrado</p>
-                        </div>
-                    ) : (
-                        <div className="space-y-2">
-                            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">
-                                Cursos Disponíveis ({courses.length})
-                            </p>
-                            {courses.map(course => (
-                                <label
-                                    key={course.id}
-                                    className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${selectedCourseIds.includes(course.id)
+                    {/* Email Instructions */}
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">
+                            Instruções por Email (Opcional)
+                        </label>
+                        <textarea
+                            value={instructions}
+                            onChange={(e) => setInstructions(e.target.value)}
+                            placeholder="Digite aqui as instruções que serão enviadas para o aluno..."
+                            className="w-full h-24 p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500/50 resize-none placeholder:text-slate-400"
+                        />
+                        <p className="text-[10px] text-slate-400 mt-1">
+                            Este texto será inserido no corpo do email que será aberto no seu cliente padrão.
+                        </p>
+                    </div>
+
+                    {/* Courses List */}
+                    <div>
+                        <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">
+                            Atribuir Cursos ({selectedCourseIds.length} selecionados)
+                        </p>
+
+                        {loading ? (
+                            <div className="text-center py-8 text-slate-400">
+                                <i className="fas fa-circle-notch animate-spin text-2xl mb-2"></i>
+                                <p className="text-sm">Carregando cursos...</p>
+                            </div>
+                        ) : courses.length === 0 ? (
+                            <div className="text-center py-8 text-slate-400">
+                                <i className="fas fa-inbox text-3xl mb-2"></i>
+                                <p className="text-sm">Nenhum curso cadastrado</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {courses.map(course => (
+                                    <label
+                                        key={course.id}
+                                        className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${selectedCourseIds.includes(course.id)
                                             ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
                                             : 'border-slate-200 dark:border-slate-700 hover:border-green-300 dark:hover:border-green-700'
-                                        }`}
-                                >
-                                    <input
-                                        type="checkbox"
-                                        checked={selectedCourseIds.includes(course.id)}
-                                        onChange={() => toggleCourse(course.id)}
-                                        className="w-5 h-5 rounded border-2 border-slate-300 dark:border-slate-600 text-green-600 focus:ring-2 focus:ring-green-500/50"
-                                    />
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-bold text-slate-800 dark:text-white truncate">
-                                            {course.title}
-                                        </p>
-                                        {course.description && (
-                                            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                                                {course.description}
+                                            }`}
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedCourseIds.includes(course.id)}
+                                            onChange={() => toggleCourse(course.id)}
+                                            className="w-4 h-4 rounded border-2 border-slate-300 dark:border-slate-600 text-green-600 focus:ring-2 focus:ring-green-500/50"
+                                        />
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-bold text-slate-800 dark:text-white truncate">
+                                                {course.title}
                                             </p>
-                                        )}
-                                    </div>
-                                    {selectedCourseIds.includes(course.id) && (
-                                        <i className="fas fa-check-circle text-green-600 dark:text-green-400"></i>
-                                    )}
-                                </label>
-                            ))}
-                        </div>
-                    )}
+                                        </div>
+                                    </label>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Footer - Actions */}
                 <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
-                    <div className="flex items-center justify-between mb-4">
-                        <p className="text-xs text-slate-600 dark:text-slate-400">
-                            <i className="fas fa-info-circle mr-1"></i>
-                            {selectedCourseIds.length} curso(s) selecionado(s)
-                        </p>
-                    </div>
                     <div className="flex gap-3">
                         <button
                             type="button"
@@ -186,8 +205,8 @@ const ApproveUserModal: React.FC<ApproveUserModalProps> = ({ user, adminId, admi
                             className="flex-1 py-3 rounded-xl bg-green-600 text-white font-bold text-sm hover:bg-green-500 shadow-lg shadow-green-600/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
                             {submitting && <i className="fas fa-circle-notch animate-spin"></i>}
-                            <i className="fas fa-check"></i>
-                            Aprovar e Atribuir Cursos
+                            <i className="fas fa-envelope"></i>
+                            Aprovar e Enviar Email
                         </button>
                     </div>
                 </div>

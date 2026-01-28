@@ -162,6 +162,21 @@ export class SupabaseCourseRepository implements ICourseRepository {
    * Salva o progresso técnico da aula.
    */
   async updateLessonProgress(userId: string, lessonId: string, watchedSeconds: number, isCompleted: boolean, lastBlockId?: string): Promise<void> {
+    // 1. Tentar usar a RPC segura (Backend Optimization)
+    const { error: rpcError } = await this.client.rpc('update_lesson_progress_secure', {
+      p_lesson_id: lessonId,
+      p_watched_seconds: watchedSeconds,
+      p_is_completed: isCompleted,
+      p_last_block_id: lastBlockId || null
+    });
+
+    if (!rpcError) {
+      return; // Sucesso via RPC
+    }
+
+    console.warn('⚠️ [REPOSITORY] RPC update_lesson_progress_secure falhou (provavelmente não existe). Usando fallback local.', rpcError.message);
+
+    // 2. Fallback: Lógica antiga (Client-side calculation)
     // Buscar duração da aula para calcular video_progress
     const { data: lessonData } = await this.client
       .from('lessons')
@@ -189,7 +204,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
         { onConflict: 'user_id,lesson_id' }
       );
 
-    if (error) throw new DomainError(`Falha ao persistir progresso: ${error.message}`);
+    if (error) throw new DomainError(`Falha ao persistir progresso (fallback): ${error.message}`);
   }
 
   async getUserProgress(userId: string): Promise<UserProgress[]> {
@@ -276,6 +291,23 @@ export class SupabaseCourseRepository implements ICourseRepository {
     if (error) throw new DomainError(`Erro ao atualizar gamificação: ${error.message}`);
   }
 
+  async saveAchievements(userId: string, achievements: Achievement[]): Promise<void> {
+    const serializedAchievements = achievements.map(a => ({
+      ...a,
+      dateEarned: a.dateEarned instanceof Date ? a.dateEarned.toISOString() : a.dateEarned
+    }));
+
+    const { error } = await this.client
+      .from('profiles')
+      .update({
+        achievements: serializedAchievements,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', userId);
+
+    if (error) throw new DomainError(`Erro ao salvar conquistas: ${error.message}`);
+  }
+
   async logXpChange(userId: string, amount: number, actionType: string, description: string): Promise<void> {
     const { error } = await this.client
       .from('xp_history')
@@ -290,6 +322,29 @@ export class SupabaseCourseRepository implements ICourseRepository {
       console.error('Failed to log XP change:', error);
       // We do not throw to avoid blocking the main flow
     }
+  }
+
+  async addXp(userId: string, amount: number, actionType: string, description: string): Promise<{ success: boolean; newXp: number; levelUp: boolean; newLevel: number }> {
+    const { data, error } = await this.client.rpc('add_secure_xp', {
+      p_user_id: userId,
+      p_amount: amount,
+      p_action_type: actionType,
+      p_description: description
+    });
+
+    if (error) {
+      console.error('⚠️ [REPOSITORY] RPC add_secure_xp failed:', error.message);
+      // Fallback: Return success false so Service can decide or fallback (though Service currently doesn't have robust fallback for atomic operations, alerting via return is safer)
+      // Alternatively, we could fallback to manual update here, but let's stick to RPC preference to avoid double counting risks.
+      return { success: false, newXp: 0, levelUp: false, newLevel: 0 };
+    }
+
+    return {
+      success: data.success,
+      newXp: data.new_xp,
+      levelUp: data.level_up,
+      newLevel: data.new_level
+    };
   }
 
   /**

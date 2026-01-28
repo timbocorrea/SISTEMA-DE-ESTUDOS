@@ -15,8 +15,7 @@ export class CourseService {
     becameCompleted: boolean,
     lastBlockId?: string
   ): Promise<Achievement[]> {
-    const unlocked: Achievement[] = [];
-
+    // 1. Persist Progress (Core Responsibility)
     await this.courseRepository.updateLessonProgress(
       user.id,
       lesson.id,
@@ -25,29 +24,35 @@ export class CourseService {
       lastBlockId
     );
 
-    if (!becameCompleted) return unlocked;
+    // If lesson didn't just become complete, no rewards to process.
+    if (!becameCompleted) return [];
 
-    // ============ QUIZ VALIDATION ============
-    // Verificar se aula tem quiz
+    // 2. Validate Ruls for Rewards (Quiz, etc)
+    const canAward = await this.shouldAwardGamification(user, lesson);
+    if (!canAward) return [];
+
+    // 3. Process Rewards (Side Effects)
+    return this.processGamificationRewards(user, lesson, course);
+  }
+
+  private async shouldAwardGamification(user: User, lesson: Lesson): Promise<boolean> {
     const quiz = await this.courseRepository.getQuizByLessonId(lesson.id);
-
     if (quiz) {
-      // Se tem quiz, verificar se usuário já passou
       const latestAttempt = await this.courseRepository.getLatestQuizAttempt(user.id, quiz.id);
-
       if (!latestAttempt || !latestAttempt.passed) {
-        // Aula "completa" mas quiz não passou - NÃO ganha XP nem conquistas
-        // Apenas atualiza progresso
-        return unlocked;
+        return false;
       }
-
-      // Marcar quiz como passado na entidade Lesson
       lesson.setQuizPassed(true);
     }
+    return true;
+  }
 
-    // ============ GAMIFICATION (só executa se passou no quiz ou aula sem quiz) ============
+  private async processGamificationRewards(user: User, lesson: Lesson, course: Course): Promise<Achievement[]> {
+    const unlocked: Achievement[] = [];
+
+    // Lesson XP (Local + RPC Update handled by repo/rpc implicitly)
+    // We update local state just for immediate UI feedback before refresh
     user.addXp(150);
-    await this.courseRepository.logXpChange(user.id, 150, 'LESSON_COMPLETE', `Conclusão da Aula: ${lesson.title}`);
 
     const lessonAch = user.checkAndAddAchievements('LESSON');
     if (lessonAch) unlocked.push(lessonAch);
@@ -55,7 +60,8 @@ export class CourseService {
     const parentModule = course.modules.find(m => m.lessons.some(l => l.id === lesson.id));
     if (parentModule && parentModule.isFullyCompleted()) {
       user.addXp(500);
-      await this.courseRepository.logXpChange(user.id, 500, 'MODULE_COMPLETE', `Módulo Completo: ${parentModule.title}`);
+      await this.courseRepository.addXp(user.id, 500, 'MODULE_COMPLETE', `Módulo Completo: ${parentModule.title}`);
+
       const moduleAch = user.checkAndAddAchievements('MODULE');
       if (moduleAch) unlocked.push(moduleAch);
     }
@@ -65,17 +71,26 @@ export class CourseService {
       if (courseAch) unlocked.push(courseAch);
     }
 
-    let xpAch: Achievement | null;
-    do {
-      xpAch = user.checkAndAddAchievements('XP');
-      if (xpAch) unlocked.push(xpAch);
-    } while (xpAch);
+    // Badge Checks
+    const xpAch = this.checkXpMilestones(user);
+    if (xpAch.length) unlocked.push(...xpAch);
 
     const levelAch = user.checkAndAddAchievements('LEVEL');
     if (levelAch) unlocked.push(levelAch);
 
-    await this.courseRepository.updateUserGamification(user.id, user.xp, user.level, user.achievements);
+    // Persist Achievements
+    await this.courseRepository.saveAchievements(user.id, user.achievements);
 
+    return unlocked;
+  }
+
+  private checkXpMilestones(user: User): Achievement[] {
+    const unlocked: Achievement[] = [];
+    let ach: Achievement | null;
+    do {
+      ach = user.checkAndAddAchievements('XP');
+      if (ach) unlocked.push(ach);
+    } while (ach);
     return unlocked;
   }
 

@@ -17,8 +17,10 @@ export interface ICourseRepository {
     level: number,
     achievements: Achievement[]
   ): Promise<void>;
+  saveAchievements(userId: string, achievements: Achievement[]): Promise<void>;
   logXpChange(userId: string, amount: number, actionType: string, description: string): Promise<void>;
   getUserById(userId: string): Promise<User>;
+  addXp(userId: string, amount: number, actionType: string, description: string): Promise<{ success: boolean; newXp: number; levelUp: boolean; newLevel: number }>;
   getAllCourses(userId?: string): Promise<Course[]>;
   getCoursesSummary(userId?: string): Promise<{ id: string; title: string; description: string; imageUrl: string | null; modules: { id: string; lessons: { id: string }[] }[] }[]>;
   getEnrolledCourses(userId: string): Promise<Course[]>;
