@@ -11,10 +11,10 @@ const DashboardSkeleton: React.FC<DashboardSkeletonProps> = ({ count = 6 }) => {
             {Array.from({ length: count }).map((_, index) => (
                 <div
                     key={index}
-                    className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden"
+                    className="bg-black/20 backdrop-blur-md rounded-2xl border border-white/5 overflow-hidden"
                 >
                     {/* Image Skeleton */}
-                    <Skeleton height="h-48" rounded="rounded-none" />
+                    <Skeleton height="h-48" rounded="rounded-none sm:rounded-none" className="opacity-50" />
 
                     {/* Content */}
                     <div className="p-6 space-y-4">
@@ -23,18 +23,18 @@ const DashboardSkeleton: React.FC<DashboardSkeletonProps> = ({ count = 6 }) => {
 
                         {/* Description */}
                         <div className="space-y-2">
-                            <Skeleton height="h-4" width="w-full" rounded="rounded" />
-                            <Skeleton height="h-4" width="w-5/6" rounded="rounded" />
+                            <Skeleton height="h-3" width="w-full" rounded="rounded" />
+                            <Skeleton height="h-3" width="w-5/6" rounded="rounded" />
                         </div>
 
                         {/* Stats */}
-                        <div className="flex items-center gap-4">
-                            <Skeleton height="h-3" width="w-20" rounded="rounded" />
-                            <Skeleton height="h-3" width="w-20" rounded="rounded" />
+                        <div className="flex items-center gap-4 mt-auto">
+                            <Skeleton height="h-3" width="w-16" rounded="rounded" />
+                            <Skeleton height="h-3" width="w-16" rounded="rounded" />
                         </div>
 
                         {/* Button */}
-                        <Skeleton height="h-12" width="w-full" rounded="rounded-xl" />
+                        <Skeleton height="h-10" width="w-full" rounded="rounded-xl" className="mt-2" />
                     </div>
                 </div>
             ))}

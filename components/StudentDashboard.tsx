@@ -120,24 +120,24 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
             </h3>
 
             <div className="flex items-center gap-4 self-end md:self-auto">
-              <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+              <div className="flex bg-black/20 border border-white/5 p-1 rounded-xl backdrop-blur-sm">
                 <button
                   onClick={() => setViewMode('cards')}
-                  className={`p-2 rounded-lg transition-all ${viewMode === 'cards' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+                  className={`p-2 rounded-lg transition-all ${viewMode === 'cards' ? 'bg-white/10 text-white shadow-lg ring-1 ring-white/10' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
                   title="Visualização em Cards"
                 >
                   <i className="fas fa-th-large"></i>
                 </button>
                 <button
                   onClick={() => setViewMode('minimal')}
-                  className={`p-2 rounded-lg transition-all ${viewMode === 'minimal' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+                  className={`p-2 rounded-lg transition-all ${viewMode === 'minimal' ? 'bg-white/10 text-white shadow-lg ring-1 ring-white/10' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
                   title="Visualização Minimalista"
                 >
                   <i className="fas fa-th"></i>
                 </button>
                 <button
                   onClick={() => setViewMode('list')}
-                  className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+                  className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white/10 text-white shadow-lg ring-1 ring-white/10' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
                   title="Visualização em Lista"
                 >
                   <i className="fas fa-list"></i>
@@ -149,11 +149,11 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
           {isLoading ? (
             <DashboardSkeleton count={6} />
           ) : courses.length === 0 ? (
-            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-10 text-center">
-              <p className="text-slate-600 dark:text-slate-300 font-bold">Nenhum curso disponível ainda.</p>
+            <div className="bg-black/20 backdrop-blur-md rounded-3xl border border-white/5 p-10 text-center">
+              <p className="text-slate-400 font-bold">Nenhum curso disponível ainda.</p>
               {user.role === 'INSTRUCTOR' && (
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
-                  Crie um curso em <span className="font-black">Gestão de Conteúdo</span>.
+                <p className="text-sm text-slate-500 mt-2">
+                  Crie um curso em <span className="font-black text-indigo-400">Gestão de Conteúdo</span>.
                 </p>
               )}
             </div>
@@ -177,16 +177,16 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                       variants={itemVars} // Aplicar variante
                       transition={{ type: "spring", stiffness: 300, damping: 30 }}
                       onClick={() => onCourseClick(course.id)}
-                      className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all group flex items-center gap-6 cursor-pointer"
+                      className="bg-black/20 backdrop-blur-md rounded-2xl p-4 border border-white/5 shadow-sm hover:shadow-lg hover:border-indigo-500/30 transition-all group flex items-center gap-6 cursor-pointer relative overflow-hidden"
                     >
                       <motion.div
                         layoutId={`course-cover-${course.id}`}
-                        className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-slate-800 relative group-hover:opacity-90 transition-opacity"
+                        className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-slate-800 relative group-hover:scale-105 transition-transform duration-300"
                       >
                         {course.imageUrl ? (
-                          <img src={course.imageUrl} alt="" className="w-full h-full object-cover" />
+                          <img src={course.imageUrl} alt="" className="w-full h-full object-cover opacity-90 group-hover:opacity-100" />
                         ) : (
-                          <div className="w-full h-full bg-gradient-to-br from-indigo-600 to-slate-900 flex items-center justify-center text-white">
+                          <div className="w-full h-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center text-white/50">
                             <i className="fas fa-book-open text-xs"></i>
                           </div>
                         )}
@@ -195,20 +195,20 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-1">
                           {isEnrolled && (
-                            <span className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wide">
+                            <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wide shadow-sm">
                               Inscrito
                             </span>
                           )}
-                          <h4 className="text-sm font-bold text-slate-800 dark:text-white truncate group-hover:text-indigo-600 transition-colors">
+                          <h4 className="text-sm font-bold text-white truncate group-hover:text-indigo-400 transition-colors">
                             {course.title}
                           </h4>
                         </div>
-                        <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
-                          <span className="flex items-center gap-1">
-                            <i className="fas fa-layer-group"></i> {course.modules.length} módulos
+                        <div className="flex items-center gap-4 text-xs text-slate-400">
+                          <span className="flex items-center gap-1.5">
+                            <i className="fas fa-layer-group text-slate-500"></i> {course.modules.length} módulos
                           </span>
-                          <span className="flex items-center gap-1">
-                            <i className="fas fa-tasks"></i> {progress.completed}/{progress.total} aulas
+                          <span className="flex items-center gap-1.5">
+                            <i className="fas fa-tasks text-slate-500"></i> {progress.completed}/{progress.total} aulas
                           </span>
                         </div>
                       </div>
@@ -217,15 +217,15 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                         <div className="flex justify-between text-[10px] font-bold text-slate-400 mb-1">
                           <span>{progress.percent}%</span>
                         </div>
-                        <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                          <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${progress.percent}%` }}></div>
+                        <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                          <div className="h-full bg-gradient-to-r from-emerald-400 to-teal-400 shadow-[0_0_8px_rgba(52,211,153,0.4)] rounded-full" style={{ width: `${progress.percent}%` }}></div>
                         </div>
                       </div>
 
                       <div className="flex-shrink-0">
-                        <button className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${showEnrollButton && !isEnrolled
-                          ? 'bg-green-100 text-green-600 hover:bg-green-200 dark:bg-green-900/20 dark:text-green-400'
-                          : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-400'
+                        <button className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${showEnrollButton && !isEnrolled
+                          ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30'
+                          : 'bg-white/5 text-indigo-400 hover:bg-indigo-500/20 hover:text-white border border-white/5'
                           }`}>
                           <i className={`fas ${showEnrollButton && !isEnrolled ? 'fa-plus' : 'fa-play'}`}></i>
                         </button>
@@ -242,14 +242,14 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                       layoutId={`course-card-${course.id}`} // Mantém layoutId
                       variants={itemVars} // Aplicar variante
                       onClick={() => onCourseClick(course.id)}
-                      className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm hover:border-indigo-500 dark:hover:border-indigo-500 cursor-pointer transition-all group flex flex-col h-full"
+                      className="bg-black/20 backdrop-blur-md rounded-2xl p-6 border border-white/5 shadow-sm hover:border-indigo-500/30 hover:shadow-2xl hover:shadow-indigo-500/10 cursor-pointer transition-all group flex flex-col h-full relative"
                     >
                       <div className="flex items-start justify-between mb-4">
                         <motion.div
                           layoutId={`course-cover-${course.id}`}
                           className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-sm ${isEnrolled
                             ? 'bg-indigo-600 text-white shadow-indigo-500/20'
-                            : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                            : 'bg-white/5 text-slate-400 border border-white/5'
                             }`}
                         >
                           {course.imageUrl ? (
@@ -257,23 +257,23 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                           ) : (<i className="fas fa-book-open"></i>)}
                         </motion.div>
                         {isEnrolled && (
-                          <div className="bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 p-2 rounded-xl text-xs">
+                          <div className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 p-2 rounded-xl text-xs shadow-sm">
                             <i className="fas fa-check-circle"></i>
                           </div>
                         )}
                       </div>
 
-                      <h4 className="font-bold text-slate-800 dark:text-white text-base mb-2 leading-tight group-hover:text-indigo-600 transition-colors">
+                      <h4 className="font-bold text-white text-base mb-2 leading-tight group-hover:text-indigo-400 transition-colors">
                         {course.title}
                       </h4>
 
-                      <div className="mt-auto space-y-3 pt-4">
-                        <div className="flex items-center justify-between text-xs font-bold text-slate-500">
+                      <div className="mt-auto space-y-3 pt-4 border-t border-white/5">
+                        <div className="flex items-center justify-between text-xs font-bold text-slate-400">
                           <span>Progresso</span>
-                          <span>{progress.percent}%</span>
+                          <span className="text-white">{progress.percent}%</span>
                         </div>
-                        <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                          <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${progress.percent}%` }}></div>
+                        <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                          <div className="h-full bg-gradient-to-r from-emerald-400 to-teal-400 shadow-[0_0_8px_rgba(52,211,153,0.4)] rounded-full" style={{ width: `${progress.percent}%` }}></div>
                         </div>
                       </div>
                     </motion.div>

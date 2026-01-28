@@ -306,9 +306,19 @@ const App: React.FC = () => {
   // Loading Screen
   if (authLoading) {
     return (
-      <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-950">
+      <div className="flex h-screen overflow-hidden bg-[#050810] relative items-center justify-center">
+        {/* Dynamic Background for Loader */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[120px] mix-blend-screen animate-pulse-slow"></div>
+          <div className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] bg-indigo-500/10 rounded-full blur-[120px] mix-blend-screen animate-pulse-slow delay-1000"></div>
+          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03]"></div>
+        </div>
+
         <Toaster theme={theme} richColors position="top-right" />
-        <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="relative z-10 flex flex-col items-center gap-4">
+          <div className="w-16 h-16 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin"></div>
+          <p className="text-slate-500 font-medium text-sm animate-pulse">Carregando StudySystem...</p>
+        </div>
       </div>
     );
   }
@@ -344,21 +354,6 @@ const App: React.FC = () => {
     );
   }
 
-  // Force Password Change Check
-  if (user.isTempPassword) {
-    return (
-      <>
-        <Toaster theme={theme} richColors position="top-right" />
-        <ForcePasswordChangeModal
-          authService={authService}
-          onSuccess={async () => {
-            // Refresh session to update user profile (isTempPassword should become false)
-            await refreshSession();
-          }}
-        />
-      </>
-    );
-  }
 
 
   // Admin Check Helper
@@ -368,7 +363,15 @@ const App: React.FC = () => {
 
   return (
 
-    <div className="flex flex-col lg:flex-row lg:h-screen w-full bg-white dark:bg-[#0a0e14] text-slate-900 dark:text-slate-100 transition-colors duration-300 font-lexend relative overflow-x-hidden">
+    <div className="flex flex-col lg:flex-row lg:h-screen w-full bg-[#050810] text-slate-100 transition-colors duration-300 font-lexend relative overflow-hidden">
+      {/* GLOBAL DYNAMIC BACKGROUND */}
+      <div className="absolute inset-0 pointer-events-none z-0">
+        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-indigo-500/5 rounded-full blur-[150px] mix-blend-screen animate-pulse-slow"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-emerald-500/5 rounded-full blur-[150px] mix-blend-screen animate-pulse-slow delay-1000"></div>
+        <div className="absolute top-[40%] left-[30%] w-[30%] h-[30%] bg-violet-500/5 rounded-full blur-[120px] mix-blend-screen animate-pulse-slow delay-2000"></div>
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.02]"></div>
+      </div>
+
       <Toaster theme={theme} richColors position="top-right" />
 
       {/* Sidebar */}
@@ -523,73 +526,84 @@ const App: React.FC = () => {
 
       {/* Offline Connection Modal */}
       {showOfflineModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[150] flex items-center justify-center p-4 animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border-2 border-red-500 animate-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[150] flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="bg-[#0a0e14]/90 backdrop-blur-xl rounded-2xl shadow-2xl shadow-red-900/20 w-full max-w-md overflow-hidden border border-red-500/50 animate-in zoom-in-95 duration-300">
             {/* Header */}
-            <div className="bg-gradient-to-r from-red-500 to-orange-500 p-6 text-center">
-              <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center animate-pulse">
-                <i className="fas fa-wifi-slash text-4xl text-white"></i>
+            <div className="bg-gradient-to-r from-red-600/20 to-orange-600/20 p-6 text-center border-b border-red-500/20 relative overflow-hidden">
+              <div className="absolute inset-0 bg-red-500/5 backdrop-blur-[2px]"></div>
+              <div className="relative z-10 text-center">
+                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-red-500 to-orange-600 p-[1px] shadow-lg shadow-red-500/30">
+                  <div className="w-full h-full rounded-full bg-[#0a0e14] flex items-center justify-center">
+                    <i className="fas fa-wifi-slash text-4xl text-red-500 animate-pulse"></i>
+                  </div>
+                </div>
+                <h2 className="text-2xl font-black text-white mb-2 drop-shadow-lg">
+                  Conexão Perdida
+                </h2>
+                <p className="text-sm text-slate-300 font-medium">
+                  Sem acesso à internet
+                </p>
               </div>
-              <h2 className="text-2xl font-black text-white mb-2">
-                Conexão Perdida
-              </h2>
-              <p className="text-sm text-white/90 font-medium">
-                Sem acesso à internet
-              </p>
             </div>
 
             {/* Content */}
             <div className="p-6 space-y-4">
-              <div className="flex items-start gap-3 p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
+              <div className="flex items-start gap-3 p-4 bg-red-500/10 rounded-xl border border-red-500/20">
                 <i className="fas fa-exclamation-triangle text-red-500 text-xl mt-1"></i>
                 <div>
-                  <h3 className="font-bold text-slate-900 dark:text-white mb-1">
+                  <h3 className="font-bold text-white mb-1 leading-tight">
                     Não é possível acessar o sistema
                   </h3>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                  <p className="text-xs text-slate-400 leading-relaxed">
                     Você perdeu a conexão com a internet. Suas alterações não serão salvas até que a conexão seja restaurada.
                   </p>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <h4 className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              <div className="space-y-3 pt-2">
+                <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">
                   O que fazer:
                 </h4>
-                <ul className="space-y-2 text-sm text-slate-700 dark:text-slate-300">
-                  <li className="flex items-start gap-2">
-                    <i className="fas fa-check text-green-500 mt-1 text-xs"></i>
-                    <span>Verifique sua conexão Wi-Fi ou dados móveis</span>
+                <ul className="space-y-3 text-sm text-slate-300">
+                  <li className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-emerald-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <i className="fas fa-check text-emerald-500 text-[10px]"></i>
+                    </div>
+                    <span className="text-xs">Verifique sua conexão Wi-Fi ou dados móveis</span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <i className="fas fa-check text-green-500 mt-1 text-xs"></i>
-                    <span>Mantenha esta página aberta - não recarregue!</span>
+                  <li className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-emerald-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <i className="fas fa-check text-emerald-500 text-[10px]"></i>
+                    </div>
+                    <span className="text-xs">Mantenha esta página aberta - não recarregue!</span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <i className="fas fa-check text-green-500 mt-1 text-xs"></i>
-                    <span>O sistema tentará reconectar automaticamente</span>
+                  <li className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-emerald-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <i className="fas fa-check text-emerald-500 text-[10px]"></i>
+                    </div>
+                    <span className="text-xs">O sistema tentará reconectar automaticamente</span>
                   </li>
                 </ul>
               </div>
 
               {/* Connection Status */}
-              <div className="flex items-center justify-center gap-2 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
+              <div className="flex items-center justify-center gap-2 p-3 bg-white/5 rounded-lg border border-white/5 mt-2">
                 <div className="flex gap-1">
-                  <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></span>
-                  <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" style={{ animationDelay: '150ms' }}></span>
-                  <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" style={{ animationDelay: '300ms' }}></span>
+                  <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></span>
+                  <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" style={{ animationDelay: '150ms' }}></span>
+                  <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" style={{ animationDelay: '300ms' }}></span>
                 </div>
-                <span className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                   Aguardando conexão...
                 </span>
               </div>
             </div>
 
             {/* Footer */}
-            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-700">
+            <div className="p-4 bg-white/5 border-t border-white/5">
               <button
                 onClick={() => setShowOfflineModal(false)}
-                className="w-full px-6 py-3 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-sm font-bold transition-all active:scale-95"
+                className="w-full px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white text-sm font-bold transition-all active:scale-95 border border-white/5"
               >
                 Entendi, vou aguardar
               </button>
