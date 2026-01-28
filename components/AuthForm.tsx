@@ -150,9 +150,12 @@ const AuthForm: React.FC<AuthFormProps> = ({ authService, onSuccess }) => {
               <input
                 id="email"
                 type="email"
+                inputMode="email"
+                autoComplete="email"
+                autoCapitalize="none"
                 {...register('email')}
                 className={`w-full bg-slate-950/50 border ${errors.email ? 'border-red-500' : 'border-slate-700/50'} 
-                  rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium`}
+                  rounded-xl px-4 py-3.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium`}
                 placeholder="exemplo@email.com"
               />
               {errors.email && (

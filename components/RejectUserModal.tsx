@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { AdminService } from '../services/AdminService';
+import { hapticActions } from '../utils/haptics';
 
 interface RejectUserModalProps {
     user: {
@@ -35,10 +36,20 @@ const RejectUserModal: React.FC<RejectUserModalProps> = ({ user, adminId, adminS
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-[#0a0e14]/95 backdrop-blur-xl w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden border border-red-500/30">
+        <div
+            className="fixed inset-0 z-50 flex items-end md:items-center justify-center md:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="reject-modal-title"
+        >
+            <div className="bg-[#0a0e14]/95 backdrop-blur-xl w-full max-w-lg shadow-2xl overflow-hidden border border-red-500/30 rounded-t-3xl md:rounded-3xl">
+                {/* Drag Handle - Mobile Only */}
+                <div className="md:hidden flex justify-center py-3">
+                    <div className="w-12 h-1.5 bg-white/20 rounded-full" />
+                </div>
+
                 {/* Header */}
-                <div className="p-6 border-b border-white/5 flex justify-between items-center bg-gradient-to-r from-red-500/10 to-orange-500/10 relative overflow-hidden">
+                <div className="px-6 pb-4 md:p-6 border-b border-white/5 flex justify-between items-center bg-gradient-to-r from-red-500/10 to-orange-500/10 relative overflow-hidden">
                     <div className="absolute inset-0 bg-red-500/5"></div>
                     <div className="relative z-10">
                         <h3 className="text-xl font-black text-white flex items-center gap-2">
@@ -121,7 +132,10 @@ const RejectUserModal: React.FC<RejectUserModalProps> = ({ user, adminId, adminS
                         </button>
                         <button
                             type="button"
-                            onClick={handleReject}
+                            onClick={() => {
+                                hapticActions.warning();
+                                handleReject();
+                            }}
                             disabled={submitting}
                             className="flex-1 py-3 rounded-xl bg-red-600 text-white font-bold text-sm hover:bg-red-500 shadow-lg shadow-red-600/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 border border-red-400/20"
                         >

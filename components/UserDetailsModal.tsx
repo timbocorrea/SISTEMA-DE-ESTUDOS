@@ -100,10 +100,20 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, adminService,
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-[#0a0e14]/95 backdrop-blur-xl w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden border border-white/10 max-h-[90vh] flex flex-col">
+        <div
+            className="fixed inset-0 z-50 flex items-end md:items-center justify-center md:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="user-details-modal-title"
+        >
+            <div className="bg-[#0a0e14]/95 backdrop-blur-xl w-full max-w-4xl shadow-2xl overflow-hidden border border-white/10 max-h-[90vh] flex flex-col rounded-t-3xl md:rounded-3xl">
+                {/* Drag Handle - Mobile Only */}
+                <div className="md:hidden flex justify-center py-3 bg-gradient-to-r from-indigo-500/10 to-cyan-500/10">
+                    <div className="w-12 h-1.5 bg-white/20 rounded-full" />
+                </div>
+
                 {/* Header */}
-                <div className="p-6 border-b border-white/5 bg-gradient-to-r from-indigo-500/10 to-cyan-500/10 relative overflow-hidden">
+                <div className="px-6 pb-4 md:p-6 border-b border-white/5 bg-gradient-to-r from-indigo-500/10 to-cyan-500/10 relative overflow-hidden">
                     <div className="absolute inset-0 bg-indigo-500/5"></div>
                     <div className="relative z-10 flex justify-between items-start">
                         <div className="flex items-center gap-4">
@@ -118,9 +128,9 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, adminService,
                         </div>
                         <button
                             onClick={onClose}
-                            className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-slate-400 hover:text-white flex items-center justify-center transition-colors"
+                            className="w-11 h-11 rounded-xl bg-white/10 hover:bg-white/20 text-slate-400 hover:text-white flex items-center justify-center transition-colors active:scale-95"
                         >
-                            <i className="fas fa-times"></i>
+                            <i className="fas fa-times text-lg"></i>
                         </button>
                     </div>
                 </div>
@@ -316,12 +326,12 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, adminService,
                 </div>
 
                 {/* Footer */}
-                <div className="p-4 border-t border-white/5 bg-white/5 flex justify-between items-center">
+                <div className="p-4 border-t border-white/5 bg-white/5 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
                     <div className="flex gap-2">
                         {(user as any).approval_status === 'approved' && (
                             <button
                                 onClick={() => onReject(user)}
-                                className="px-4 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 font-bold text-sm hover:bg-red-500/20 transition-colors flex items-center gap-2"
+                                className="px-5 py-3 min-h-[44px] rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 font-bold text-sm hover:bg-red-500/20 transition-colors flex items-center justify-center gap-2 active:scale-95"
                             >
                                 <i className="fas fa-ban"></i>
                                 Bloquear
@@ -330,7 +340,7 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, adminService,
                         {((user as any).approval_status === 'rejected' || (user as any).approval_status === 'pending') && (
                             <button
                                 onClick={() => onApprove(user)}
-                                className="px-4 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold text-sm hover:bg-emerald-500/20 transition-colors flex items-center gap-2"
+                                className="px-5 py-3 min-h-[44px] rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold text-sm hover:bg-emerald-500/20 transition-colors flex items-center justify-center gap-2 active:scale-95"
                             >
                                 <i className="fas fa-check-circle"></i>
                                 {(user as any).approval_status === 'pending' ? 'Aprovar' : 'Desbloquear'}
@@ -339,7 +349,7 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, adminService,
                     </div>
                     <button
                         onClick={onClose}
-                        className="px-6 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 font-bold text-sm transition-colors"
+                        className="px-6 py-3 min-h-[44px] rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 font-bold text-sm transition-colors active:scale-95"
                     >
                         Fechar
                     </button>

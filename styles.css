@@ -5,15 +5,15 @@
 @tailwind utilities;
 
 html {
-  font-size: 95%;
-  /* Proporção maior para mobile */
+  font-size: 90%;
+  /* Proporção para mobile - 90% */
 }
 
 @media (min-width: 1024px) {
   html {
-    /* Scalling proportional: 16px @ 1600px width = 1vw */
-    /* Clamp ensures it doesn't get too small (12px) or too huge (24px) */
-    font-size: clamp(12px, 0.9vw, 24px); 
+    /* Escala proporcional: 90% do tamanho original */
+    /* Clamp garante mínimo de 11px e máximo de 20px */
+    font-size: clamp(11px, 0.85vw, 20px); 
   }
 }
 

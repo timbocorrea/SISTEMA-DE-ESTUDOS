@@ -115,7 +115,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       {/* Close Button Mobile */}
       <button
         onClick={onCloseMobile}
-        className="absolute right-4 top-4 lg:hidden w-10 h-10 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
+        className="absolute right-3 top-3 lg:hidden w-11 h-11 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-colors"
       >
         <i className="fas fa-times text-xl"></i>
       </button>

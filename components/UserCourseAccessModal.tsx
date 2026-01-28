@@ -86,11 +86,16 @@ const UserCourseAccessModal: React.FC<Props> = ({ user, adminService, onClose, o
     );
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-[#0a0e14]/95 backdrop-blur-xl w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border border-white/10 flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center md:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-[#0a0e14]/95 backdrop-blur-xl w-full max-w-2xl shadow-2xl overflow-hidden border border-white/10 flex flex-col max-h-[90vh] rounded-t-3xl md:rounded-3xl">
+
+                {/* Drag Handle - Mobile Only */}
+                <div className="md:hidden flex justify-center py-3">
+                    <div className="w-12 h-1.5 bg-white/20 rounded-full" />
+                </div>
 
                 {/* Header */}
-                <div className="p-6 border-b border-white/5 flex justify-between items-center bg-white/5">
+                <div className="px-6 pb-4 md:p-6 border-b border-white/5 flex justify-between items-center bg-white/5">
                     <div>
                         <h3 className="text-xl font-black text-white flex items-center gap-2">
                             <i className="fas fa-lock text-indigo-400"></i>
@@ -136,12 +141,12 @@ const UserCourseAccessModal: React.FC<Props> = ({ user, adminService, onClose, o
                                 return (
                                     <label
                                         key={course.id}
-                                        className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${isSelected
+                                        className={`flex items-center gap-3 p-4 min-h-[52px] rounded-xl border cursor-pointer transition-all active:scale-[0.98] ${isSelected
                                             ? 'border-indigo-500/50 bg-indigo-500/10 shadow-[0_0_10px_rgba(99,102,241,0.15)]'
                                             : 'border-white/5 bg-black/20 hover:bg-white/5 hover:border-indigo-500/30'
                                             }`}
                                     >
-                                        <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${isSelected
+                                        <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-colors shrink-0 ${isSelected
                                             ? 'bg-indigo-500 border-indigo-500 text-white shadow-[0_0_8px_rgba(99,102,241,0.5)]'
                                             : 'border-white/20 bg-black/40'
                                             }`}>

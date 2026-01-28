@@ -120,24 +120,24 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
             </h3>
 
             <div className="flex items-center gap-4 self-end md:self-auto">
-              <div className="flex bg-black/20 border border-white/5 p-1 rounded-xl backdrop-blur-sm">
+              <div className="flex bg-black/20 border border-white/5 p-1 rounded-xl backdrop-blur-sm gap-1">
                 <button
                   onClick={() => setViewMode('cards')}
-                  className={`p-2 rounded-lg transition-all ${viewMode === 'cards' ? 'bg-white/10 text-white shadow-lg ring-1 ring-white/10' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
+                  className={`min-w-[44px] min-h-[44px] p-2.5 rounded-lg transition-all flex items-center justify-center ${viewMode === 'cards' ? 'bg-white/10 text-white shadow-lg ring-1 ring-white/10' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
                   title="Visualização em Cards"
                 >
                   <i className="fas fa-th-large"></i>
                 </button>
                 <button
                   onClick={() => setViewMode('minimal')}
-                  className={`p-2 rounded-lg transition-all ${viewMode === 'minimal' ? 'bg-white/10 text-white shadow-lg ring-1 ring-white/10' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
+                  className={`min-w-[44px] min-h-[44px] p-2.5 rounded-lg transition-all flex items-center justify-center ${viewMode === 'minimal' ? 'bg-white/10 text-white shadow-lg ring-1 ring-white/10' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
                   title="Visualização Minimalista"
                 >
                   <i className="fas fa-th"></i>
                 </button>
                 <button
                   onClick={() => setViewMode('list')}
-                  className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white/10 text-white shadow-lg ring-1 ring-white/10' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
+                  className={`min-w-[44px] min-h-[44px] p-2.5 rounded-lg transition-all flex items-center justify-center ${viewMode === 'list' ? 'bg-white/10 text-white shadow-lg ring-1 ring-white/10' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
                   title="Visualização em Lista"
                 >
                   <i className="fas fa-list"></i>

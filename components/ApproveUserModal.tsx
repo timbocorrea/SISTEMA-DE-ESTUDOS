@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { AdminService } from '../services/AdminService';
 import { CourseRecord } from '../domain/admin';
+import { hapticActions } from '../utils/haptics';
 
 interface ApproveUserModalProps {
     user: {
@@ -84,10 +85,20 @@ const ApproveUserModal: React.FC<ApproveUserModalProps> = ({ user, adminId, admi
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-[#0a0e14]/95 backdrop-blur-xl w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border border-white/10 max-h-[90vh] flex flex-col">
+        <div
+            className="fixed inset-0 z-50 flex items-end md:items-center justify-center md:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="approve-modal-title"
+        >
+            <div className="bg-[#0a0e14]/95 backdrop-blur-xl w-full max-w-2xl shadow-2xl overflow-hidden border border-white/10 max-h-[90vh] flex flex-col rounded-t-3xl md:rounded-3xl">
+                {/* Drag Handle - Mobile Only */}
+                <div className="md:hidden flex justify-center py-3">
+                    <div className="w-12 h-1.5 bg-white/20 rounded-full" />
+                </div>
+
                 {/* Header */}
-                <div className="p-6 border-b border-white/5 flex justify-between items-center bg-gradient-to-r from-emerald-500/10 to-teal-500/10 relative overflow-hidden">
+                <div className="px-6 pb-4 md:p-6 border-b border-white/5 flex justify-between items-center bg-gradient-to-r from-emerald-500/10 to-teal-500/10 relative overflow-hidden">
                     <div className="absolute inset-0 bg-emerald-500/5"></div>
                     <div className="relative z-10">
                         <h3 className="text-xl font-black text-white flex items-center gap-2">
@@ -161,16 +172,16 @@ const ApproveUserModal: React.FC<ApproveUserModalProps> = ({ user, adminId, admi
                                 <p className="text-sm">Nenhum curso cadastrado</p>
                             </div>
                         ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                 {courses.map(course => (
                                     <label
                                         key={course.id}
-                                        className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${selectedCourseIds.includes(course.id)
+                                        className={`flex items-center gap-3 p-4 min-h-[52px] rounded-xl border cursor-pointer transition-all active:scale-[0.98] ${selectedCourseIds.includes(course.id)
                                             ? 'border-emerald-500/50 bg-emerald-500/10 shadow-[0_0_10px_rgba(16,185,129,0.15)]'
                                             : 'border-white/5 bg-black/20 hover:bg-white/5 hover:border-emerald-500/30'
                                             }`}
                                     >
-                                        <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${selectedCourseIds.includes(course.id)
+                                        <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-colors shrink-0 ${selectedCourseIds.includes(course.id)
                                             ? 'bg-emerald-500 border-emerald-500 text-white shadow-[0_0_8px_rgba(16,185,129,0.5)]'
                                             : 'border-white/20 bg-black/40'
                                             }`}>
@@ -183,7 +194,7 @@ const ApproveUserModal: React.FC<ApproveUserModalProps> = ({ user, adminId, admi
                                             className="hidden"
                                         />
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-xs font-bold text-white truncate">
+                                            <p className="text-sm font-bold text-white truncate">
                                                 {course.title}
                                             </p>
                                         </div>
@@ -207,7 +218,10 @@ const ApproveUserModal: React.FC<ApproveUserModalProps> = ({ user, adminId, admi
                         </button>
                         <button
                             type="button"
-                            onClick={handleApprove}
+                            onClick={() => {
+                                hapticActions.success();
+                                handleApprove();
+                            }}
                             disabled={submitting || loading || selectedCourseIds.length === 0}
                             className="flex-1 py-3 rounded-xl bg-emerald-600 text-white font-bold text-sm hover:bg-emerald-500 shadow-lg shadow-emerald-600/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 border border-emerald-400/20"
                         >

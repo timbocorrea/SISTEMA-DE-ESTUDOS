@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Quiz, QuizQuestion } from '../domain/quiz-entities';
 import { toast } from 'sonner';
+import { hapticActions } from '../utils/haptics';
 
 interface QuizModalProps {
     quiz: Quiz;
@@ -114,6 +115,7 @@ const QuizModal: React.FC<QuizModalProps> = ({ quiz, isOpen, onClose, onSubmit, 
     const globalProgress = (answeredCount / questionsToUse.length) * 100;
 
     const handleSelectOption = (questionId: string, optionId: string) => {
+        hapticActions.select();
         setAnswers(prev => ({ ...prev, [questionId]: optionId }));
     };
 
@@ -208,9 +210,14 @@ const QuizModal: React.FC<QuizModalProps> = ({ quiz, isOpen, onClose, onSubmit, 
     };
 
     return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-md animate-in fade-in duration-300">
-            <div className={`bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full flex flex-col relative transition-all duration-500 ${displayMode === 'vertical' ? 'max-w-5xl h-[90vh]' : 'max-w-3xl max-h-[90vh]'
+        <div className="fixed inset-0 z-[200] flex items-end md:items-center justify-center bg-black/70 backdrop-blur-md animate-in fade-in duration-300">
+            <div className={`bg-white dark:bg-slate-900 shadow-2xl w-full flex flex-col relative transition-all duration-500 rounded-t-3xl md:rounded-3xl ${displayMode === 'vertical' ? 'max-w-5xl h-[90vh]' : 'max-w-3xl max-h-[90vh]'
                 }`}>
+
+                {/* Drag Handle - Mobile Only */}
+                <div className="md:hidden flex justify-center py-3 border-b border-slate-100 dark:border-slate-800">
+                    <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full" />
+                </div>
 
                 {/* Report Modal Overlay */}
                 {showReportModal && (
@@ -369,15 +376,17 @@ const QuizModal: React.FC<QuizModalProps> = ({ quiz, isOpen, onClose, onSubmit, 
                             <i className="fas fa-chevron-left"></i>
                         </button>
 
-                        <div className="flex gap-1.5 overflow-x-auto max-w-[300px] no-scrollbar py-2">
+                        <div className="flex gap-2 overflow-x-auto max-w-[300px] no-scrollbar py-2">
                             {questionsToUse.map((q, idx) => (
                                 <button
                                     key={q.id}
                                     onClick={() => setCurrentQuestionIndex(idx)}
-                                    className={`w-2 h-2 rounded-full transition-all ${idx === currentQuestionIndex ? 'bg-indigo-600 w-6' :
-                                            answers[q.id] ? 'bg-indigo-200 dark:bg-indigo-900/50' : 'bg-slate-200 dark:bg-slate-800'
+                                    className={`min-w-[24px] h-6 px-2 rounded-full transition-all flex items-center justify-center text-[10px] font-bold ${idx === currentQuestionIndex ? 'bg-indigo-600 text-white min-w-[32px]' :
+                                        answers[q.id] ? 'bg-indigo-200 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400' : 'bg-slate-200 dark:bg-slate-800 text-slate-400'
                                         }`}
-                                />
+                                >
+                                    {idx + 1}
+                                </button>
                             ))}
                         </div>
 

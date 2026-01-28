@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { hapticActions } from '../utils/haptics';
 
 interface DeleteConfirmationModalProps {
     userCount: number;
@@ -12,6 +13,7 @@ const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({ userC
     const requiredText = 'CONFIRMAR EXCLUSÃO';
 
     const handleFirstConfirmation = () => {
+        hapticActions.warning();
         setStep(2);
     };
 
@@ -24,10 +26,21 @@ const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({ userC
     const isValid = confirmationText === requiredText;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-[#0a0e14]/95 backdrop-blur-xl w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden border-2 border-red-500/50">
+        <div
+            className="fixed inset-0 z-50 flex items-end md:items-center justify-center md:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="delete-modal-title"
+            aria-describedby="delete-modal-description"
+        >
+            <div className="bg-[#0a0e14]/95 backdrop-blur-xl w-full max-w-lg shadow-2xl overflow-hidden border-2 border-red-500/50 rounded-t-3xl md:rounded-3xl max-h-[90vh] overflow-y-auto">
+                {/* Drag Handle - Mobile Only */}
+                <div className="md:hidden flex justify-center py-3 bg-gradient-to-r from-red-600/20 to-orange-600/20">
+                    <div className="w-12 h-1.5 bg-white/20 rounded-full" />
+                </div>
+
                 {/* Header */}
-                <div className="p-6 bg-gradient-to-r from-red-600/20 to-orange-600/20 text-white relative overflow-hidden">
+                <div className="px-6 pb-4 md:p-6 bg-gradient-to-r from-red-600/20 to-orange-600/20 text-white relative overflow-hidden">
                     <div className="absolute inset-0 bg-red-500/10"></div>
                     <div className="relative z-10 flex items-center gap-3">
                         <div className="w-14 h-14 rounded-full bg-red-500/20 border border-red-500/30 flex items-center justify-center backdrop-blur-sm shadow-[0_0_20px_rgba(239,68,68,0.3)]">
@@ -149,9 +162,12 @@ const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({ userC
                             </button>
                         ) : (
                             <button
-                                onClick={handleFinalConfirmation}
+                                onClick={() => {
+                                    hapticActions.error();
+                                    handleFinalConfirmation();
+                                }}
                                 disabled={!isValid}
-                                className="flex-1 py-3 rounded-xl bg-red-600 text-white font-bold text-sm hover:bg-red-500 shadow-lg shadow-red-600/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 border border-red-400/20"
+                                className="flex-1 py-3 rounded-xl bg-red-600 text-white font-bold text-sm hover:bg-red-500 shadow-lg shadow-red-600/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 border border-red-400/20 active:scale-95"
                             >
                                 <i className="fas fa-trash-alt"></i>
                                 EXCLUIR PERMANENTEMENTE
