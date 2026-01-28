@@ -191,21 +191,21 @@ const LessonMaterialsSidebar: React.FC<Props> = ({ lesson, onTrackAction }) => {
             let effectiveType = item.type;
             const lowerUrl = item.url.toLowerCase();
             if (item.type === 'FILE') {
-              if (lowerUrl.endsWith('.pdf')) effectiveType = 'PDF';
-              else if (/\.(jpg|jpeg|png|gif|webp)$/i.test(lowerUrl)) effectiveType = 'IMAGE';
-              else if (/\.(mp3|wav|ogg|m4a|aac)$/i.test(lowerUrl)) effectiveType = 'AUDIO';
+              if (lowerUrl.includes('.pdf')) effectiveType = 'PDF';
+              else if (/\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(lowerUrl)) effectiveType = 'IMAGE';
+              else if (/\.(mp3|wav|ogg|m4a|aac)(\?.*)?$/i.test(lowerUrl)) effectiveType = 'AUDIO';
             }
 
             return (
               <div key={item.id} className="group">
                 {/* Item Card */}
-                <div className={`bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 hover:border-indigo-500/30 rounded-lg transition-all ${currentAudio?.id === item.id ? 'bg-slate-800 border-indigo-500/50' : ''}`}>
+                <div
+                  className={`bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 hover:border-indigo-500/30 rounded-lg transition-all cursor-pointer ${currentAudio?.id === item.id ? 'bg-slate-800 border-indigo-500/50' : ''}`}
+                  onClick={() => handleItemClick(item)}
+                >
                   <div className="flex items-start justify-between p-2 gap-2">
-                    {/* Icon & Title - Clickable Area */}
-                    <div
-                      className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
-                      onClick={() => handleItemClick(item)}
-                    >
+                    {/* Icon & Title */}
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${item.isMain || currentAudio?.id === item.id ? 'bg-indigo-500/20 text-indigo-400' : 'bg-slate-700/50 text-slate-400 group-hover:bg-slate-700 group-hover:text-slate-300'}`}>
                         <i className={`fas ${currentAudio?.id === item.id ? 'fa-volume-high animate-pulse' : iconByType[effectiveType] || iconByType.FILE}`}></i>
                       </div>
@@ -230,6 +230,7 @@ const LessonMaterialsSidebar: React.FC<Props> = ({ lesson, onTrackAction }) => {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
+                        // Redundant if parent handles it, but keeps specific button interaction clean
                         handleItemClick(item);
                       }}
                       className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
@@ -243,7 +244,6 @@ const LessonMaterialsSidebar: React.FC<Props> = ({ lesson, onTrackAction }) => {
             );
           })}
         </div>
-
       </div>
 
       {/* Portal for Audio Player to break out of sidebar overflow/z-index */}
@@ -259,7 +259,7 @@ const LessonMaterialsSidebar: React.FC<Props> = ({ lesson, onTrackAction }) => {
           )}
 
           {/* Audio Player Drawer */}
-          <div className={`fixed inset-y-0 right-0 z-[9999] w-80 bg-slate-900/95 backdrop-blur-xl border-l border-white/10 shadow-2xl transform transition-transform duration-500 ease-spring ${!isMinimized ? 'translate-x-0' : 'translate-x-full'}`}>
+          <div className={`fixed inset-y-0 right-0 z-[9999] w-full sm:w-80 bg-slate-900/95 backdrop-blur-xl border-l border-white/10 shadow-2xl transform transition-transform duration-500 ease-spring ${!isMinimized ? 'translate-x-0' : 'translate-x-full'}`}>
             <AudioPlayerContent
               item={currentAudio}
               onClose={() => setCurrentAudio(null)}
@@ -362,8 +362,18 @@ const AudioPlayerContent: React.FC<{ item: MaterialItem, onClose: () => void, on
     const audio = audioRef.current;
     if (!audio) return;
 
-    if (isPlaying) audio.play().catch(e => console.error("Play error:", e));
-    else audio.pause();
+    if (isPlaying) {
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(e => {
+          console.error("Play error (autoplay blocked?):", e);
+          // We can treat this as paused if needed, but let's leave state as is 
+          // so user clicks play and it works.
+        });
+      }
+    } else {
+      audio.pause();
+    }
 
   }, [isPlaying, item]); // Re-run when item changes to play new track
 
@@ -483,6 +493,7 @@ const AudioPlayerContent: React.FC<{ item: MaterialItem, onClose: () => void, on
       <audio
         ref={audioRef}
         src={item.url}
+        autoPlay
         onTimeUpdate={(e) => setProgress(e.currentTarget.currentTime)}
         onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
         onEnded={() => setIsPlaying(false)}
