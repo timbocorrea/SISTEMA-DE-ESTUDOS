@@ -351,6 +351,7 @@ const AudioPlayerContent: React.FC<{ item: MaterialItem, onClose: () => void, on
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
+  const [playbackRate, setPlaybackRate] = useState(1);
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
@@ -467,6 +468,27 @@ const AudioPlayerContent: React.FC<{ item: MaterialItem, onClose: () => void, on
           <button onClick={() => skip(10)} className="text-slate-400 hover:text-white transition-colors transform hover:scale-110 active:scale-95">
             <i className="fas fa-rotate-right text-xl"></i>
           </button>
+        </div>
+
+        {/* Speed Control */}
+        <div className="flex justify-center w-full">
+          <div className="flex items-center bg-slate-800/50 rounded-lg p-1">
+            {[0.75, 1, 1.25, 1.5, 2].map((rate) => (
+              <button
+                key={rate}
+                onClick={() => {
+                  setPlaybackRate(rate);
+                  if (audioRef.current) audioRef.current.playbackRate = rate;
+                }}
+                className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${playbackRate === rate
+                    ? 'bg-indigo-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                  }`}
+              >
+                {rate}x
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
