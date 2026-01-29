@@ -97,7 +97,7 @@ const ContentReader: React.FC<ContentReaderProps> = ({
                         style={{
                             marginBottom: `${block.spacing || 1.5}rem`,
                             fontSize: '1rem', // Fixed base size, scaled by zoom
-                            lineHeight: 1.8,
+                            lineHeight: (block as any).lineHeight ? parseFloat((block as any).lineHeight) : 1.8,
                             padding: hasAudio ? '1rem' : '0',
                             borderLeft: hasAudio ? '4px solid #6366f1' : 'none',
                             backgroundColor: isActive ? (contentTheme === 'dark' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.05)') : 'transparent',

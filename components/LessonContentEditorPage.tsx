@@ -29,14 +29,14 @@ const ToolbarButton: React.FC<{
     onClick: () => void;
 }> = ({ icon, title, active = false, onClick }) => (
     <button
-        onClick={onClick}
+        type="button"
         onMouseDown={(e) => {
             e.preventDefault(); // Evita perder o foco do editor
             onClick();
         }}
-        className={`w-8 h-8 rounded flex items-center justify-center transition-colors ${active
-            ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400'
-            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+        className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200 active:scale-95 ${active
+            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20'
+            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-indigo-600 dark:hover:text-indigo-400'
             }`}
         title={title}
     >
@@ -92,6 +92,7 @@ const BlockItem = React.memo(({
         execCommand: (cmd: string, val?: string) => void;
         setCurrentFontSize: (size: string) => void;
         currentFontSize: string;
+        activeFormats: string[];
     }
 }) => {
     const text = block.text || '';
@@ -237,6 +238,7 @@ const BlockItem = React.memo(({
                         : 'border-slate-100 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
                     }`}
             >
+
                 {/* Checkbox para Seleção em Massa */}
                 {isSelectionMode && (
                     <div className="absolute left-4 top-1/2 -translate-y-1/2 z-10" onClick={(e) => e.stopPropagation()}>
@@ -316,71 +318,128 @@ const BlockItem = React.memo(({
                         </div>
                     </div>
 
-                    <div className="relative pr-48 pt-2" onClick={(e) => e.stopPropagation()}>
-                        {/* Toolbar específica de cada bloco (só aparece quando o bloco está focado) */}
-                        {isActive && (
-                            <div className="absolute -top-12 left-0 z-20 flex items-center gap-1 bg-white dark:bg-slate-800 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl animate-in fade-in zoom-in-95 duration-200">
-                                <div className="flex items-center gap-1 px-1 mr-1 border-r border-slate-200 dark:border-slate-700">
-                                    <input
-                                        type="number"
-                                        min="8"
-                                        max="72"
-                                        value={handlers.currentFontSize}
-                                        onChange={(e) => {
-                                            const size = e.target.value;
-                                            handlers.setCurrentFontSize(size);
-                                            const activeEl = document.querySelector(`[data-block-id="${block.id}"] [contenteditable="true"]`) as HTMLElement;
-                                            if (size && activeEl) {
-                                                const selection = window.getSelection();
-                                                if (!selection || selection.isCollapsed || !activeEl.contains(selection.anchorNode)) {
-                                                    const range = document.createRange();
-                                                    range.selectNodeContents(activeEl);
-                                                    selection?.removeAllRanges();
-                                                    selection?.addRange(range);
-                                                }
-                                                document.execCommand('fontSize', false, '7');
-                                                const fontElements = activeEl.querySelectorAll('font[size="7"]');
-                                                fontElements.forEach(font => {
-                                                    const span = document.createElement('span');
-                                                    span.style.fontSize = `${size}pt`;
-                                                    span.innerHTML = font.innerHTML;
-                                                    font.parentNode?.replaceChild(span, font);
-                                                });
-                                                handlers.updateBlock(block.id, { text: activeEl.innerHTML });
-                                                handlers.saveSelection();
-                                                setTimeout(() => activeEl.focus(), 0);
+                    {/* Toolbar específica de cada bloco (só aparece quando o bloco está focado) */}
+                    {isActive && (
+                        <div className="sticky top-2 z-30 flex items-center flex-wrap gap-1 bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl mb-4 animate-in fade-in slide-in-from-top-2 duration-300 ring-1 ring-slate-900/5">
+                            {/* Grupo: Tipografia */}
+                            <div className="flex items-center gap-1 p-1 bg-slate-50 dark:bg-slate-900/50 rounded-xl mr-1">
+                                <input
+                                    type="number"
+                                    min="8"
+                                    max="72"
+                                    value={handlers.currentFontSize}
+                                    onChange={(e) => {
+                                        const size = e.target.value;
+                                        handlers.setCurrentFontSize(size);
+                                        const activeEl = document.querySelector(`[data-block-id="${block.id}"] [contenteditable="true"]`) as HTMLElement;
+                                        if (size && activeEl) {
+                                            const selection = window.getSelection();
+                                            if (!selection || selection.isCollapsed || !activeEl.contains(selection.anchorNode)) {
+                                                const range = document.createRange();
+                                                range.selectNodeContents(activeEl);
+                                                selection?.removeAllRanges();
+                                                selection?.addRange(range);
                                             }
-                                        }}
-                                        className="w-14 h-7 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs px-2 text-center"
-                                        title="Tamanho da fonte"
-                                    />
-                                    <select
-                                        className="w-24 h-7 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-[10px] px-1 ml-1"
-                                        onChange={(e) => handlers.execCommand('fontName', e.target.value)}
-                                        title="Tipo de fonte"
-                                    >
-                                        {FONT_FAMILIES.map(font => (
-                                            <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>
-                                                {font.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
+                                            document.execCommand('fontSize', false, '7');
+                                            const fontElements = activeEl.querySelectorAll('font[size="7"]');
+                                            fontElements.forEach(font => {
+                                                const span = document.createElement('span');
+                                                span.style.fontSize = `${size}pt`;
+                                                span.innerHTML = font.innerHTML;
+                                                font.parentNode?.replaceChild(span, font);
+                                            });
+                                            handlers.updateBlock(block.id, { text: activeEl.innerHTML });
+                                            handlers.saveSelection();
+                                            setTimeout(() => activeEl.focus(), 0);
+                                        }
+                                    }}
+                                    className="w-14 h-9 rounded-lg border-none bg-white dark:bg-slate-800 text-xs px-2 text-center font-bold shadow-sm focus:ring-2 focus:ring-indigo-500"
+                                    title="Tamanho da fonte"
+                                />
+                                <select
+                                    className="w-24 h-9 rounded-lg border-none bg-white dark:bg-slate-800 text-[10px] px-1 ml-1 font-bold shadow-sm focus:ring-2 focus:ring-indigo-500"
+                                    onChange={(e) => handlers.execCommand('fontName', e.target.value)}
+                                    title="Tipo de fonte"
+                                >
+                                    {FONT_FAMILIES.map(font => (
+                                        <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>
+                                            {font.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
 
-                                <ToolbarButton icon="bold" title="Negrito" onClick={() => handlers.execCommand('bold')} />
-                                <ToolbarButton icon="italic" title="Itálico" onClick={() => handlers.execCommand('italic')} />
-                                <ToolbarButton icon="underline" title="Sublinhado" onClick={() => handlers.execCommand('underline')} />
-                                <Divider />
-                                <ToolbarButton icon="align-left" title="Esquerda" onClick={() => handlers.execCommand('justifyLeft')} />
-                                <ToolbarButton icon="align-center" title="Centro" onClick={() => handlers.execCommand('justifyCenter')} />
-                                <ToolbarButton icon="align-right" title="Direita" onClick={() => handlers.execCommand('justifyRight')} />
-                                <Divider />
+                            <Divider />
+
+                            {/* Grupo: Estilos de Texto */}
+                            <div className="flex items-center gap-0.5">
+                                <ToolbarButton
+                                    icon="bold"
+                                    title="Negrito"
+                                    active={handlers.activeFormats.includes('bold')}
+                                    onClick={() => handlers.execCommand('bold')}
+                                />
+                                <ToolbarButton
+                                    icon="italic"
+                                    title="Itálico"
+                                    active={handlers.activeFormats.includes('italic')}
+                                    onClick={() => handlers.execCommand('italic')}
+                                />
+                                <ToolbarButton
+                                    icon="underline"
+                                    title="Sublinhado"
+                                    active={handlers.activeFormats.includes('underline')}
+                                    onClick={() => handlers.execCommand('underline')}
+                                />
+                            </div>
+
+                            <Divider />
+
+                            {/* Grupo: Alinhamento */}
+                            <div className="flex items-center gap-0.5">
+                                <ToolbarButton icon="align-left" title="Esquerda" active={handlers.activeFormats.includes('justifyLeft')} onClick={() => handlers.execCommand('justifyLeft')} />
+                                <ToolbarButton icon="align-center" title="Centro" active={handlers.activeFormats.includes('justifyCenter')} onClick={() => handlers.execCommand('justifyCenter')} />
+                                <ToolbarButton icon="align-right" title="Direita" active={handlers.activeFormats.includes('justifyRight')} onClick={() => handlers.execCommand('justifyRight')} />
+                                <ToolbarButton icon="align-justify" title="Justificado" active={handlers.activeFormats.includes('justifyFull')} onClick={() => handlers.execCommand('justifyFull')} />
+                            </div>
+
+                            <Divider />
+
+                            {/* Grupo: Listas e Recuos */}
+                            <div className="flex items-center gap-0.5">
+                                <ToolbarButton icon="list-ul" title="Lista" active={handlers.activeFormats.includes('insertUnorderedList')} onClick={() => handlers.execCommand('insertUnorderedList')} />
+                                <ToolbarButton icon="list-ol" title="Numerada" active={handlers.activeFormats.includes('insertOrderedList')} onClick={() => handlers.execCommand('insertOrderedList')} />
                                 <ToolbarButton icon="indent" title="Recuo à Direita" onClick={() => handlers.execCommand('indent')} />
                                 <ToolbarButton icon="outdent" title="Recuo à Esquerda" onClick={() => handlers.execCommand('outdent')} />
-                                <Divider />
-                                <ToolbarButton icon="list-ul" title="Lista" onClick={() => handlers.execCommand('insertUnorderedList')} />
-                                <ToolbarButton icon="list-ol" title="Numerada" onClick={() => handlers.execCommand('insertOrderedList')} />
-                                <Divider />
+                            </div>
+
+                            <Divider />
+
+                            {/* Grupo: Espaçamento (Slider) */}
+                            <div className="flex items-center gap-2 px-2 py-1 bg-slate-50 dark:bg-slate-900/50 rounded-xl mr-1">
+                                <i className="fas fa-text-height text-xs text-slate-400"></i>
+                                <input
+                                    type="range"
+                                    min="1"
+                                    max="3"
+                                    step="0.1"
+                                    value={parseFloat((document.querySelector(`[data-block-id="${block.id}"] [contenteditable="true"]`) as HTMLElement)?.style.lineHeight || '1.6')}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        handlers.execCommand('lineHeight', val);
+                                    }}
+                                    className="w-20 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-600 focus:outline-none"
+                                    title="Ajustar Espaçamento entre Linhas"
+                                />
+                                <span className="text-[9px] font-bold text-slate-500 w-6 text-center">
+                                    {((document.querySelector(`[data-block-id="${block.id}"] [contenteditable="true"]`) as HTMLElement)?.style.lineHeight || '1.6')}
+                                </span>
+                            </div>
+
+                            <Divider />
+
+                            {/* Grupo: Mídia e Links */}
+                            <div className="flex items-center gap-0.5">
                                 <ToolbarButton
                                     icon="link"
                                     title="Link"
@@ -425,13 +484,19 @@ const BlockItem = React.memo(({
                                                     handlers.updateBlock(block.id, { text: activeEl.innerHTML });
                                                 }
                                             } else {
-                                                alert('Por favor, selecione um texto antes de inserir a imagem.');
+                                                // If no selection, insert as regular image tag
+                                                const imgHtml = `<img src="${finalUrl}" style="max-width: 100%; height: auto; margin: 10px 0; border-radius: 8px;" /><p><br></p>`;
+                                                handlers.execCommand('insertHTML', imgHtml);
                                             }
                                         }
                                     }}
                                 />
                             </div>
-                        )}
+                        </div>
+                    )}
+
+                    <div className="relative pt-2" onClick={(e) => e.stopPropagation()}>
+
 
                         <EditableBlock
                             text={text}
@@ -455,7 +520,7 @@ const BlockItem = React.memo(({
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 });
 
@@ -509,7 +574,7 @@ const EditableBlock: React.FC<{ text: string; onUpdate: (newText: string) => voi
             suppressContentEditableWarning
             onInput={handleInput}
             onFocus={() => divRef.current && onFocus?.(divRef.current)}
-            className="w-full bg-transparent border-none focus:ring-0 focus:outline-none p-0 text-slate-700 dark:text-slate-200 placeholder:text-slate-400 min-h-[60px] leading-relaxed text-sm font-medium"
+            className="editor-content w-full bg-transparent border-none focus:ring-0 focus:outline-none p-0 text-slate-700 dark:text-slate-200 placeholder:text-slate-400 min-h-[60px] leading-relaxed text-sm font-medium"
             data-placeholder="Digite o conteúdo deste parágrafo..."
             data-block-id={blockId}
             style={{ minHeight: '60px' }}
@@ -523,6 +588,7 @@ interface Block {
     text: string;
     audioUrl?: string;
     spacing?: number;
+    lineHeight?: string; // NEW: Persist line height for student preview
 }
 
 interface LessonContentEditorPageProps {
@@ -1374,24 +1440,189 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
         setContent(htmlContent);
     };
 
-    const execCommand = (command: string, value?: string) => {
-        // Executar comando no elemento focado (bloco individual ou editor principal)
+    const updateActiveFormats = React.useCallback(() => {
+        if (!document.hasFocus()) return;
+
+        const formats: string[] = [];
+        try {
+            if (document.queryCommandState('bold')) formats.push('bold');
+            if (document.queryCommandState('italic')) formats.push('italic');
+            if (document.queryCommandState('underline')) formats.push('underline');
+            if (document.queryCommandState('justifyLeft')) formats.push('justifyLeft');
+            if (document.queryCommandState('justifyCenter')) formats.push('justifyCenter');
+            if (document.queryCommandState('justifyRight')) formats.push('justifyRight');
+            if (document.queryCommandState('justifyFull')) formats.push('justifyFull');
+            if (document.queryCommandState('insertUnorderedList')) formats.push('insertUnorderedList');
+            if (document.queryCommandState('insertOrderedList')) formats.push('insertOrderedList');
+
+            // Só atualizar se houver mudança para evitar re-renders infinitos
+            setActiveFormats(prev => {
+                if (JSON.stringify(prev) === JSON.stringify(formats)) return prev;
+                return formats;
+            });
+        } catch (e) {
+            // Ignorar erros se queryCommandState falhar (ex: nada selecionado)
+        }
+    }, []);
+
+    const execCommand = React.useCallback((command: string, value?: string) => {
+        console.log(`[RichText] Executing: ${command}`, value || '');
+
         const targetElement = activeEditableElement || editorRef.current;
+        const selection = window.getSelection();
 
         if (targetElement) {
-            // Garantir que o elemento está focado
-            targetElement.focus();
-            document.execCommand(command, false, value || '');
+            console.log(`[RichText] Target found:`, targetElement.tagName, targetElement.getAttribute('data-block-id'));
 
-            // Se estiver em um bloco, disparar evento de input para salvar
-            if (activeEditableElement) {
-                const event = new Event('input', { bubbles: true });
-                activeEditableElement.dispatchEvent(event);
-            } else {
-                handleInput();
+            // Se for comando de estilo, garantir que o estilo não seja forçado por CSS
+            if (command !== 'lineHeight') {
+                document.execCommand('styleWithCSS', false, 'false');
             }
+
+            // Manter a seleção focada
+            targetElement.focus();
+
+            if (command === 'lineHeight') {
+                if (activeEditableElement) {
+                    activeEditableElement.style.lineHeight = value || '1.6';
+                    const event = new Event('input', { bubbles: true });
+                    activeEditableElement.dispatchEvent(event);
+                    // Also persist to block state for ContentReader
+                    const blockId = activeEditableElement.closest('[data-block-id]')?.getAttribute('data-block-id');
+                    if (blockId) {
+                        setBlocks(prev => prev.map(b => b.id === blockId ? { ...b, lineHeight: value || '1.6' } : b));
+                    }
+                } else {
+                    targetElement.style.lineHeight = value || '1.6';
+                    handleInput();
+                }
+            } else if (command === 'insertUnorderedList' || command === 'insertOrderedList') {
+                // Manual list creation - execCommand is unreliable for lists
+                const listTag = command === 'insertUnorderedList' ? 'ul' : 'ol';
+                const otherListTag = command === 'insertUnorderedList' ? 'ol' : 'ul';
+                const contentElement = activeEditableElement || targetElement;
+
+                if (contentElement) {
+                    const existingSameList = contentElement.querySelector(listTag);
+                    const existingOtherList = contentElement.querySelector(otherListTag);
+
+                    if (existingSameList) {
+                        // Toggle off same list type - convert list items back to paragraphs
+                        const listItems = existingSameList.querySelectorAll('li');
+                        let newContent = '';
+                        listItems.forEach(li => {
+                            newContent += `<p>${li.innerHTML}</p>`;
+                        });
+                        existingSameList.outerHTML = newContent;
+                    } else if (existingOtherList) {
+                        // Switch list type - change ul to ol or vice versa
+                        const listItems = existingOtherList.querySelectorAll('li');
+                        let newListContent = `<${listTag}>`;
+                        listItems.forEach(li => {
+                            newListContent += `<li>${li.innerHTML}</li>`;
+                        });
+                        newListContent += `</${listTag}>`;
+                        existingOtherList.outerHTML = newListContent;
+                    } else {
+                        // Create list from content - check for paragraphs first
+                        const paragraphs = contentElement.querySelectorAll('p');
+                        if (paragraphs.length > 0) {
+                            // Convert paragraphs to list items
+                            let listContent = `<${listTag}>`;
+                            paragraphs.forEach(p => {
+                                listContent += `<li>${p.innerHTML}</li>`;
+                            });
+                            listContent += `</${listTag}>`;
+                            contentElement.innerHTML = listContent;
+                        } else {
+                            // No paragraphs - split by line breaks or wrap entire content
+                            const content = contentElement.innerHTML;
+                            const lines = content.split(/<br\s*\/?>/gi).filter(line => line.trim());
+
+                            if (lines.length > 1) {
+                                // Multiple lines - create list item per line
+                                let listContent = `<${listTag}>`;
+                                lines.forEach(line => {
+                                    listContent += `<li>${line.trim()}</li>`;
+                                });
+                                listContent += `</${listTag}>`;
+                                contentElement.innerHTML = listContent;
+                            } else {
+                                // Single content - wrap as single list item
+                                contentElement.innerHTML = `<${listTag}><li>${content}</li></${listTag}>`;
+                            }
+                        }
+                    }
+
+                    console.log('[List] New content:', contentElement.innerHTML);
+
+                    // Trigger update
+                    const event = new Event('input', { bubbles: true });
+                    contentElement.dispatchEvent(event);
+
+                    // Also update block state
+                    const blockId = contentElement.closest('[data-block-id]')?.getAttribute('data-block-id') ||
+                        contentElement.getAttribute('data-block-id');
+                    if (blockId) {
+                        setBlocks(prev => prev.map(b => b.id === blockId ? { ...b, text: contentElement.innerHTML } : b));
+                    }
+                }
+
+                updateActiveFormats();
+            } else {
+                // Restore selection before running commands that need it
+                if (command === 'indent' || command === 'outdent' ||
+                    command === 'bold' || command === 'italic' || command === 'underline') {
+                    // Ensure we have a proper selection
+                    const sel = window.getSelection();
+                    if (sel && sel.rangeCount === 0 && savedSelectionRef.current) {
+                        sel.removeAllRanges();
+                        sel.addRange(savedSelectionRef.current);
+                    }
+                }
+                const success = document.execCommand(command, false, value || '');
+                console.log(`[RichText] Success: ${success}`);
+
+                if (activeEditableElement) {
+                    const event = new Event('input', { bubbles: true });
+                    activeEditableElement.dispatchEvent(event);
+                } else {
+                    handleInput();
+                }
+
+                // Atualizar estados imediatamente
+                updateActiveFormats();
+            }
+        } else {
+            console.warn('[RichText] No target element for command');
         }
-    };
+    }, [activeEditableElement, updateActiveFormats]);
+
+    // Monitorar mudanças na seleção para atualizar a barra de ferramentas
+    useEffect(() => {
+        let timeoutId: any;
+        const handleSelectionChange = () => {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => {
+                const selection = window.getSelection();
+                if (selection && selection.rangeCount > 0) {
+                    const container = selection.getRangeAt(0).commonAncestorContainer;
+                    const isInsideEditor = editorRef.current?.contains(container) ||
+                        (activeEditableElement && activeEditableElement.contains(container));
+
+                    if (isInsideEditor) {
+                        updateActiveFormats();
+                    }
+                }
+            }, 100);
+        };
+
+        document.addEventListener('selectionchange', handleSelectionChange);
+        return () => {
+            document.removeEventListener('selectionchange', handleSelectionChange);
+            clearTimeout(timeoutId);
+        };
+    }, [updateActiveFormats, activeEditableElement]);
 
     const resizeElement = (width: string) => {
         if (selectedElement) {
@@ -2042,7 +2273,48 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                         span.innerHTML = font.innerHTML;
                         font.parentNode?.replaceChild(span, font);
                     });
+                } else if (command === 'lineHeight') {
+                    // Just clean up and return with lineHeight property
+                    const newText = container.innerHTML;
+                    document.body.removeChild(container);
+                    return { ...block, text: newText, lineHeight: value || '1.6' };
+                } else if (command === 'insertUnorderedList' || command === 'insertOrderedList') {
+                    // Special handling for list commands - wrap content manually
+                    const listTag = command === 'insertUnorderedList' ? 'ul' : 'ol';
+                    const existingList = container.querySelector(listTag);
+
+                    if (existingList) {
+                        // If already has this list type, unwrap it
+                        const listItems = existingList.querySelectorAll('li');
+                        let newContent = '';
+                        listItems.forEach(li => {
+                            newContent += `<p>${li.innerHTML}</p>`;
+                        });
+                        container.innerHTML = newContent;
+                    } else {
+                        // Create list from paragraphs or direct content
+                        const paragraphs = container.querySelectorAll('p');
+                        if (paragraphs.length > 0) {
+                            let listContent = `<${listTag}>`;
+                            paragraphs.forEach(p => {
+                                listContent += `<li>${p.innerHTML}</li>`;
+                            });
+                            listContent += `</${listTag}>`;
+                            container.innerHTML = listContent;
+                        } else {
+                            // Wrap entire content as single list item
+                            const content = container.innerHTML;
+                            container.innerHTML = `<${listTag}><li>${content}</li></${listTag}>`;
+                        }
+                    }
+
+                    const newText = container.innerHTML;
+                    document.body.removeChild(container);
+                    return { ...block, text: newText };
                 } else {
+                    // Forçar HTML tags em massa também
+                    container.focus();
+                    document.execCommand('styleWithCSS', false, 'false');
                     document.execCommand(command, false, value);
                 }
 
@@ -2272,14 +2544,14 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
         const newBlock = {
             id: Math.random().toString(36).substring(2) + Date.now().toString(36),
-            text: `<img src="${url}" style="max-width: 100%; height: auto; margin: 10px 0; border-radius: 8px;" alt="Imagem do conteúdo" />`,
+            text: `<img src="${url}" style="max-width: 100%; height: auto; margin: 10px 0; border-radius: 8px;" alt="Imagem do conteúdo" /><p><br></p>`,
             audioUrl: '',
             spacing: 0
         };
 
         if (atIndex !== undefined) {
             const newBlocks = [...blocks];
-            newBlocks.splice(atIndex + 1, 0, newBlock);
+            newBlocks.splice(atIndex, 0, newBlock);
             setBlocks(newBlocks);
         } else {
             setBlocks([...blocks, newBlock]);
@@ -2316,7 +2588,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
         if (atIndex !== undefined) {
             const newBlocks = [...blocks];
-            newBlocks.splice(atIndex + 1, 0, newBlock);
+            newBlocks.splice(atIndex, 0, newBlock);
             setBlocks(newBlocks);
         } else {
             setBlocks([...blocks, newBlock]);
@@ -2358,7 +2630,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
         if (atIndex !== undefined) {
             const newBlocks = [...blocks];
-            newBlocks.splice(atIndex + 1, 0, newBlock);
+            newBlocks.splice(atIndex, 0, newBlock);
             setBlocks(newBlocks);
         } else {
             setBlocks([...blocks, newBlock]);
@@ -2757,7 +3029,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                                         </div>
                                                     </div>
                                                 )}
-                                                {text && <div className="w-full text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: text }} />}
+                                                {text && <div className="editor-content w-full text-sm" style={{ lineHeight: block.lineHeight || '1.6' }} dangerouslySetInnerHTML={{ __html: text }} />}
                                             </div>
                                         );
                                     })
@@ -2961,7 +3233,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
                                         <button
                                             onClick={copySelectedBlocks}
-                                            className="h-9 px-3 rounded-lg font-semibold transition-all active:scale-95 flex items-center gap-1.5 text-[10px] uppercase bg-blue-600 text-white border border-transparent hover:bg-blue-700 dark:bg-transparent dark:border-blue-500 dark:text-blue-400 dark:hover:bg-blue-500/20 dark:hover:border-blue-400 shadow-lg shadow-blue-500/10"
+                                            className="h-9 px-3 rounded-xl font-bold transition-all active:scale-95 flex items-center gap-2 text-[10px] uppercase bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/20"
                                             title="Copiar blocos selecionados"
                                         >
                                             <i className="fas fa-copy text-[10px]"></i>
@@ -2970,7 +3242,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
                                         <button
                                             onClick={cutSelectedBlocks}
-                                            className="h-9 px-3 rounded-lg font-semibold transition-all active:scale-95 flex items-center gap-1.5 text-[10px] uppercase bg-orange-600 text-white border border-transparent hover:bg-orange-700 dark:bg-transparent dark:border-orange-500 dark:text-orange-400 dark:hover:bg-orange-500/20 dark:hover:border-orange-400 shadow-lg shadow-orange-500/10"
+                                            className="h-9 px-3 rounded-xl font-bold transition-all active:scale-95 flex items-center gap-2 text-[10px] uppercase bg-orange-600 text-white hover:bg-orange-700 shadow-lg shadow-orange-500/20"
                                             title="Recortar blocos selecionados"
                                         >
                                             <i className="fas fa-cut text-[10px]"></i>
@@ -2979,7 +3251,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
                                         <button
                                             onClick={deleteSelectedBlocks}
-                                            className="h-9 px-3 rounded-lg font-semibold transition-all active:scale-95 flex items-center gap-1.5 text-[10px] uppercase bg-red-600 text-white border border-transparent hover:bg-red-700 dark:bg-transparent dark:border-red-500 dark:text-red-400 dark:hover:bg-red-500/20 dark:hover:border-red-400 shadow-lg shadow-red-500/10"
+                                            className="h-9 px-3 rounded-xl font-bold transition-all active:scale-95 flex items-center gap-2 text-[10px] uppercase bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-red-500/20"
                                             title="Excluir blocos selecionados"
                                         >
                                             <i className="fas fa-trash-alt text-[10px]"></i>
@@ -2989,19 +3261,20 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                         <Divider />
 
                                         {/* Bulk Formatting Toolbar */}
-                                        <div className="flex flex-wrap items-center gap-1 bg-white dark:bg-slate-800 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-lg">
-                                            <div className="flex items-center gap-1 px-1 mr-1 border-r border-slate-200 dark:border-slate-700">
+                                        <div className="flex flex-wrap items-center gap-1 bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-300 ring-1 ring-slate-900/5">
+                                            {/* Grupo: Tipografia em massa */}
+                                            <div className="flex items-center gap-1 p-1 bg-slate-50 dark:bg-slate-900/50 rounded-xl mr-1">
                                                 <input
                                                     type="number"
                                                     min="8"
                                                     max="72"
                                                     defaultValue="12"
                                                     onChange={(e) => applyBulkFormatting('fontSize', e.target.value)}
-                                                    className="w-12 h-7 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-[10px] px-1 text-center"
+                                                    className="w-12 h-9 rounded-lg border-none bg-white dark:bg-slate-800 text-[10px] px-1 text-center font-bold shadow-sm focus:ring-2 focus:ring-indigo-500"
                                                     title="Tamanho da fonte em massa"
                                                 />
                                                 <select
-                                                    className="w-20 h-7 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-[9px] px-1"
+                                                    className="w-24 h-9 rounded-lg border-none bg-white dark:bg-slate-800 text-[10px] px-1 ml-1 font-bold shadow-sm focus:ring-2 focus:ring-indigo-500"
                                                     onChange={(e) => applyBulkFormatting('fontName', e.target.value)}
                                                     title="Tipo de fonte em massa"
                                                 >
@@ -3013,16 +3286,76 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                                 </select>
                                             </div>
 
-                                            <ToolbarButton icon="bold" title="Negrito em massa" onClick={() => applyBulkFormatting('bold')} />
-                                            <ToolbarButton icon="italic" title="Itálico em massa" onClick={() => applyBulkFormatting('italic')} />
-                                            <ToolbarButton icon="underline" title="Sublinhado em massa" onClick={() => applyBulkFormatting('underline')} />
                                             <Divider />
-                                            <ToolbarButton icon="align-left" title="Alinhar Esquerda" onClick={() => applyBulkFormatting('justifyLeft')} />
-                                            <ToolbarButton icon="align-center" title="Alinhar Centro" onClick={() => applyBulkFormatting('justifyCenter')} />
-                                            <ToolbarButton icon="align-right" title="Alinhar Direita" onClick={() => applyBulkFormatting('justifyRight')} />
+
+                                            {/* Grupo: Estilos em massa */}
+                                            <div className="flex items-center gap-0.5">
+                                                <ToolbarButton icon="bold" title="Negrito em massa" onClick={() => applyBulkFormatting('bold')} />
+                                                <ToolbarButton icon="italic" title="Itálico em massa" onClick={() => applyBulkFormatting('italic')} />
+                                                <ToolbarButton icon="underline" title="Sublinhado em massa" onClick={() => applyBulkFormatting('underline')} />
+                                            </div>
+
                                             <Divider />
-                                            <ToolbarButton icon="list-ul" title="Lista em massa" onClick={() => applyBulkFormatting('insertUnorderedList')} />
-                                            <ToolbarButton icon="list-ol" title="Lista ordenada em massa" onClick={() => applyBulkFormatting('insertOrderedList')} />
+
+                                            {/* Grupo: Alinhamento em massa */}
+                                            <div className="flex items-center gap-0.5">
+                                                <ToolbarButton icon="align-left" title="Alinhar Esquerda" onClick={() => applyBulkFormatting('justifyLeft')} />
+                                                <ToolbarButton icon="align-center" title="Alinhar Centro" onClick={() => applyBulkFormatting('justifyCenter')} />
+                                                <ToolbarButton icon="align-right" title="Alinhar Direita" onClick={() => applyBulkFormatting('justifyRight')} />
+                                                <ToolbarButton icon="align-justify" title="Justificado em massa" onClick={() => applyBulkFormatting('justifyFull')} />
+                                            </div>
+
+                                            <Divider />
+
+                                            {/* Grupo: Recuos e Listas em massa */}
+                                            <div className="flex items-center gap-0.5">
+                                                <ToolbarButton icon="indent" title="Recuo à Direita em massa" onClick={() => applyBulkFormatting('indent')} />
+                                                <ToolbarButton icon="outdent" title="Recuo à Esquerda em massa" onClick={() => applyBulkFormatting('outdent')} />
+                                                <ToolbarButton icon="list-ul" title="Lista em massa" onClick={() => applyBulkFormatting('insertUnorderedList')} />
+                                                <ToolbarButton icon="list-ol" title="Lista ordenada em massa" onClick={() => applyBulkFormatting('insertOrderedList')} />
+                                            </div>
+
+                                            <Divider />
+
+                                            {/* Grupo: Espaçamento em massa (Slider) */}
+                                            <div className="flex items-center gap-2 px-2 py-1 bg-slate-50 dark:bg-slate-900/50 rounded-xl mr-1">
+                                                <i className="fas fa-text-height text-xs text-slate-400"></i>
+                                                <input
+                                                    type="range"
+                                                    min="1"
+                                                    max="3"
+                                                    step="0.1"
+                                                    defaultValue="1.6"
+                                                    onChange={(e) => applyBulkFormatting('lineHeight', e.target.value)}
+                                                    className="w-20 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-600 focus:outline-none"
+                                                    title="Ajustar Espaçamento em massa"
+                                                />
+                                            </div>
+
+                                            <Divider />
+
+                                            {/* Grupo: Links e Imagens em massa */}
+                                            <div className="flex items-center gap-0.5">
+                                                <ToolbarButton
+                                                    icon="link"
+                                                    title="Link em massa"
+                                                    onClick={() => {
+                                                        const url = prompt('URL para os blocos selecionados:');
+                                                        if (url) applyBulkFormatting('createLink', url);
+                                                    }}
+                                                />
+                                                <ToolbarButton
+                                                    icon="image"
+                                                    title="Inserir Imagem em massa (URL)"
+                                                    onClick={() => {
+                                                        const url = prompt('URL da Imagem para os blocos selecionados:');
+                                                        if (url) {
+                                                            const imgHtml = `<img src="${url}" style="max-width: 100%; height: auto; margin: 10px 0; border-radius: 8px;" /><p><br></p>`;
+                                                            applyBulkFormatting('insertHTML', imgHtml);
+                                                        }
+                                                    }}
+                                                />
+                                            </div>
                                         </div>
                                     </div>
                                 )}
@@ -3106,7 +3439,8 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                                     saveSelection,
                                                     execCommand,
                                                     setCurrentFontSize,
-                                                    currentFontSize
+                                                    currentFontSize,
+                                                    activeFormats
                                                 }}
                                             />
                                         );

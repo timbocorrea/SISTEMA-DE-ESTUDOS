@@ -82,6 +82,21 @@ body {
   position: absolute;
 }
 
+/* Rich text list styling (editor + student preview) */
+.editor-content ul,
+.content-reader ul {
+  list-style-type: disc;
+  list-style-position: outside;
+  margin-left: 1.5rem;
+}
+
+.editor-content ol,
+.content-reader ol {
+  list-style-type: decimal;
+  list-style-position: outside;
+  margin-left: 1.5rem;
+}
+
 /* Custom scrollbars for editor columns */
 .scrollbar-thin::-webkit-scrollbar {
   width: 6px;

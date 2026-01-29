@@ -24,6 +24,7 @@ export interface IContentBlock {
   text: string;
   audioUrl?: string;
   spacing?: number;
+  lineHeight?: string;
 }
 
 export type LessonResourceType = 'PDF' | 'AUDIO' | 'IMAGE' | 'LINK' | 'FILE';
