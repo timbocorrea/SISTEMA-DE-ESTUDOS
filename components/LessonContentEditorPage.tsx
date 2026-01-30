@@ -703,6 +703,14 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
     const [showMaterialModal, setShowMaterialModal] = useState(false);
     const [showImportExportModal, setShowImportExportModal] = useState(false);
 
+    // Import Method Modal State (Upload ou Colar)
+    const [importType, setImportType] = useState<'json' | 'docx' | 'md' | null>(null);
+    const [showImportMethodModal, setShowImportMethodModal] = useState(false);
+    const [importMethod, setImportMethod] = useState<'upload' | 'paste'>('upload');
+    const [pastedContent, setPastedContent] = useState('');
+
+
+
     // Carregar recursos ao abrir o modal
     useEffect(() => {
         if (showMaterialModal && lesson.id) {
@@ -1862,6 +1870,8 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
     };
 
 
+
+
     const handleDocxDrop = async (event: React.DragEvent<HTMLDivElement>) => {
         event.preventDefault();
         setIsDocDragActive(false);
@@ -2071,6 +2081,52 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
         const file = event.target.files?.[0];
         if (!file) return;
         await importJsonContent(file);
+    };
+
+    // Handler para importação via texto colado (JSON ou MD)
+    const handlePastedImport = async () => {
+        if (!pastedContent.trim() || !importType) return;
+
+        try {
+            if (importType === 'json') {
+                // Criar File virtual a partir do texto
+                const blob = new Blob([pastedContent], { type: 'application/json' });
+                const file = new File([blob], 'pasted-content.json', { type: 'application/json' });
+                await importJsonContent(file);
+            } else if (importType === 'md') {
+                // Para MD, converter Markdown to HTML e criar blocos
+                const html = await marked(pastedContent);
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = html;
+
+                // Criar blocos a partir do HTML
+                const paragraphs = tempDiv.querySelectorAll('p, h1, h2, h3, ul, ol');
+                const newBlocks = Array.from(paragraphs).map((el, idx) => ({
+                    id: `block-paste-${Date.now()}-${idx}`,
+                    text: el.outerHTML,
+                    spacing: el.tagName.match(/^H[1-3]$/) ? 1.5 : 0,
+                    audioUrl: '',
+                    lineHeight: '1.8'
+                }));
+
+                // Aplicar modo de importação
+                if (jsonImportMode === 'replace') {
+                    setBlocks(newBlocks);
+                } else if (jsonImportMode === 'append') {
+                    setBlocks(prev => [...prev, ...newBlocks]);
+                } else {
+                    setBlocks(prev => [...newBlocks, ...prev]);
+                }
+
+                toast.success(`✅ ${newBlocks.length} bloco(s) importados do Markdown!`);
+            }
+
+            // Fechar modal e limpar
+            setShowImportMethodModal(false);
+            setPastedContent('');
+        } catch (error: any) {
+            toast.error(`❌ Erro ao processar ${importType.toUpperCase()}: ${error.message}`);
+        }
     };
 
     const updateBlock = React.useCallback((id: string, updates: any) => {
@@ -2716,7 +2772,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
 
     return (
-        <div className="h-screen bg-white dark:bg-slate-950 flex flex-col overflow-hidden">
+        <div className="h-[100dvh] bg-white dark:bg-slate-950 flex flex-col overflow-hidden">
             {/* Header fixo */}
             <div className="z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 shadow-sm">
                 <div className="px-8 py-4">
@@ -4767,13 +4823,21 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                         </div>
                                         <div className="grid grid-cols-2 gap-3">
                                             <button
-                                                onClick={() => document.getElementById('docx-upload-modal')?.click()}
+                                                onClick={() => {
+                                                    setImportType('docx');
+                                                    setImportMethod('upload');
+                                                    setShowImportMethodModal(true);
+                                                }}
                                                 className="h-12 rounded-xl bg-[#10b981] text-white text-xs font-black flex items-center justify-center gap-2 hover:bg-[#059669] transition-all active:scale-[0.98] shadow-lg shadow-teal-500/20"
                                             >
                                                 <i className="fas fa-file-word text-sm"></i> DOCX
                                             </button>
                                             <button
-                                                onClick={() => jsonUploadInputRef.current?.click()}
+                                                onClick={() => {
+                                                    setImportType('json');
+                                                    setImportMethod('upload');
+                                                    setShowImportMethodModal(true);
+                                                }}
                                                 disabled={isJsonImporting}
                                                 className="h-12 rounded-xl bg-[#1e293b] text-white text-xs font-black flex items-center justify-center gap-2 hover:bg-[#334155] transition-all active:scale-[0.98] disabled:opacity-50"
                                             >
@@ -4786,7 +4850,11 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                                 <i className="fas fa-download text-sm"></i> Exportar JSON
                                             </button>
                                             <button
-                                                onClick={() => document.getElementById('markdown-upload-modal')?.click()}
+                                                onClick={() => {
+                                                    setImportType('md');
+                                                    setImportMethod('upload');
+                                                    setShowImportMethodModal(true);
+                                                }}
                                                 className="h-12 rounded-xl bg-[#a855f7] text-white text-xs font-black flex items-center justify-center gap-2 hover:bg-[#9333ea] transition-all active:scale-[0.98] shadow-lg shadow-purple-500/20"
                                             >
                                                 <i className="fab fa-markdown text-sm"></i> .md
@@ -4885,6 +4953,139 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                             >
                                 FECHAR
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Import Method Modal - Upload ou Colar */}
+            {showImportMethodModal && importType && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="w-full max-w-2xl bg-gradient-to-br from-slate-900 to-slate-950 rounded-2xl shadow-2xl border border-slate-800 overflow-hidden animate-in zoom-in-95 duration-300">
+                        {/* Header */}
+                        <div className="p-6 bg-slate-950/30 border-b border-slate-800/50 flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 rounded-xl bg-cyan-500/10 flex items-center justify-center">
+                                    <i className={`fas ${importType === 'json' ? 'fa-file-code' : importType === 'docx' ? 'fa-file-word' : 'fab fa-markdown'} text-cyan-400`}></i>
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-black text-white uppercase tracking-tight">
+                                        Método de Importação
+                                    </h3>
+                                    <p className="text-xs text-slate-400 font-medium">
+                                        Escolha como importar {importType.toUpperCase()}
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    setShowImportMethodModal(false);
+                                    setPastedContent('');
+                                }}
+                                className="w-10 h-10 rounded-full flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-all"
+                            >
+                                <i className="fas fa-times text-xl"></i>
+                            </button>
+                        </div>
+
+                        {/* Tabs */}
+                        <div className="p-6 pb-0">
+                            <div className="flex gap-2 border-b border-slate-800/50">
+                                <button
+                                    onClick={() => setImportMethod('upload')}
+                                    className={`px-6 py-3 text-xs font-black transition-all relative ${importMethod === 'upload'
+                                        ? 'text-cyan-400'
+                                        : 'text-slate-500 hover:text-slate-300'
+                                        }`}
+                                >
+                                    <i className="fas fa-upload mr-2"></i>
+                                    UPLOAD DE ARQUIVO
+                                    {importMethod === 'upload' && (
+                                        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400"></div>
+                                    )}
+                                </button>
+                                <button
+                                    onClick={() => setImportMethod('paste')}
+                                    disabled={importType === 'docx'} // DOCX não pode ser colado
+                                    className={`px-6 py-3 text-xs font-black transition-all relative ${importMethod === 'paste'
+                                        ? 'text-cyan-400'
+                                        : 'text-slate-500 hover:text-slate-300'
+                                        } disabled:opacity-30 disabled:cursor-not-allowed`}
+                                    title={importType === 'docx' ? 'DOCX é formato binário e não pode ser colado' : ''}
+                                >
+                                    <i className="fas fa-paste mr-2"></i>
+                                    COLAR TEXTO
+                                    {importMethod === 'paste' && importType !== 'docx' && (
+                                        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400"></div>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Body */}
+                        <div className="p-6">
+                            {importMethod === 'upload' ? (
+                                <div className="border-2 border-dashed border-slate-800 rounded-xl p-8 bg-slate-900/50 text-center">
+                                    <i className="fas fa-cloud-upload-alt text-4xl text-slate-600 mb-4"></i>
+                                    <p className="text-sm font-bold text-slate-300 mb-4">
+                                        Selecione um arquivo {importType.toUpperCase()}
+                                    </p>
+                                    <button
+                                        onClick={() => {
+                                            if (importType === 'json') jsonUploadInputRef.current?.click();
+                                            else if (importType === 'docx') document.getElementById('docx-upload-modal')?.click();
+                                            else if (importType === 'md') document.getElementById('markdown-upload-modal')?.click();
+                                            setShowImportMethodModal(false);
+                                        }}
+                                        className="px-8 py-3 bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-black rounded-xl transition-all active:scale-95"
+                                    >
+                                        <i className="fas fa-folder-open mr-2"></i>
+                                        SELECIONAR ARQUIVO
+                                    </button>
+                                </div>
+                            ) : (
+                                <div>
+                                    <label className="block text-xs font-black text-slate-300 mb-2 uppercase tracking-wide">
+                                        Cole o conteúdo {importType.toUpperCase()} abaixo:
+                                    </label>
+                                    <textarea
+                                        value={pastedContent}
+                                        onChange={(e) => setPastedContent(e.target.value)}
+                                        placeholder={
+                                            importType === 'json'
+                                                ? '{\n  "content_blocks": [\n    ...\n  ]\n}'
+                                                : '# Título\n\nConteúdo markdown...'
+                                        }
+                                        className="w-full h-64 bg-slate-950 border border-slate-800 rounded-xl p-4 text-slate-300 text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                                    />
+                                    <p className="mt-2 text-xs text-slate-500">
+                                        Dica: Use Ctrl+V para colar
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-6 bg-slate-950/50 border-t border-slate-800/50 flex justify-end gap-3">
+                            <button
+                                onClick={() => {
+                                    setShowImportMethodModal(false);
+                                    setPastedContent('');
+                                }}
+                                className="px-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-black transition-all active:scale-95"
+                            >
+                                CANCELAR
+                            </button>
+                            {importMethod === 'paste' && (
+                                <button
+                                    onClick={handlePastedImport}
+                                    disabled={!pastedContent.trim()}
+                                    className="px-6 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-700 disabled:bg-slate-800 disabled:text-slate-600 text-white text-xs font-black transition-all active:scale-95"
+                                >
+                                    <i className="fas fa-file-import mr-2"></i>
+                                    IMPORTAR
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>

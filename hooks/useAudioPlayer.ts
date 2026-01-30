@@ -20,6 +20,7 @@ export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate }: UseA
 
     const [audioProgress, setAudioProgress] = useState<number>(0);
     const audioRef = useRef<HTMLAudioElement | null>(null);
+    const nextAudioRef = useRef<HTMLAudioElement | null>(null); // Prefetch next audio
     const playbackSpeedRef = useRef<number>(playbackSpeed);
 
     // Sync ref with store for callbacks
@@ -37,8 +38,34 @@ export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate }: UseA
             setActiveBlockId(null);
             setAudioProgress(0);
             setIsPlaying(false);
+            // Cleanup prefetched audio
+            if (nextAudioRef.current) {
+                nextAudioRef.current = null;
+            }
         }
     }, [audioEnabled, setActiveBlockId, setIsPlaying]);
+
+    // Prefetch next audio to reduce transition delay
+    const prefetchNextAudio = (currentIndex: number) => {
+        const blocks = lesson.contentBlocks;
+        if (!blocks || !audioEnabled) return;
+
+        const nextIndex = currentIndex + 1;
+        if (nextIndex < blocks.length && blocks[nextIndex].audioUrl) {
+            // Cleanup old prefetch
+            if (nextAudioRef.current) {
+                nextAudioRef.current = null;
+            }
+
+            // Prefetch next audio
+            const nextAudio = new Audio(blocks[nextIndex].audioUrl);
+            nextAudio.preload = 'auto';
+            nextAudio.playbackRate = playbackSpeedRef.current;
+            nextAudioRef.current = nextAudio;
+
+            console.log(`🔊 Prefetching next audio [${nextIndex}]`);
+        }
+    };
 
     const playBlock = (index: number) => {
         const blocks = lesson.contentBlocks;
@@ -65,10 +92,12 @@ export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate }: UseA
             return;
         }
 
-        // Cleanup previous audio
+        // Cleanup previous audio quickly
         if (audioRef.current) {
             audioRef.current.pause();
-            audioRef.current = null; // Ensure cleanup
+            audioRef.current.onended = null; // Remove old handlers
+            audioRef.current.ontimeupdate = null;
+            audioRef.current.onerror = null;
         }
 
         setActiveBlockId(block.id);
@@ -80,29 +109,46 @@ export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate }: UseA
             onProgressUpdate(lesson.watchedSeconds, block.id);
         }
 
-        const audio = new Audio(block.audioUrl);
+        let audio: HTMLAudioElement;
+
+        // OPTIMIZATION: Reuse prefetched audio if available
+        if (nextAudioRef.current && nextAudioRef.current.src === block.audioUrl) {
+            console.log(`✅ Using prefetched audio [${index}]`);
+            audio = nextAudioRef.current;
+            nextAudioRef.current = null; // Clear prefetch
+        } else {
+            audio = new Audio(block.audioUrl);
+            audio.preload = 'auto';
+        }
+
         audioRef.current = audio;
 
         // Apply playback speed
         audio.playbackRate = playbackSpeedRef.current;
 
-        // Update progress
+        // Update progress and trigger prefetch
         audio.ontimeupdate = () => {
             if (audio.duration) {
                 const progress = (audio.currentTime / audio.duration) * 100;
                 setAudioProgress(progress);
+
+                // Prefetch next audio when current reaches 30%
+                if (progress >= 30 && !nextAudioRef.current) {
+                    prefetchNextAudio(index);
+                }
             }
         };
 
-        // Handle end of track
+        // Handle end of track - OPTIMIZED for fast transition
         audio.onended = () => {
             setAudioProgress(0);
-            setIsPlaying(false);
-            // Auto-advance
+            // Auto-advance IMMEDIATELY without setting isPlaying to false
             const nextIndex = index + 1;
             if (nextIndex < blocks.length && blocks[nextIndex].audioUrl && audioEnabled) {
+                // Immediate transition to next block
                 playBlock(nextIndex);
             } else {
+                setIsPlaying(false);
                 setActiveBlockId(null);
             }
         };
@@ -154,6 +200,9 @@ export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate }: UseA
             if (audioRef.current) {
                 audioRef.current.pause();
                 audioRef.current = null;
+            }
+            if (nextAudioRef.current) {
+                nextAudioRef.current = null;
             }
             setIsPlaying(false);
         };
