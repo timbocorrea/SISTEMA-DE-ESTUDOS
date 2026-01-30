@@ -103,8 +103,8 @@ const Sidebar: React.FC<SidebarProps> = ({
       z-[70] lg:z-0 
       ${isActuallyCollapsed ? 'lg:w-20' : 'lg:w-72'} 
       w-72 h-full 
-      bg-slate-900/60 backdrop-blur-xl
-      border-r border-white/5 
+      bg-white/90 dark:bg-slate-900/60 backdrop-blur-xl
+      border-r border-slate-200 dark:border-white/5 
       p-4 
       transition-all duration-300 
       group
@@ -115,7 +115,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       {/* Close Button Mobile */}
       <button
         onClick={onCloseMobile}
-        className="absolute right-3 top-3 lg:hidden w-11 h-11 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-colors"
+        className="absolute right-3 top-3 lg:hidden w-11 h-11 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 rounded-xl transition-colors"
       >
         <i className="fas fa-times text-xl"></i>
       </button>
@@ -132,26 +132,26 @@ const Sidebar: React.FC<SidebarProps> = ({
           <i className="fas fa-graduation-cap"></i>
         </div>
         <div className={`overflow-hidden transition-all duration-300 ${isActuallyCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100'}`}>
-          <h1 className="font-black text-white text-lg leading-tight tracking-tighter uppercase whitespace-nowrap drop-shadow-md">StudySystem</h1>
-          <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest whitespace-nowrap">Sistema de Estudos</p>
+          <h1 className="font-black text-slate-800 dark:text-white text-lg leading-tight tracking-tighter uppercase whitespace-nowrap drop-shadow-md">StudySystem</h1>
+          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest whitespace-nowrap">Sistema de Estudos</p>
         </div>
       </div>
 
       {/* User Status Card */}
-      <div className={`mb-8 bg-black/20 backdrop-blur-md rounded-2xl border border-white/5 transition-all duration-300 overflow-hidden ${isActuallyCollapsed ? 'p-2 mx-0' : 'p-4 mx-0'}`}>
+      <div className={`mb-8 bg-slate-100 dark:bg-black/20 backdrop-blur-md rounded-2xl border border-slate-200 dark:border-white/5 transition-all duration-300 overflow-hidden ${isActuallyCollapsed ? 'p-2 mx-0' : 'p-4 mx-0'}`}>
         <div className={`flex items-center ${isActuallyCollapsed ? 'justify-center' : 'gap-3 mb-3'}`}>
           <div className={`rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center font-black text-white border-2 border-slate-900 shadow-lg shadow-orange-500/20 transition-all ${isActuallyCollapsed ? 'w-8 h-8 text-[10px]' : 'w-10 h-10 text-[12px]'}`}>
             {level}
           </div>
           <div className={`flex-1 overflow-hidden transition-all duration-300 ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
-            <p className="text-xs font-black text-slate-200 leading-none uppercase tracking-tight whitespace-nowrap">Nível {level}</p>
+            <p className="text-xs font-black text-slate-700 dark:text-slate-200 leading-none uppercase tracking-tight whitespace-nowrap">Nível {level}</p>
             <p className="text-[10px] text-slate-500 font-bold mt-1 uppercase tracking-tighter truncate">{1000 - xpInLevel} XP para prox.</p>
           </div>
         </div>
 
         {/* Progress bar hides when collapsed for cleaner look */}
         {!isActuallyCollapsed && (
-          <div className="w-full h-1.5 bg-slate-800/50 rounded-full overflow-hidden animate-in fade-in duration-500">
+          <div className="w-full h-1.5 bg-slate-300 dark:bg-slate-800/50 rounded-full overflow-hidden animate-in fade-in duration-500">
             <div
               className="h-full bg-gradient-to-r from-amber-500 to-orange-600 rounded-full shadow-[0_0_10px_rgba(249,115,22,0.3)] transition-all duration-700"
               style={{ width: `${progressPercent}%` }}
@@ -161,7 +161,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto scrollbar-hide overflow-x-hidden">
-        {!isActuallyCollapsed && <p className="px-3 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 opacity-50 whitespace-nowrap">Menu Principal</p>}
+        {!isActuallyCollapsed && <p className="px-3 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4 opacity-50 whitespace-nowrap">Menu Principal</p>}
 
         <Link
           to="/"
@@ -170,8 +170,8 @@ const Sidebar: React.FC<SidebarProps> = ({
             onViewChange('dashboard');
           }}
           className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight group relative ${activeView === 'dashboard'
-            ? 'bg-white/10 text-white shadow-lg shadow-white/5 ring-1 ring-white/10'
-            : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'
+            ? 'bg-indigo-50 dark:bg-white/10 text-indigo-600 dark:text-white shadow-lg shadow-indigo-500/10 dark:shadow-white/5 ring-1 ring-indigo-200 dark:ring-white/10'
+            : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
             } ${isActuallyCollapsed ? 'justify-center' : ''}`}
           title={isActuallyCollapsed ? "Dashboard" : ''}
         >
@@ -194,8 +194,8 @@ const Sidebar: React.FC<SidebarProps> = ({
               if (isActuallyCollapsed) setIsCollapsed(false);
             }}
             className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight mb-1 group ${activeView === 'courses'
-              ? 'bg-white/10 text-white shadow-lg shadow-white/5 ring-1 ring-white/10'
-              : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'
+              ? 'bg-indigo-50 dark:bg-white/10 text-indigo-600 dark:text-white shadow-lg shadow-indigo-500/10 dark:shadow-white/5 ring-1 ring-indigo-200 dark:ring-white/10'
+              : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
               } ${isActuallyCollapsed ? 'justify-center' : ''}`}
             title="Meus Cursos"
           >
@@ -209,7 +209,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           </Link>
 
           {!isActuallyCollapsed && coursesMenuOpen && (
-            <div className="ml-7 pl-3 border-l border-white/10 space-y-1 mb-2 animate-in slide-in-from-top-2 duration-200">
+            <div className="ml-7 pl-3 border-l border-slate-200 dark:border-white/10 space-y-1 mb-2 animate-in slide-in-from-top-2 duration-200">
               {courses.map(course => {
                 const isCourseOpen = expandedCourseId === course.id;
                 // Fallback to activeCourse modules if available and matching
@@ -230,7 +230,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                       }}
                       className={`w-full text-left px-3 py-2 rounded-lg transition-all text-xs font-black uppercase tracking-widest truncate block ${isCourseOpen
                         ? 'bg-amber-500/10 text-amber-500'
-                        : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'
+                        : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
                         }`}
                     >
                       {course.title}
@@ -271,7 +271,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                         }}
                                         className={`w-full text-left px-3 py-2 rounded-lg transition-all text-[11px] font-medium tracking-tight truncate ${isActiveLesson
                                           ? 'bg-emerald-500/10 text-emerald-400 font-bold shadow-sm border border-emerald-500/20'
-                                          : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'
+                                          : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
                                           }`}
                                       >
                                         {isActiveLesson && <i className="fas fa-play-circle mr-2 text-emerald-400"></i>}
@@ -302,8 +302,8 @@ const Sidebar: React.FC<SidebarProps> = ({
               onViewChange(item.id);
             }}
             className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight group relative ${activeView === item.id
-              ? 'bg-white/10 text-white shadow-lg shadow-white/5 ring-1 ring-white/10'
-              : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'
+              ? 'bg-indigo-50 dark:bg-white/10 text-indigo-600 dark:text-white shadow-lg shadow-indigo-500/10 dark:shadow-white/5 ring-1 ring-indigo-200 dark:ring-white/10'
+              : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
               } ${isActuallyCollapsed ? 'justify-center' : ''}`}
             title={isActuallyCollapsed ? item.label : ''}
           >
@@ -318,7 +318,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
         {isAdmin && (
           <>
-            {!isActuallyCollapsed && <p className="px-3 text-[10px] font-black text-slate-400 uppercase tracking-widest mt-8 mb-4 opacity-50 whitespace-nowrap">Administração</p>}
+            {!isActuallyCollapsed && <p className="px-3 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-8 mb-4 opacity-50 whitespace-nowrap">Administração</p>}
 
             {/* Admin Section Container */}
             <div className={`${isActuallyCollapsed ? 'mt-4 border-t border-slate-200 dark:border-slate-800 pt-4' : ''}`}>
@@ -332,8 +332,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                   if (isActuallyCollapsed) setIsCollapsed(false);
                 }}
                 className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight mb-1 group ${activeView === 'content'
-                  ? 'bg-white/10 text-white shadow-lg shadow-white/5 ring-1 ring-white/10'
-                  : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'
+                  ? 'bg-indigo-50 dark:bg-white/10 text-indigo-600 dark:text-white shadow-lg shadow-indigo-500/10 dark:shadow-white/5 ring-1 ring-indigo-200 dark:ring-white/10'
+                  : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
                   } ${isActuallyCollapsed ? 'justify-center' : ''}`}
                 title="Gestão de Conteúdo"
               >
@@ -348,7 +348,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
               {/* Submenu Tree (Only visible if expanded) */}
               {!isActuallyCollapsed && contentMenuOpen && (
-                <div className="ml-7 pl-3 border-l border-white/10 space-y-1 mb-2 animate-in slide-in-from-top-2 duration-200">
+                <div className="ml-7 pl-3 border-l border-slate-200 dark:border-white/10 space-y-1 mb-2 animate-in slide-in-from-top-2 duration-200">
                   {adminCourses.map(course => {
                     const isCourseOpen = expandedCourseId === course.id;
                     const modules = course.modules || [];
@@ -366,7 +366,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                           }}
                           className={`w-full text-left px-3 py-2 rounded-lg transition-all text-xs font-black uppercase tracking-widest truncate block ${isCourseOpen
                             ? 'bg-amber-500/10 text-amber-500'
-                            : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'
+                            : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
                             }`}
                         >
                           {course.title}
@@ -390,7 +390,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                     }}
                                     className={`w-full text-left px-3 py-2 rounded-lg transition-all text-[11px] font-bold tracking-tight truncate block ${isModuleOpen
                                       ? 'bg-cyan-500/10 text-cyan-400'
-                                      : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'
+                                      : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
                                       }`}
                                   >
                                     {module.title}
@@ -410,7 +410,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                             }}
                                             className={`w-full text-left px-3 py-2 rounded-lg transition-all text-[11px] font-medium tracking-tight truncate block ${isActiveLesson
                                               ? 'bg-emerald-500/10 text-emerald-400 font-bold shadow-sm border border-emerald-500/20'
-                                              : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'
+                                              : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
                                               }`}
                                           >
                                             {isActiveLesson && <i className="fas fa-pencil-alt mr-2 text-emerald-400"></i>}
@@ -443,7 +443,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   e.stopPropagation();
                   onViewChange('users');
                 }}
-                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight group relative ${activeView === 'users' ? 'bg-white/10 text-white shadow-lg shadow-white/5 ring-1 ring-white/10' : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
+                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight group relative ${activeView === 'users' ? 'bg-indigo-50 dark:bg-white/10 text-indigo-600 dark:text-white shadow-lg shadow-indigo-500/10 dark:shadow-white/5 ring-1 ring-indigo-200 dark:ring-white/10' : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
                 title="Controle de Usuários"
               >
                 <div className={`transition-transform duration-300 ${activeView === 'users' ? 'scale-110' : 'group-hover:scale-110'}`}>
@@ -465,7 +465,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     }
                     onViewChange('files');
                   }}
-                  className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight mb-1 group ${activeView === 'files' ? 'bg-white/10 text-white shadow-lg shadow-white/5 ring-1 ring-white/10' : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
+                  className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight mb-1 group ${activeView === 'files' ? 'bg-indigo-50 dark:bg-white/10 text-indigo-600 dark:text-white shadow-lg shadow-indigo-500/10 dark:shadow-white/5 ring-1 ring-indigo-200 dark:ring-white/10' : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
                   title="Gerenciar Arquivos"
                 >
                   <div className="flex items-center gap-3 min-w-0">
@@ -480,12 +480,12 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </Link>
 
                 {!isActuallyCollapsed && activeView === 'files' && (
-                  <div className="ml-7 pl-3 border-l border-white/10 space-y-1 mb-2 animate-in slide-in-from-top-2 duration-200">
+                  <div className="ml-7 pl-3 border-l border-slate-200 dark:border-white/10 space-y-1 mb-2 animate-in slide-in-from-top-2 duration-200">
                     {['audios', 'course-covers', 'images', 'pdfs'].map(folder => (
                       <button
                         key={folder}
                         onClick={() => onNavigateFile?.(folder)}
-                        className="w-full text-left px-3 py-2 rounded-lg transition-all text-xs font-medium text-slate-500 hover:bg-white/5 hover:text-indigo-400 capitalize"
+                        className="w-full text-left px-3 py-2 rounded-lg transition-all text-xs font-medium text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-indigo-600 dark:hover:text-indigo-400 capitalize"
                       >
                         <i className="fas fa-folder mr-2 text-amber-500/80"></i>
                         {folder}
@@ -501,7 +501,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   e.stopPropagation();
                   onViewChange('access');
                 }}
-                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight mb-1 group ${activeView === 'access' ? 'bg-white/10 text-white shadow-lg shadow-white/5 ring-1 ring-white/10' : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
+                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight mb-1 group ${activeView === 'access' ? 'bg-indigo-50 dark:bg-white/10 text-indigo-600 dark:text-white shadow-lg shadow-indigo-500/10 dark:shadow-white/5 ring-1 ring-indigo-200 dark:ring-white/10' : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
                 title="Acesso aos Cursos"
               >
                 <div className={`transition-transform duration-300 ${activeView === 'access' ? 'scale-110' : 'group-hover:scale-110'}`}>
@@ -518,7 +518,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   e.stopPropagation();
                   onViewChange('questionnaire');
                 }}
-                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight mb-1 group ${activeView === 'questionnaire' ? 'bg-white/10 text-white shadow-lg shadow-white/5 ring-1 ring-white/10' : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
+                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight mb-1 group ${activeView === 'questionnaire' ? 'bg-indigo-50 dark:bg-white/10 text-indigo-600 dark:text-white shadow-lg shadow-indigo-500/10 dark:shadow-white/5 ring-1 ring-indigo-200 dark:ring-white/10' : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
                 title="Banco de Questões"
               >
                 <div className={`transition-transform duration-300 ${activeView === 'questionnaire' ? 'scale-110' : 'group-hover:scale-110'}`}>
@@ -535,7 +535,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   e.stopPropagation();
                   onViewChange('system-health');
                 }}
-                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight mb-1 group ${activeView === 'system-health' ? 'bg-white/10 text-white shadow-lg shadow-white/5 ring-1 ring-white/10' : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
+                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight mb-1 group ${activeView === 'system-health' ? 'bg-indigo-50 dark:bg-white/10 text-indigo-600 dark:text-white shadow-lg shadow-indigo-500/10 dark:shadow-white/5 ring-1 ring-indigo-200 dark:ring-white/10' : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
                 title="Saúde do Sistema"
               >
                 <div className={`transition-transform duration-300 ${activeView === 'system-health' ? 'scale-110' : 'group-hover:scale-110'}`}>
@@ -552,7 +552,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   e.stopPropagation();
                   onViewChange('settings');
                 }}
-                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight mb-1 group ${activeView === 'settings' ? 'bg-white/10 text-white shadow-lg shadow-white/5 ring-1 ring-white/10' : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
+                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight mb-1 group ${activeView === 'settings' ? 'bg-indigo-50 dark:bg-white/10 text-indigo-600 dark:text-white shadow-lg shadow-indigo-500/10 dark:shadow-white/5 ring-1 ring-indigo-200 dark:ring-white/10' : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
                 title="Configuração do Suporte"
               >
                 <div className={`transition-transform duration-300 ${activeView === 'settings' ? 'scale-110' : 'group-hover:scale-110'}`}>
@@ -567,7 +567,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         )}
       </nav>
 
-      <div className={`mt-auto pt-6 space-y-2 border-t border-white/5 transition-all ${isActuallyCollapsed ? 'flex flex-col items-center' : ''}`}>
+      <div className={`mt-auto pt-6 space-y-2 border-t border-slate-200 dark:border-white/5 transition-all ${isActuallyCollapsed ? 'flex flex-col items-center' : ''}`}>
 
         {/* Support Button */}
         <button
@@ -575,7 +575,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             e.stopPropagation();
             setIsSupportOpen(true);
           }}
-          className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-slate-500 hover:bg-white/5 hover:text-slate-300 transition-all text-sm font-bold group ${isActuallyCollapsed ? 'justify-center' : ''}`}
+          className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300 transition-all text-sm font-bold group ${isActuallyCollapsed ? 'justify-center' : ''}`}
           title="Suporte Técnico"
         >
           <div className="group-hover:scale-110 transition-transform duration-300">
@@ -593,7 +593,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               e.stopPropagation();
               setThemeDropdownOpen(!themeDropdownOpen);
             }}
-            className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-slate-500 hover:bg-white/5 hover:text-slate-300 transition-all text-sm font-bold group ${isActuallyCollapsed ? 'justify-center' : ''}`}
+            className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300 transition-all text-sm font-bold group ${isActuallyCollapsed ? 'justify-center' : ''}`}
             title="Alterar Tema"
           >
             <div className="group-hover:scale-110 transition-transform duration-300">
@@ -609,7 +609,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
           {/* Dropdown Menu */}
           {themeDropdownOpen && !isActuallyCollapsed && (
-            <div className="absolute bottom-full left-0 right-0 mb-2 bg-[#0a0e14]/90 backdrop-blur-xl rounded-xl shadow-xl shadow-black/50 border border-white/10 overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200">
+            <div className="absolute bottom-full left-0 right-0 mb-2 bg-white dark:bg-[#0a0e14]/90 backdrop-blur-xl rounded-xl shadow-xl shadow-black/20 dark:shadow-black/50 border border-slate-200 dark:border-white/10 overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -617,8 +617,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                   if (theme === 'dark') setThemeDropdownOpen(false);
                 }}
                 className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors ${theme === 'light'
-                  ? 'bg-amber-500/10 text-amber-500'
-                  : 'text-slate-400 hover:bg-white/5'
+                  ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-500'
+                  : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5'
                   }`}
               >
                 <i className="fas fa-sun w-4"></i>
@@ -632,8 +632,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                   if (theme === 'light') setThemeDropdownOpen(false);
                 }}
                 className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors ${theme === 'dark'
-                  ? 'bg-indigo-500/10 text-indigo-400'
-                  : 'text-slate-400 hover:bg-white/5'
+                  ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'
+                  : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5'
                   }`}
               >
                 <i className="fas fa-moon w-4"></i>

@@ -9,18 +9,18 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ user }) => {
     return (
         <div className="flex items-center justify-between mb-10">
             <div>
-                <h2 className="text-4xl font-black text-white tracking-tight drop-shadow-lg">
+                <h2 className="text-4xl font-black text-slate-800 dark:text-white tracking-tight drop-shadow-lg">
                     Olá, <span className="bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">{user.name.split(' ')[0]}</span>! 👋
                 </h2>
-                <p className="text-slate-400 mt-2 font-medium">
+                <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium">
                     Aqui está o resumo da sua jornada de aprendizado
                 </p>
             </div>
             <div className="hidden md:flex items-center gap-8">
                 {user.lastAccess && (
-                    <div className="text-right border-r border-white/10 pr-8">
+                    <div className="text-right border-r border-slate-200 dark:border-white/10 pr-8">
                         <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Último Acesso</p>
-                        <p className="text-sm font-bold text-slate-200">
+                        <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
                             {new Intl.DateTimeFormat('pt-BR', {
                                 day: '2-digit',
                                 month: '2-digit',
@@ -32,7 +32,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ user }) => {
                     </div>
                 )}
                 <div className="flex items-center">
-                    <div className="px-5 py-3 rounded-2xl bg-black/40 backdrop-blur-md flex items-center gap-4 text-white shadow-xl shadow-black/20 border border-white/10 relative overflow-hidden group">
+                    <div className="px-5 py-3 rounded-2xl bg-white dark:bg-black/40 backdrop-blur-md flex items-center gap-4 text-slate-800 dark:text-white shadow-xl shadow-black/10 dark:shadow-black/20 border border-slate-200 dark:border-white/10 relative overflow-hidden group">
                         <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                         <div className="flex flex-col items-start relative z-10">
                             <span className="text-[9px] font-black uppercase tracking-[0.2em] text-indigo-400">Nível Atual</span>

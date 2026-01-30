@@ -363,7 +363,7 @@ const App: React.FC = () => {
 
   return (
 
-    <div className="flex flex-col lg:flex-row lg:h-screen w-full bg-[#050810] text-slate-100 transition-colors duration-300 font-lexend relative overflow-hidden">
+    <div className="flex flex-col lg:flex-row lg:h-screen w-full bg-slate-100 dark:bg-[#050810] text-slate-800 dark:text-slate-100 transition-colors duration-300 font-lexend relative overflow-hidden">
       {/* GLOBAL DYNAMIC BACKGROUND */}
       <div className="absolute inset-0 pointer-events-none z-0">
         <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-indigo-500/5 rounded-full blur-[150px] mix-blend-screen animate-pulse-slow"></div>
