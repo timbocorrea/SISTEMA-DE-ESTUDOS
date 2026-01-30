@@ -95,9 +95,9 @@ const ContentReader: React.FC<ContentReaderProps> = ({
                         data-block-id={block.id}
                         className={`content-block ${isActive ? 'active-block' : ''} ${hasAudio ? 'has-audio' : ''}`}
                         style={{
-                            marginBottom: `${block.spacing || 1.5}rem`,
-                            fontSize: '1rem', // Fixed base size, scaled by zoom
-                            lineHeight: (block as any).lineHeight ? parseFloat((block as any).lineHeight) : 1.8,
+                            marginBottom: `${block.spacing || (window.innerWidth < 640 ? 1.25 : 1.5)}rem`,
+                            fontSize: window.innerWidth < 640 ? '1.125rem' : (window.innerWidth < 1024 ? '1rem' : '1rem'), // Responsive base size
+                            lineHeight: (block as any).lineHeight ? parseFloat((block as any).lineHeight) : (window.innerWidth < 640 ? 1.6 : 1.8),
                             padding: hasAudio ? '1rem' : '0',
                             borderLeft: hasAudio ? '4px solid #6366f1' : 'none',
                             backgroundColor: isActive ? (contentTheme === 'dark' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.05)') : 'transparent',
@@ -190,7 +190,7 @@ const ContentReader: React.FC<ContentReaderProps> = ({
             ref={contentRef}
             className={`content-reader ${contentTheme === 'dark' ? 'dark-theme' : 'light-theme'}`}
             style={{
-                padding: window.innerWidth < 768 ? '1rem' : '2rem',
+                padding: window.innerWidth < 640 ? '1.25rem' : (window.innerWidth < 1024 ? '1.5rem' : '2rem'),
                 maxWidth: '100%',
                 margin: '0 auto',
                 color: contentTheme === 'dark' ? '#e2e8f0' : '#1e293b',
@@ -203,7 +203,7 @@ const ContentReader: React.FC<ContentReaderProps> = ({
             }}
         >
             <h2 style={{
-                fontSize: '1.75rem', // Fixed base size, scaled by zoom
+                fontSize: window.innerWidth < 640 ? '1.5rem' : (window.innerWidth < 1024 ? '1.625rem' : '1.75rem'), // Responsive title size
                 fontWeight: 800,
                 marginBottom: '1.5rem',
                 color: contentTheme === 'dark' ? '#fff' : '#0f172a',
