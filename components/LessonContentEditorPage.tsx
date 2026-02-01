@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createSupabaseClient } from '../services/supabaseClient';
 import { LessonRecord, LessonResourceRecord } from '../domain/admin';
 import ResourceUploadForm from './ResourceUploadForm';
@@ -94,6 +94,7 @@ const BlockItem = React.memo(({
         currentFontSize: string;
         activeFormats: string[];
         toggleBlockFeatured: (id: string) => void;
+        setBlockFeaturedColor: (id: string, color: string) => void;
     }
 }) => {
     const text = block.text || '';
@@ -231,6 +232,7 @@ const BlockItem = React.memo(({
 
             <div
                 data-block-id={block.id}
+                data-instance="editor"
                 onClick={() => !isSelectionMode && handlers.setExpandedBlockId(isExpanded ? null : block.id)}
                 className={`group relative bg-white dark:bg-slate-900/50 rounded-2xl border transition-all duration-300 ${isExpanded
                     ? 'border-indigo-500/50 shadow-xl shadow-indigo-500/10 ring-1 ring-indigo-500/20'
@@ -288,16 +290,57 @@ const BlockItem = React.memo(({
                         </div>
 
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-                            <button
-                                onClick={() => handlers.toggleBlockFeatured(block.id)}
-                                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${block.featured
-                                    ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400'
-                                    : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500'
-                                    }`}
-                                title={block.featured ? "Remover destaque" : "Destacar bloco"}
-                            >
-                                <i className={`fas fa-star text-sm ${block.featured ? "animate-pulse" : ""}`}></i>
-                            </button>
+                            {/* Star Button Wrapper for Hover Effect */}
+                            <div className="relative group/star">
+                                <button
+                                    onClick={() => handlers.toggleBlockFeatured(block.id)}
+                                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${block.featured
+                                        ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400'
+                                        : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500'
+                                        }`}
+                                    title={block.featured ? "Remover destaque" : "Destacar bloco"}
+                                    style={block.featured && block.featuredColor ? {
+                                        backgroundColor: `${block.featuredColor}20`,
+                                        color: block.featuredColor
+                                    } : {}}
+                                >
+                                    <i className={`fas fa-star text-sm ${block.featured ? "animate-pulse" : ""}`}></i>
+                                </button>
+
+                                {/* Color Picker Floating Menu - Appears on Star Hover */}
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 p-2 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 z-50 opacity-0 scale-95 pointer-events-none group-hover/star:opacity-100 group-hover/star:scale-100 group-hover/star:pointer-events-auto transition-all duration-200 w-max flex flex-col items-center gap-2">
+                                    <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-white dark:bg-slate-900 border-l border-t border-slate-200 dark:border-slate-800 rotate-45"></div>
+                                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider relative z-10">Cor do Destaque</span>
+                                    <div className="flex items-center gap-1 relative z-10">
+                                        <div className="relative w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center cursor-pointer hover:scale-110 transition-transform shadow-sm">
+                                            <i className="fas fa-palette text-white text-[10px]"></i>
+                                            <input
+                                                type="color"
+                                                value={block.featuredColor || '#eab308'}
+                                                onChange={(e) => handlers.setBlockFeaturedColor(block.id, e.target.value)}
+                                                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full rounded-full"
+                                                title="Escolher cor personalizada"
+                                            />
+                                        </div>
+                                        {/* Preset Colors */}
+                                        {[
+                                            { color: '#eab308', name: 'Amarelo' },
+                                            { color: '#ef4444', name: 'Vermelho' },
+                                            { color: '#3b82f6', name: 'Azul' },
+                                            { color: '#22c55e', name: 'Verde' },
+                                            { color: '#a855f7', name: 'Roxo' },
+                                        ].map((preset) => (
+                                            <button
+                                                key={preset.color}
+                                                onClick={() => handlers.setBlockFeaturedColor(block.id, preset.color)}
+                                                className="w-6 h-6 rounded-full hover:scale-110 transition-transform border border-slate-200 dark:border-slate-700 shadow-sm"
+                                                style={{ backgroundColor: preset.color }}
+                                                title={preset.name}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
                             <button
                                 onClick={() => handlers.openAudioModal(block)}
                                 className="w-8 h-8 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center transition-colors"
@@ -438,6 +481,16 @@ const BlockItem = React.memo(({
                                 <ToolbarButton icon="outdent" title="Recuo à Esquerda" onClick={() => handlers.execCommand('outdent')} />
                             </div>
 
+
+
+                            <Divider />
+
+                            {/* Grupo: Matemático (Sub/Sobrescrito) */}
+                            <div className="flex items-center gap-0.5">
+                                <ToolbarButton icon="subscript" title="Subscrito" active={handlers.activeFormats.includes('subscript')} onClick={() => handlers.execCommand('subscript')} />
+                                <ToolbarButton icon="superscript" title="Sobrescrito" active={handlers.activeFormats.includes('superscript')} onClick={() => handlers.execCommand('superscript')} />
+                            </div>
+
                             <Divider />
 
                             {/* Grupo: Espaçamento (Slider) */}
@@ -520,7 +573,14 @@ const BlockItem = React.memo(({
                         </div>
                     )}
 
-                    <div className={`relative pt-2 transition-all duration-300 ${block.featured ? 'border-l-4 border-yellow-500 pl-4 bg-yellow-50 dark:bg-yellow-900/10 rounded-r-lg py-4 shadow-sm' : ''}`} onClick={(e) => e.stopPropagation()}>
+                    <div
+                        className={`relative pt-2 transition-all duration-300 ${block.featured ? 'pl-4 rounded-r-lg py-4 shadow-sm' : ''}`}
+                        style={block.featured ? {
+                            borderLeft: `4px solid ${block.featuredColor || '#eab308'}`,
+                            backgroundColor: `${block.featuredColor || '#eab308'}15` // 15 = ~8% opacity hex
+                        } : {}}
+                        onClick={(e) => e.stopPropagation()}
+                    >
 
 
                         <EditableBlock
@@ -615,6 +675,7 @@ interface Block {
     spacing?: number;
     lineHeight?: string; // NEW: Persist line height for student preview
     featured?: boolean; // NEW: Highlight block style
+    featuredColor?: string; // NEW: Custom highlight color
 }
 
 interface LessonContentEditorPageProps {
@@ -1358,8 +1419,9 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
         }
     };
 
-    const handleSelectionChange = () => {
-        if (!editorRef.current) return;
+    const handleSelectionChange = useCallback(() => {
+        // Remover a dependência estrita de editorRef check para permitir edição em blocos
+        // if (!editorRef.current) return;
 
         // Check active styles
         const formats: string[] = [];
@@ -1382,13 +1444,17 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                 ? selection.anchorNode.parentElement
                 : selection.anchorNode) as HTMLElement;
 
-            if (element) {
+            // Verificar se a seleção está dentro de uma área editável válida
+            const isInsideEditor = editorRef.current?.contains(element) ||
+                (activeEditableElement && activeEditableElement.contains(element));
+
+            if (element && isInsideEditor) {
                 // Estratégia de varredura manual: subir a árvore procurando style.fontSize inline
                 let current = element;
                 let foundInlineSize = null;
 
                 // Subir até encontrar o bloco raiz ou o editor
-                while (current && current.nodeType === 1 && !current.classList?.contains('lesson-block-content') && current !== editorRef.current) {
+                while (current && current.nodeType === 1 && !current.classList?.contains('lesson-block-content') && current !== editorRef.current && current?.getAttribute('contenteditable') !== 'true') {
                     // 1. Checar estilo inline direto (mais confiável para nossos spans gerados)
                     if (current.style && current.style.fontSize) {
                         foundInlineSize = current.style.fontSize;
@@ -1411,12 +1477,26 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                 if (computed && computed.endsWith('px')) {
                     const px = parseFloat(computed);
                     // Conversão padrão aproximada: 1pt = 1.333px
+                    // Ajuste fino: muitas vezes o navegador retorna px mas queremos pt "visual"
+                    // Vamos usar uma tabela de conversão aproximada para "snapar" aos valores comuns se estiver próximo
                     const pt = Math.round(px * 0.75);
                     setCurrentFontSize(pt.toString());
                 }
             }
         }
-    };
+    }, [activeEditableElement]);
+
+    // Forçar atualização da toolbar quando mudar o bloco ativo
+    useEffect(() => {
+        if (activeEditableElement) {
+            // Pequeno delay para garantir que o selection tenha atualizado após o focus
+            // Isso resolve o problema de mostrar o tamanho da fonte do bloco anterior
+            const timeoutId = setTimeout(() => {
+                handleSelectionChange();
+            }, 50);
+            return () => clearTimeout(timeoutId);
+        }
+    }, [activeEditableElement, handleSelectionChange]);
 
     const handleSave = async () => {
         setIsSaving(true);
@@ -1504,6 +1584,12 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
         const targetElement = activeEditableElement || editorRef.current;
         const selection = window.getSelection();
+        let savedRange: Range | null = null;
+
+        // Save selection range if exists
+        if (selection && selection.rangeCount > 0) {
+            savedRange = selection.getRangeAt(0).cloneRange();
+        }
 
         if (targetElement) {
             console.log(`[RichText] Target found:`, targetElement.tagName, targetElement.getAttribute('data-block-id'));
@@ -1515,6 +1601,12 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
             // Manter a seleção focada
             targetElement.focus();
+
+            // Restore range immediately before execution if lost (sanity check)
+            if (savedRange && (!selection || selection.rangeCount === 0)) {
+                selection?.removeAllRanges();
+                selection?.addRange(savedRange);
+            }
 
             if (command === 'lineHeight') {
                 if (activeEditableElement) {
@@ -1530,6 +1622,31 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                     targetElement.style.lineHeight = value || '1.6';
                     handleInput();
                 }
+            } else if (command === 'fontSize') {
+                // Special handling for fontSize to keep selection on the new font element
+                // Use default size 7 to easily find the element
+                document.execCommand('fontSize', false, '7');
+
+                // Find all font tags with size 7 just created
+                const fontElements = targetElement.querySelectorAll('font[size="7"]');
+
+                fontElements.forEach(font => {
+                    const span = document.createElement('span');
+                    // Ensure the value has a unit if it's a number
+                    const sizeValue = value?.match(/^\d+$/) ? `${value}px` : value;
+                    span.style.fontSize = sizeValue || 'inherit';
+                    span.innerHTML = font.innerHTML;
+
+                    if (font.parentNode) {
+                        font.parentNode.replaceChild(span, font);
+
+                        // Select the contents of the new span to preserve user flow
+                        const newRange = document.createRange();
+                        newRange.selectNodeContents(span);
+                        selection?.removeAllRanges();
+                        selection?.addRange(newRange);
+                    }
+                });
             } else if (command === 'insertUnorderedList' || command === 'insertOrderedList') {
                 // Manual list creation - execCommand is unreliable for lists
                 const listTag = command === 'insertUnorderedList' ? 'ul' : 'ol';
@@ -2126,14 +2243,35 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                 tempDiv.innerHTML = html;
 
                 // Criar blocos a partir do HTML
-                const paragraphs = tempDiv.querySelectorAll('p, h1, h2, h3, ul, ol');
-                const newBlocks = Array.from(paragraphs).map((el, idx) => ({
-                    id: `block-paste-${Date.now()}-${idx}`,
-                    text: el.outerHTML,
-                    spacing: el.tagName.match(/^H[1-3]$/) ? 1.5 : 0,
-                    audioUrl: '',
-                    lineHeight: '1.8'
-                }));
+                // ADICIONADO 'pre' ao seletor para capturar blocos de código
+                const paragraphs = tempDiv.querySelectorAll('p, h1, h2, h3, h4, h5, ul, ol, pre, blockquote, table');
+
+                const newBlocks = Array.from(paragraphs).map((el, idx) => {
+                    let text = el.outerHTML;
+                    let spacing = 0;
+
+                    // Tratamento especial para blocos de código
+                    if (el.tagName === 'PRE') {
+                        // O marked geralmente gera <pre><code>...</code></pre>
+                        // Garantir que classes de linguagem sejam preservadas se existirem
+                        // Opcional: adicionar classe padrão se não tiver
+                        if (!el.querySelector('code')) {
+                            // Se for apenas <pre>, embrulhar conteúdo em <code>
+                            text = `<pre><code>${el.innerHTML}</code></pre>`;
+                        }
+                        spacing = 1.5;
+                    } else if (el.tagName.match(/^H[1-3]$/)) {
+                        spacing = 1.5;
+                    }
+
+                    return {
+                        id: `block-paste-${Date.now()}-${idx}`,
+                        text: text,
+                        spacing: spacing,
+                        audioUrl: '',
+                        lineHeight: '1.8'
+                    };
+                });
 
                 // Aplicar modo de importação
                 if (jsonImportMode === 'replace') {
@@ -2161,6 +2299,10 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
     const toggleBlockFeatured = React.useCallback((id: string) => {
         setBlocks(prev => prev.map(b => b.id === id ? { ...b, featured: !b.featured } : b));
+    }, []);
+
+    const setBlockFeaturedColor = React.useCallback((id: string, color: string) => {
+        setBlocks(prev => prev.map(b => b.id === id ? { ...b, featured: true, featuredColor: color } : b));
     }, []);
 
     const removeBlock = React.useCallback((id: string) => {
@@ -3082,34 +3224,84 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                             <div
                                                 key={block.id || originalIndex}
                                                 data-block-id={block.id}
-                                                onClick={() => {
+                                                data-disabled-click={() => {
                                                     // Scroll to corresponding block in manager
-                                                    const blockElement = document.querySelector(`[data-block-id="${block.id}"][class*="bg-white dark:bg-slate-900/50"]`);
-                                                    if (blockElement) {
-                                                        blockElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                                        // Expand the block
+                                                    // Use the specific data-instance attribute we added to BlockItem
+                                                    // This is robust and doesn't depend on fragile class names
+                                                    const editorBlock = document.querySelector(`[data-block-id="${block.id}"][data-instance="editor"]`) as HTMLElement;
+
+                                                    if (editorBlock) {
+                                                        // Expand the block FIRST
                                                         setExpandedBlockId(block.id);
-                                                        // Add highlight flash animation
-                                                        blockElement.classList.add('highlight-flash');
+
+                                                        // Wait for expansion animation/render to complete/start before scrolling
+                                                        // This ensures the scroll center calculation includes the expanded height
                                                         setTimeout(() => {
-                                                            blockElement.classList.remove('highlight-flash');
-                                                        }, 1200);
+                                                            editorBlock.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                            // Add highlight flash animation
+                                                            editorBlock.classList.add('highlight-flash');
+                                                            setTimeout(() => {
+                                                                editorBlock.classList.remove('highlight-flash');
+                                                            }, 1200);
+                                                        }, 100);
                                                     }
                                                 }}
-                                                className={`relative p-2 md:p-4 rounded-2xl border transition-all cursor-pointer duration-300 ${spacingClass} ${expandedBlockId === block.id
+                                                className={`relative flex flex-col w-full p-2 md:p-4 rounded-2xl border transition-all cursor-pointer duration-300 ${spacingClass} ${expandedBlockId === block.id
                                                     ? previewTheme === 'light'
                                                         ? 'bg-indigo-50 border-indigo-400 ring-4 ring-indigo-300/50 shadow-lg shadow-indigo-500/20 text-slate-700'
                                                         : 'bg-indigo-900/30 border-indigo-500 ring-4 ring-indigo-500/30 shadow-lg shadow-indigo-500/30 text-slate-200'
                                                     : block.featured
                                                         ? previewTheme === 'light'
-                                                            ? 'bg-yellow-50 border-l-4 border-l-yellow-500 border-y-slate-100 border-r-slate-100 text-slate-700 shadow-sm'
-                                                            : 'bg-yellow-900/10 border-l-4 border-l-yellow-500 border-y-slate-800 border-r-slate-800 text-slate-200 shadow-sm'
+                                                            ? 'bg-slate-50 border-l-4 border-y-slate-100 border-r-slate-100 text-slate-700 shadow-sm'
+                                                            : 'bg-slate-900/10 border-l-4 border-y-slate-800 border-r-slate-800 text-slate-200 shadow-sm'
                                                         : previewTheme === 'light'
                                                             ? 'bg-white border-transparent text-slate-700 hover:bg-indigo-50/30 hover:ring-2 hover:ring-indigo-500/50'
                                                             : 'bg-slate-900/30 border-transparent text-slate-200 hover:bg-slate-800/50 hover:ring-2 hover:ring-indigo-500/50'
                                                     }`}
+                                                style={block.featured && block.featuredColor ? {
+                                                    backgroundColor: `${block.featuredColor}15`, // 15 = ~8% opacity
+                                                    borderColor: block.featuredColor,
+                                                    borderLeftColor: block.featuredColor
+                                                } : block.featured ? {
+                                                    borderColor: '#eab308', // fallback yellow
+                                                    borderLeftColor: '#eab308',
+                                                    backgroundColor: previewTheme === 'light' ? '#fffbeb' : 'rgba(234, 179, 8, 0.1)'
+                                                } : {}}
                                                 title={expandedBlockId === block.id ? "Este bloco está sendo editado" : "Clique para localizar este bloco no gerenciador"}
                                             >
+                                                {/* Overlay clicável para garantir captura do clique em toda a área */}
+                                                <div
+                                                    className="absolute inset-0 z-10 cursor-pointer block-overlay"
+                                                    onClick={() => {
+                                                        const editorBlock = document.querySelector(`[data-block-id="${block.id}"][data-instance="editor"]`) as HTMLElement;
+                                                        const scrollContainer = document.getElementById('blocks-scroll-container');
+
+                                                        if (editorBlock && scrollContainer) {
+                                                            setExpandedBlockId(block.id);
+                                                            setTimeout(() => {
+                                                                // Manual scroll centering restricted to the container
+                                                                // This prevents the whole page/body from scrolling up (viewport shift)
+                                                                const containerRect = scrollContainer.getBoundingClientRect();
+                                                                const blockRect = editorBlock.getBoundingClientRect();
+                                                                const relativeTop = blockRect.top - containerRect.top;
+                                                                const currentScroll = scrollContainer.scrollTop;
+
+                                                                // Calculate target scroll to center the block
+                                                                const targetScroll = currentScroll + relativeTop - (scrollContainer.clientHeight / 2) + (blockRect.height / 2);
+
+                                                                scrollContainer.scrollTo({
+                                                                    top: targetScroll,
+                                                                    behavior: 'smooth'
+                                                                });
+
+                                                                editorBlock.classList.add('highlight-flash');
+                                                                setTimeout(() => {
+                                                                    editorBlock.classList.remove('highlight-flash');
+                                                                }, 1200);
+                                                            }, 100);
+                                                        }
+                                                    }}
+                                                />
                                                 {/* Active Block Indicator */}
                                                 {expandedBlockId === block.id && (
                                                     <div className="absolute -top-3 -right-3 z-10">
@@ -3453,7 +3645,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                         )}
 
                         {/* Conteúdo com Scroll Independente */}
-                        <div className="flex-1 overflow-y-auto pr-4 space-y-6 pb-20 scrollbar-thin">
+                        <div id="blocks-scroll-container" className="flex-1 overflow-y-auto pr-4 space-y-6 pb-20 scrollbar-thin">
 
                             {blocks.length === 0 ? (
                                 <div className="bg-white dark:bg-slate-900 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl p-20 text-center flex flex-col items-center gap-6">
@@ -3531,7 +3723,8 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                                     setCurrentFontSize,
                                                     currentFontSize,
                                                     activeFormats,
-                                                    toggleBlockFeatured
+                                                    toggleBlockFeatured,
+                                                    setBlockFeaturedColor
                                                 }}
                                             />
                                         );
@@ -3906,25 +4099,27 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
       `}</style>
 
             {/* Modal de Upload de Material */}
-            {showMaterialModal && (
-                <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
-                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md p-6 relative" onClick={e => e.stopPropagation()}>
-                        <button
-                            onClick={() => setShowMaterialModal(false)}
-                            className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                        >
-                            <i className="fas fa-times"></i>
-                        </button>
+            {
+                showMaterialModal && (
+                    <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+                        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md p-6 relative" onClick={e => e.stopPropagation()}>
+                            <button
+                                onClick={() => setShowMaterialModal(false)}
+                                className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                            >
+                                <i className="fas fa-times"></i>
+                            </button>
 
-                        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-4">Adicionar Material</h3>
+                            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-4">Adicionar Material</h3>
 
-                        <ResourceUploadForm
-                            onSubmit={handleSaveResource}
-                            isLoading={false}
-                        />
+                            <ResourceUploadForm
+                                onSubmit={handleSaveResource}
+                                isLoading={false}
+                            />
+                        </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* === MODALS DE MÍDIA === */}
 
@@ -4068,264 +4263,266 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
             }
 
             {/* Modal de Upload de Material */}
-            {showMaterialModal && (
-                <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
-                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto p-6 relative" onClick={e => e.stopPropagation()}>
-                        <button
-                            onClick={() => setShowMaterialModal(false)}
-                            className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 z-10"
-                        >
-                            <i className="fas fa-times"></i>
-                        </button>
+            {
+                showMaterialModal && (
+                    <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+                        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto p-6 relative" onClick={e => e.stopPropagation()}>
+                            <button
+                                onClick={() => setShowMaterialModal(false)}
+                                className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 z-10"
+                            >
+                                <i className="fas fa-times"></i>
+                            </button>
 
-                        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-6">Gerenciar Materiais e Mídia</h3>
+                            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-6">Gerenciar Materiais e Mídia</h3>
 
-                        {/* Layout em 2 Colunas */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                            {/* Coluna Esquerda: Materiais Complementares */}
-                            <div className="space-y-4 h-full flex flex-col">
-                                <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
-                                    <i className="fas fa-paperclip text-indigo-500"></i>
-                                    Materiais Complementares
-                                </h4>
+                            {/* Layout em 2 Colunas */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                                {/* Coluna Esquerda: Materiais Complementares */}
+                                <div className="space-y-4 h-full flex flex-col">
+                                    <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+                                        <i className="fas fa-paperclip text-indigo-500"></i>
+                                        Materiais Complementares
+                                    </h4>
 
-                                <div className="flex-1 overflow-y-auto min-h-[200px] space-y-6">
-                                    <ResourceUploadForm
-                                        onSubmit={handleSaveResource}
-                                        isLoading={false}
-                                    />
+                                    <div className="flex-1 overflow-y-auto min-h-[200px] space-y-6">
+                                        <ResourceUploadForm
+                                            onSubmit={handleSaveResource}
+                                            isLoading={false}
+                                        />
 
-                                    {/* Lista de Materiais por Categoria */}
-                                    <div className="space-y-6 mt-6">
-                                        {['Material de Apoio', 'Exercícios', 'Slides', 'Leitura Complementar', 'Outros'].map(category => {
-                                            const categoryResources = lessonResources.filter(r => (r.category || 'Outros') === category);
-                                            if (categoryResources.length === 0) return null;
+                                        {/* Lista de Materiais por Categoria */}
+                                        <div className="space-y-6 mt-6">
+                                            {['Material de Apoio', 'Exercícios', 'Slides', 'Leitura Complementar', 'Outros'].map(category => {
+                                                const categoryResources = lessonResources.filter(r => (r.category || 'Outros') === category);
+                                                if (categoryResources.length === 0) return null;
 
-                                            return (
-                                                <div key={category} className="space-y-2">
-                                                    <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-                                                        {category === 'Material de Apoio' && <i className="fas fa-book text-indigo-500"></i>}
-                                                        {category === 'Exercícios' && <i className="fas fa-tasks text-green-500"></i>}
-                                                        {category === 'Slides' && <i className="fas fa-presentation text-orange-500"></i>}
-                                                        {category === 'Leitura Complementar' && <i className="fas fa-book-open text-blue-500"></i>}
-                                                        {category === 'Outros' && <i className="fas fa-box text-slate-500"></i>}
-                                                        {category}
-                                                    </h5>
-                                                    <div className="space-y-2">
-                                                        {categoryResources.map(resource => (
-                                                            <div key={resource.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-800 group">
-                                                                <div className="flex items-center gap-3 overflow-hidden">
-                                                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold
+                                                return (
+                                                    <div key={category} className="space-y-2">
+                                                        <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                                                            {category === 'Material de Apoio' && <i className="fas fa-book text-indigo-500"></i>}
+                                                            {category === 'Exercícios' && <i className="fas fa-tasks text-green-500"></i>}
+                                                            {category === 'Slides' && <i className="fas fa-presentation text-orange-500"></i>}
+                                                            {category === 'Leitura Complementar' && <i className="fas fa-book-open text-blue-500"></i>}
+                                                            {category === 'Outros' && <i className="fas fa-box text-slate-500"></i>}
+                                                            {category}
+                                                        </h5>
+                                                        <div className="space-y-2">
+                                                            {categoryResources.map(resource => (
+                                                                <div key={resource.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-800 group">
+                                                                    <div className="flex items-center gap-3 overflow-hidden">
+                                                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold
                                                                         ${resource.resource_type === 'PDF' ? 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400' :
-                                                                            resource.resource_type === 'AUDIO' ? 'bg-purple-100 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400' :
-                                                                                resource.resource_type === 'IMAGE' ? 'bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400' :
-                                                                                    'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400'}`}>
-                                                                        {resource.resource_type === 'PDF' && 'PDF'}
-                                                                        {resource.resource_type === 'AUDIO' && 'MP3'}
-                                                                        {resource.resource_type === 'IMAGE' && 'IMG'}
-                                                                        {['LINK', 'FILE'].includes(resource.resource_type) && <i className="fas fa-link"></i>}
+                                                                                resource.resource_type === 'AUDIO' ? 'bg-purple-100 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400' :
+                                                                                    resource.resource_type === 'IMAGE' ? 'bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400' :
+                                                                                        'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400'}`}>
+                                                                            {resource.resource_type === 'PDF' && 'PDF'}
+                                                                            {resource.resource_type === 'AUDIO' && 'MP3'}
+                                                                            {resource.resource_type === 'IMAGE' && 'IMG'}
+                                                                            {['LINK', 'FILE'].includes(resource.resource_type) && <i className="fas fa-link"></i>}
+                                                                        </div>
+                                                                        <div className="min-w-0">
+                                                                            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate" title={resource.title}>
+                                                                                {resource.title}
+                                                                            </p>
+                                                                            <a href={resource.url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-indigo-500 hover:text-indigo-600 truncate block">
+                                                                                Ver arquivo
+                                                                            </a>
+                                                                        </div>
                                                                     </div>
-                                                                    <div className="min-w-0">
-                                                                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate" title={resource.title}>
-                                                                            {resource.title}
-                                                                        </p>
-                                                                        <a href={resource.url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-indigo-500 hover:text-indigo-600 truncate block">
-                                                                            Ver arquivo
-                                                                        </a>
-                                                                    </div>
+                                                                    <button
+                                                                        onClick={() => handleDeleteResource(resource.id)}
+                                                                        className="w-7 h-7 flex items-center justify-center rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors opacity-0 group-hover:opacity-100"
+                                                                        title="Remover material"
+                                                                    >
+                                                                        <i className="fas fa-trash-alt text-xs"></i>
+                                                                    </button>
                                                                 </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                            {lessonResources.length === 0 && !isLoadingResources && (
+                                                <div className="text-center py-8 text-slate-400">
+                                                    <i className="fas fa-folder-open text-2xl mb-2 opacity-30"></i>
+                                                    <p className="text-xs">Nenhum material complementar adicionado.</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Coluna Direita: Vídeos */}
+                                <div className="space-y-4">
+                                    <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+                                        <i className="fas fa-video text-indigo-500"></i>
+                                        Vídeos da Aula
+                                    </h4>
+
+                                    <div>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <label className="block text-xs font-semibold text-slate-500">Lista de Vídeos</label>
+                                            <button
+                                                type="button"
+                                                onClick={() => setVideoUrls([...videoUrls, { url: '', title: `Vídeo ${videoUrls.length + 1}`, image_url: '' }])}
+                                                className="px-3 py-1 text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors flex items-center gap-1"
+                                            >
+                                                <i className="fas fa-plus"></i>
+                                                Adicionar Vídeo
+                                            </button>
+                                        </div>
+
+                                        {videoUrls.length === 0 ? (
+                                            <div className="text-xs text-slate-400 text-center py-8 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg">
+                                                Nenhum vídeo adicionado. Clique em "Adicionar Vídeo" para começar.
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+                                                {videoUrls.map((video, index) => (
+                                                    <div key={index} className="p-3 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                                                        <div className="flex items-start gap-2 mb-2">
+                                                            <div className="flex-1 space-y-2">
+                                                                <div>
+                                                                    <label className="block text-[10px] font-semibold text-slate-500 mb-1">Título do Vídeo</label>
+                                                                    <input
+                                                                        type="text"
+                                                                        value={video.title}
+                                                                        onChange={e => {
+                                                                            const updated = [...videoUrls];
+                                                                            updated[index].title = e.target.value;
+                                                                            setVideoUrls(updated);
+                                                                        }}
+                                                                        className="w-full px-2 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded text-xs outline-none focus:ring-2 focus:ring-indigo-500"
+                                                                        placeholder="Ex: Introdução, Parte 1, etc."
+                                                                    />
+                                                                </div>
+                                                                <div>
+                                                                    <label className="block text-[10px] font-semibold text-slate-500 mb-1">URL (Youtube/Vimeo)</label>
+                                                                    <input
+                                                                        type="text"
+                                                                        value={video.url}
+                                                                        onChange={e => {
+                                                                            const updated = [...videoUrls];
+                                                                            updated[index].url = e.target.value;
+                                                                            setVideoUrls(updated);
+                                                                        }}
+                                                                        className="w-full px-2 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded text-xs outline-none focus:ring-2 focus:ring-indigo-500"
+                                                                        placeholder="https://..."
+                                                                    />
+                                                                </div>
+                                                                <div>
+                                                                    <label className="block text-[10px] font-semibold text-slate-500 mb-1">URL da Imagem de Capa</label>
+                                                                    <input
+                                                                        type="text"
+                                                                        value={video.image_url || ''}
+                                                                        onChange={e => {
+                                                                            const updated = [...videoUrls];
+                                                                            updated[index].image_url = e.target.value;
+                                                                            setVideoUrls(updated);
+                                                                        }}
+                                                                        className="w-full px-2 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded text-xs outline-none focus:ring-2 focus:ring-indigo-500"
+                                                                        placeholder="https://..."
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex flex-col gap-1">
+                                                                {index > 0 && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            const updated = [...videoUrls];
+                                                                            [updated[index - 1], updated[index]] = [updated[index], updated[index - 1]];
+                                                                            setVideoUrls(updated);
+                                                                        }}
+                                                                        className="w-6 h-6 flex items-center justify-center bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded transition-colors"
+                                                                        title="Mover para cima"
+                                                                    >
+                                                                        <i className="fas fa-arrow-up text-[10px]"></i>
+                                                                    </button>
+                                                                )}
+                                                                {index < videoUrls.length - 1 && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            const updated = [...videoUrls];
+                                                                            [updated[index], updated[index + 1]] = [updated[index + 1], updated[index]];
+                                                                            setVideoUrls(updated);
+                                                                        }}
+                                                                        className="w-6 h-6 flex items-center justify-center bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded transition-colors"
+                                                                        title="Mover para baixo"
+                                                                    >
+                                                                        <i className="fas fa-arrow-down text-[10px]"></i>
+                                                                    </button>
+                                                                )}
                                                                 <button
-                                                                    onClick={() => handleDeleteResource(resource.id)}
-                                                                    className="w-7 h-7 flex items-center justify-center rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors opacity-0 group-hover:opacity-100"
-                                                                    title="Remover material"
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        const updated = videoUrls.filter((_, i) => i !== index);
+                                                                        setVideoUrls(updated);
+                                                                    }}
+                                                                    className="w-6 h-6 flex items-center justify-center bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 rounded transition-colors"
+                                                                    title="Remover vídeo"
                                                                 >
-                                                                    <i className="fas fa-trash-alt text-xs"></i>
+                                                                    <i className="fas fa-trash text-[10px]"></i>
                                                                 </button>
                                                             </div>
-                                                        ))}
+                                                        </div>
+                                                        <div className="text-[10px] text-slate-500 flex items-center gap-1">
+                                                            <i className="fas fa-info-circle"></i>
+                                                            <span>Vídeo {index + 1} de {videoUrls.length}{index === 0 ? ' (principal)' : ''}</span>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            );
-                                        })}
-                                        {lessonResources.length === 0 && !isLoadingResources && (
-                                            <div className="text-center py-8 text-slate-400">
-                                                <i className="fas fa-folder-open text-2xl mb-2 opacity-30"></i>
-                                                <p className="text-xs">Nenhum material complementar adicionado.</p>
+                                                ))}
                                             </div>
                                         )}
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Coluna Direita: Vídeos */}
-                            <div className="space-y-4">
-                                <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
-                                    <i className="fas fa-video text-indigo-500"></i>
-                                    Vídeos da Aula
-                                </h4>
 
-                                <div>
-                                    <div className="flex items-center justify-between mb-2">
-                                        <label className="block text-xs font-semibold text-slate-500">Lista de Vídeos</label>
-                                        <button
-                                            type="button"
-                                            onClick={() => setVideoUrls([...videoUrls, { url: '', title: `Vídeo ${videoUrls.length + 1}`, image_url: '' }])}
-                                            className="px-3 py-1 text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors flex items-center gap-1"
-                                        >
-                                            <i className="fas fa-plus"></i>
-                                            Adicionar Vídeo
-                                        </button>
-                                    </div>
 
-                                    {videoUrls.length === 0 ? (
-                                        <div className="text-xs text-slate-400 text-center py-8 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg">
-                                            Nenhum vídeo adicionado. Clique em "Adicionar Vídeo" para começar.
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
-                                            {videoUrls.map((video, index) => (
-                                                <div key={index} className="p-3 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-                                                    <div className="flex items-start gap-2 mb-2">
-                                                        <div className="flex-1 space-y-2">
-                                                            <div>
-                                                                <label className="block text-[10px] font-semibold text-slate-500 mb-1">Título do Vídeo</label>
-                                                                <input
-                                                                    type="text"
-                                                                    value={video.title}
-                                                                    onChange={e => {
-                                                                        const updated = [...videoUrls];
-                                                                        updated[index].title = e.target.value;
-                                                                        setVideoUrls(updated);
-                                                                    }}
-                                                                    className="w-full px-2 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded text-xs outline-none focus:ring-2 focus:ring-indigo-500"
-                                                                    placeholder="Ex: Introdução, Parte 1, etc."
-                                                                />
-                                                            </div>
-                                                            <div>
-                                                                <label className="block text-[10px] font-semibold text-slate-500 mb-1">URL (Youtube/Vimeo)</label>
-                                                                <input
-                                                                    type="text"
-                                                                    value={video.url}
-                                                                    onChange={e => {
-                                                                        const updated = [...videoUrls];
-                                                                        updated[index].url = e.target.value;
-                                                                        setVideoUrls(updated);
-                                                                    }}
-                                                                    className="w-full px-2 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded text-xs outline-none focus:ring-2 focus:ring-indigo-500"
-                                                                    placeholder="https://..."
-                                                                />
-                                                            </div>
-                                                            <div>
-                                                                <label className="block text-[10px] font-semibold text-slate-500 mb-1">URL da Imagem de Capa</label>
-                                                                <input
-                                                                    type="text"
-                                                                    value={video.image_url || ''}
-                                                                    onChange={e => {
-                                                                        const updated = [...videoUrls];
-                                                                        updated[index].image_url = e.target.value;
-                                                                        setVideoUrls(updated);
-                                                                    }}
-                                                                    className="w-full px-2 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded text-xs outline-none focus:ring-2 focus:ring-indigo-500"
-                                                                    placeholder="https://..."
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex flex-col gap-1">
-                                                            {index > 0 && (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => {
-                                                                        const updated = [...videoUrls];
-                                                                        [updated[index - 1], updated[index]] = [updated[index], updated[index - 1]];
-                                                                        setVideoUrls(updated);
-                                                                    }}
-                                                                    className="w-6 h-6 flex items-center justify-center bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded transition-colors"
-                                                                    title="Mover para cima"
-                                                                >
-                                                                    <i className="fas fa-arrow-up text-[10px]"></i>
-                                                                </button>
-                                                            )}
-                                                            {index < videoUrls.length - 1 && (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => {
-                                                                        const updated = [...videoUrls];
-                                                                        [updated[index], updated[index + 1]] = [updated[index + 1], updated[index]];
-                                                                        setVideoUrls(updated);
-                                                                    }}
-                                                                    className="w-6 h-6 flex items-center justify-center bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded transition-colors"
-                                                                    title="Mover para baixo"
-                                                                >
-                                                                    <i className="fas fa-arrow-down text-[10px]"></i>
-                                                                </button>
-                                                            )}
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    const updated = videoUrls.filter((_, i) => i !== index);
-                                                                    setVideoUrls(updated);
-                                                                }}
-                                                                className="w-6 h-6 flex items-center justify-center bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 rounded transition-colors"
-                                                                title="Remover vídeo"
-                                                            >
-                                                                <i className="fas fa-trash text-[10px]"></i>
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                    <div className="text-[10px] text-slate-500 flex items-center gap-1">
-                                                        <i className="fas fa-info-circle"></i>
-                                                        <span>Vídeo {index + 1} de {videoUrls.length}{index === 0 ? ' (principal)' : ''}</span>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
+                            {/* Botão Salvar no Rodapé */}
+                            <div className="sticky bottom-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 pt-4 mt-6 flex items-center justify-between gap-4">
+                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                    <i className="fas fa-info-circle mr-1"></i>
+                                    Salvar aplica as alterações de vídeos, áudio e imagem à aula
+                                </p>
+                                <div className="flex gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowMaterialModal(false)}
+                                        className="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={async () => {
+                                            await handleSave();
+                                            setShowMaterialModal(false);
+                                        }}
+                                        disabled={isSaving}
+                                        className="px-6 py-2 text-sm font-bold bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-400 text-white rounded-lg transition-colors flex items-center gap-2 shadow-lg shadow-indigo-500/30"
+                                    >
+                                        {isSaving ? (
+                                            <>
+                                                <i className="fas fa-spinner fa-spin"></i>
+                                                Salvando...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <i className="fas fa-save"></i>
+                                                Salvar Alterações
+                                            </>
+                                        )}
+                                    </button>
                                 </div>
                             </div>
                         </div>
-
-
-
-                        {/* Botão Salvar no Rodapé */}
-                        <div className="sticky bottom-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 pt-4 mt-6 flex items-center justify-between gap-4">
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
-                                <i className="fas fa-info-circle mr-1"></i>
-                                Salvar aplica as alterações de vídeos, áudio e imagem à aula
-                            </p>
-                            <div className="flex gap-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowMaterialModal(false)}
-                                    className="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-                                >
-                                    Cancelar
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={async () => {
-                                        await handleSave();
-                                        setShowMaterialModal(false);
-                                    }}
-                                    disabled={isSaving}
-                                    className="px-6 py-2 text-sm font-bold bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-400 text-white rounded-lg transition-colors flex items-center gap-2 shadow-lg shadow-indigo-500/30"
-                                >
-                                    {isSaving ? (
-                                        <>
-                                            <i className="fas fa-spinner fa-spin"></i>
-                                            Salvando...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <i className="fas fa-save"></i>
-                                            Salvar Alterações
-                                        </>
-                                    )}
-                                </button>
-                            </div>
-                        </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Modal: Inserir Vídeo */}
             {
@@ -4535,208 +4732,210 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
             }
 
             {/* Quiz Management Modal */}
-            {showQuizManagementModal && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
-                        {/* Header */}
-                        <div className="sticky top-0 bg-gradient-to-r from-purple-600 to-indigo-600 p-6 rounded-t-2xl border-b border-purple-500/20">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center">
-                                        <i className="fas fa-clipboard-question text-2xl text-white"></i>
+            {
+                showQuizManagementModal && (
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+                        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
+                            {/* Header */}
+                            <div className="sticky top-0 bg-gradient-to-r from-purple-600 to-indigo-600 p-6 rounded-t-2xl border-b border-purple-500/20">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center">
+                                            <i className="fas fa-clipboard-question text-2xl text-white"></i>
+                                        </div>
+                                        <div>
+                                            <h2 className="text-xl font-black text-white">Gerenciar Quiz</h2>
+                                            <p className="text-xs text-purple-100">Configure o quiz desta aula</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <h2 className="text-xl font-black text-white">Gerenciar Quiz</h2>
-                                        <p className="text-xs text-purple-100">Configure o quiz desta aula</p>
-                                    </div>
+                                    <button
+                                        onClick={() => setShowQuizManagementModal(false)}
+                                        className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors flex items-center justify-center"
+                                    >
+                                        <i className="fas fa-times"></i>
+                                    </button>
                                 </div>
-                                <button
-                                    onClick={() => setShowQuizManagementModal(false)}
-                                    className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors flex items-center justify-center"
-                                >
-                                    <i className="fas fa-times"></i>
-                                </button>
                             </div>
-                        </div>
 
-                        {/* Content */}
-                        <div className="p-6 space-y-4">
-                            {/* Opção 1: Criar/Editar Quiz */}
-                            {!loadingQuiz && (
-                                <div className="bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/10 dark:to-indigo-900/10 border border-purple-200 dark:border-purple-800 rounded-xl p-5 hover:shadow-lg transition-shadow">
-                                    <div className="flex items-start justify-between gap-4">
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <i className={`fas ${existingQuiz ? 'fa-edit' : 'fa-plus-circle'} text-purple-600 dark:text-purple-400`}></i>
-                                                <h3 className="font-bold text-slate-900 dark:text-white">
-                                                    {existingQuiz ? 'Editar Quiz' : 'Criar Novo Quiz'}
-                                                </h3>
+                            {/* Content */}
+                            <div className="p-6 space-y-4">
+                                {/* Opção 1: Criar/Editar Quiz */}
+                                {!loadingQuiz && (
+                                    <div className="bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/10 dark:to-indigo-900/10 border border-purple-200 dark:border-purple-800 rounded-xl p-5 hover:shadow-lg transition-shadow">
+                                        <div className="flex items-start justify-between gap-4">
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <i className={`fas ${existingQuiz ? 'fa-edit' : 'fa-plus-circle'} text-purple-600 dark:text-purple-400`}></i>
+                                                    <h3 className="font-bold text-slate-900 dark:text-white">
+                                                        {existingQuiz ? 'Editar Quiz' : 'Criar Novo Quiz'}
+                                                    </h3>
+                                                </div>
+                                                <p className="text-sm text-slate-600 dark:text-slate-400">
+                                                    {existingQuiz
+                                                        ? 'Edite as perguntas e configurações do quiz existente'
+                                                        : 'Crie um novo quiz com perguntas para esta aula'}
+                                                </p>
                                             </div>
-                                            <p className="text-sm text-slate-600 dark:text-slate-400">
-                                                {existingQuiz
-                                                    ? 'Edite as perguntas e configurações do quiz existente'
-                                                    : 'Crie um novo quiz com perguntas para esta aula'}
-                                            </p>
+                                            <button
+                                                onClick={() => {
+                                                    setShowQuizEditor(true);
+                                                    setShowQuizManagementModal(false);
+                                                }}
+                                                className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-semibold text-sm transition-colors flex items-center gap-2 whitespace-nowrap"
+                                            >
+                                                <i className={`fas ${existingQuiz ? 'fa-edit' : 'fa-plus'}`}></i>
+                                                {existingQuiz ? 'Editar' : 'Criar'}
+                                            </button>
                                         </div>
-                                        <button
-                                            onClick={() => {
-                                                setShowQuizEditor(true);
-                                                setShowQuizManagementModal(false);
-                                            }}
-                                            className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-semibold text-sm transition-colors flex items-center gap-2 whitespace-nowrap"
-                                        >
-                                            <i className={`fas ${existingQuiz ? 'fa-edit' : 'fa-plus'}`}></i>
-                                            {existingQuiz ? 'Editar' : 'Criar'}
-                                        </button>
                                     </div>
-                                </div>
-                            )}
+                                )}
 
-                            {/* Opção 2: Liberar/Bloquear Quiz */}
-                            {existingQuiz && !loadingQuiz && (
-                                <div className={`bg-gradient-to-br ${existingQuiz.isManuallyReleased ? 'from-emerald-50 to-green-50 dark:from-emerald-900/10 dark:to-green-900/10 border-emerald-200 dark:border-emerald-800' : 'from-orange-50 to-amber-50 dark:from-orange-900/10 dark:to-amber-900/10 border-orange-200 dark:border-orange-800'} border rounded-xl p-5 hover:shadow-lg transition-shadow`}>
+                                {/* Opção 2: Liberar/Bloquear Quiz */}
+                                {existingQuiz && !loadingQuiz && (
+                                    <div className={`bg-gradient-to-br ${existingQuiz.isManuallyReleased ? 'from-emerald-50 to-green-50 dark:from-emerald-900/10 dark:to-green-900/10 border-emerald-200 dark:border-emerald-800' : 'from-orange-50 to-amber-50 dark:from-orange-900/10 dark:to-amber-900/10 border-orange-200 dark:border-orange-800'} border rounded-xl p-5 hover:shadow-lg transition-shadow`}>
+                                        <div className="flex items-start justify-between gap-4">
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <i className={`fas ${existingQuiz.isManuallyReleased ? 'fa-lock-open' : 'fa-lock'} ${existingQuiz.isManuallyReleased ? 'text-emerald-600 dark:text-emerald-400' : 'text-orange-600 dark:text-orange-400'}`}></i>
+                                                    <h3 className="font-bold text-slate-900 dark:text-white">
+                                                        {existingQuiz.isManuallyReleased ? 'Quiz Liberado' : 'Quiz Bloqueado'}
+                                                    </h3>
+                                                </div>
+                                                <p className="text-sm text-slate-600 dark:text-slate-400">
+                                                    {existingQuiz.isManuallyReleased
+                                                        ? 'O quiz está disponível para os alunos. Clique para bloquear o acesso.'
+                                                        : 'O quiz está bloqueado. Clique para liberar e permitir que os alunos façam o quiz.'}
+                                                </p>
+                                            </div>
+                                            <button
+                                                onClick={() => {
+                                                    handleToggleQuizRelease();
+                                                    setShowQuizManagementModal(false);
+                                                }}
+                                                disabled={isTogglingRelease}
+                                                className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2 whitespace-nowrap disabled:opacity-50 ${existingQuiz.isManuallyReleased
+                                                    ? 'bg-orange-600 hover:bg-orange-700 text-white'
+                                                    : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                                                    }`}
+                                            >
+                                                {isTogglingRelease ? (
+                                                    <>
+                                                        <i className="fas fa-circle-notch animate-spin"></i>
+                                                        Processando...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <i className={`fas ${existingQuiz.isManuallyReleased ? 'fa-lock' : 'fa-lock-open'}`}></i>
+                                                        {existingQuiz.isManuallyReleased ? 'Bloquear' : 'Liberar'}
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Opção 3: Requisitos do Quiz */}
+                                <div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/10 dark:to-blue-900/10 border border-indigo-200 dark:border-indigo-800 rounded-xl p-5 hover:shadow-lg transition-shadow">
                                     <div className="flex items-start justify-between gap-4">
                                         <div className="flex-1">
                                             <div className="flex items-center gap-2 mb-2">
-                                                <i className={`fas ${existingQuiz.isManuallyReleased ? 'fa-lock-open' : 'fa-lock'} ${existingQuiz.isManuallyReleased ? 'text-emerald-600 dark:text-emerald-400' : 'text-orange-600 dark:text-orange-400'}`}></i>
-                                                <h3 className="font-bold text-slate-900 dark:text-white">
-                                                    {existingQuiz.isManuallyReleased ? 'Quiz Liberado' : 'Quiz Bloqueado'}
-                                                </h3>
+                                                <i className="fas fa-list-check text-indigo-600 dark:text-indigo-400"></i>
+                                                <h3 className="font-bold text-slate-900 dark:text-white">Requisitos do Quiz</h3>
                                             </div>
                                             <p className="text-sm text-slate-600 dark:text-slate-400">
-                                                {existingQuiz.isManuallyReleased
-                                                    ? 'O quiz está disponível para os alunos. Clique para bloquear o acesso.'
-                                                    : 'O quiz está bloqueado. Clique para liberar e permitir que os alunos façam o quiz.'}
+                                                Configure os requisitos que o aluno deve cumprir para liberar o quiz automaticamente
                                             </p>
                                         </div>
                                         <button
-                                            onClick={() => {
-                                                handleToggleQuizRelease();
+                                            onClick={async () => {
+                                                setLoadingRequirements(true);
                                                 setShowQuizManagementModal(false);
+                                                try {
+                                                    const supabase = createSupabaseClient();
+                                                    const { data, error } = await supabase
+                                                        .from('lesson_progress_requirements')
+                                                        .select('*')
+                                                        .eq('lesson_id', lesson.id)
+                                                        .single();
+
+                                                    if (error && error.code !== 'PGRST116') {
+                                                        throw error;
+                                                    }
+
+                                                    setLessonRequirements(data || {
+                                                        lesson_id: lesson.id,
+                                                        videoRequiredPercent: 80,
+                                                        textBlocksRequiredPercent: 80,
+                                                        requiredPdfIds: [],
+                                                        requiredAudioIds: []
+                                                    });
+                                                    setShowRequirementsEditor(true);
+                                                } catch (error) {
+                                                    console.error('Error loading requirements:', error);
+                                                    alert('Erro ao carregar requisitos');
+                                                } finally {
+                                                    setLoadingRequirements(false);
+                                                }
                                             }}
-                                            disabled={isTogglingRelease}
-                                            className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2 whitespace-nowrap disabled:opacity-50 ${existingQuiz.isManuallyReleased
-                                                ? 'bg-orange-600 hover:bg-orange-700 text-white'
-                                                : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                                                }`}
+                                            disabled={loadingRequirements}
+                                            className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm transition-colors flex items-center gap-2 whitespace-nowrap disabled:opacity-50"
                                         >
-                                            {isTogglingRelease ? (
+                                            {loadingRequirements ? (
                                                 <>
                                                     <i className="fas fa-circle-notch animate-spin"></i>
-                                                    Processando...
+                                                    Carregando...
                                                 </>
                                             ) : (
                                                 <>
-                                                    <i className={`fas ${existingQuiz.isManuallyReleased ? 'fa-lock' : 'fa-lock-open'}`}></i>
-                                                    {existingQuiz.isManuallyReleased ? 'Bloquear' : 'Liberar'}
+                                                    <i className="fas fa-cog"></i>
+                                                    Configurar
                                                 </>
                                             )}
                                         </button>
                                     </div>
                                 </div>
-                            )}
 
-                            {/* Opção 3: Requisitos do Quiz */}
-                            <div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/10 dark:to-blue-900/10 border border-indigo-200 dark:border-indigo-800 rounded-xl p-5 hover:shadow-lg transition-shadow">
-                                <div className="flex items-start justify-between gap-4">
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <i className="fas fa-list-check text-indigo-600 dark:text-indigo-400"></i>
-                                            <h3 className="font-bold text-slate-900 dark:text-white">Requisitos do Quiz</h3>
+                                {/* Status do Quiz */}
+                                {existingQuiz && (
+                                    <div className="mt-6 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                                        <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Status do Quiz</h4>
+                                        <div className="space-y-1 text-sm">
+                                            <div className="flex items-center gap-2">
+                                                <i className="fas fa-heading text-slate-400 w-4"></i>
+                                                <span className="text-slate-700 dark:text-slate-300">
+                                                    <span className="font-semibold">Título:</span> {existingQuiz.title}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <i className="fas fa-question-circle text-slate-400 w-4"></i>
+                                                <span className="text-slate-700 dark:text-slate-300">
+                                                    <span className="font-semibold">Questões:</span> {existingQuiz.questions?.length || 0}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <i className={`fas ${existingQuiz.isManuallyReleased ? 'fa-check-circle text-green-500' : 'fa-times-circle text-orange-500'} w-4`}></i>
+                                                <span className="text-slate-700 dark:text-slate-300">
+                                                    <span className="font-semibold">Acesso:</span> {existingQuiz.isManuallyReleased ? 'Liberado' : 'Bloqueado'}
+                                                </span>
+                                            </div>
                                         </div>
-                                        <p className="text-sm text-slate-600 dark:text-slate-400">
-                                            Configure os requisitos que o aluno deve cumprir para liberar o quiz automaticamente
-                                        </p>
                                     </div>
-                                    <button
-                                        onClick={async () => {
-                                            setLoadingRequirements(true);
-                                            setShowQuizManagementModal(false);
-                                            try {
-                                                const supabase = createSupabaseClient();
-                                                const { data, error } = await supabase
-                                                    .from('lesson_progress_requirements')
-                                                    .select('*')
-                                                    .eq('lesson_id', lesson.id)
-                                                    .single();
-
-                                                if (error && error.code !== 'PGRST116') {
-                                                    throw error;
-                                                }
-
-                                                setLessonRequirements(data || {
-                                                    lesson_id: lesson.id,
-                                                    videoRequiredPercent: 80,
-                                                    textBlocksRequiredPercent: 80,
-                                                    requiredPdfIds: [],
-                                                    requiredAudioIds: []
-                                                });
-                                                setShowRequirementsEditor(true);
-                                            } catch (error) {
-                                                console.error('Error loading requirements:', error);
-                                                alert('Erro ao carregar requisitos');
-                                            } finally {
-                                                setLoadingRequirements(false);
-                                            }
-                                        }}
-                                        disabled={loadingRequirements}
-                                        className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm transition-colors flex items-center gap-2 whitespace-nowrap disabled:opacity-50"
-                                    >
-                                        {loadingRequirements ? (
-                                            <>
-                                                <i className="fas fa-circle-notch animate-spin"></i>
-                                                Carregando...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <i className="fas fa-cog"></i>
-                                                Configurar
-                                            </>
-                                        )}
-                                    </button>
-                                </div>
+                                )}
                             </div>
 
-                            {/* Status do Quiz */}
-                            {existingQuiz && (
-                                <div className="mt-6 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
-                                    <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Status do Quiz</h4>
-                                    <div className="space-y-1 text-sm">
-                                        <div className="flex items-center gap-2">
-                                            <i className="fas fa-heading text-slate-400 w-4"></i>
-                                            <span className="text-slate-700 dark:text-slate-300">
-                                                <span className="font-semibold">Título:</span> {existingQuiz.title}
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <i className="fas fa-question-circle text-slate-400 w-4"></i>
-                                            <span className="text-slate-700 dark:text-slate-300">
-                                                <span className="font-semibold">Questões:</span> {existingQuiz.questions?.length || 0}
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <i className={`fas ${existingQuiz.isManuallyReleased ? 'fa-check-circle text-green-500' : 'fa-times-circle text-orange-500'} w-4`}></i>
-                                            <span className="text-slate-700 dark:text-slate-300">
-                                                <span className="font-semibold">Acesso:</span> {existingQuiz.isManuallyReleased ? 'Liberado' : 'Bloqueado'}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Footer */}
-                        <div className="sticky bottom-0 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-b-2xl border-t border-slate-200 dark:border-slate-700">
-                            <button
-                                onClick={() => setShowQuizManagementModal(false)}
-                                className="w-full px-4 py-3 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold transition-colors"
-                            >
-                                Fechar
-                            </button>
+                            {/* Footer */}
+                            <div className="sticky bottom-0 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-b-2xl border-t border-slate-200 dark:border-slate-700">
+                                <button
+                                    onClick={() => setShowQuizManagementModal(false)}
+                                    className="w-full px-4 py-3 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold transition-colors"
+                                >
+                                    Fechar
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Modal de Criação em Lote */}
             {
@@ -4822,596 +5021,606 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
             }
 
             {/* Modal de Importar/Exportar Conteúdo */}
-            {showImportExportModal && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300" onClick={() => setShowImportExportModal(false)}>
-                    <div className="bg-[#0f172a] border border-slate-800 rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
-                        {/* Header */}
-                        <div className="flex items-center justify-between p-6 border-b border-slate-800/50">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-teal-500/10 flex items-center justify-center">
-                                    <i className="fas fa-file-import text-teal-400"></i>
-                                </div>
-                                <div>
-                                    <h3 className="text-xl font-black text-white tracking-tight uppercase">Configurações de Conteúdo</h3>
-                                    <p className="text-xs text-slate-400 font-medium tracking-wide">Gerencie a importação e exportação da sua aula.</p>
-                                </div>
-                            </div>
-                            <button onClick={() => setShowImportExportModal(false)} className="w-10 h-10 rounded-full flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-all">
-                                <i className="fas fa-times text-xl"></i>
-                            </button>
-                        </div>
-
-                        {/* Body */}
-                        <div className="p-8">
-                            <div
-                                className={`rounded-2xl border-2 border-dashed ${isDocDragActive ? 'border-teal-500 bg-teal-500/5' : 'border-slate-800 bg-slate-900/50'} transition-all p-8`}
-                                onDrop={handleDocxDrop}
-                                onDragOver={handleDocxDragOver}
-                                onDragLeave={handleDocxDragLeave}
-                            >
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                                    {/* Coluna 1: Importar Conteúdo */}
-                                    <div className="flex flex-col gap-6">
-                                        <div>
-                                            <p className="text-base font-black text-white mb-1">Importar Conteúdo</p>
-                                            <p className="text-[11px] text-slate-400 leading-relaxed">Arraste um DOCX ou use os botões abaixo. JSON recria os blocos exatamente como salvos.</p>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <button
-                                                onClick={() => {
-                                                    setImportType('docx');
-                                                    setImportMethod('upload');
-                                                    setShowImportMethodModal(true);
-                                                }}
-                                                className="h-12 rounded-xl bg-[#10b981] text-white text-xs font-black flex items-center justify-center gap-2 hover:bg-[#059669] transition-all active:scale-[0.98] shadow-lg shadow-teal-500/20"
-                                            >
-                                                <i className="fas fa-file-word text-sm"></i> DOCX
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    setImportType('json');
-                                                    setImportMethod('upload');
-                                                    setShowImportMethodModal(true);
-                                                }}
-                                                disabled={isJsonImporting}
-                                                className="h-12 rounded-xl bg-[#1e293b] text-white text-xs font-black flex items-center justify-center gap-2 hover:bg-[#334155] transition-all active:scale-[0.98] disabled:opacity-50"
-                                            >
-                                                {isJsonImporting ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-file-code text-sm"></i>} Importar JSON
-                                            </button>
-                                            <button
-                                                onClick={handleJsonExport}
-                                                className="h-12 rounded-xl bg-[#4f46e5] text-white text-xs font-black flex items-center justify-center gap-2 hover:bg-[#4338ca] transition-all active:scale-[0.98] shadow-lg shadow-indigo-500/20"
-                                            >
-                                                <i className="fas fa-download text-sm"></i> Exportar JSON
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    setImportType('md');
-                                                    setImportMethod('upload');
-                                                    setShowImportMethodModal(true);
-                                                }}
-                                                className="h-12 rounded-xl bg-[#a855f7] text-white text-xs font-black flex items-center justify-center gap-2 hover:bg-[#9333ea] transition-all active:scale-[0.98] shadow-lg shadow-purple-500/20"
-                                            >
-                                                <i className="fab fa-markdown text-sm"></i> .md
-                                            </button>
-                                        </div>
-
-                                        {/* Hidden Inputs with unique IDs for modal */}
-                                        <input id="docx-upload-modal" type="file" accept=".docx" ref={docUploadInputRef} onChange={handleDocFileInput} className="hidden" />
-                                        <input id="markdown-upload-modal" type="file" accept=".md" onChange={handleMarkdownFileInput} className="hidden" />
-                                        <input ref={jsonUploadInputRef} type="file" accept="application/json" onChange={handleJsonFileInput} className="hidden" />
+            {
+                showImportExportModal && (
+                    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300" onClick={() => setShowImportExportModal(false)}>
+                        <div className="bg-[#0f172a] border border-slate-800 rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+                            {/* Header */}
+                            <div className="flex items-center justify-between p-6 border-b border-slate-800/50">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-teal-500/10 flex items-center justify-center">
+                                        <i className="fas fa-file-import text-teal-400"></i>
                                     </div>
-
-                                    {/* Coluna 2: Modo de Importação */}
-                                    <div className="flex flex-col gap-6">
-                                        <div>
-                                            <p className="text-base font-black text-white mb-1">Modo de Importação</p>
-                                            <p className="text-[11px] text-slate-400 leading-relaxed">Escolha como deseja processar o conteúdo importado.</p>
-                                        </div>
-                                        <div className="flex flex-col gap-3">
-                                            <button
-                                                onClick={() => setJsonImportMode('replace')}
-                                                className={`h-12 rounded-xl text-xs font-black transition-all flex items-center gap-3 px-4 active:scale-[0.98] ${jsonImportMode === 'replace'
-                                                    ? 'bg-[#ef4444] text-white shadow-lg shadow-red-500/20'
-                                                    : 'bg-[#1e293b] text-slate-400 hover:text-white hover:bg-[#334155]'
-                                                    }`}
-                                            >
-                                                <i className={`fas fa-sync-alt ${jsonImportMode === 'replace' ? 'animate-spin-slow' : ''}`}></i>
-                                                Substituir
-                                            </button>
-                                            <button
-                                                onClick={() => setJsonImportMode('append')}
-                                                className={`h-12 rounded-xl text-xs font-black transition-all flex items-center gap-3 px-4 active:scale-[0.98] ${jsonImportMode === 'append'
-                                                    ? 'bg-[#10b981] text-white shadow-lg shadow-teal-500/20'
-                                                    : 'bg-[#1e293b] text-slate-400 hover:text-white hover:bg-[#334155]'
-                                                    }`}
-                                            >
-                                                <i className="fas fa-arrow-down"></i>
-                                                Adicionar ao Final
-                                            </button>
-                                            <button
-                                                onClick={() => setJsonImportMode('prepend')}
-                                                className={`h-12 rounded-xl text-xs font-black transition-all flex items-center gap-3 px-4 active:scale-[0.98] ${jsonImportMode === 'prepend'
-                                                    ? 'bg-[#3b82f6] text-white shadow-lg shadow-blue-500/20'
-                                                    : 'bg-[#1e293b] text-slate-400 hover:text-white hover:bg-[#334155]'
-                                                    }`}
-                                            >
-                                                <i className="fas fa-arrow-up"></i>
-                                                Adicionar ao Início
-                                            </button>
-                                        </div>
+                                    <div>
+                                        <h3 className="text-xl font-black text-white tracking-tight uppercase">Configurações de Conteúdo</h3>
+                                        <p className="text-xs text-slate-400 font-medium tracking-wide">Gerencie a importação e exportação da sua aula.</p>
                                     </div>
                                 </div>
-                            </div>
-
-                            {/* Alert/Feedback */}
-                            {(jsonImportError || docImportError) && (
-                                <div className="mt-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400 font-bold flex items-center gap-3">
-                                    <i className="fas fa-exclamation-circle text-lg"></i>
-                                    <span>{jsonImportError || docImportError}</span>
-                                </div>
-                            )}
-
-                            {jsonImportSuccess && (
-                                <div className="mt-6 p-4 rounded-xl bg-teal-500/10 border border-teal-500/20 text-xs text-teal-400 font-bold flex items-center gap-3 animate-bounce">
-                                    <i className="fas fa-check-circle text-lg"></i>
-                                    <span>Importação concluída com sucesso!</span>
-                                </div>
-                            )}
-
-                            {docPreviewHtml && (
-                                <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-900/80 p-6 shadow-inner">
-                                    <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-800">
-                                        <div className="flex items-center gap-2">
-                                            <i className="fas fa-eye text-teal-400"></i>
-                                            <p className="text-xs font-black text-white uppercase tracking-tighter">Prévia do DOCX importado</p>
-                                        </div>
-                                        <button
-                                            onClick={() => setDocPreviewHtml(null)}
-                                            className="text-[10px] font-black text-red-400 hover:text-red-300 uppercase tracking-widest"
-                                        >
-                                            Limpar Prévia
-                                        </button>
-                                    </div>
-                                    <div className="max-h-48 overflow-auto px-2 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
-                                        <div className="prose prose-invert prose-xs max-w-none text-slate-300" dangerouslySetInnerHTML={{ __html: docPreviewHtml }} />
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Footer */}
-                        <div className="p-6 bg-slate-950/50 border-t border-slate-800/50 flex justify-end">
-                            <button
-                                onClick={() => setShowImportExportModal(false)}
-                                className="px-8 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-black transition-all active:scale-95"
-                            >
-                                FECHAR
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Import Method Modal - Upload ou Colar */}
-            {showImportMethodModal && importType && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-in fade-in duration-200">
-                    <div className="w-full max-w-2xl bg-gradient-to-br from-slate-900 to-slate-950 rounded-2xl shadow-2xl border border-slate-800 overflow-hidden animate-in zoom-in-95 duration-300">
-                        {/* Header */}
-                        <div className="p-6 bg-slate-950/30 border-b border-slate-800/50 flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 rounded-xl bg-cyan-500/10 flex items-center justify-center">
-                                    <i className={`fas ${importType === 'json' ? 'fa-file-code' : importType === 'docx' ? 'fa-file-word' : 'fab fa-markdown'} text-cyan-400`}></i>
-                                </div>
-                                <div>
-                                    <h3 className="text-xl font-black text-white uppercase tracking-tight">
-                                        Método de Importação
-                                    </h3>
-                                    <p className="text-xs text-slate-400 font-medium">
-                                        Escolha como importar {importType.toUpperCase()}
-                                    </p>
-                                </div>
-                            </div>
-                            <button
-                                onClick={() => {
-                                    setShowImportMethodModal(false);
-                                    setPastedContent('');
-                                }}
-                                className="w-10 h-10 rounded-full flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-all"
-                            >
-                                <i className="fas fa-times text-xl"></i>
-                            </button>
-                        </div>
-
-                        {/* Tabs */}
-                        <div className="p-6 pb-0">
-                            <div className="flex gap-2 border-b border-slate-800/50">
-                                <button
-                                    onClick={() => setImportMethod('upload')}
-                                    className={`px-6 py-3 text-xs font-black transition-all relative ${importMethod === 'upload'
-                                        ? 'text-cyan-400'
-                                        : 'text-slate-500 hover:text-slate-300'
-                                        }`}
-                                >
-                                    <i className="fas fa-upload mr-2"></i>
-                                    UPLOAD DE ARQUIVO
-                                    {importMethod === 'upload' && (
-                                        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400"></div>
-                                    )}
-                                </button>
-                                <button
-                                    onClick={() => setImportMethod('paste')}
-                                    disabled={importType === 'docx'} // DOCX não pode ser colado
-                                    className={`px-6 py-3 text-xs font-black transition-all relative ${importMethod === 'paste'
-                                        ? 'text-cyan-400'
-                                        : 'text-slate-500 hover:text-slate-300'
-                                        } disabled:opacity-30 disabled:cursor-not-allowed`}
-                                    title={importType === 'docx' ? 'DOCX é formato binário e não pode ser colado' : ''}
-                                >
-                                    <i className="fas fa-paste mr-2"></i>
-                                    COLAR TEXTO
-                                    {importMethod === 'paste' && importType !== 'docx' && (
-                                        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400"></div>
-                                    )}
+                                <button onClick={() => setShowImportExportModal(false)} className="w-10 h-10 rounded-full flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-all">
+                                    <i className="fas fa-times text-xl"></i>
                                 </button>
                             </div>
-                        </div>
 
-                        {/* Body */}
-                        <div className="p-6">
-                            {importMethod === 'upload' ? (
-                                <div className="border-2 border-dashed border-slate-800 rounded-xl p-8 bg-slate-900/50 text-center">
-                                    <i className="fas fa-cloud-upload-alt text-4xl text-slate-600 mb-4"></i>
-                                    <p className="text-sm font-bold text-slate-300 mb-4">
-                                        Selecione um arquivo {importType.toUpperCase()}
-                                    </p>
-                                    <button
-                                        onClick={() => {
-                                            if (importType === 'json') jsonUploadInputRef.current?.click();
-                                            else if (importType === 'docx') document.getElementById('docx-upload-modal')?.click();
-                                            else if (importType === 'md') document.getElementById('markdown-upload-modal')?.click();
-                                            setShowImportMethodModal(false);
-                                        }}
-                                        className="px-8 py-3 bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-black rounded-xl transition-all active:scale-95"
-                                    >
-                                        <i className="fas fa-folder-open mr-2"></i>
-                                        SELECIONAR ARQUIVO
-                                    </button>
-                                </div>
-                            ) : (
-                                <div>
-                                    <label className="block text-xs font-black text-slate-300 mb-2 uppercase tracking-wide">
-                                        Cole o conteúdo {importType.toUpperCase()} abaixo:
-                                    </label>
-                                    <textarea
-                                        value={pastedContent}
-                                        onChange={(e) => setPastedContent(e.target.value)}
-                                        placeholder={
-                                            importType === 'json'
-                                                ? '{\n  "content_blocks": [\n    ...\n  ]\n}'
-                                                : '# Título\n\nConteúdo markdown...'
-                                        }
-                                        className="w-full h-64 bg-slate-950 border border-slate-800 rounded-xl p-4 text-slate-300 text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-                                    />
-                                    <p className="mt-2 text-xs text-slate-500">
-                                        Dica: Use Ctrl+V para colar
-                                    </p>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Footer */}
-                        <div className="p-6 bg-slate-950/50 border-t border-slate-800/50 flex justify-end gap-3">
-                            <button
-                                onClick={() => {
-                                    setShowImportMethodModal(false);
-                                    setPastedContent('');
-                                }}
-                                className="px-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-black transition-all active:scale-95"
-                            >
-                                CANCELAR
-                            </button>
-                            {importMethod === 'paste' && (
-                                <button
-                                    onClick={handlePastedImport}
-                                    disabled={!pastedContent.trim()}
-                                    className="px-6 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-700 disabled:bg-slate-800 disabled:text-slate-600 text-white text-xs font-black transition-all active:scale-95"
+                            {/* Body */}
+                            <div className="p-8">
+                                <div
+                                    className={`rounded-2xl border-2 border-dashed ${isDocDragActive ? 'border-teal-500 bg-teal-500/5' : 'border-slate-800 bg-slate-900/50'} transition-all p-8`}
+                                    onDrop={handleDocxDrop}
+                                    onDragOver={handleDocxDragOver}
+                                    onDragLeave={handleDocxDragLeave}
                                 >
-                                    <i className="fas fa-file-import mr-2"></i>
-                                    IMPORTAR
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                                        {/* Coluna 1: Importar Conteúdo */}
+                                        <div className="flex flex-col gap-6">
+                                            <div>
+                                                <p className="text-base font-black text-white mb-1">Importar Conteúdo</p>
+                                                <p className="text-[11px] text-slate-400 leading-relaxed">Arraste um DOCX ou use os botões abaixo. JSON recria os blocos exatamente como salvos.</p>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <button
+                                                    onClick={() => {
+                                                        setImportType('docx');
+                                                        setImportMethod('upload');
+                                                        setShowImportMethodModal(true);
+                                                    }}
+                                                    className="h-12 rounded-xl bg-[#10b981] text-white text-xs font-black flex items-center justify-center gap-2 hover:bg-[#059669] transition-all active:scale-[0.98] shadow-lg shadow-teal-500/20"
+                                                >
+                                                    <i className="fas fa-file-word text-sm"></i> DOCX
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        setImportType('json');
+                                                        setImportMethod('upload');
+                                                        setShowImportMethodModal(true);
+                                                    }}
+                                                    disabled={isJsonImporting}
+                                                    className="h-12 rounded-xl bg-[#1e293b] text-white text-xs font-black flex items-center justify-center gap-2 hover:bg-[#334155] transition-all active:scale-[0.98] disabled:opacity-50"
+                                                >
+                                                    {isJsonImporting ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-file-code text-sm"></i>} Importar JSON
+                                                </button>
+                                                <button
+                                                    onClick={handleJsonExport}
+                                                    className="h-12 rounded-xl bg-[#4f46e5] text-white text-xs font-black flex items-center justify-center gap-2 hover:bg-[#4338ca] transition-all active:scale-[0.98] shadow-lg shadow-indigo-500/20"
+                                                >
+                                                    <i className="fas fa-download text-sm"></i> Exportar JSON
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        setImportType('md');
+                                                        setImportMethod('upload');
+                                                        setShowImportMethodModal(true);
+                                                    }}
+                                                    className="h-12 rounded-xl bg-[#a855f7] text-white text-xs font-black flex items-center justify-center gap-2 hover:bg-[#9333ea] transition-all active:scale-[0.98] shadow-lg shadow-purple-500/20"
+                                                >
+                                                    <i className="fab fa-markdown text-sm"></i> .md
+                                                </button>
+                                            </div>
 
-            {/* Image Viewer Modal */}
-            {showImageViewerModal && (
-                <div
-                    className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-in fade-in duration-200"
-                    onClick={() => setShowImageViewerModal(false)}
-                >
-                    <div className="relative max-w-7xl max-h-[90vh] w-full h-full flex items-center justify-center">
-                        {/* Close Button */}
-                        <button
-                            onClick={() => setShowImageViewerModal(false)}
-                            className="absolute top-4 right-4 z-10 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md text-white flex items-center justify-center transition-all hover:scale-110 shadow-2xl border border-white/20"
-                            title="Fechar"
-                        >
-                            <i className="fas fa-times text-xl"></i>
-                        </button>
+                                            {/* Hidden Inputs with unique IDs for modal */}
+                                            <input id="docx-upload-modal" type="file" accept=".docx" ref={docUploadInputRef} onChange={handleDocFileInput} className="hidden" />
+                                            <input id="markdown-upload-modal" type="file" accept=".md" onChange={handleMarkdownFileInput} className="hidden" />
+                                            <input ref={jsonUploadInputRef} type="file" accept="application/json" onChange={handleJsonFileInput} className="hidden" />
+                                        </div>
 
-                        {/* Image */}
-                        <img
-                            src={viewerImageUrl}
-                            alt="Visualização"
-                            className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl transition-transform duration-300 hover:scale-105"
-                            onClick={(e) => e.stopPropagation()}
-                        />
-
-                        {/* Image Info */}
-                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-md px-6 py-3 rounded-full border border-white/10">
-                            <p className="text-xs text-white/80 font-medium">
-                                Clique fora da imagem para fechar
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Changes Diff Modal */}
-            {showChangesModal && (
-                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
-                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-slate-200 dark:border-slate-700 animate-in zoom-in-95 duration-300">
-                        {/* Header */}
-                        <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center">
-                                    <i className="fas fa-code-branch text-white"></i>
+                                        {/* Coluna 2: Modo de Importação */}
+                                        <div className="flex flex-col gap-6">
+                                            <div>
+                                                <p className="text-base font-black text-white mb-1">Modo de Importação</p>
+                                                <p className="text-[11px] text-slate-400 leading-relaxed">Escolha como deseja processar o conteúdo importado.</p>
+                                            </div>
+                                            <div className="flex flex-col gap-3">
+                                                <button
+                                                    onClick={() => setJsonImportMode('replace')}
+                                                    className={`h-12 rounded-xl text-xs font-black transition-all flex items-center gap-3 px-4 active:scale-[0.98] ${jsonImportMode === 'replace'
+                                                        ? 'bg-[#ef4444] text-white shadow-lg shadow-red-500/20'
+                                                        : 'bg-[#1e293b] text-slate-400 hover:text-white hover:bg-[#334155]'
+                                                        }`}
+                                                >
+                                                    <i className={`fas fa-sync-alt ${jsonImportMode === 'replace' ? 'animate-spin-slow' : ''}`}></i>
+                                                    Substituir
+                                                </button>
+                                                <button
+                                                    onClick={() => setJsonImportMode('append')}
+                                                    className={`h-12 rounded-xl text-xs font-black transition-all flex items-center gap-3 px-4 active:scale-[0.98] ${jsonImportMode === 'append'
+                                                        ? 'bg-[#10b981] text-white shadow-lg shadow-teal-500/20'
+                                                        : 'bg-[#1e293b] text-slate-400 hover:text-white hover:bg-[#334155]'
+                                                        }`}
+                                                >
+                                                    <i className="fas fa-arrow-down"></i>
+                                                    Adicionar ao Final
+                                                </button>
+                                                <button
+                                                    onClick={() => setJsonImportMode('prepend')}
+                                                    className={`h-12 rounded-xl text-xs font-black transition-all flex items-center gap-3 px-4 active:scale-[0.98] ${jsonImportMode === 'prepend'
+                                                        ? 'bg-[#3b82f6] text-white shadow-lg shadow-blue-500/20'
+                                                        : 'bg-[#1e293b] text-slate-400 hover:text-white hover:bg-[#334155]'
+                                                        }`}
+                                                >
+                                                    <i className="fas fa-arrow-up"></i>
+                                                    Adicionar ao Início
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h2 className="text-xl font-black text-slate-900 dark:text-white">
-                                        Alterações Não Salvas
-                                    </h2>
-                                    <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">
-                                        {changedBlocks.size} bloco{changedBlocks.size === 1 ? '' : 's'} modificado{changedBlocks.size === 1 ? '' : 's'}
-                                    </p>
-                                </div>
-                            </div>
-                            <button
-                                onClick={() => setShowChangesModal(false)}
-                                className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition-colors text-slate-600 dark:text-slate-300"
-                                title="Fechar"
-                            >
-                                <i className="fas fa-times"></i>
-                            </button>
-                        </div>
 
-                        {/* Content */}
-                        <div className="p-6 max-h-[calc(90vh-180px)] overflow-y-auto space-y-4">
-                            {Array.from(changedBlocks.entries()).map(([blockId, { before, after }], index) => {
-                                const isDeleted = after.text === '[REMOVIDO]';
-                                const isNew = before.text === '';
-                                const beforeText = before.text.replace(/<[^>]*>/g, '').trim() || '[Vazio]';
-                                const afterText = isDeleted ? '[REMOVIDO]' : after.text.replace(/<[^>]*>/g, '').trim() || '[Vazio]';
+                                {/* Alert/Feedback */}
+                                {(jsonImportError || docImportError) && (
+                                    <div className="mt-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400 font-bold flex items-center gap-3">
+                                        <i className="fas fa-exclamation-circle text-lg"></i>
+                                        <span>{jsonImportError || docImportError}</span>
+                                    </div>
+                                )}
 
-                                return (
-                                    <div key={blockId} className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
-                                        {/* Block Header */}
-                                        <div className="bg-slate-50 dark:bg-slate-800/50 px-4 py-3 flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-xs font-black text-slate-500 dark:text-slate-400 bg-slate-200 dark:bg-slate-700 px-2 py-1 rounded">
-                                                    #{index + 1}
-                                                </span>
-                                                {isNew && (
-                                                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                                                        <i className="fas fa-plus mr-1"></i>
-                                                        Novo
-                                                    </span>
-                                                )}
-                                                {isDeleted && (
-                                                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
-                                                        <i className="fas fa-trash mr-1"></i>
-                                                        Removido
-                                                    </span>
-                                                )}
-                                                {!isNew && !isDeleted && (
-                                                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-                                                        <i className="fas fa-edit mr-1"></i>
-                                                        Modificado
-                                                    </span>
-                                                )}
+                                {jsonImportSuccess && (
+                                    <div className="mt-6 p-4 rounded-xl bg-teal-500/10 border border-teal-500/20 text-xs text-teal-400 font-bold flex items-center gap-3 animate-bounce">
+                                        <i className="fas fa-check-circle text-lg"></i>
+                                        <span>Importação concluída com sucesso!</span>
+                                    </div>
+                                )}
+
+                                {docPreviewHtml && (
+                                    <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-900/80 p-6 shadow-inner">
+                                        <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-800">
+                                            <div className="flex items-center gap-2">
+                                                <i className="fas fa-eye text-teal-400"></i>
+                                                <p className="text-xs font-black text-white uppercase tracking-tighter">Prévia do DOCX importado</p>
                                             </div>
                                             <button
-                                                onClick={() => {
-                                                    const blockElement = document.querySelector(`[data-block-id="${blockId}"]`);
-                                                    if (blockElement) {
-                                                        setShowChangesModal(false);
-                                                        blockElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                                        setExpandedBlockId(blockId);
-                                                    }
-                                                }}
-                                                className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 uppercase tracking-wider"
+                                                onClick={() => setDocPreviewHtml(null)}
+                                                className="text-[10px] font-black text-red-400 hover:text-red-300 uppercase tracking-widest"
                                             >
-                                                <i className="fas fa-arrow-right mr-1"></i>
-                                                Ir para bloco
+                                                Limpar Prévia
                                             </button>
                                         </div>
-
-                                        {/* Before/After Comparison */}
-                                        <div className="grid grid-cols-2 divide-x divide-slate-200 dark:divide-slate-700">
-                                            {/* Before */}
-                                            {!isNew && (
-                                                <div className="p-4 bg-red-50/30 dark:bg-red-900/10">
-                                                    <div className="flex items-center gap-2 mb-2">
-                                                        <i className="fas fa-chevron-left text-xs text-red-600 dark:text-red-400"></i>
-                                                        <span className="text-[10px] font-black uppercase tracking-wider text-red-600 dark:text-red-400">
-                                                            Antes
-                                                        </span>
-                                                    </div>
-                                                    <div className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed line-clamp-6">
-                                                        {beforeText}
-                                                    </div>
-                                                    {before.audioUrl && (
-                                                        <div className="mt-2 text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                                                            <i className="fas fa-music"></i>
-                                                            Áudio: Sim
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-
-                                            {/* After */}
-                                            {!isDeleted && (
-                                                <div className={`p-4 ${isNew ? 'col-span-2 bg-green-50/30 dark:bg-green-900/10' : 'bg-green-50/30 dark:bg-green-900/10'}`}>
-                                                    <div className="flex items-center gap-2 mb-2">
-                                                        <i className="fas fa-chevron-right text-xs text-green-600 dark:text-green-400"></i>
-                                                        <span className="text-[10px] font-black uppercase tracking-wider text-green-600 dark:text-green-400">
-                                                            Depois
-                                                        </span>
-                                                    </div>
-                                                    <div className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed line-clamp-6">
-                                                        {afterText}
-                                                    </div>
-                                                    {after.audioUrl && (
-                                                        <div className="mt-2 text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                                                            <i className="fas fa-music"></i>
-                                                            Áudio: Sim
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-
-                                            {/* Deleted - Full Width */}
-                                            {isDeleted && (
-                                                <div className="col-span-2 p-4 bg-red-50/30 dark:bg-red-900/10">
-                                                    <div className="flex items-center gap-2 mb-2">
-                                                        <i className="fas fa-trash text-xs text-red-600 dark:text-red-400"></i>
-                                                        <span className="text-[10px] font-black uppercase tracking-wider text-red-600 dark:text-red-400">
-                                                            Conteúdo Removido
-                                                        </span>
-                                                    </div>
-                                                    <div className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed line-through opacity-60">
-                                                        {beforeText}
-                                                    </div>
-                                                </div>
-                                            )}
+                                        <div className="max-h-48 overflow-auto px-2 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
+                                            <div className="prose prose-invert prose-xs max-w-none text-slate-300" dangerouslySetInnerHTML={{ __html: docPreviewHtml }} />
                                         </div>
                                     </div>
-                                );
-                            })}
+                                )}
+                            </div>
 
-                            {changedBlocks.size === 0 && (
-                                <div className="text-center py-12">
-                                    <i className="fas fa-check-circle text-5xl text-green-500 mb-4"></i>
-                                    <p className="text-lg font-bold text-slate-700 dark:text-slate-300">
-                                        Nenhuma alteração pendente
-                                    </p>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Footer */}
-                        <div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4">
-                            <button
-                                onClick={() => setShowChangesModal(false)}
-                                className="px-6 py-3 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-sm font-bold transition-all active:scale-95"
-                            >
-                                <i className="fas fa-times mr-2"></i>
-                                Fechar
-                            </button>
-                            <button
-                                onClick={() => {
-                                    setShowChangesModal(false);
-                                    handleSave();
-                                }}
-                                className="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold transition-all active:scale-95 flex items-center gap-2"
-                            >
-                                <i className="fas fa-save"></i>
-                                Salvar Alterações
-                            </button>
+                            {/* Footer */}
+                            <div className="p-6 bg-slate-950/50 border-t border-slate-800/50 flex justify-end">
+                                <button
+                                    onClick={() => setShowImportExportModal(false)}
+                                    className="px-8 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-black transition-all active:scale-95"
+                                >
+                                    FECHAR
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
+
+            {/* Import Method Modal - Upload ou Colar */}
+            {
+                showImportMethodModal && importType && (
+                    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                        <div className="w-full max-w-2xl bg-gradient-to-br from-slate-900 to-slate-950 rounded-2xl shadow-2xl border border-slate-800 overflow-hidden animate-in zoom-in-95 duration-300">
+                            {/* Header */}
+                            <div className="p-6 bg-slate-950/30 border-b border-slate-800/50 flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-xl bg-cyan-500/10 flex items-center justify-center">
+                                        <i className={`fas ${importType === 'json' ? 'fa-file-code' : importType === 'docx' ? 'fa-file-word' : 'fab fa-markdown'} text-cyan-400`}></i>
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xl font-black text-white uppercase tracking-tight">
+                                            Método de Importação
+                                        </h3>
+                                        <p className="text-xs text-slate-400 font-medium">
+                                            Escolha como importar {importType.toUpperCase()}
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setShowImportMethodModal(false);
+                                        setPastedContent('');
+                                    }}
+                                    className="w-10 h-10 rounded-full flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-all"
+                                >
+                                    <i className="fas fa-times text-xl"></i>
+                                </button>
+                            </div>
+
+                            {/* Tabs */}
+                            <div className="p-6 pb-0">
+                                <div className="flex gap-2 border-b border-slate-800/50">
+                                    <button
+                                        onClick={() => setImportMethod('upload')}
+                                        className={`px-6 py-3 text-xs font-black transition-all relative ${importMethod === 'upload'
+                                            ? 'text-cyan-400'
+                                            : 'text-slate-500 hover:text-slate-300'
+                                            }`}
+                                    >
+                                        <i className="fas fa-upload mr-2"></i>
+                                        UPLOAD DE ARQUIVO
+                                        {importMethod === 'upload' && (
+                                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400"></div>
+                                        )}
+                                    </button>
+                                    <button
+                                        onClick={() => setImportMethod('paste')}
+                                        disabled={importType === 'docx'} // DOCX não pode ser colado
+                                        className={`px-6 py-3 text-xs font-black transition-all relative ${importMethod === 'paste'
+                                            ? 'text-cyan-400'
+                                            : 'text-slate-500 hover:text-slate-300'
+                                            } disabled:opacity-30 disabled:cursor-not-allowed`}
+                                        title={importType === 'docx' ? 'DOCX é formato binário e não pode ser colado' : ''}
+                                    >
+                                        <i className="fas fa-paste mr-2"></i>
+                                        COLAR TEXTO
+                                        {importMethod === 'paste' && importType !== 'docx' && (
+                                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400"></div>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Body */}
+                            <div className="p-6">
+                                {importMethod === 'upload' ? (
+                                    <div className="border-2 border-dashed border-slate-800 rounded-xl p-8 bg-slate-900/50 text-center">
+                                        <i className="fas fa-cloud-upload-alt text-4xl text-slate-600 mb-4"></i>
+                                        <p className="text-sm font-bold text-slate-300 mb-4">
+                                            Selecione um arquivo {importType.toUpperCase()}
+                                        </p>
+                                        <button
+                                            onClick={() => {
+                                                if (importType === 'json') jsonUploadInputRef.current?.click();
+                                                else if (importType === 'docx') document.getElementById('docx-upload-modal')?.click();
+                                                else if (importType === 'md') document.getElementById('markdown-upload-modal')?.click();
+                                                setShowImportMethodModal(false);
+                                            }}
+                                            className="px-8 py-3 bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-black rounded-xl transition-all active:scale-95"
+                                        >
+                                            <i className="fas fa-folder-open mr-2"></i>
+                                            SELECIONAR ARQUIVO
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div>
+                                        <label className="block text-xs font-black text-slate-300 mb-2 uppercase tracking-wide">
+                                            Cole o conteúdo {importType.toUpperCase()} abaixo:
+                                        </label>
+                                        <textarea
+                                            value={pastedContent}
+                                            onChange={(e) => setPastedContent(e.target.value)}
+                                            placeholder={
+                                                importType === 'json'
+                                                    ? '{\n  "content_blocks": [\n    ...\n  ]\n}'
+                                                    : '# Título\n\nConteúdo markdown...'
+                                            }
+                                            className="w-full h-64 bg-slate-950 border border-slate-800 rounded-xl p-4 text-slate-300 text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                                        />
+                                        <p className="mt-2 text-xs text-slate-500">
+                                            Dica: Use Ctrl+V para colar
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Footer */}
+                            <div className="p-6 bg-slate-950/50 border-t border-slate-800/50 flex justify-end gap-3">
+                                <button
+                                    onClick={() => {
+                                        setShowImportMethodModal(false);
+                                        setPastedContent('');
+                                    }}
+                                    className="px-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-black transition-all active:scale-95"
+                                >
+                                    CANCELAR
+                                </button>
+                                {importMethod === 'paste' && (
+                                    <button
+                                        onClick={handlePastedImport}
+                                        disabled={!pastedContent.trim()}
+                                        className="px-6 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-700 disabled:bg-slate-800 disabled:text-slate-600 text-white text-xs font-black transition-all active:scale-95"
+                                    >
+                                        <i className="fas fa-file-import mr-2"></i>
+                                        IMPORTAR
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
+            {/* Image Viewer Modal */}
+            {
+                showImageViewerModal && (
+                    <div
+                        className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-in fade-in duration-200"
+                        onClick={() => setShowImageViewerModal(false)}
+                    >
+                        <div className="relative max-w-7xl max-h-[90vh] w-full h-full flex items-center justify-center">
+                            {/* Close Button */}
+                            <button
+                                onClick={() => setShowImageViewerModal(false)}
+                                className="absolute top-4 right-4 z-10 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md text-white flex items-center justify-center transition-all hover:scale-110 shadow-2xl border border-white/20"
+                                title="Fechar"
+                            >
+                                <i className="fas fa-times text-xl"></i>
+                            </button>
+
+                            {/* Image */}
+                            <img
+                                src={viewerImageUrl}
+                                alt="Visualização"
+                                className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl transition-transform duration-300 hover:scale-105"
+                                onClick={(e) => e.stopPropagation()}
+                            />
+
+                            {/* Image Info */}
+                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-md px-6 py-3 rounded-full border border-white/10">
+                                <p className="text-xs text-white/80 font-medium">
+                                    Clique fora da imagem para fechar
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
+            {/* Changes Diff Modal */}
+            {
+                showChangesModal && (
+                    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
+                        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-slate-200 dark:border-slate-700 animate-in zoom-in-95 duration-300">
+                            {/* Header */}
+                            <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center">
+                                        <i className="fas fa-code-branch text-white"></i>
+                                    </div>
+                                    <div>
+                                        <h2 className="text-xl font-black text-slate-900 dark:text-white">
+                                            Alterações Não Salvas
+                                        </h2>
+                                        <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">
+                                            {changedBlocks.size} bloco{changedBlocks.size === 1 ? '' : 's'} modificado{changedBlocks.size === 1 ? '' : 's'}
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setShowChangesModal(false)}
+                                    className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition-colors text-slate-600 dark:text-slate-300"
+                                    title="Fechar"
+                                >
+                                    <i className="fas fa-times"></i>
+                                </button>
+                            </div>
+
+                            {/* Content */}
+                            <div className="p-6 max-h-[calc(90vh-180px)] overflow-y-auto space-y-4">
+                                {Array.from(changedBlocks.entries()).map(([blockId, { before, after }], index) => {
+                                    const isDeleted = after.text === '[REMOVIDO]';
+                                    const isNew = before.text === '';
+                                    const beforeText = before.text.replace(/<[^>]*>/g, '').trim() || '[Vazio]';
+                                    const afterText = isDeleted ? '[REMOVIDO]' : after.text.replace(/<[^>]*>/g, '').trim() || '[Vazio]';
+
+                                    return (
+                                        <div key={blockId} className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+                                            {/* Block Header */}
+                                            <div className="bg-slate-50 dark:bg-slate-800/50 px-4 py-3 flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-xs font-black text-slate-500 dark:text-slate-400 bg-slate-200 dark:bg-slate-700 px-2 py-1 rounded">
+                                                        #{index + 1}
+                                                    </span>
+                                                    {isNew && (
+                                                        <span className="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                                            <i className="fas fa-plus mr-1"></i>
+                                                            Novo
+                                                        </span>
+                                                    )}
+                                                    {isDeleted && (
+                                                        <span className="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                                                            <i className="fas fa-trash mr-1"></i>
+                                                            Removido
+                                                        </span>
+                                                    )}
+                                                    {!isNew && !isDeleted && (
+                                                        <span className="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                                                            <i className="fas fa-edit mr-1"></i>
+                                                            Modificado
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        const blockElement = document.querySelector(`[data-block-id="${blockId}"]`);
+                                                        if (blockElement) {
+                                                            setShowChangesModal(false);
+                                                            blockElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                            setExpandedBlockId(blockId);
+                                                        }
+                                                    }}
+                                                    className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 uppercase tracking-wider"
+                                                >
+                                                    <i className="fas fa-arrow-right mr-1"></i>
+                                                    Ir para bloco
+                                                </button>
+                                            </div>
+
+                                            {/* Before/After Comparison */}
+                                            <div className="grid grid-cols-2 divide-x divide-slate-200 dark:divide-slate-700">
+                                                {/* Before */}
+                                                {!isNew && (
+                                                    <div className="p-4 bg-red-50/30 dark:bg-red-900/10">
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                            <i className="fas fa-chevron-left text-xs text-red-600 dark:text-red-400"></i>
+                                                            <span className="text-[10px] font-black uppercase tracking-wider text-red-600 dark:text-red-400">
+                                                                Antes
+                                                            </span>
+                                                        </div>
+                                                        <div className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed line-clamp-6">
+                                                            {beforeText}
+                                                        </div>
+                                                        {before.audioUrl && (
+                                                            <div className="mt-2 text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                                                                <i className="fas fa-music"></i>
+                                                                Áudio: Sim
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                {/* After */}
+                                                {!isDeleted && (
+                                                    <div className={`p-4 ${isNew ? 'col-span-2 bg-green-50/30 dark:bg-green-900/10' : 'bg-green-50/30 dark:bg-green-900/10'}`}>
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                            <i className="fas fa-chevron-right text-xs text-green-600 dark:text-green-400"></i>
+                                                            <span className="text-[10px] font-black uppercase tracking-wider text-green-600 dark:text-green-400">
+                                                                Depois
+                                                            </span>
+                                                        </div>
+                                                        <div className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed line-clamp-6">
+                                                            {afterText}
+                                                        </div>
+                                                        {after.audioUrl && (
+                                                            <div className="mt-2 text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                                                                <i className="fas fa-music"></i>
+                                                                Áudio: Sim
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                {/* Deleted - Full Width */}
+                                                {isDeleted && (
+                                                    <div className="col-span-2 p-4 bg-red-50/30 dark:bg-red-900/10">
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                            <i className="fas fa-trash text-xs text-red-600 dark:text-red-400"></i>
+                                                            <span className="text-[10px] font-black uppercase tracking-wider text-red-600 dark:text-red-400">
+                                                                Conteúdo Removido
+                                                            </span>
+                                                        </div>
+                                                        <div className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed line-through opacity-60">
+                                                            {beforeText}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+
+                                {changedBlocks.size === 0 && (
+                                    <div className="text-center py-12">
+                                        <i className="fas fa-check-circle text-5xl text-green-500 mb-4"></i>
+                                        <p className="text-lg font-bold text-slate-700 dark:text-slate-300">
+                                            Nenhuma alteração pendente
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Footer */}
+                            <div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4">
+                                <button
+                                    onClick={() => setShowChangesModal(false)}
+                                    className="px-6 py-3 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-sm font-bold transition-all active:scale-95"
+                                >
+                                    <i className="fas fa-times mr-2"></i>
+                                    Fechar
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setShowChangesModal(false);
+                                        handleSave();
+                                    }}
+                                    className="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold transition-all active:scale-95 flex items-center gap-2"
+                                >
+                                    <i className="fas fa-save"></i>
+                                    Salvar Alterações
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
 
             {/* Offline Connection Modal */}
-            {showOfflineModal && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[150] flex items-center justify-center p-4 animate-in fade-in duration-300">
-                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border-2 border-red-500 animate-in zoom-in-95 duration-300">
-                        {/* Header */}
-                        <div className="bg-gradient-to-r from-red-500 to-orange-500 p-6 text-center">
-                            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center animate-pulse">
-                                <i className="fas fa-wifi-slash text-4xl text-white"></i>
+            {
+                showOfflineModal && (
+                    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[150] flex items-center justify-center p-4 animate-in fade-in duration-300">
+                        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border-2 border-red-500 animate-in zoom-in-95 duration-300">
+                            {/* Header */}
+                            <div className="bg-gradient-to-r from-red-500 to-orange-500 p-6 text-center">
+                                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center animate-pulse">
+                                    <i className="fas fa-wifi-slash text-4xl text-white"></i>
+                                </div>
+                                <h2 className="text-2xl font-black text-white mb-2">
+                                    Conexão Perdida
+                                </h2>
+                                <p className="text-sm text-white/90 font-medium">
+                                    Sem acesso à internet
+                                </p>
                             </div>
-                            <h2 className="text-2xl font-black text-white mb-2">
-                                Conexão Perdida
-                            </h2>
-                            <p className="text-sm text-white/90 font-medium">
-                                Sem acesso à internet
-                            </p>
-                        </div>
 
-                        {/* Content */}
-                        <div className="p-6 space-y-4">
-                            <div className="flex items-start gap-3 p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
-                                <i className="fas fa-exclamation-triangle text-red-500 text-xl mt-1"></i>
-                                <div>
-                                    <h3 className="font-bold text-slate-900 dark:text-white mb-1">
-                                        Não é possível salvar
-                                    </h3>
-                                    <p className="text-sm text-slate-600 dark:text-slate-400">
-                                        Você perdeu a conexão com a internet. Suas alterações não serão salvas até que a conexão seja restaurada.
-                                    </p>
+                            {/* Content */}
+                            <div className="p-6 space-y-4">
+                                <div className="flex items-start gap-3 p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
+                                    <i className="fas fa-exclamation-triangle text-red-500 text-xl mt-1"></i>
+                                    <div>
+                                        <h3 className="font-bold text-slate-900 dark:text-white mb-1">
+                                            Não é possível salvar
+                                        </h3>
+                                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                                            Você perdeu a conexão com a internet. Suas alterações não serão salvas até que a conexão seja restaurada.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                        O que fazer:
+                                    </h4>
+                                    <ul className="space-y-2 text-sm text-slate-700 dark:text-slate-300">
+                                        <li className="flex items-start gap-2">
+                                            <i className="fas fa-check text-green-500 mt-1 text-xs"></i>
+                                            <span>Verifique sua conexão Wi-Fi ou dados móveis</span>
+                                        </li>
+                                        <li className="flex items-start gap-2">
+                                            <i className="fas fa-check text-green-500 mt-1 text-xs"></i>
+                                            <span>Mantenha esta página aberta - não recarregue!</span>
+                                        </li>
+                                        <li className="flex items-start gap-2">
+                                            <i className="fas fa-check text-green-500 mt-1 text-xs"></i>
+                                            <span>O sistema tentará reconectar automaticamente</span>
+                                        </li>
+                                    </ul>
+                                </div>
+
+                                {/* Connection Status */}
+                                <div className="flex items-center justify-center gap-2 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                                    <div className="flex gap-1">
+                                        <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></span>
+                                        <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" style={{ animationDelay: '150ms' }}></span>
+                                        <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" style={{ animationDelay: '300ms' }}></span>
+                                    </div>
+                                    <span className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                                        Aguardando conexão...
+                                    </span>
                                 </div>
                             </div>
 
-                            <div className="space-y-2">
-                                <h4 className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                                    O que fazer:
-                                </h4>
-                                <ul className="space-y-2 text-sm text-slate-700 dark:text-slate-300">
-                                    <li className="flex items-start gap-2">
-                                        <i className="fas fa-check text-green-500 mt-1 text-xs"></i>
-                                        <span>Verifique sua conexão Wi-Fi ou dados móveis</span>
-                                    </li>
-                                    <li className="flex items-start gap-2">
-                                        <i className="fas fa-check text-green-500 mt-1 text-xs"></i>
-                                        <span>Mantenha esta página aberta - não recarregue!</span>
-                                    </li>
-                                    <li className="flex items-start gap-2">
-                                        <i className="fas fa-check text-green-500 mt-1 text-xs"></i>
-                                        <span>O sistema tentará reconectar automaticamente</span>
-                                    </li>
-                                </ul>
+                            {/* Footer */}
+                            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-700">
+                                <button
+                                    onClick={() => setShowOfflineModal(false)}
+                                    className="w-full px-6 py-3 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-sm font-bold transition-all active:scale-95"
+                                >
+                                    Entendi, vou aguardar
+                                </button>
                             </div>
-
-                            {/* Connection Status */}
-                            <div className="flex items-center justify-center gap-2 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
-                                <div className="flex gap-1">
-                                    <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></span>
-                                    <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" style={{ animationDelay: '150ms' }}></span>
-                                    <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" style={{ animationDelay: '300ms' }}></span>
-                                </div>
-                                <span className="text-xs font-bold text-slate-600 dark:text-slate-400">
-                                    Aguardando conexão...
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* Footer */}
-                        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-700">
-                            <button
-                                onClick={() => setShowOfflineModal(false)}
-                                className="w-full px-6 py-3 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-sm font-bold transition-all active:scale-95"
-                            >
-                                Entendi, vou aguardar
-                            </button>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
         </div >
     );

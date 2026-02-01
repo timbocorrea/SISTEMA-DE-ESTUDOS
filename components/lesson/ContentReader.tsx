@@ -98,9 +98,9 @@ const ContentReader: React.FC<ContentReaderProps> = ({
                             marginBottom: `${block.spacing || (window.innerWidth < 640 ? 1.25 : 1.5)}rem`,
                             fontSize: window.innerWidth < 640 ? '1.125rem' : (window.innerWidth < 1024 ? '1rem' : '1rem'), // Responsive base size
                             lineHeight: (block as any).lineHeight ? parseFloat((block as any).lineHeight) : (window.innerWidth < 640 ? 1.6 : 1.8),
-                            padding: hasAudio ? '1rem' : '0',
-                            borderLeft: hasAudio ? '4px solid #6366f1' : 'none',
-                            backgroundColor: isActive ? (contentTheme === 'dark' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.05)') : 'transparent',
+                            padding: (hasAudio || (block as any).featured) ? '1rem' : '0',
+                            borderLeft: hasAudio ? '4px solid #6366f1' : ((block as any).featured ? `4px solid ${(block as any).featuredColor || '#eab308'}` : 'none'),
+                            backgroundColor: isActive ? (contentTheme === 'dark' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.05)') : ((block as any).featured ? `${(block as any).featuredColor || '#eab308'}15` : 'transparent'),
                             borderRadius: hasAudio ? '8px' : '0',
                             cursor: hasAudio ? 'pointer' : 'default',
                             transition: 'all 0.2s ease',

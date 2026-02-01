@@ -209,7 +209,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           </Link>
 
           {!isActuallyCollapsed && coursesMenuOpen && (
-            <div className="ml-7 pl-3 border-l border-slate-200 dark:border-white/10 space-y-1 mb-2 animate-in slide-in-from-top-2 duration-200">
+            <div className="ml-7 pl-3 border-l border-slate-200 dark:border-white/10 space-y-1 mb-2">
               {courses.map(course => {
                 const isCourseOpen = expandedCourseId === course.id;
                 // Fallback to activeCourse modules if available and matching
@@ -228,7 +228,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                         setExpandedModuleId('');
                         if (newId) onExpandCourse?.(newId);
                       }}
-                      className={`w-full text-left px-3 py-2 rounded-lg transition-all text-xs font-black uppercase tracking-widest truncate block ${isCourseOpen
+                      className={`w-full text-left px-3 py-2 rounded-lg transition-all text-sm font-black uppercase tracking-widest truncate block ${isCourseOpen
                         ? 'bg-amber-500/10 text-amber-500'
                         : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
                         }`}
@@ -249,7 +249,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                   e.stopPropagation();
                                   setExpandedModuleId(isModuleOpen ? '' : module.id);
                                 }}
-                                className={`w-full text-left px-3 py-2 rounded-lg transition-all text-[11px] font-bold tracking-tight truncate block ${isModuleOpen
+                                className={`w-full text-left px-3 py-2 rounded-lg transition-all text-sm font-bold tracking-tight truncate block ${isModuleOpen
                                   ? 'bg-cyan-500/10 text-cyan-400'
                                   : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'
                                   }`}
@@ -269,7 +269,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                           onSelectLesson?.(course.id, module.id, lesson.id);
                                           onCloseMobile?.();
                                         }}
-                                        className={`w-full text-left px-3 py-2 rounded-lg transition-all text-[11px] font-medium tracking-tight truncate ${isActiveLesson
+                                        className={`w-full text-left px-3 py-2 rounded-lg transition-all text-sm font-medium tracking-tight truncate ${isActiveLesson
                                           ? 'bg-emerald-500/10 text-emerald-400 font-bold shadow-sm border border-emerald-500/20'
                                           : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
                                           }`}
@@ -348,7 +348,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
               {/* Submenu Tree (Only visible if expanded) */}
               {!isActuallyCollapsed && contentMenuOpen && (
-                <div className="ml-7 pl-3 border-l border-slate-200 dark:border-white/10 space-y-1 mb-2 animate-in slide-in-from-top-2 duration-200">
+                <div className="ml-7 pl-3 border-l border-slate-200 dark:border-white/10 space-y-1 mb-2">
                   {adminCourses.map(course => {
                     const isCourseOpen = expandedCourseId === course.id;
                     const modules = course.modules || [];
@@ -364,7 +364,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                             onOpenContent?.(course.id);
                             onViewChange('content');
                           }}
-                          className={`w-full text-left px-3 py-2 rounded-lg transition-all text-xs font-black uppercase tracking-widest truncate block ${isCourseOpen
+                          className={`w-full text-left px-3 py-2 rounded-lg transition-all text-sm font-black uppercase tracking-widest truncate block ${isCourseOpen
                             ? 'bg-amber-500/10 text-amber-500'
                             : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
                             }`}
@@ -388,7 +388,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                       onOpenContent?.(course.id, module.id);
                                       onViewChange('content');
                                     }}
-                                    className={`w-full text-left px-3 py-2 rounded-lg transition-all text-[11px] font-bold tracking-tight truncate block ${isModuleOpen
+                                    className={`w-full text-left px-3 py-2 rounded-lg transition-all text-sm font-bold tracking-tight truncate block ${isModuleOpen
                                       ? 'bg-cyan-500/10 text-cyan-400'
                                       : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
                                       }`}
@@ -408,7 +408,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                               e.stopPropagation();
                                               // onOpenContent?.(course.id, module.id, lesson.id); // Redundant if Link works
                                             }}
-                                            className={`w-full text-left px-3 py-2 rounded-lg transition-all text-[11px] font-medium tracking-tight truncate block ${isActiveLesson
+                                            className={`w-full text-left px-3 py-2 rounded-lg transition-all text-sm font-medium tracking-tight truncate block ${isActiveLesson
                                               ? 'bg-emerald-500/10 text-emerald-400 font-bold shadow-sm border border-emerald-500/20'
                                               : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
                                               }`}
@@ -480,12 +480,12 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </Link>
 
                 {!isActuallyCollapsed && activeView === 'files' && (
-                  <div className="ml-7 pl-3 border-l border-slate-200 dark:border-white/10 space-y-1 mb-2 animate-in slide-in-from-top-2 duration-200">
+                  <div className="ml-7 pl-3 border-l border-slate-200 dark:border-white/10 space-y-1 mb-2">
                     {['audios', 'course-covers', 'images', 'pdfs'].map(folder => (
                       <button
                         key={folder}
                         onClick={() => onNavigateFile?.(folder)}
-                        className="w-full text-left px-3 py-2 rounded-lg transition-all text-xs font-medium text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-indigo-600 dark:hover:text-indigo-400 capitalize"
+                        className="w-full text-left px-3 py-2 rounded-lg transition-all text-sm font-medium text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-indigo-600 dark:hover:text-indigo-400 capitalize"
                       >
                         <i className="fas fa-folder mr-2 text-amber-500/80"></i>
                         {folder}
