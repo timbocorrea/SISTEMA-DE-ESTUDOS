@@ -93,6 +93,7 @@ const BlockItem = React.memo(({
         setCurrentFontSize: (size: string) => void;
         currentFontSize: string;
         activeFormats: string[];
+        toggleBlockFeatured: (id: string) => void;
     }
 }) => {
     const text = block.text || '';
@@ -288,6 +289,16 @@ const BlockItem = React.memo(({
 
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
                             <button
+                                onClick={() => handlers.toggleBlockFeatured(block.id)}
+                                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${block.featured
+                                    ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400'
+                                    : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500'
+                                    }`}
+                                title={block.featured ? "Remover destaque" : "Destacar bloco"}
+                            >
+                                <i className={`fas fa-star text-sm ${block.featured ? "animate-pulse" : ""}`}></i>
+                            </button>
+                            <button
                                 onClick={() => handlers.openAudioModal(block)}
                                 className="w-8 h-8 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center transition-colors"
                                 title="Gerenciar Áudio"
@@ -395,6 +406,20 @@ const BlockItem = React.memo(({
 
                             <Divider />
 
+                            <Divider />
+
+                            {/* Grupo: Cor */}
+                            <div className="relative w-9 h-9 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors text-slate-600 dark:text-slate-400 group cursor-pointer active:scale-95" title="Cor do Texto">
+                                <i className="fas fa-palette text-sm group-hover:text-indigo-500 transition-colors"></i>
+                                <input
+                                    type="color"
+                                    onChange={(e) => handlers.execCommand('foreColor', e.target.value)}
+                                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                />
+                            </div>
+
+                            <Divider />
+
                             {/* Grupo: Alinhamento */}
                             <div className="flex items-center gap-0.5">
                                 <ToolbarButton icon="align-left" title="Esquerda" active={handlers.activeFormats.includes('justifyLeft')} onClick={() => handlers.execCommand('justifyLeft')} />
@@ -495,7 +520,7 @@ const BlockItem = React.memo(({
                         </div>
                     )}
 
-                    <div className="relative pt-2" onClick={(e) => e.stopPropagation()}>
+                    <div className={`relative pt-2 transition-all duration-300 ${block.featured ? 'border-l-4 border-yellow-500 pl-4 bg-yellow-50 dark:bg-yellow-900/10 rounded-r-lg py-4 shadow-sm' : ''}`} onClick={(e) => e.stopPropagation()}>
 
 
                         <EditableBlock
@@ -589,6 +614,7 @@ interface Block {
     audioUrl?: string;
     spacing?: number;
     lineHeight?: string; // NEW: Persist line height for student preview
+    featured?: boolean; // NEW: Highlight block style
 }
 
 interface LessonContentEditorPageProps {
@@ -2133,6 +2159,10 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
         setBlocks(prev => prev.map(b => b.id === id ? { ...b, ...updates } : b));
     }, []);
 
+    const toggleBlockFeatured = React.useCallback((id: string) => {
+        setBlocks(prev => prev.map(b => b.id === id ? { ...b, featured: !b.featured } : b));
+    }, []);
+
     const removeBlock = React.useCallback((id: string) => {
         setBlocks(prev => prev.filter(b => b.id !== id));
     }, []);
@@ -3070,9 +3100,13 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                                     ? previewTheme === 'light'
                                                         ? 'bg-indigo-50 border-indigo-400 ring-4 ring-indigo-300/50 shadow-lg shadow-indigo-500/20 text-slate-700'
                                                         : 'bg-indigo-900/30 border-indigo-500 ring-4 ring-indigo-500/30 shadow-lg shadow-indigo-500/30 text-slate-200'
-                                                    : previewTheme === 'light'
-                                                        ? 'bg-white border-transparent text-slate-700 hover:bg-indigo-50/30 hover:ring-2 hover:ring-indigo-500/50'
-                                                        : 'bg-slate-900/30 border-transparent text-slate-200 hover:bg-slate-800/50 hover:ring-2 hover:ring-indigo-500/50'
+                                                    : block.featured
+                                                        ? previewTheme === 'light'
+                                                            ? 'bg-yellow-50 border-l-4 border-l-yellow-500 border-y-slate-100 border-r-slate-100 text-slate-700 shadow-sm'
+                                                            : 'bg-yellow-900/10 border-l-4 border-l-yellow-500 border-y-slate-800 border-r-slate-800 text-slate-200 shadow-sm'
+                                                        : previewTheme === 'light'
+                                                            ? 'bg-white border-transparent text-slate-700 hover:bg-indigo-50/30 hover:ring-2 hover:ring-indigo-500/50'
+                                                            : 'bg-slate-900/30 border-transparent text-slate-200 hover:bg-slate-800/50 hover:ring-2 hover:ring-indigo-500/50'
                                                     }`}
                                                 title={expandedBlockId === block.id ? "Este bloco está sendo editado" : "Clique para localizar este bloco no gerenciador"}
                                             >
@@ -3496,7 +3530,8 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                                     execCommand,
                                                     setCurrentFontSize,
                                                     currentFontSize,
-                                                    activeFormats
+                                                    activeFormats,
+                                                    toggleBlockFeatured
                                                 }}
                                             />
                                         );
