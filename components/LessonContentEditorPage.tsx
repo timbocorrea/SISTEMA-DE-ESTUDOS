@@ -1988,12 +1988,32 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
     };
 
     // Função para importar arquivos Markdown
+    // Função para importar arquivos Markdown
     const importMarkdownFile = async (file: File) => {
         try {
-            const text = await file.text();
+            let text = await file.text();
+
+            // --- PRÉ-PROCESSAMENTO PARA SUPORTE ESTENDIDO ---
+
+            // 1. Suporte a Sublinhado (__texto__)
+            // Markdown padrão não suporta sublinhado com __ (é itálico ou negrito), mas o usuário solicitou.
+            // Substituímos manualmente por <u> antes do parser.
+            text = text.replace(/__(.*?)__/g, '<u>$1</u>');
+
+            // 2. Proteção e Formatação de Expressões Matemáticas ($...$)
+            // Envolvemos expressões entre $ em um span específico para que:
+            // a) O parser não quebre os caracteres
+            // b) Possamos aplicar estilo visual (fonte mono, cor de fundo)
+            // c) Possamos identificar futuramente para renderização MathJax/Katex se necessário
+            text = text.replace(/\$([^\$\n]+)\$/g, '<span class="math-tex" style="font-family: monospace; background-color: rgba(99, 102, 241, 0.1); padding: 2px 4px; border-radius: 4px; color: #4f46e5; border: 1px solid rgba(99, 102, 241, 0.2);" title="Expressão Matemática">$$$1$$</span>');
+
+            // ------------------------------------------------
+
             const html = await marked.parse(text); // Converte Markdown para HTML
             const newBlocks = convertHtmlToBlocks(html);
             setBlocks(prev => [...prev, ...newBlocks]);
+
+            toast.success('Markdown importado com sucesso!');
         } catch (error) {
             console.error('Erro ao importar Markdown:', error);
             alert('Erro ao processar arquivo Markdown');
@@ -2238,7 +2258,19 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                 await importJsonContent(file);
             } else if (importType === 'md') {
                 // Para MD, converter Markdown to HTML e criar blocos
-                const html = await marked(pastedContent);
+                let processedContent = pastedContent;
+
+                // --- PRÉ-PROCESSAMENTO (Mesma lógica de importMarkdownFile) ---
+
+                // 1. Suporte a Sublinhado (__texto__)
+                processedContent = processedContent.replace(/__(.*?)__/g, '<u>$1</u>');
+
+                // 2. Proteção e Formatação de Expressões Matemáticas ($...$)
+                processedContent = processedContent.replace(/\$([^\$\n]+)\$/g, '<span class="math-tex" style="font-family: monospace; background-color: rgba(99, 102, 241, 0.1); padding: 2px 4px; border-radius: 4px; color: #4f46e5; border: 1px solid rgba(99, 102, 241, 0.2);" title="Expressão Matemática">$$$1$$</span>');
+
+                // -----------------------------------------------------------
+
+                const html = await marked(processedContent);
                 const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = html;
 
