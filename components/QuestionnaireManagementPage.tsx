@@ -7,7 +7,7 @@ import QuestionBankEditor from './QuestionBankEditor';
 import QuizModal from './QuizModal';
 import QuizResultsModal from './QuizResultsModal';
 import { toast } from 'sonner';
-import { normalizeQuestions } from '../utils/quizUtils';
+import { normalizeQuestions, parseMarkdownQuestions } from '../utils/quizUtils';
 
 // Utility function to shuffle an array
 const shuffleArray = <T,>(array: T[]): T[] => {
@@ -214,20 +214,28 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
     };
 
     const handleImportJson = async () => {
+        if (!selectedCourseId) {
+            toast.error('Por favor, selecione um curso para as questões.');
+            return;
+        }
+
         try {
-            const raw = importRawJson.replace(/```json/g, '').replace(/```/g, '').trim();
-            const parsed = JSON.parse(raw);
-            const normalized = normalizeQuestions(Array.isArray(parsed) ? parsed : [parsed]);
+            const raw = importRawJson;
+
+            // Strictly Markdown parsing as requested
+            const parsed = parseMarkdownQuestions(raw);
+
+            const normalized = normalizeQuestions(parsed);
 
             if (normalized.length === 0) {
-                toast.error('Nenhuma questão válida encontrada no JSON.');
+                toast.error('Nenhuma questão válida encontrada no Markdown.');
                 return;
             }
 
             setIsBusy(true);
             try {
                 await repository.createQuestions(normalized, {
-                    courseId: selectedCourseId || undefined,
+                    courseId: selectedCourseId, // Mandatory course
                     moduleId: selectedModuleId || undefined,
                     lessonId: selectedLessonId || undefined
                 });
@@ -236,13 +244,13 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
                 setImportRawJson('');
                 setIsImportModalOpen(false);
                 loadQuestions();
-                loadSystemStats(); // Refresh stats on import
+                loadSystemStats();
             } finally {
                 setIsBusy(false);
             }
         } catch (error) {
-            console.error('Erro ao processar JSON:', error);
-            toast.error('JSON inválido. Verifique a formatação.');
+            console.error('Erro ao processar Markdown:', error);
+            toast.error('Erro ao processar arquivo. Verifique a formatação.');
         }
     };
 
@@ -347,7 +355,7 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
                                 title="Importar JSON"
                             >
                                 <i className="fas fa-code text-[10px]"></i>
-                                IMPORTAR JSON
+                                IMPORTAR
                             </button>
 
                             <button
@@ -722,15 +730,15 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
                         />
                     )}
 
-                    {/* JSON Import Modal */}
+                    {/* MD Import Modal */}
                     {isImportModalOpen && (
                         <div className="fixed inset-0 z-[800] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
                             <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] w-full max-w-2xl shadow-2xl overflow-hidden border border-slate-100 dark:border-slate-800 flex flex-col max-h-[85vh]">
                                 <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                                     <div>
-                                        <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Importar Questões via JSON</h3>
+                                        <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Importar Questões (Markdown)</h3>
                                         <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">
-                                            As questões serão associadas aos filtros atuais (Curso/Módulo/Aula)
+                                            Carregue um arquivo .md ou cole o texto abaixo.
                                         </p>
                                     </div>
                                     <button onClick={() => setIsImportModalOpen(false)} className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
@@ -739,32 +747,66 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
                                 </div>
 
                                 <div className="p-8 space-y-6 overflow-y-auto">
+                                    {/* Course Selector for Import */}
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">
+                                            Vincular ao Curso (Obrigatório)
+                                        </label>
+                                        <select
+                                            value={selectedCourseId}
+                                            onChange={(e) => handleCourseChange(e.target.value)}
+                                            className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-3 text-sm font-bold text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none appearance-none cursor-pointer"
+                                        >
+                                            <option value="">Selecione um curso...</option>
+                                            {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
+                                        </select>
+                                    </div>
+
                                     <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl border border-indigo-100 dark:border-indigo-800/50">
                                         <div className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-2 flex items-center gap-2">
                                             <i className="fas fa-info-circle"></i>
-                                            Formato Esperado
+                                            Formato Markdown Esperado
                                         </div>
                                         <code className="text-[11px] block whitespace-pre bg-white/50 dark:bg-black/20 p-3 rounded-lg overflow-x-auto text-slate-600 dark:text-indigo-300">
-                                            {`[
-  {
-    "enunciado": "Qual a capital da França?",
-    "opcoes": {
-       "a": "Paris",
-       "b": "Londres"
-    },
-    "gabarito": "a",
-    "justificativa": "Paris é a capital."
-  }
-]`}
+                                            {`# Enunciado da questão aqui...
+A) Opção 1
+B) Opção 2
+C) Opção 3
+
+Gabarito: B
+Justificativa: Explicação opcional...
+
+---
+
+# Próxima questão...`}
                                         </code>
                                     </div>
 
-                                    <textarea
-                                        value={importRawJson}
-                                        onChange={(e) => setImportRawJson(e.target.value)}
-                                        placeholder="Cole seu JSON aqui..."
-                                        className="w-full h-64 p-5 rounded-3xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-mono text-xs outline-none focus:border-indigo-500 transition-all resize-none"
-                                    />
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">
+                                            Arquivo ou Texto
+                                        </label>
+                                        <input
+                                            type="file"
+                                            accept=".md,.txt"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) {
+                                                    const reader = new FileReader();
+                                                    reader.onload = (ev) => setImportRawJson(ev.target?.result as string);
+                                                    reader.readAsText(file);
+                                                }
+                                            }}
+                                            className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 dark:file:bg-indigo-900/30 dark:file:text-indigo-400"
+                                        />
+                                        <div className="text-center text-[10px] text-slate-400 font-bold uppercase tracking-wide my-2">OU</div>
+                                        <textarea
+                                            value={importRawJson}
+                                            onChange={(e) => setImportRawJson(e.target.value)}
+                                            placeholder="Cole o conteúdo do Markdown aqui..."
+                                            className="w-full h-48 p-5 rounded-3xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-mono text-xs outline-none focus:border-indigo-500 transition-all resize-none"
+                                        />
+                                    </div>
                                 </div>
 
                                 <div className="p-8 bg-slate-50 dark:bg-slate-950/50 border-t border-slate-100 dark:border-slate-800 flex gap-4">
@@ -776,10 +818,10 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
                                     </button>
                                     <button
                                         onClick={handleImportJson}
-                                        disabled={!importRawJson.trim() || isBusy}
+                                        disabled={!importRawJson.trim() || isBusy || !selectedCourseId}
                                         className="flex-1 py-4 rounded-2xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-indigo-600/20 transition-all active:scale-95 disabled:opacity-50"
                                     >
-                                        {isBusy ? 'Processando...' : 'Processar e Adicionar ao Banco'}
+                                        {isBusy ? 'Processando...' : 'Importar Questões'}
                                     </button>
                                 </div>
                             </div>

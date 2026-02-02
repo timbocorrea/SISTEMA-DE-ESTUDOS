@@ -30,19 +30,27 @@ export const normalizeQuestions = (parsed: any[]) => {
             }
 
             // Determine correct answer (gabarito)
-            const gabarito = String(q.gabarito || q.resposta || q.correct || "").trim().toUpperCase();
+            // Fix: Include 'respostaCorreta' and 'correct_option' and ensure we handle numeric 0 which might evaluate to false in || chain.
+            let rawGabarito = q.gabarito ?? q.resposta ?? q.respostaCorreta ?? q.correct ?? q.correct_option ?? "";
+            const gabarito = String(rawGabarito).trim().toUpperCase();
 
             const normalizedOptions = opts
                 .map((o: any) => {
                     const optionText = o.optionText || "";
                     let isCorrect = Boolean(o.isCorrect);
 
-                    // If we have a gabarito, try to match it against key, letter index, or text
-                    if (gabarito) {
+                    // If we have a gabarito, try to match it against key, letter index, numeric index, or text
+                    if (gabarito !== "") {
                         const optionKey = String(o.key || "").toUpperCase();
                         const optionLetter = String.fromCharCode(65 + o.index).toUpperCase(); // A, B, C...
+                        const optionIndex = String(o.index);
 
-                        if (optionKey === gabarito || optionLetter === gabarito || optionText.toUpperCase() === gabarito) {
+                        if (
+                            optionKey === gabarito ||
+                            optionLetter === gabarito ||
+                            optionIndex === gabarito ||
+                            optionText.toUpperCase() === gabarito
+                        ) {
                             isCorrect = true;
                         }
                     }
@@ -69,4 +77,118 @@ export const normalizeQuestions = (parsed: any[]) => {
             );
         })
         .filter((q: QuizQuestion) => q.questionText && q.options?.length >= 2);
+};
+
+export const parseMarkdownQuestions = (markdown: string): any[] => {
+    const questions: any[] = [];
+    // Split by double newlines or lines starting with '###' or multiple dashes to separate questions
+    const blocks = markdown.split(/\n\s*\n|(?=\n\s*#{1,3}\s+)/).filter(b => b.trim().length > 0);
+
+    for (const block of blocks) {
+        const lines = block.split('\n').map(l => l.trim()).filter(l => l);
+        if (lines.length === 0) continue;
+
+        let questionText = "";
+        const options: any[] = [];
+        let gabarito = "";
+        let justificativa = "";
+        let isParsingOptions = false;
+
+        // Try to identify the question text (usually the first lines until an option starts)
+        // Options usually start with "A)", "a)", "1.", "-", "*", "- [ ]", "[ ]", "- [x]", "[x]"
+        // Regex groups:
+        // 1: Parenthesis/Dot style (A., 1)
+        // 2: Text for group 1
+        // 3: Checklist style checkbox [ ] or [x] or [X] (optional dash prefix handled by start anchor)
+        // 4: Text for group 3
+        // 5: Bullet style (- or *)
+        // 6: Text for group 5
+        const optionRegex = /^([a-zA-Z0-9]+)[\)\.]\s+(.+)$|^(-\s*)?\[([ xX])\]\s+(.+)$|^[\-\*]\s+(.+)$/;
+        const gabaritoRegex = /^(?:Gabarito|Resposta|Correct|Answer):\s*(.+)$/i;
+        const justificativaRegex = /^(?:Justificativa|Explicação|Explanation|Feedback|Reason):\s*(.+)$/i;
+
+        for (const line of lines) {
+            // Check for metadata at bottom
+            const gabaritoMatch = line.match(gabaritoRegex);
+            const justificativaMatch = line.match(justificativaRegex);
+
+            if (gabaritoMatch) {
+                gabarito = gabaritoMatch[1].trim();
+                continue;
+            }
+
+            if (justificativaMatch) {
+                justificativa = justificativaMatch[1].trim();
+                continue;
+            }
+
+            // Check if it's an option
+            const optionMatch = line.match(optionRegex);
+            if (optionMatch) {
+                isParsingOptions = true;
+                let key = "";
+                let text = "";
+                let markedCorrect = false;
+
+                if (optionMatch[1]) {
+                    // "A) Text"
+                    key = optionMatch[1];
+                    text = optionMatch[2];
+                } else if (optionMatch[4]) {
+                    // "[ ] Text" or "- [x] Text"
+                    const checkMark = optionMatch[4].toLowerCase();
+                    markedCorrect = checkMark === 'x';
+                    text = optionMatch[5];
+                    // Clean "**A)**" prefix if present inside checklist text
+                    // Example: "- [ ] **A)** Text" -> Key A, Text "Text"
+                    const innerPrefix = text.match(/^\*\*([a-zA-Z0-9]+)\)[\*]*\s+(.+)$/);
+                    if (innerPrefix) {
+                        key = innerPrefix[1];
+                        text = innerPrefix[2];
+                    }
+                } else if (optionMatch[6]) {
+                    // "- Text"
+                    text = optionMatch[6];
+                }
+
+                // Check if the option is marked as correct inline (e.g. *Option Text*)
+                let isCorrect = markedCorrect;
+                if (!isCorrect) {
+                    if (text.startsWith('*') && text.endsWith('*')) {
+                        isCorrect = true;
+                        text = text.slice(1, -1);
+                    } else if (text.startsWith('**') && text.endsWith('**')) {
+                        isCorrect = true;
+                        text = text.slice(2, -2);
+                    }
+                }
+
+                options.push({
+                    key: key,
+                    optionText: text.trim(),
+                    isCorrect: isCorrect
+                });
+                continue;
+            }
+
+            // If we haven't started parsing options, append to question text
+            if (!isParsingOptions) {
+                // Remove Markdown headers if present
+                const cleanLine = line.replace(/^#{1,6}\s+/, '').replace(/^\d+[\)\.]\s+/, '');
+                questionText += (questionText ? "\n" : "") + cleanLine;
+            }
+        }
+
+        if (questionText && options.length >= 2) {
+            questions.push({
+                questionText: questionText,
+                options: options,
+                gabarito: gabarito,
+                justificativa: justificativa,
+                difficulty: 'medium' // default
+            });
+        }
+    }
+
+    return questions;
 };
