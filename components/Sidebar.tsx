@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, memo } from 'react';
 import { IUserSession } from '../domain/auth';
 import { Course, User } from '../domain/entities';
 import { SupportDialog } from './SupportDialog';
@@ -26,6 +26,189 @@ interface SidebarProps {
   onExpandCourse?: (courseId: string) => void;
   isOnline?: boolean; // Network connection status
 }
+
+// Memoized Lesson Item Component for instant rendering
+const LessonItem = memo<{
+  lesson: any;
+  isActive: boolean;
+  isAdminMode: boolean;
+  courseId: string;
+  moduleId: string;
+  onSelect?: (courseId: string, moduleId: string, lessonId: string) => void;
+  onCloseMobile?: () => void;
+}>(({ lesson, isActive, isAdminMode, courseId, moduleId, onSelect, onCloseMobile }) => {
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isAdminMode && onSelect) {
+      onSelect(courseId, moduleId, lesson.id);
+      onCloseMobile?.();
+    }
+  }, [isAdminMode, onSelect, courseId, moduleId, lesson.id, onCloseMobile]);
+
+  if (isAdminMode) {
+    return (
+      <Link
+        to={`/admin/lesson/${lesson.id}/edit`}
+        onClick={(e) => e.stopPropagation()}
+        className={`w-full text-left px-3 py-2 rounded-lg transition-colors duration-100 text-sm font-medium tracking-tight truncate block ${isActive
+          ? 'bg-emerald-500/10 text-emerald-400 font-bold shadow-sm border border-emerald-500/20'
+          : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
+          }`}
+      >
+        {isActive && <i className="fas fa-pencil-alt mr-2 text-emerald-400"></i>}
+        {lesson.title}
+      </Link>
+    );
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      className={`w-full text-left px-3 py-2 rounded-lg transition-colors duration-100 text-sm font-medium tracking-tight truncate ${isActive
+        ? 'bg-emerald-500/10 text-emerald-400 font-bold shadow-sm border border-emerald-500/20'
+        : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
+        }`}
+    >
+      {isActive && <i className="fas fa-play-circle mr-2 text-emerald-400"></i>}
+      {lesson.title}
+    </button>
+  );
+});
+
+// Memoized Module Item Component for instant rendering
+const ModuleItem = memo<{
+  module: any;
+  isOpen: boolean;
+  isAdminMode: boolean;
+  courseId: string;
+  activeLessonId?: string;
+  onToggle: (moduleId: string) => void;
+  onOpenContent?: (courseId: string, moduleId?: string) => void;
+  onViewChange: (view: string) => void;
+  onSelectLesson?: (courseId: string, moduleId: string, lessonId: string) => void;
+  onCloseMobile?: () => void;
+}>(({ module, isOpen, isAdminMode, courseId, activeLessonId, onToggle, onOpenContent, onViewChange, onSelectLesson, onCloseMobile }) => {
+  const lessons = module.lessons || [];
+
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onToggle(module.id);
+    if (isAdminMode) {
+      onOpenContent?.(courseId, module.id);
+      onViewChange('content');
+    }
+  }, [module.id, onToggle, isAdminMode, onOpenContent, courseId, onViewChange]);
+
+  return (
+    <div className="space-y-1">
+      <Link
+        to={isAdminMode ? "/admin/content" : "/courses"}
+        state={isAdminMode ? { courseId, moduleId: module.id } : undefined}
+        onClick={handleClick}
+        className={`w-full text-left px-3 py-2 rounded-lg transition-colors duration-100 text-sm font-bold tracking-tight truncate block ${isOpen
+          ? 'bg-cyan-500/10 text-cyan-400'
+          : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
+          }`}
+      >
+        {module.title}
+      </Link>
+
+      {isOpen && lessons.length > 0 && (
+        <div className="ml-3 pl-3 border-l border-white/10 space-y-1">
+          {lessons.map((lesson: any) => (
+            <LessonItem
+              key={lesson.id}
+              lesson={lesson}
+              isActive={activeLessonId === lesson.id}
+              isAdminMode={isAdminMode}
+              courseId={courseId}
+              moduleId={module.id}
+              onSelect={onSelectLesson}
+              onCloseMobile={onCloseMobile}
+            />
+          ))}
+        </div>
+      )}
+
+      {isOpen && lessons.length === 0 && (
+        <div className="px-3 py-2 text-[11px] text-slate-500/50 italic">Sem aulas</div>
+      )}
+    </div>
+  );
+});
+
+// Memoized Course Item Component for instant rendering
+const CourseItem = memo<{
+  course: Course;
+  isOpen: boolean;
+  isAdminMode: boolean;
+  expandedModuleId: string;
+  activeLessonId?: string;
+  activeCourse?: Course | null;
+  onToggleCourse: (courseId: string) => void;
+  onToggleModule: (moduleId: string) => void;
+  onExpandCourse?: (courseId: string) => void;
+  onOpenContent?: (courseId: string, moduleId?: string) => void;
+  onViewChange: (view: string) => void;
+  onSelectLesson?: (courseId: string, moduleId: string, lessonId: string) => void;
+  onCloseMobile?: () => void;
+}>(({ course, isOpen, isAdminMode, expandedModuleId, activeLessonId, activeCourse, onToggleCourse, onToggleModule, onExpandCourse, onOpenContent, onViewChange, onSelectLesson, onCloseMobile }) => {
+  const modules = (activeCourse?.id === course.id && activeCourse.modules?.length)
+    ? activeCourse.modules
+    : (course.modules || []);
+
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    const newId = isOpen ? '' : course.id;
+    onToggleCourse(newId);
+    if (newId) {
+      onExpandCourse?.(newId);
+    }
+    if (isAdminMode) {
+      onOpenContent?.(course.id);
+      onViewChange('content');
+    }
+  }, [isOpen, course.id, onToggleCourse, onExpandCourse, isAdminMode, onOpenContent, onViewChange]);
+
+  return (
+    <div className="space-y-1">
+      <Link
+        to={isAdminMode ? "/admin/content" : "/courses"}
+        state={isAdminMode ? { courseId: course.id } : undefined}
+        onClick={handleClick}
+        className={`w-full text-left px-3 py-2 rounded-lg transition-colors duration-150 text-sm font-black uppercase tracking-widest truncate block ${isOpen
+          ? 'bg-amber-500/10 text-amber-500'
+          : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
+          }`}
+      >
+        {course.title}
+      </Link>
+
+      {isOpen && (
+        <div className="ml-3 pl-3 border-l border-white/10 space-y-1">
+          {modules.map((module: any) => (
+            <ModuleItem
+              key={module.id}
+              module={module}
+              isOpen={expandedModuleId === module.id}
+              isAdminMode={isAdminMode}
+              courseId={course.id}
+              activeLessonId={activeLessonId}
+              onToggle={onToggleModule}
+              onOpenContent={onOpenContent}
+              onViewChange={onViewChange}
+              onSelectLesson={onSelectLesson}
+              onCloseMobile={onCloseMobile}
+            />
+          ))}
+          {modules.length === 0 && (
+            <div className="px-3 py-2 text-[11px] text-slate-500/50 italic">Sem módulos</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+});
 
 const Sidebar: React.FC<SidebarProps> = ({
   session,
@@ -60,6 +243,16 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [coursesMenuOpen, setCoursesMenuOpen] = useState(activeView === 'courses');
   const [expandedCourseId, setExpandedCourseId] = useState<string>('');
   const [expandedModuleId, setExpandedModuleId] = useState<string>('');
+
+  // Optimized callbacks to prevent re-renders
+  const handleToggleCourse = useCallback((courseId: string) => {
+    setExpandedCourseId(courseId);
+    setExpandedModuleId('');
+  }, []);
+
+  const handleToggleModule = useCallback((moduleId: string) => {
+    setExpandedModuleId(moduleId);
+  }, []);
 
   useEffect(() => {
     if (activeView === 'content') {
@@ -137,6 +330,48 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
+      {/* Collapse/Expand Toggle Button - Desktop Only */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsCollapsed(!isCollapsed);
+        }}
+        className={`
+          hidden lg:flex
+          items-center justify-center
+          w-full mb-4
+          py-2 px-3
+          rounded-xl
+          transition-all duration-300
+          text-slate-600 dark:text-slate-400
+          hover:bg-slate-100 dark:hover:bg-white/5
+          hover:text-indigo-600 dark:hover:text-indigo-400
+          group/toggle
+          ${isActuallyCollapsed ? 'justify-center' : 'justify-between'}
+        `}
+        title={isActuallyCollapsed ? "Expandir Menu" : "Retrair Menu"}
+      >
+        <div className={`flex items-center gap-2 transition-all duration-300 ${isActuallyCollapsed ? 'w-0 opacity-0 overflow-hidden' : 'w-auto opacity-100'}`}>
+          <i className="fas fa-bars text-sm"></i>
+          <span className="text-xs font-bold uppercase tracking-wider whitespace-nowrap">
+            Menu
+          </span>
+        </div>
+
+        <div className={`
+          flex items-center justify-center
+          w-6 h-6
+          rounded-lg
+          bg-slate-200 dark:bg-slate-800
+          group-hover/toggle:bg-indigo-100 dark:group-hover/toggle:bg-indigo-900/30
+          transition-all duration-300
+          ${isActuallyCollapsed ? 'rotate-180' : ''}
+        `}>
+          <i className={`fas fa-chevron-left text-[10px] transition-transform duration-300 ${isActuallyCollapsed ? 'rotate-180' : ''}`}></i>
+        </div>
+      </button>
+
+
       {/* User Status Card */}
       <div className={`mb-8 bg-slate-100 dark:bg-black/20 backdrop-blur-md rounded-2xl border border-slate-200 dark:border-white/5 transition-all duration-300 overflow-hidden ${isActuallyCollapsed ? 'p-2 mx-0' : 'p-4 mx-0'}`}>
         <div className={`flex items-center ${isActuallyCollapsed ? 'justify-center' : 'gap-3 mb-3'}`}>
@@ -210,85 +445,24 @@ const Sidebar: React.FC<SidebarProps> = ({
 
           {!isActuallyCollapsed && coursesMenuOpen && (
             <div className="ml-7 pl-3 border-l border-slate-200 dark:border-white/10 space-y-1 mb-2">
-              {courses.map(course => {
-                const isCourseOpen = expandedCourseId === course.id;
-                // Fallback to activeCourse modules if available and matching
-                const modules = (isCourseOpen && activeCourse?.id === course.id && activeCourse.modules)
-                  ? activeCourse.modules
-                  : (course.modules || []);
-                return (
-                  <div key={course.id} className="space-y-1">
-                    <Link
-                      to="/courses"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        // const newId = isCourseOpen ? '' : course.id; // Logic handled in setExpanded
-                        const newId = isCourseOpen ? '' : course.id;
-                        setExpandedCourseId(newId);
-                        setExpandedModuleId('');
-                        if (newId) onExpandCourse?.(newId);
-                      }}
-                      className={`w-full text-left px-3 py-2 rounded-lg transition-all text-sm font-black uppercase tracking-widest truncate block ${isCourseOpen
-                        ? 'bg-amber-500/10 text-amber-500'
-                        : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
-                        }`}
-                    >
-                      {course.title}
-                    </Link>
-
-                    {isCourseOpen && (
-                      <div className="ml-3 pl-3 border-l border-white/10 space-y-1">
-                        {modules.map(module => {
-                          const isModuleOpen = expandedModuleId === module.id;
-                          const lessons = module.lessons || [];
-                          return (
-                            <div key={module.id} className="space-y-1">
-                              <Link
-                                to="/courses"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setExpandedModuleId(isModuleOpen ? '' : module.id);
-                                }}
-                                className={`w-full text-left px-3 py-2 rounded-lg transition-all text-sm font-bold tracking-tight truncate block ${isModuleOpen
-                                  ? 'bg-cyan-500/10 text-cyan-400'
-                                  : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'
-                                  }`}
-                              >
-                                {module.title}
-                              </Link>
-
-                              {isModuleOpen && lessons.length > 0 && (
-                                <div className="ml-3 pl-3 border-l border-white/10 space-y-1">
-                                  {lessons.map(lesson => {
-                                    const isActiveLesson = activeLessonId === lesson.id;
-                                    return (
-                                      <button
-                                        key={lesson.id}
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          onSelectLesson?.(course.id, module.id, lesson.id);
-                                          onCloseMobile?.();
-                                        }}
-                                        className={`w-full text-left px-3 py-2 rounded-lg transition-all text-sm font-medium tracking-tight truncate ${isActiveLesson
-                                          ? 'bg-emerald-500/10 text-emerald-400 font-bold shadow-sm border border-emerald-500/20'
-                                          : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
-                                          }`}
-                                      >
-                                        {isActiveLesson && <i className="fas fa-play-circle mr-2 text-emerald-400"></i>}
-                                        {lesson.title}
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+              {courses.map(course => (
+                <CourseItem
+                  key={course.id}
+                  course={course}
+                  isOpen={expandedCourseId === course.id}
+                  isAdminMode={false}
+                  expandedModuleId={expandedModuleId}
+                  activeLessonId={activeLessonId}
+                  activeCourse={activeCourse}
+                  onToggleCourse={handleToggleCourse}
+                  onToggleModule={handleToggleModule}
+                  onExpandCourse={onExpandCourse}
+                  onOpenContent={onOpenContent}
+                  onViewChange={onViewChange}
+                  onSelectLesson={onSelectLesson}
+                  onCloseMobile={onCloseMobile}
+                />
+              ))}
             </div>
           )}
         </div>
@@ -349,90 +523,24 @@ const Sidebar: React.FC<SidebarProps> = ({
               {/* Submenu Tree (Only visible if expanded) */}
               {!isActuallyCollapsed && contentMenuOpen && (
                 <div className="ml-7 pl-3 border-l border-slate-200 dark:border-white/10 space-y-1 mb-2">
-                  {adminCourses.map(course => {
-                    const isCourseOpen = expandedCourseId === course.id;
-                    const modules = course.modules || [];
-                    return (
-                      <div key={course.id} className="space-y-1">
-                        <Link
-                          to="/admin/content"
-                          state={{ courseId: course.id }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setExpandedCourseId(isCourseOpen ? '' : course.id);
-                            setExpandedModuleId('');
-                            onOpenContent?.(course.id);
-                            onViewChange('content');
-                          }}
-                          className={`w-full text-left px-3 py-2 rounded-lg transition-all text-sm font-black uppercase tracking-widest truncate block ${isCourseOpen
-                            ? 'bg-amber-500/10 text-amber-500'
-                            : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
-                            }`}
-                        >
-                          {course.title}
-                        </Link>
-
-                        {isCourseOpen && (
-                          <div className="ml-3 pl-3 border-l border-white/10 space-y-1">
-                            {modules.map(module => {
-                              const isModuleOpen = expandedModuleId === module.id;
-                              const lessons = module.lessons || [];
-                              return (
-                                <div key={module.id} className="space-y-1">
-                                  <Link
-                                    to="/admin/content"
-                                    state={{ courseId: course.id, moduleId: module.id }}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setExpandedModuleId(isModuleOpen ? '' : module.id);
-                                      onOpenContent?.(course.id, module.id);
-                                      onViewChange('content');
-                                    }}
-                                    className={`w-full text-left px-3 py-2 rounded-lg transition-all text-sm font-bold tracking-tight truncate block ${isModuleOpen
-                                      ? 'bg-cyan-500/10 text-cyan-400'
-                                      : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
-                                      }`}
-                                  >
-                                    {module.title}
-                                  </Link>
-
-                                  {isModuleOpen && lessons.length > 0 && (
-                                    <div className="ml-3 pl-3 border-l border-white/10 space-y-1">
-                                      {lessons.map(lesson => {
-                                        const isActiveLesson = activeLessonId === lesson.id;
-                                        return (
-                                          <Link
-                                            key={lesson.id}
-                                            to={`/admin/lesson/${lesson.id}/edit`}
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              // onOpenContent?.(course.id, module.id, lesson.id); // Redundant if Link works
-                                            }}
-                                            className={`w-full text-left px-3 py-2 rounded-lg transition-all text-sm font-medium tracking-tight truncate block ${isActiveLesson
-                                              ? 'bg-emerald-500/10 text-emerald-400 font-bold shadow-sm border border-emerald-500/20'
-                                              : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
-                                              }`}
-                                          >
-                                            {isActiveLesson && <i className="fas fa-pencil-alt mr-2 text-emerald-400"></i>}
-                                            {lesson.title}
-                                          </Link>
-                                        );
-                                      })}
-                                    </div>
-                                  )}
-
-                                  {isModuleOpen && lessons.length === 0 && (
-                                    <div className="px-3 py-2 text-[11px] text-slate-500/50 italic">Sem aulas</div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                            {modules.length === 0 && <div className="px-3 py-2 text-[11px] text-slate-500/50 italic">Sem módulos</div>}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                  {adminCourses.map(course => (
+                    <CourseItem
+                      key={course.id}
+                      course={course}
+                      isOpen={expandedCourseId === course.id}
+                      isAdminMode={true}
+                      expandedModuleId={expandedModuleId}
+                      activeLessonId={activeLessonId}
+                      activeCourse={activeCourse}
+                      onToggleCourse={handleToggleCourse}
+                      onToggleModule={handleToggleModule}
+                      onExpandCourse={onExpandCourse}
+                      onOpenContent={onOpenContent}
+                      onViewChange={onViewChange}
+                      onSelectLesson={onSelectLesson}
+                      onCloseMobile={onCloseMobile}
+                    />
+                  ))}
                   {adminCourses.length === 0 && <div className="px-3 py-2 text-[11px] text-slate-500">Nenhum curso</div>}
                 </div>
               )}

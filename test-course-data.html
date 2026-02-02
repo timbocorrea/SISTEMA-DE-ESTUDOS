@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Test Course Data Loading</title>
+    <style>
+        body {
+            background: #0a0e14;
+            color: #fff;
+            font-family: monospace;
+            padding: 20px;
+        }
+
+        .success {
+            color: #10b981;
+        }
+
+        .error {
+            color: #ef4444;
+        }
+
+        .warning {
+            color: #f59e0b;
+        }
+
+        pre {
+            background: #1a1e24;
+            padding: 15px;
+            border-radius: 8px;
+            overflow: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🔍 Course Data Debug</h1>
+    <div id="output"></div>
+
+    <script>
+        const log = (msg, type = 'info') => {
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = msg;
+            document.getElementById('output').appendChild(div);
+        };
+
+        // Simular o comportamento do App.tsx
+        log('📊 Testando carregamento de dados dos cursos...', 'info');
+        log('⏱️ Iniciando timer...', 'info');
+
+        const start = performance.now();
+
+        // Simular um curso com muitos módulos
+        const testCourse = {
+            id: 'ads-1',
+            title: 'ANÁLISE E DESENVOLVIMENTO DE SISTEMAS',
+            modules: Array.from({ length: 50 }, (_, i) => ({
+                id: `module-${i}`,
+                title: `Módulo ${i + 1}`,
+                lessons: Array.from({ length: 20 }, (_, j) => ({
+                    id: `lesson-${i}-${j}`,
+                    title: `Aula ${j + 1}`
+                }))
+            }))
+        };
+
+        const end = performance.now();
+        log(`✅ Dados criados em ${(end - start).toFixed(2)}ms`, 'success');
+        log(`📚 Total de módulos: ${testCourse.modules.length}`, 'info');
+        log(`📝 Total de aulas: ${testCourse.modules.reduce((acc, m) => acc + m.lessons.length, 0)}`, 'info');
+
+        // Simular renderização
+        log('\n🎨 Simulando renderização...', 'info');
+        const renderStart = performance.now();
+
+        let html = '<div>';
+        testCourse.modules.forEach(module => {
+            html += `<div>${module.title}</div>`;
+            module.lessons.forEach(lesson => {
+                html += `<div>  ${lesson.title}</div>`;
+            });
+        });
+        html += '</div>';
+
+        const renderEnd = performance.now();
+        log(`✅ Renderização simulada em ${(renderEnd - renderStart).toFixed(2)}ms`, 'success');
+
+        if (renderEnd - renderStart > 100) {
+            log(`⚠️ AVISO: Renderização demorou mais de 100ms!`, 'warning');
+            log(`💡 Solução: Implementar virtualização ou lazy loading`, 'warning');
+        }
+
+        log('\n📌 Conclusão:', 'info');
+        log('Se o delay real é maior que isso, o problema pode ser:', 'info');
+        log('  1. Chamadas de API ainda acontecendo', 'error');
+        log('  2. Transições CSS muito longas', 'warning');
+        log('  3. Dados não pré-carregados', 'error');
+
+        log('\n🔧 Ações recomendadas:', 'info');
+        log('  • Abrir DevTools > Network tab', 'info');
+        log('  • Verificar se há requisições ao clicar no curso', 'info');
+        log('  • Verificar console.log dos dados de adminCourses', 'info');
+    </script>
+</body>
+
+</html>

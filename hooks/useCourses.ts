@@ -27,19 +27,25 @@ export const useCoursesList = (service: CourseService, userId: string | undefine
         queryFn: async () => {
             if (!userId) return [];
             const summaries = await service.getCoursesSummary(userId);
-            // Map summary to Course entity with empty modules to be lightweight
+            // Map summary to Course entity with lightweight modules/lessons (titles only)
             // This satisfies the UI expectation of Course[] without the heavy load
             return summaries.map(s => {
-                const modules = (s.modules || []).map((m: any) => {
-                    const lessons = (m.lessons || []).map((l: any) => ({
+                const modules = (s.modules || [])
+                    .slice()
+                    .sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0))
+                    .map((m: any) => {
+                    const lessons = (m.lessons || [])
+                        .slice()
+                        .sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0))
+                        .map((l: any) => ({
                         id: l.id,
-                        title: '',
+                        title: l.title || 'Aula sem titulo',
                         videoUrl: '',
                         durationSeconds: 0,
                         isCompleted: false,
-                        position: 0
+                        position: l.position || 0
                     } as any)); // Stub lesson
-                    return new Module(m.id, '', lessons); // Stub module
+                    return new Module(m.id, m.title || 'Modulo sem titulo', lessons);
                 });
 
                 return new Course(

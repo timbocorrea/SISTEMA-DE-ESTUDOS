@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { Outlet, useParams } from 'react-router-dom';
 import { useCourse } from '../contexts/CourseContext';
+import { ModernLoader } from './ModernLoader';
 
 const CourseLayout: React.FC = () => {
     const { courseId } = useParams<{ courseId: string }>();
@@ -13,7 +14,7 @@ const CourseLayout: React.FC = () => {
     }, [courseId, activeCourse, selectCourse]);
 
     if (isLoadingCourses) {
-        return <div className="p-8">Carregando cursos...</div>;
+        return <ModernLoader message="Carregando cursos..." />;
     }
 
     return (

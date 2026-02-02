@@ -377,7 +377,18 @@ export class SupabaseCourseRepository implements ICourseRepository {
     return (assignments || []).map(a => a.course_id);
   }
 
-  async getCoursesSummary(userId?: string): Promise<{ id: string; title: string; description: string; imageUrl: string | null; modules: { id: string; lessons: { id: string }[] }[] }[]> {
+  async getCoursesSummary(userId?: string): Promise<{
+    id: string;
+    title: string;
+    description: string;
+    imageUrl: string | null;
+    modules: {
+      id: string;
+      title?: string | null;
+      position?: number | null;
+      lessons: { id: string; title?: string | null; position?: number | null }[];
+    }[];
+  }[]> {
     if (!userId) {
       const { data, error } = await this.client
         .from('courses')
@@ -388,7 +399,13 @@ export class SupabaseCourseRepository implements ICourseRepository {
           image_url,
           modules:modules (
             id,
-            lessons:lessons (id)
+            title,
+            position,
+            lessons:lessons (
+              id,
+              title,
+              position
+            )
           )
         `);
       if (error) throw new DomainError('Falha ao buscar resumo dos cursos');
@@ -415,7 +432,13 @@ export class SupabaseCourseRepository implements ICourseRepository {
         image_url,
         modules:modules (
           id,
-          lessons:lessons (id)
+          title,
+          position,
+          lessons:lessons (
+            id,
+            title,
+            position
+          )
         )
       `)
       .in('id', assignedIds);

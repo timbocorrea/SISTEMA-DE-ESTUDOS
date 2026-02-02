@@ -23,6 +23,7 @@ import PendingApprovalScreen from './components/PendingApprovalScreen';
 import { SystemHealth } from './components/SystemHealth';
 import CourseLayout from './components/CourseLayout';
 import CourseOverview from './components/CourseOverview';
+import { ModernLoader } from './components/ModernLoader';
 import QuestionnaireManagementPage from './components/QuestionnaireManagementPage';
 import DropboxCallbackPage from './components/DropboxCallbackPage';  // [NEW]
 
@@ -57,7 +58,7 @@ const LessonContentEditorWrapper: React.FC<{ adminService: AdminService }> = ({ 
     }
   }, [lessonId, adminService, navigate]);
 
-  if (loading) return <div className="p-8 text-slate-500">Carregando editor...</div>;
+  if (loading) return <ModernLoader message="Carregando editor..." fullscreen />;
   if (!lesson) return <div className="p-8 text-slate-500">Aula não encontrada.</div>;
 
   return (
@@ -392,7 +393,10 @@ const App: React.FC = () => {
         onCloseMobile={() => setIsMobileMenuOpen(false)}
         activeLessonId={activeLesson?.id}
         activeCourse={activeCourse}
-        onExpandCourse={selectCourse}
+        onExpandCourse={(courseId) => {
+          // Lightweight expansion - no API call needed since adminCourses already has full data
+          // This is just for sidebar UI expansion, the actual course selection happens on navigation
+        }}
         isOnline={isOnline}
       />
 

@@ -102,7 +102,18 @@ export class CourseService {
     return this.courseRepository.getAllCourses(userId);
   }
 
-  async getCoursesSummary(userId: string): Promise<{ id: string; title: string; description: string; imageUrl: string | null; modules: { id: string; lessons: { id: string }[] }[] }[]> {
+  async getCoursesSummary(userId: string): Promise<{
+    id: string;
+    title: string;
+    description: string;
+    imageUrl: string | null;
+    modules: {
+      id: string;
+      title?: string | null;
+      position?: number | null;
+      lessons: { id: string; title?: string | null; position?: number | null }[];
+    }[];
+  }[]> {
     return this.courseRepository.getCoursesSummary(userId);
   }
 

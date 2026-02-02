@@ -22,7 +22,18 @@ export interface ICourseRepository {
   getUserById(userId: string): Promise<User>;
   addXp(userId: string, amount: number, actionType: string, description: string): Promise<{ success: boolean; newXp: number; levelUp: boolean; newLevel: number }>;
   getAllCourses(userId?: string): Promise<Course[]>;
-  getCoursesSummary(userId?: string): Promise<{ id: string; title: string; description: string; imageUrl: string | null; modules: { id: string; lessons: { id: string }[] }[] }[]>;
+  getCoursesSummary(userId?: string): Promise<{
+    id: string;
+    title: string;
+    description: string;
+    imageUrl: string | null;
+    modules: {
+      id: string;
+      title?: string | null;
+      position?: number | null;
+      lessons: { id: string; title?: string | null; position?: number | null }[];
+    }[];
+  }[]>;
   getEnrolledCourses(userId: string): Promise<Course[]>;
   enrollInCourse(userId: string, courseId: string): Promise<void>;
   unenrollFromCourse(userId: string, courseId: string): Promise<void>;
