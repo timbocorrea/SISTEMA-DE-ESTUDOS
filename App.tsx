@@ -128,7 +128,7 @@ const App: React.FC = () => {
   useEffect(() => {
     if (user?.role === 'INSTRUCTOR') {
       setIsAdminCoursesLoading(true);
-      adminService.listCoursesFull()
+      adminService.listCoursesOutline()
         .then(setAdminCourses)
         .catch(err => console.error("Failed to load admin courses", err))
         .finally(() => setIsAdminCoursesLoading(false));

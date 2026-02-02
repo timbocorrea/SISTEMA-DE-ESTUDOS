@@ -38,6 +38,35 @@ export class AdminService {
     });
   }
 
+  async listCoursesOutline(): Promise<Course[]> {
+    const rawCourses = await this.adminRepository.listCoursesOutline();
+
+    return rawCourses.map(rc => {
+      const modules = (rc.modules || []).map(rm => {
+        const lessons = (rm.lessons || []).map(rl => {
+          return new Lesson({
+            id: rl.id,
+            title: rl.title,
+            videoUrl: '',
+            videoUrls: [],
+            content: '',
+            audioUrl: '',
+            imageUrl: '',
+            durationSeconds: 0,
+            watchedSeconds: 0,
+            isCompleted: false,
+            position: rl.position || 0,
+            contentBlocks: []
+          });
+        });
+
+        return new Module(rm.id, rm.title, lessons);
+      });
+
+      return new Course(rc.id, rc.title, rc.description || '', rc.image_url || '', modules);
+    });
+  }
+
   createCourse(title: string, description?: string, imageUrl?: string): Promise<CourseRecord> {
     return this.adminRepository.createCourse(title, description, imageUrl);
   }

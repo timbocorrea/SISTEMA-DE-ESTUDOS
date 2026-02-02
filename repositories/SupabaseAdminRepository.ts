@@ -56,6 +56,48 @@ export class SupabaseAdminRepository implements IAdminRepository {
     return courses;
   }
 
+  async listCoursesOutline(): Promise<import('../domain/admin').CourseOutline[]> {
+    const { data, error } = await this.client
+      .from('courses')
+      .select(`
+        id,
+        title,
+        description,
+        image_url,
+        created_at,
+        modules (
+          id,
+          course_id,
+          title,
+          position,
+          lessons (
+            id,
+            module_id,
+            title,
+            position
+          )
+        )
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) throw new DomainError(`Falha ao listar cursos (outline): ${error.message}`);
+
+    const courses = (data || []) as import('../domain/admin').CourseOutline[];
+
+    courses.forEach(course => {
+      if (course.modules) {
+        course.modules.sort((a, b) => (a.position || 0) - (b.position || 0));
+        course.modules.forEach(module => {
+          if (module.lessons) {
+            module.lessons.sort((a, b) => (a.position || 0) - (b.position || 0));
+          }
+        });
+      }
+    });
+
+    return courses;
+  }
+
   async createCourse(title: string, description?: string, imageUrl?: string): Promise<CourseRecord> {
     const { data, error } = await this.client
       .from('courses')

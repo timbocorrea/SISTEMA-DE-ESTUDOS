@@ -12,6 +12,25 @@ export type CourseStructure = CourseRecord & {
   })[]
 };
 
+export type LessonOutlineRecord = {
+  id: string;
+  module_id: string;
+  title: string;
+  position: number | null;
+};
+
+export type ModuleOutlineRecord = {
+  id: string;
+  course_id: string;
+  title: string;
+  position: number | null;
+  lessons: LessonOutlineRecord[];
+};
+
+export type CourseOutline = CourseRecord & {
+  modules: ModuleOutlineRecord[];
+};
+
 export type ModuleRecord = {
   id: string;
   course_id: string;
