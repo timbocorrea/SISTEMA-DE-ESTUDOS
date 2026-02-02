@@ -510,22 +510,36 @@ export class SupabaseAdminRepository implements IAdminRepository {
     const { error } = await this.client.from('profiles').update(updates).eq('id', id);
     if (error) throw new DomainError(`Falha ao atualizar perfil: ${error.message}`);
   }
-
   async getSystemStats(): Promise<any> {
     const { data, error } = await this.client.rpc('get_db_stats');
 
     // Fallback if RPC fails or not created yet
-    if (error) {
-      console.warn("RPC get_db_stats failed, falling back to manual count", error);
+    if (error || !data) {
+      if (error) console.warn("RPC get_db_stats failed, falling back to manual count", error);
+
+      // Manual count
+      const { count: courseCount } = await this.client.from('courses').select('*', { count: 'exact', head: true });
+      const { count: moduleCount } = await this.client.from('modules').select('*', { count: 'exact', head: true });
+      const { count: lessonCount } = await this.client.from('lessons').select('*', { count: 'exact', head: true });
+      const { count: userCount } = await this.client.from('profiles').select('*', { count: 'exact', head: true });
+
       return {
         db_size: 'N/A',
-        user_count: 0,
-        course_count: 0,
-        lesson_count: 0,
+        user_count: userCount || 0,
+        course_count: courseCount || 0,
+        module_count: moduleCount || 0,
+        lesson_count: lessonCount || 0,
         file_count: 0,
         storage_size_bytes: 0
       };
     }
+
+    // Se o RPC retornou, mas precisamos garantir o module_count se não vier
+    if (data.module_count === undefined) {
+      const { count: moduleCount } = await this.client.from('modules').select('*', { count: 'exact', head: true });
+      data.module_count = moduleCount || 0;
+    }
+
     return data;
   }
 

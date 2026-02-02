@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AdminService } from '../services/AdminService';
 import { toast } from 'sonner';
-import { CourseRecord, LessonRecord, LessonResourceRecord, ModuleRecord } from '../domain/admin';
+import { CourseRecord, LessonRecord, LessonResourceRecord, ModuleRecord, SystemStats } from '../domain/admin';
 import { fileUploadService } from '../services/FileUploadService';
 import { createSupabaseClient } from '../services/supabaseClient';
 import ResourceUploadForm from './ResourceUploadForm';
@@ -64,7 +64,20 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
     return (saved as ViewMode) || 'list';
   });
 
+
+  const [systemStats, setSystemStats] = useState<SystemStats | null>(null);
+
   const stats = useMemo(() => {
+    // Se tivermos as estatisticas do sistema, usamos elas para o total global
+    if (systemStats) {
+      return [
+        { label: 'Cursos', value: systemStats.course_count || courses.length, icon: 'fas fa-graduation-cap', color: 'bg-indigo-600/10 text-indigo-500' },
+        { label: 'Modulos', value: systemStats.module_count || 0, icon: 'fas fa-layer-group', color: 'bg-cyan-600/10 text-cyan-500' },
+        { label: 'Aulas', value: systemStats.lesson_count || 0, icon: 'fas fa-play-circle', color: 'bg-purple-600/10 text-purple-500' }
+      ];
+    }
+
+    // Fallback para contagem local (que pode estar incorreta se não carregou tudo)
     const totalModules = Object.values(modulesByCourse).reduce((acc, list) => acc + list.length, 0);
     const totalLessons = Object.values(lessonsByModule).reduce((acc, list) => acc + list.length, 0);
     return [
@@ -72,7 +85,16 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
       { label: 'Modulos', value: totalModules, icon: 'fas fa-layer-group', color: 'bg-cyan-600/10 text-cyan-500' },
       { label: 'Aulas', value: totalLessons, icon: 'fas fa-play-circle', color: 'bg-purple-600/10 text-purple-500' }
     ];
-  }, [courses.length, modulesByCourse, lessonsByModule]);
+  }, [courses.length, modulesByCourse, lessonsByModule, systemStats]);
+
+  const refreshSystemStats = async () => {
+    try {
+      const s = await adminService.getSystemStats();
+      setSystemStats(s);
+    } catch (e) {
+      console.error("Failed to load stats", e);
+    }
+  }
 
   const getModules = (courseId: string) => modulesByCourse[courseId] || [];
   const getLessons = (moduleId: string) => lessonsByModule[moduleId] || [];
@@ -111,6 +133,7 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
       } finally {
         setBusy(false);
       }
+      refreshSystemStats(); // Carrega estatisticas iniciais
     };
     run();
   }, []);
@@ -181,6 +204,7 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
       setBusy(true);
       await adminService.createCourse(title.trim(), description.trim() || undefined, imageUrl.trim() || undefined);
       await refreshCourses();
+      refreshSystemStats();
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -213,6 +237,7 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
       await adminService.deleteCourse(courseId);
       setExpandedCourseId('');
       await refreshCourses();
+      refreshSystemStats();
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -225,6 +250,7 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
       setBusy(true);
       await adminService.createModule(courseId, title.trim(), position);
       await refreshModules(courseId);
+      refreshSystemStats();
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -260,6 +286,7 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
         return copy;
       });
       await refreshModules(courseId);
+      refreshSystemStats();
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -278,6 +305,7 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
         position: data.position
       });
       await refreshLessons(moduleId);
+      refreshSystemStats();
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -315,6 +343,7 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
         setActiveLesson(null);
       }
       await refreshLessons(moduleId);
+      refreshSystemStats();
     } catch (e) {
       setError((e as Error).message);
     } finally {
