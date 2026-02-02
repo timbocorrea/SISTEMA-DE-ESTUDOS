@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState, startTransition } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { Toaster, toast } from 'sonner';
@@ -119,6 +119,7 @@ const App: React.FC = () => {
 
   // Admin Data (Managed Courses with full structure)
   const [adminCourses, setAdminCourses] = useState<import('./domain/entities').Course[]>([]);
+  const [isAdminCoursesLoading, setIsAdminCoursesLoading] = useState(false);
 
   // Network Connection Monitoring
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -126,9 +127,13 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (user?.role === 'INSTRUCTOR') {
+      setIsAdminCoursesLoading(true);
       adminService.listCoursesFull()
         .then(setAdminCourses)
-        .catch(err => console.error("Failed to load admin courses", err));
+        .catch(err => console.error("Failed to load admin courses", err))
+        .finally(() => setIsAdminCoursesLoading(false));
+    } else {
+      setAdminCourses([]);
     }
   }, [user, adminService]);
 
@@ -201,21 +206,23 @@ const App: React.FC = () => {
   const handleViewChange = (view: string, keepMobileOpen = false) => {
     if (!keepMobileOpen) setIsMobileMenuOpen(false);
 
-    switch (view) {
-      case 'dashboard': navigate('/'); break;
-      case 'courses': navigate('/courses'); break;
-      case 'achievements': navigate('/achievements'); break;
-      case 'history': navigate('/history'); break;
-      case 'buddy': navigate('/buddy'); break;
-      case 'content': navigate('/admin/content'); break;
-      case 'users': navigate('/admin/users'); break;
-      case 'files': navigate('/admin/files'); break;
-      case 'system-health': navigate('/admin/health'); break;
-      case 'access': navigate('/admin/access'); break;
-      case 'questionnaire': navigate('/admin/questionnaire'); break;
-      case 'settings': navigate('/admin/settings'); break;
-      default: navigate('/');
-    }
+    startTransition(() => {
+      switch (view) {
+        case 'dashboard': navigate('/'); break;
+        case 'courses': navigate('/courses'); break;
+        case 'achievements': navigate('/achievements'); break;
+        case 'history': navigate('/history'); break;
+        case 'buddy': navigate('/buddy'); break;
+        case 'content': navigate('/admin/content'); break;
+        case 'users': navigate('/admin/users'); break;
+        case 'files': navigate('/admin/files'); break;
+        case 'system-health': navigate('/admin/health'); break;
+        case 'access': navigate('/admin/access'); break;
+        case 'questionnaire': navigate('/admin/questionnaire'); break;
+        case 'settings': navigate('/admin/settings'); break;
+        default: navigate('/');
+      }
+    });
   };
 
   const handleEnrollRequest = (courseId: string) => {
@@ -393,11 +400,10 @@ const App: React.FC = () => {
         onCloseMobile={() => setIsMobileMenuOpen(false)}
         activeLessonId={activeLesson?.id}
         activeCourse={activeCourse}
-        onExpandCourse={(courseId) => {
-          // Lightweight expansion - no API call needed since adminCourses already has full data
-          // This is just for sidebar UI expansion, the actual course selection happens on navigation
-        }}
+        onExpandCourse={(courseId) => selectCourse(courseId)}
         isOnline={isOnline}
+        isLoadingCourses={isLoadingCourses}
+        isLoadingAdminCourses={isAdminCoursesLoading}
       />
 
       {/* Mobile Overlay */}

@@ -25,6 +25,8 @@ interface SidebarProps {
   activeCourse?: Course | null;
   onExpandCourse?: (courseId: string) => void;
   isOnline?: boolean; // Network connection status
+  isLoadingCourses?: boolean;
+  isLoadingAdminCourses?: boolean;
 }
 
 // Memoized Lesson Item Component for instant rendering
@@ -145,6 +147,7 @@ const CourseItem = memo<{
   expandedModuleId: string;
   activeLessonId?: string;
   activeCourse?: Course | null;
+  isLoadingModules?: boolean;
   onToggleCourse: (courseId: string) => void;
   onToggleModule: (moduleId: string) => void;
   onExpandCourse?: (courseId: string) => void;
@@ -152,10 +155,11 @@ const CourseItem = memo<{
   onViewChange: (view: string) => void;
   onSelectLesson?: (courseId: string, moduleId: string, lessonId: string) => void;
   onCloseMobile?: () => void;
-}>(({ course, isOpen, isAdminMode, expandedModuleId, activeLessonId, activeCourse, onToggleCourse, onToggleModule, onExpandCourse, onOpenContent, onViewChange, onSelectLesson, onCloseMobile }) => {
+}>(({ course, isOpen, isAdminMode, expandedModuleId, activeLessonId, activeCourse, isLoadingModules = false, onToggleCourse, onToggleModule, onExpandCourse, onOpenContent, onViewChange, onSelectLesson, onCloseMobile }) => {
   const modules = (activeCourse?.id === course.id && activeCourse.modules?.length)
     ? activeCourse.modules
     : (course.modules || []);
+  const shouldShowLoading = isOpen && modules.length === 0 && isLoadingModules;
 
   const handleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -186,7 +190,10 @@ const CourseItem = memo<{
 
       {isOpen && (
         <div className="ml-3 pl-3 border-l border-white/10 space-y-1">
-          {modules.map((module: any) => (
+          {shouldShowLoading && (
+            <div className="px-3 py-2 text-[11px] text-slate-500/70 italic">Carregando modulos...</div>
+          )}
+          {!shouldShowLoading && modules.map((module: any) => (
             <ModuleItem
               key={module.id}
               module={module}
@@ -201,8 +208,8 @@ const CourseItem = memo<{
               onCloseMobile={onCloseMobile}
             />
           ))}
-          {modules.length === 0 && (
-            <div className="px-3 py-2 text-[11px] text-slate-500/50 italic">Sem módulos</div>
+          {!shouldShowLoading && modules.length === 0 && (
+            <div className="px-3 py-2 text-[11px] text-slate-500/50 italic">Sem modulos</div>
           )}
         </div>
       )}
@@ -228,7 +235,9 @@ const Sidebar: React.FC<SidebarProps> = ({
   onNavigateFile,
   activeCourse,
   onExpandCourse,
-  isOnline = true // Default to online
+  isOnline = true, // Default to online
+  isLoadingCourses = false,
+  isLoadingAdminCourses = false
 }) => {
   const isAdmin = session.user.role === 'INSTRUCTOR';
 
@@ -445,6 +454,12 @@ const Sidebar: React.FC<SidebarProps> = ({
 
           {!isActuallyCollapsed && coursesMenuOpen && (
             <div className="ml-7 pl-3 border-l border-slate-200 dark:border-white/10 space-y-1 mb-2">
+              {isLoadingCourses && courses.length === 0 && (
+                <div className="px-3 py-2 text-[11px] text-slate-500/70 italic">Carregando cursos...</div>
+              )}
+              {!isLoadingCourses && courses.length === 0 && (
+                <div className="px-3 py-2 text-[11px] text-slate-500/70 italic">Nenhum curso</div>
+              )}
               {courses.map(course => (
                 <CourseItem
                   key={course.id}
@@ -454,6 +469,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   expandedModuleId={expandedModuleId}
                   activeLessonId={activeLessonId}
                   activeCourse={activeCourse}
+                  isLoadingModules={isLoadingCourses}
                   onToggleCourse={handleToggleCourse}
                   onToggleModule={handleToggleModule}
                   onExpandCourse={onExpandCourse}
@@ -523,6 +539,12 @@ const Sidebar: React.FC<SidebarProps> = ({
               {/* Submenu Tree (Only visible if expanded) */}
               {!isActuallyCollapsed && contentMenuOpen && (
                 <div className="ml-7 pl-3 border-l border-slate-200 dark:border-white/10 space-y-1 mb-2">
+                  {isLoadingAdminCourses && adminCourses.length === 0 && (
+                    <div className="px-3 py-2 text-[11px] text-slate-500/70 italic">Carregando cursos...</div>
+                  )}
+                  {!isLoadingAdminCourses && adminCourses.length === 0 && (
+                    <div className="px-3 py-2 text-[11px] text-slate-500">Nenhum curso</div>
+                  )}
                   {adminCourses.map(course => (
                     <CourseItem
                       key={course.id}
@@ -532,6 +554,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                       expandedModuleId={expandedModuleId}
                       activeLessonId={activeLessonId}
                       activeCourse={activeCourse}
+                      isLoadingModules={isLoadingAdminCourses}
                       onToggleCourse={handleToggleCourse}
                       onToggleModule={handleToggleModule}
                       onExpandCourse={onExpandCourse}
@@ -541,7 +564,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                       onCloseMobile={onCloseMobile}
                     />
                   ))}
-                  {adminCourses.length === 0 && <div className="px-3 py-2 text-[11px] text-slate-500">Nenhum curso</div>}
                 </div>
               )}
 
