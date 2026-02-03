@@ -173,6 +173,21 @@ const App: React.FC = () => {
 
   const activeView = getActiveView();
 
+  // Derive active lesson ID from URL for admin routes or from context for student routes
+  const getActiveLessonId = () => {
+    const path = location.pathname;
+    // Check if we're in admin lesson edit route
+    const adminLessonMatch = path.match(/\/admin\/lesson\/([^/]+)\/edit/);
+    if (adminLessonMatch) {
+      return adminLessonMatch[1]; // Return lesson ID from URL
+    }
+    // Otherwise use context-based lesson ID
+    return activeLesson?.id;
+  };
+
+  const activeLessonId = getActiveLessonId();
+
+
   // Network Connection Monitoring
   useEffect(() => {
     console.log('🔍 Network monitoring initialized in App.tsx. Current state:', navigator.onLine ? 'ONLINE' : 'OFFLINE');
@@ -420,7 +435,7 @@ const App: React.FC = () => {
           onSelectLesson={(courseId, modId, lessId) => navigate(`/course/${courseId}/lesson/${lessId}`)}
           isMobileOpen={isMobileMenuOpen}
           onCloseMobile={() => setIsMobileMenuOpen(false)}
-          activeLessonId={activeLesson?.id}
+          activeLessonId={activeLessonId}
           activeCourse={activeCourse}
           onExpandCourse={(courseId) => selectCourse(courseId)}
           isOnline={isOnline}

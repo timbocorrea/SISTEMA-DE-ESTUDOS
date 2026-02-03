@@ -675,7 +675,6 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                 lesson={lesson}
                                 highlights={highlights}
                                 onBlockClick={(blockId, index) => {
-                                    if (!audioEnabled) setAudioEnabled(true);
                                     playBlock(index);
                                 }}
                                 onTrackAction={onTrackAction}

@@ -76,6 +76,11 @@ export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate }: UseA
     };
 
     const playBlock = (index: number) => {
+        // Prevent playback if audio is disabled
+        if (!audioEnabled) {
+            return;
+        }
+
         const blocks = lesson.contentBlocks;
         if (!blocks || index < 0 || index >= blocks.length) return;
 
@@ -88,7 +93,8 @@ export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate }: UseA
 
         // Toggle pause if clicking the active block
         if (activeBlockId === block.id && audioRef.current) {
-            if (isPlaying) {
+            // Check actual audio state instead of potentially stale React state
+            if (!audioRef.current.paused) {
                 audioRef.current.pause();
                 setIsPlaying(false);
                 activityMonitor.setMediaPlaying(false);

@@ -35,6 +35,8 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
     const [selectedColor, setSelectedColor] = useState<'yellow' | 'green' | 'blue' | 'pink'>('yellow');
     const [showColorPicker, setShowColorPicker] = useState(false);
     const [savedSelection, setSavedSelection] = useState<{ text: string, range: Range } | null>(null);
+    const [appliedHighlightId, setAppliedHighlightId] = useState<string | null>(null); // Track applied highlight for color changes
+
 
     // Buddy Integration State
     const [showBuddyModal, setShowBuddyModal] = useState(false);
@@ -145,6 +147,99 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
 
         return () => { isMounted = false; };
     }, [userId, lessonId, refreshTrigger]); // Adicionado refreshTrigger
+
+    // Apply or update highlight with instant visual feedback
+    const applyOrUpdateHighlight = async (color: 'yellow' | 'green' | 'blue' | 'pink') => {
+        if (!savedSelection) return;
+
+        // If we already have an applied highlight, update its color
+        if (appliedHighlightId) {
+            const existingMark = document.querySelector(`mark[data-note-id="${appliedHighlightId}"]`);
+            if (existingMark) {
+                // Update visual color immediately
+                const bgColor = color === 'yellow' ? '#fef08a' :
+                    color === 'green' ? '#86efac' :
+                        color === 'blue' ? '#93c5fd' : '#f9a8d4';
+                (existingMark as HTMLElement).style.backgroundColor = bgColor;
+                (existingMark as HTMLElement).className = `highlight-${color}`;
+
+                // Update in database
+                const note = notes.find(n => n.id === appliedHighlightId);
+                if (note) {
+                    await LessonNotesRepository.updateNote(appliedHighlightId, {
+                        highlight_color: color
+                    });
+                    // Update local state
+                    setNotes(notes.map(n => n.id === appliedHighlightId ? { ...n, highlightColor: color } : n));
+                }
+                setSelectedColor(color);
+                return;
+            }
+        }
+
+        // Create new highlight
+        try {
+            const position = notes.length;
+            const rangeSerialized = serializeRange(savedSelection.range);
+            const newNote: Omit<LessonNote, 'id' | 'created_at' | 'updated_at'> = {
+                user_id: userId,
+                lesson_id: lessonId,
+                content: '',
+                position: position,
+                has_highlight: true,
+                title: 'Destaque',
+                highlighted_text: savedSelection.text,
+                highlight_color: color as any,
+                xpath_start: rangeSerialized.xpathStart,
+                offset_start: rangeSerialized.offsetStart,
+                xpath_end: rangeSerialized.xpathEnd,
+                offset_end: rangeSerialized.offsetEnd
+            };
+
+            const savedNote = await LessonNotesRepository.saveNote(newNote);
+
+            if (savedNote) {
+                // Apply visual highlight immediately
+                const highlightSpan = document.createElement('mark');
+                highlightSpan.className = `highlight-${color}`;
+                const bgColor = color === 'yellow' ? '#fef08a' :
+                    color === 'green' ? '#86efac' :
+                        color === 'blue' ? '#93c5fd' : '#f9a8d4';
+                highlightSpan.style.backgroundColor = bgColor;
+                highlightSpan.setAttribute('data-note-id', savedNote.id);
+                highlightSpan.style.cursor = 'pointer';
+                highlightSpan.style.borderRadius = '4px';
+                highlightSpan.style.padding = '2px 4px';
+
+                const contents = savedSelection.range.extractContents();
+                highlightSpan.appendChild(contents);
+                savedSelection.range.insertNode(highlightSpan);
+
+                // Update local state
+                const noteFrontend: Note = {
+                    id: savedNote.id,
+                    title: savedNote.title,
+                    content: savedNote.content || '',
+                    hasHighlight: savedNote.has_highlight,
+                    highlightedText: savedNote.highlighted_text,
+                    highlightColor: savedNote.highlight_color,
+                    position: savedNote.position,
+                    xpathStart: savedNote.xpath_start,
+                    offsetStart: savedNote.offset_start,
+                    xpathEnd: savedNote.xpath_end,
+                    offsetEnd: savedNote.offset_end,
+                    createdAt: savedNote.created_at
+                };
+
+                setNotes([...notes, noteFrontend]);
+                setAppliedHighlightId(savedNote.id);
+                setSelectedColor(color);
+            }
+        } catch (e) {
+            console.error('Erro ao aplicar destaque:', e);
+            toast.error('Erro ao aplicar destaque. Tente novamente.');
+        }
+    };
 
     const handleCreateNote = async (content: string, highlightData?: { text: string, range: Range, color: string }) => {
         try {
@@ -630,7 +725,7 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
                             {colorOptions.map(color => (
                                 <button
                                     key={color.value}
-                                    onClick={() => setSelectedColor(color.value)}
+                                    onClick={() => applyOrUpdateHighlight(color.value)}
                                     className={`flex-1 px-3 py-2 rounded-lg border-2 transition-all ${selectedColor === color.value
                                         ? `${color.borderClass} ${color.bgClass} text-white font-bold shadow-md scale-105`
                                         : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:scale-105'
@@ -659,23 +754,20 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
                     </button>
                     <button
                         onClick={() => {
-                            const selection = window.getSelection();
-                            const selectedText = selection?.toString().trim();
-
-                            if (showColorPicker && savedSelection) {
-                                handleCreateNote('', {
-                                    text: savedSelection.text,
-                                    range: savedSelection.range,
-                                    color: selectedColor
-                                });
-                                setSavedSelection(null);
+                            if (showColorPicker) {
+                                // Closing picker - clear state
                                 setShowColorPicker(false);
+                                setSavedSelection(null);
+                                setAppliedHighlightId(null);
                                 return;
                             }
 
+                            // Opening picker - save selection if text is selected
+                            const selection = window.getSelection();
+                            const selectedText = selection?.toString().trim();
+
                             if (!selectedText || selectedText.length === 0) {
-                                setShowColorPicker(!showColorPicker);
-                                setSavedSelection(null);
+                                toast.error('Selecione um texto primeiro para destacar');
                                 return;
                             }
 
