@@ -106,6 +106,12 @@ const ContentReader: React.FC<ContentReaderProps> = ({
                             transition: 'all 0.2s ease',
                         }}
                         onClick={(e) => {
+                            // Check if user is selecting text - Ignore click if there is a selection
+                            const selection = window.getSelection();
+                            if (selection && selection.toString().length > 0) {
+                                return;
+                            }
+
                             // Check if a highlight was clicked
                             const target = e.target as HTMLElement;
                             const mark = target.closest('mark');

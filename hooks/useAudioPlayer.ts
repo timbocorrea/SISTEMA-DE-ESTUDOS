@@ -23,6 +23,8 @@ export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate }: UseA
     const nextAudioRef = useRef<HTMLAudioElement | null>(null); // Prefetch next audio
     const playbackSpeedRef = useRef<number>(playbackSpeed);
 
+    const audioEnabledRef = useRef(audioEnabled);
+
     // Sync ref with store for callbacks
     useEffect(() => {
         playbackSpeedRef.current = playbackSpeed;
@@ -30,6 +32,11 @@ export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate }: UseA
             audioRef.current.playbackRate = playbackSpeed;
         }
     }, [playbackSpeed]);
+
+    // Sync audioEnabled ref
+    useEffect(() => {
+        audioEnabledRef.current = audioEnabled;
+    }, [audioEnabled]);
 
     // Handle audioEnabled toggle
     useEffect(() => {
@@ -48,7 +55,7 @@ export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate }: UseA
     // Prefetch next audio to reduce transition delay
     const prefetchNextAudio = (currentIndex: number) => {
         const blocks = lesson.contentBlocks;
-        if (!blocks || !audioEnabled) return;
+        if (!blocks || !audioEnabledRef.current) return;
 
         const nextIndex = currentIndex + 1;
         if (nextIndex < blocks.length && blocks[nextIndex].audioUrl) {
@@ -144,7 +151,7 @@ export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate }: UseA
             setAudioProgress(0);
             // Auto-advance IMMEDIATELY without setting isPlaying to false
             const nextIndex = index + 1;
-            if (nextIndex < blocks.length && blocks[nextIndex].audioUrl && audioEnabled) {
+            if (nextIndex < blocks.length && blocks[nextIndex].audioUrl && audioEnabledRef.current) {
                 // Immediate transition to next block
                 playBlock(nextIndex);
             } else {
