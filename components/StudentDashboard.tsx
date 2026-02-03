@@ -195,7 +195,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-1">
                           {isEnrolled && (
-                            <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wide shadow-sm">
+                            <span className="bg-emerald-300/70 text-[#002a15] border border-emerald-400/50 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wide shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] backdrop-blur-xl">
                               Inscrito
                             </span>
                           )}
@@ -257,7 +257,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                           ) : (<i className="fas fa-book-open"></i>)}
                         </motion.div>
                         {isEnrolled && (
-                          <div className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 p-2 rounded-xl text-xs shadow-sm">
+                          <div className="bg-emerald-300/70 text-[#002a15] border border-emerald-400/50 p-2 rounded-xl text-xs shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] backdrop-blur-xl">
                             <i className="fas fa-check-circle"></i>
                           </div>
                         )}

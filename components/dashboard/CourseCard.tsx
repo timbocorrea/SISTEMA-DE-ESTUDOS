@@ -51,8 +51,8 @@ const CourseCard: React.FC<CourseCardProps> = ({
 
                 {/* Enrolled Badge */}
                 {isEnrolled && (
-                    <div className="absolute top-3 right-3 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 backdrop-blur-md text-xs font-bold shadow-lg flex items-center gap-1.5">
-                        <i className="fas fa-check-circle text-emerald-400"></i>
+                    <div className="absolute top-3 right-3 px-3 py-1 rounded-full bg-emerald-300/70 text-[#002a15] border border-emerald-400/50 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] flex items-center gap-1.5 font-bold text-xs z-10 backdrop-blur-xl">
+                        <i className="fas fa-check-circle text-[#002a15]"></i>
                         <span>Inscrito</span>
                     </div>
                 )}
