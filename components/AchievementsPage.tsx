@@ -1,27 +1,58 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { Course, User } from '../domain/entities';
 import { AchievementsList } from './AchievementsList';
+import { AdminService } from '../services/AdminService';
+import { XpLogRecord } from '../domain/admin';
 
-const ACHIEVEMENT_CATALOG_LENGTH = 6; // Matching helper file constant roughly
+const ACHIEVEMENT_CATALOG_LENGTH = 6;
+const ITEMS_PER_PAGE = 50;
 
-const AchievementsPage: React.FC<{ user: User; course?: Course | null }> = ({ user, course }) => {
+interface AchievementsPageProps {
+  user: User;
+  course?: Course | null;
+  adminService: AdminService;
+}
+
+const AchievementsPage: React.FC<AchievementsPageProps> = ({ user, course, adminService }) => {
+  // ... rest same
+
+  const [xpHistory, setXpHistory] = useState<XpLogRecord[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    if (user?.id) {
+      adminService.getXpHistory(user.id)
+        .then(logs => {
+          setXpHistory(logs);
+        })
+        .catch(err => console.error("Failed to load XP history", err))
+        .finally(() => setLoadingHistory(false));
+    }
+  }, [user?.id, adminService]);
+
   const unlockedById = useMemo(() => new Map(user.achievements.map(a => [a.id, a])), [user]);
 
   // Simple stats for the header
   const total = ACHIEVEMENT_CATALOG_LENGTH;
-  const unlocked = user.achievements.length; // Approximate derived from user
-  // Better to import catalog length or pass logic, but for now simple math
-  // Actually simpler: re-import catalog? No, just use the list component.
-  // Wait, I need stats for the header.
-  // I will just hardcode 6 for now or export the catalog from list. 
-  // Just for safety I will re-calculate unlocked count properly as before.
   const unlockedCount = user.achievements.filter(a => ['first-lesson', 'module-master', 'course-complete', 'xp-1000', 'xp-5000', 'level-5'].includes(a.id)).length;
-  // Actually, user.achievements might have others? Assuming catalog is fixed.
-  // Let's assume user.achievements only has valid ones.
   const unlockedPercent = Math.round((unlockedCount / total) * 100);
 
+  // Pagination Logic
+  const totalPages = Math.ceil(xpHistory.length / ITEMS_PER_PAGE);
+  const currentData = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return xpHistory.slice(start, start + ITEMS_PER_PAGE);
+  }, [xpHistory, currentPage]);
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+    }
+  };
+
   return (
-    <div className="p-8 space-y-8 max-w-7xl mx-auto">
+    <div className="p-8 space-y-8 max-w-7xl mx-auto animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mb-2">
@@ -50,6 +81,88 @@ const AchievementsPage: React.FC<{ user: User; course?: Course | null }> = ({ us
       </div>
 
       <AchievementsList user={user} course={course} />
+
+      {/* DETAILED XP TABLE (Virtualized + Paginated) */}
+      <div className="space-y-4 pt-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-xl font-bold text-slate-800 dark:text-white">Extrato de XP</h3>
+            <p className="text-sm text-slate-500">Detalhamento de todas as atividades.</p>
+          </div>
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <i className="fas fa-chevron-left"></i>
+              </button>
+              <span className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                Página {currentPage} de {totalPages}
+              </span>
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <i className="fas fa-chevron-right"></i>
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden flex flex-col">
+          {/* Table Header */}
+          <div className="flex items-center bg-slate-50 dark:bg-slate-800/50 text-slate-500 font-bold uppercase text-xs px-6 py-4 border-b border-slate-200 dark:border-slate-800">
+            <div className="w-1/3">Data</div>
+            <div className="w-1/3">Atividade</div>
+            <div className="w-1/3 text-right">XP</div>
+          </div>
+
+          {loadingHistory ? (
+            <div className="p-8 flex items-center justify-center text-slate-500">
+              <i className="fas fa-circle-notch fa-spin mr-2"></i> Carregando extrato...
+            </div>
+          ) : xpHistory.length === 0 ? (
+            <div className="p-8 flex items-center justify-center text-slate-500">
+              Nenhum registro de XP encontrado.
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">
+              {currentData.map((log) => {
+                let description = log.description || 'Atividade';
+                if (description.startsWith('{') || description.startsWith('[')) {
+                  try {
+                    const parsed = JSON.parse(description);
+                    description = parsed.text || description;
+                  } catch (e) { }
+                }
+
+                return (
+                  <div key={log.id} className="flex items-center hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors px-6 py-3">
+                    <div className="w-1/3 text-slate-500 text-sm truncate pr-4">
+                      {new Date(log.created_at).toLocaleString('pt-BR')}
+                    </div>
+                    <div className="w-1/3 font-medium text-slate-700 dark:text-slate-300 text-sm truncate pr-4" title={description}>
+                      {description}
+                    </div>
+                    <div className="w-1/3 text-right">
+                      <span className={`font-bold text-sm ${log.amount > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>
+                        {log.amount > 0 ? '+' : ''}{log.amount} XP
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+        <p className="text-xs text-center text-slate-400">
+          Mostrando {currentData.length} de {xpHistory.length} registros
+        </p>
+      </div>
     </div>
   );
 };

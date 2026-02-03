@@ -219,7 +219,10 @@ export class User {
     public readonly geminiApiKey: string | null = null,
     public readonly approvalStatus: 'pending' | 'approved' | 'rejected' = 'approved',
     public readonly lastAccess: Date | null = null,
-    public readonly isTempPassword: boolean = false
+    public readonly approvedAt: Date | null = null,
+    public readonly approvedBy: string | null = null,
+    public readonly rejectionReason: string | null = null,
+    public readonly isMinor: boolean = false
   ) {
     this._xp = xp;
     this._achievements = achievements;
@@ -354,7 +357,22 @@ export class User {
   }
 
   public clone(): User {
-    return new User(this.id, this.name, this.email, this.role, this._xp, [...this._achievements], this.geminiApiKey, this.approvalStatus, this.lastAccess, this.isTempPassword);
+    return new User(
+      this.id,
+      this.name,
+      this.email,
+      this.role,
+      this._xp,
+      [...this._achievements],
+      this.geminiApiKey,
+      this.approvalStatus,
+      this.lastAccess,
+      this.isTempPassword,
+      this.approvedAt,
+      this.approvedBy,
+      this.rejectionReason,
+      this.isMinor
+    );
   }
 }
 

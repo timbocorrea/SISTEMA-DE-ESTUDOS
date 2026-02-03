@@ -47,18 +47,44 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
   // Mock XP History Data (Last 7 days)
   const xpHistory = React.useMemo(() => {
-    // Generate deterministic pseudo-random data based on user ID or just random for now
-    // In a real app, this would come from the backend
+    // Deterministic pseudo-random number generator (PRNG)
+    // Ensures the same user gets the same "random" values for the same dates
+    const pseudoRandom = (input: string) => {
+      let h = 0xdeadbeef;
+      for (let i = 0; i < input.length; i++) {
+        h = Math.imul(h ^ input.charCodeAt(i), 2654435761);
+      }
+      return ((h ^ h >>> 16) >>> 0) / 4294967296;
+    };
+
     const today = new Date();
     const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
     return Array.from({ length: 7 }).map((_, i) => {
       const date = new Date(today);
       date.setDate(date.getDate() - (6 - i));
-      // Random XP between 50 and 300, higher on weekends or random
-      const baseXP = 50 + Math.floor(Math.random() * 250);
+      const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD for stability
+      const seed = `${user.id}-${dateStr}`;
+
+      const rng1 = pseudoRandom(seed + '-xp');
+      const rng2 = pseudoRandom(seed + '-min');
+
+      // Stable XP between 50 and 300
+      const baseXP = 50 + Math.floor(rng1 * 250);
+
+      // Rough correlation: 10 XP ~= 2-5 minutes
+      const baseMinutes = Math.floor(baseXP / 10 * (0.8 + rng2 * 0.5));
+
+      const day = date.getDate().toString().padStart(2, '0');
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+
       return {
-        date: days[date.getDay()],
-        xp: baseXP
+        date: `${days[date.getDay()]}`,
+        fullDate: `${days[date.getDay()]} ${day}/${month}`,
+        day: day,
+        month: month,
+        xp: baseXP,
+        minutes: baseMinutes
       };
     });
   }, []); // Static for this session

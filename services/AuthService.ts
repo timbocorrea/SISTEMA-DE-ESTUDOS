@@ -12,8 +12,8 @@ export class AuthService {
     return res;
   }
 
-  async register(name: string, email: string, pass: string): Promise<AuthResponse> {
-    const res = await this.authRepo.register(name, email, pass);
+  async register(name: string, email: string, pass: string, isMinor: boolean = false): Promise<AuthResponse> {
+    const res = await this.authRepo.register(name, email, pass, isMinor);
     if (res.success && res.data) {
       localStorage.setItem('study_system_session', JSON.stringify(res.data));
     }

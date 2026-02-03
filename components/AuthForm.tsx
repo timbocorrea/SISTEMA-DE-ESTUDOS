@@ -54,7 +54,8 @@ const AuthForm: React.FC<AuthFormProps> = ({ authService, onSuccess }) => {
         : await authService.register(
           data.name!,
           data.email,
-          data.password
+          data.password,
+          data.isMinor
         );
 
       if (res.success) {
@@ -247,6 +248,21 @@ const AuthForm: React.FC<AuthFormProps> = ({ authService, onSuccess }) => {
                       Senhas conferem!
                     </motion.p>
                   )}
+
+                  <div className="mt-4 flex items-center gap-2 relative z-10">
+                    <div className="relative flex items-center">
+                      <input
+                        type="checkbox"
+                        id="isMinor"
+                        {...register('isMinor')}
+                        className="peer h-4 w-4 cursor-pointer appearance-none rounded border border-slate-600 bg-slate-900/50 checked:border-emerald-500 checked:bg-emerald-500 transition-all hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                      />
+                      <i className="fas fa-check absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[10px] text-white opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none"></i>
+                    </div>
+                    <label htmlFor="isMinor" className="text-xs text-slate-400 select-none cursor-pointer hover:text-slate-300 transition-colors">
+                      Sou menor de 18 anos (Requer supervisão)
+                    </label>
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>

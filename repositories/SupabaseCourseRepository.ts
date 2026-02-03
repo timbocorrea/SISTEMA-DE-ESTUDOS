@@ -238,7 +238,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
     // 1. Fetch Profile
     const { data: profile, error } = await this.client
       .from('profiles')
-      .select('id, name, email, role, xp_total, current_level, gemini_api_key, approval_status, last_access_at, is_temp_password')
+      .select('id, name, email, role, xp_total, current_level, gemini_api_key, approval_status, last_access_at, is_temp_password, is_minor')
       .eq('id', userId)
       .single();
 
@@ -268,7 +268,11 @@ export class SupabaseCourseRepository implements ICourseRepository {
       profile.gemini_api_key || null,
       profile.approval_status || 'approved',
       profile.last_access_at ? new Date(profile.last_access_at) : null,
-      profile.is_temp_password || false
+      profile.is_temp_password || false,
+      null, // approvedAt
+      null, // approvedBy
+      null, // rejectionReason
+      profile.is_minor || false
     );
   }
 

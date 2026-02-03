@@ -36,7 +36,8 @@ export const signupSchema = z.object({
     .regex(/[0-9]/, 'Senha deve conter pelo menos um número'),
   confirmPassword: z
     .string()
-    .min(1, 'Confirmação de senha é obrigatória')
+    .min(1, 'Confirmação de senha é obrigatória'),
+  isMinor: z.boolean().optional().default(false)
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'As senhas não coincidem',
   path: ['confirmPassword']

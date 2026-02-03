@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Course, Lesson, User, UserProgress } from '../domain/entities';
 import VideoPlayer from './VideoPlayer';
 import LessonMaterialsSidebar from './LessonMaterialsSidebar';
+import BuddyContextModal from './BuddyContextModal';
 // import GeminiBuddy from './GeminiBuddy'; // Removed: Uses global now
 import NotesPanelPrototype from './NotesPanelPrototype';
 import QuizModal from './QuizModal';
@@ -68,13 +69,21 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
     // Local state (kept here as they're specific to this component instance)
     const [lastAccessedId, setLastAccessedId] = useState<string | null>(null);
-    const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState<boolean>(false);
-    const blockRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+    const [isOptionsMenuOpen, setIsOptionsMenu] = useState<boolean>(false);
+    const blockRefs = useRef<{ [key: string]: HTMLDivElement | null }>([]);
     const optionsMenuRef = useRef<HTMLDivElement | null>(null);
 
     // Image Viewer Modal State
     const [showImageViewerModal, setShowImageViewerModal] = useState(false);
     const [viewerImageUrl, setViewerImageUrl] = useState('');
+
+    // Context Menu State
+    const [contextMenu, setContextMenu] = useState<{ x: number, y: number, text: string } | null>(null);
+    const [showBuddyModal, setShowBuddyModal] = useState(false);
+    const [buddyContext, setBuddyContext] = useState('');
+
+    // Notes Panel Trigger (to pass text)
+    const [noteDraft, setNoteDraft] = useState<string>('');
 
     // Video switcher state
     const [activeVideoIndex, setActiveVideoIndex] = useState<number>(0);
@@ -633,8 +642,27 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                             </div>
                         </div>
 
+
                         {/* Content area - Inner Scroll */}
-                        <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-indigo-200 dark:scrollbar-thumb-slate-700 p-0 md:p-6">
+                        <div
+                            className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-indigo-200 dark:scrollbar-thumb-slate-700 p-0 md:p-6 relative"
+                            onContextMenu={(e) => {
+                                const selection = window.getSelection();
+                                const text = selection?.toString().trim();
+
+                                // Se houver texto selecionado, previne menu padrao e mostra o nosso
+                                if (text && text.length > 0) {
+                                    e.preventDefault();
+
+                                    // Calcular posicao para nao sair da tela
+                                    let x = e.clientX;
+                                    let y = e.clientY;
+
+                                    setContextMenu({ x, y, text });
+                                }
+                            }}
+                            onClick={() => setContextMenu(null)} // Fecha ao clicar fora
+                        >
                             <ContentReader
                                 lesson={lesson}
                                 highlights={highlights}
@@ -644,6 +672,77 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                 }}
                                 onTrackAction={onTrackAction}
                                 currentProgress={progress}
+                            />
+
+                            {/* Context Menu Overlay */}
+                            {contextMenu && (
+                                <div
+                                    className="fixed z-50 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 p-1.5 flex flex-col min-w-[200px] animate-in fade-in zoom-in-95 duration-150"
+                                    style={{ top: contextMenu.y, left: contextMenu.x }}
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <button
+                                        onClick={() => {
+                                            setBuddyContext(contextMenu.text);
+                                            setShowBuddyModal(true);
+                                            setContextMenu(null);
+                                            onTrackAction?.('Usou Menu Contexto: Perguntar para IA');
+                                        }}
+                                        className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-3 text-sm text-slate-700 dark:text-slate-200 transition-colors"
+                                    >
+                                        <div className="w-6 h-6 rounded-md bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                                            <i className="fas fa-robot text-xs"></i>
+                                        </div>
+                                        <span className="font-semibold">Perguntar para IA</span>
+                                    </button>
+
+                                    <button
+                                        onClick={() => {
+                                            // Copia para clipboard e abre notas
+                                            navigator.clipboard.writeText(contextMenu.text);
+                                            setNoteDraft(contextMenu.text); // Passa para o NotesPanel via prop se implementado, ou apenas abre
+                                            setSidebarTab('notes');
+                                            handleOpenDrawer('notes');
+                                            setContextMenu(null);
+                                            toast.success('Texto copiado! Cole na sua nota.');
+                                            onTrackAction?.('Usou Menu Contexto: Adicionar Nota');
+                                        }}
+                                        className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-3 text-sm text-slate-700 dark:text-slate-200 transition-colors"
+                                    >
+                                        <div className="w-6 h-6 rounded-md bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center text-yellow-600 dark:text-yellow-400">
+                                            <i className="fas fa-sticky-note text-xs"></i>
+                                        </div>
+                                        <span className="font-semibold">Criar Nota com Seleção</span>
+                                    </button>
+
+                                    <div className="h-px bg-slate-200 dark:bg-slate-700 my-1 mx-2"></div>
+
+                                    <button
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(contextMenu.text);
+                                            setContextMenu(null);
+                                            toast.success('Copiado para área de transferência');
+                                        }}
+                                        className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 transition-colors"
+                                    >
+                                        <i className="fas fa-copy w-6 text-center"></i>
+                                        Copiar Texto
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Buddy Context Modal */}
+                            <BuddyContextModal
+                                isOpen={showBuddyModal}
+                                onClose={() => setShowBuddyModal(false)}
+                                initialContext={buddyContext}
+                                userName={user?.name}
+                                onAddToNote={(text) => {
+                                    setNoteDraft(text);
+                                    setSidebarTab('notes');
+                                    handleOpenDrawer('notes');
+                                    setShowBuddyModal(false);
+                                }}
                             />
                         </div>
                     </div>

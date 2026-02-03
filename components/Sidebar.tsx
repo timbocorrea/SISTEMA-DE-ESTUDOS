@@ -279,6 +279,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const menuItems = [
     { id: 'achievements', label: 'Conquistas', icon: 'fas fa-trophy' },
     { id: 'history', label: 'Histórico', icon: 'fas fa-history' },
+    { id: 'audit', label: 'Auditoria (Pais)', icon: 'fas fa-shield-alt' },
     { id: 'buddy', label: 'Buddy AI', icon: 'fas fa-robot' }
   ];
 
@@ -618,6 +619,26 @@ const Sidebar: React.FC<SidebarProps> = ({
                   </div>
                 )}
               </div>
+
+              {/* Audit Access - Only for Minors (Supervision) or Admins */}
+              {user && (user.role === 'INSTRUCTOR' || user.isMinor) && (
+                <Link
+                  to="/audit"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onViewChange('audit');
+                  }}
+                  className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight mb-1 group ${activeView === 'audit' ? 'bg-indigo-50 dark:bg-white/10 text-indigo-600 dark:text-white shadow-lg shadow-indigo-500/10 dark:shadow-white/5 ring-1 ring-indigo-200 dark:ring-white/10' : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
+                  title="Auditoria"
+                >
+                  <div className={`transition-transform duration-300 ${activeView === 'audit' ? 'scale-110' : 'group-hover:scale-110'}`}>
+                    <i className={`fas fa-eye w-5 text-center ${activeView === 'audit' ? 'text-indigo-400' : ''}`}></i>
+                  </div>
+                  <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
+                    Auditoria
+                  </span>
+                </Link>
+              )}
 
               {/* Admin Access */}
               <Link

@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { useLessonStore } from '../stores/useLessonStore';
 import { Lesson } from '../domain/entities';
+import { activityMonitor } from '../services/ActivityMonitor';
 
 interface UseAudioPlayerProps {
     lesson: Lesson;
@@ -90,10 +91,12 @@ export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate }: UseA
             if (isPlaying) {
                 audioRef.current.pause();
                 setIsPlaying(false);
+                activityMonitor.setMediaPlaying(false);
                 onTrackAction?.(`Pausou o áudio no bloco de texto`);
             } else {
                 audioRef.current.play().catch(e => console.error(e));
                 setIsPlaying(true);
+                activityMonitor.setMediaPlaying(true);
                 onTrackAction?.(`Retomou o áudio no bloco de texto`);
             }
             return;
@@ -156,6 +159,7 @@ export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate }: UseA
                 playBlock(nextIndex);
             } else {
                 setIsPlaying(false);
+                activityMonitor.setMediaPlaying(false);
                 setActiveBlockId(null);
             }
         };
@@ -164,11 +168,15 @@ export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate }: UseA
         audio.onerror = (e) => {
             console.error("Audio playback error", e);
             setIsPlaying(false);
+            activityMonitor.setMediaPlaying(false);
         };
 
-        audio.play().catch(err => {
+        audio.play().then(() => {
+            activityMonitor.setMediaPlaying(true);
+        }).catch(err => {
             console.error("Audio playback failed", err);
             setIsPlaying(false);
+            activityMonitor.setMediaPlaying(false);
         });
 
         // Track action
@@ -181,15 +189,12 @@ export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate }: UseA
             if (isPlaying) {
                 audioRef.current.pause();
                 setIsPlaying(false);
+                activityMonitor.setMediaPlaying(false);
             } else {
                 audioRef.current.play().catch(console.error);
                 setIsPlaying(true);
+                activityMonitor.setMediaPlaying(true);
             }
-        } else if (activeBlockId) {
-            // If activeBlockId is set but no audioRef (edge case?), try to play it?
-            // Usually audioRef exists if activeBlockId is set by this hook.
-            // If not, we might need to find the index and playBlock.
-            // For now, simple toggle of existing audio.
         }
     };
 
@@ -212,6 +217,7 @@ export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate }: UseA
                 nextAudioRef.current = null;
             }
             setIsPlaying(false);
+            activityMonitor.setMediaPlaying(false);
         };
     }, [setIsPlaying]);
 

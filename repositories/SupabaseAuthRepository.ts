@@ -13,6 +13,7 @@ type ProfileRow = {
   current_level: number | null;
   achievements: unknown[] | null;
   last_access_at: string | null;
+  is_minor: boolean;
 };
 
 export class SupabaseAuthRepository implements IAuthRepository {
@@ -28,7 +29,8 @@ export class SupabaseAuthRepository implements IAuthRepository {
     xp?: number | null,
     level?: number | null,
     lastAccessAt?: string | null,
-    approvalStatus?: 'pending' | 'approved' | 'rejected' | null
+    approvalStatus?: 'pending' | 'approved' | 'rejected' | null,
+    isMinor?: boolean
   ): IUserSession {
     return {
       user: {
@@ -39,14 +41,15 @@ export class SupabaseAuthRepository implements IAuthRepository {
         approvalStatus: approvalStatus ?? undefined,
         xp: xp ?? undefined,
         level: level ?? undefined,
-        lastAccess: lastAccessAt ? new Date(lastAccessAt) : null
+        lastAccess: lastAccessAt ? new Date(lastAccessAt) : null,
+        isMinor: isMinor ?? false
       },
       token,
       sessionId
     };
   }
 
-  private async upsertProfile(userId: string, email: string, name?: string): Promise<ProfileRow & { last_session_id: string | null }> {
+  private async upsertProfile(userId: string, email: string, name?: string, isMinor: boolean = false): Promise<ProfileRow & { last_session_id: string | null }> {
     const { data, error } = await this.client
       .from('profiles')
       .upsert(
@@ -58,11 +61,12 @@ export class SupabaseAuthRepository implements IAuthRepository {
           xp_total: 0,
           current_level: 1,
           achievements: [],
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          is_minor: isMinor
         },
         { onConflict: 'id' }
       )
-      .select('id, name, email, role, approval_status, xp_total, current_level, achievements, last_session_id, last_access_at')
+      .select('id, name, email, role, approval_status, xp_total, current_level, achievements, last_session_id, last_access_at, is_minor')
       .single();
 
     if (error || !data) {
@@ -75,7 +79,7 @@ export class SupabaseAuthRepository implements IAuthRepository {
   private async fetchProfile(userId: string, email: string, name?: string): Promise<ProfileRow & { last_session_id: string | null }> {
     const { data, error } = await this.client
       .from('profiles')
-      .select('id, name, email, role, approval_status, xp_total, current_level, achievements, last_session_id, last_access_at')
+      .select('id, name, email, role, approval_status, xp_total, current_level, achievements, last_session_id, last_access_at, is_minor')
       .eq('id', userId)
       .maybeSingle();
 
@@ -129,12 +133,13 @@ export class SupabaseAuthRepository implements IAuthRepository {
         profile.xp_total,
         profile.current_level,
         profile.last_access_at,
-        profile.approval_status
+        profile.approval_status,
+        profile.is_minor
       )
     };
   }
 
-  async register(name: string, email: string, password: string): Promise<AuthResponse> {
+  async register(name: string, email: string, password: string, isMinor: boolean = false): Promise<AuthResponse> {
     const emailRedirectTo = typeof window !== 'undefined' ? window.location.origin : undefined;
 
     let { data, error } = await this.client.auth.signUp({
@@ -166,7 +171,7 @@ export class SupabaseAuthRepository implements IAuthRepository {
     }
 
     const sessionId = this.generateSessionId();
-    const profile = await this.upsertProfile(data.user.id, email, name);
+    const profile = await this.upsertProfile(data.user.id, email, name, isMinor);
 
     // Atualizar no registro também se logar automático
     await this.client
@@ -192,7 +197,8 @@ export class SupabaseAuthRepository implements IAuthRepository {
         profile.xp_total,
         profile.current_level,
         profile.last_access_at,
-        profile.approval_status
+        profile.approval_status,
+        profile.is_minor
       )
     };
   }

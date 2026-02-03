@@ -8,6 +8,7 @@ export interface IUserSession {
     xp?: number;
     level?: number;
     lastAccess?: Date | null;
+    isMinor?: boolean;
   };
   token: string;
   sessionId: string;

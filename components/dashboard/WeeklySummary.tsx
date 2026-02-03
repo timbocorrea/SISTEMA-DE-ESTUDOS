@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
+import { BarChart, ComposedChart, Line, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
 
 interface WeeklySummaryProps {
     xpHistory: { date: string; xp: number }[];
@@ -67,13 +67,43 @@ const WeeklySummary: React.FC<WeeklySummaryProps> = ({ xpHistory, courseProgress
             <div className="grid grid-cols-1 gap-4">
                 {/* XP History Chart */}
                 <div className="bg-slate-100 dark:bg-black/20 backdrop-blur-md rounded-2xl p-4 border border-slate-200 dark:border-white/5 shadow-sm">
-                    <h3 className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-4 flex items-center gap-2 uppercase tracking-wider">
-                        <i className="fas fa-chart-bar text-indigo-400"></i>
-                        XP Recente
+                    <h3 className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-4 flex items-center justify-between uppercase tracking-wider">
+                        <div className="flex items-center gap-2">
+                            <i className="fas fa-chart-bar text-indigo-400"></i>
+                            XP vs Tempo
+                        </div>
+                        <div className="flex items-center gap-3 text-[9px] lowercase opacity-70">
+                            <div className="flex items-center gap-1">
+                                <span className="w-2 h-2 rounded bg-[#818cf8]"></span> xp
+                            </div>
+                            <div className="flex items-center gap-1">
+                                <span className="w-2 h-2 rounded-full border border-[#34d399]"></span> tempo
+                            </div>
+                        </div>
                     </h3>
-                    <ResponsiveContainer width="100%" height={140}>
-                        <BarChart data={xpHistory}>
-                            <XAxis dataKey="date" stroke="#64748b" style={{ fontSize: '10px' }} tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+                    <ResponsiveContainer width="100%" height={180}>
+                        <ComposedChart data={xpHistory}>
+                            <XAxis
+                                dataKey="date"
+                                axisLine={false}
+                                tickLine={false}
+                                height={40}
+                                tick={({ x, y, payload, index }) => {
+                                    const dataItem = xpHistory[index] as any;
+                                    return (
+                                        <g transform={`translate(${x},${y})`}>
+                                            <text x={0} y={0} dy={10} textAnchor="middle" fill="#64748b" fontSize={10} fontWeight="bold">
+                                                {payload.value}
+                                            </text>
+                                            <text x={0} y={0} dy={22} textAnchor="middle" fill="#475569" fontSize={9}>
+                                                {dataItem.day}/{dataItem.month}
+                                            </text>
+                                        </g>
+                                    );
+                                }}
+                            />
+                            <YAxis yAxisId="left" hide />
+                            <YAxis yAxisId="right" orientation="right" hide />
                             <Tooltip
                                 cursor={{ fill: 'rgba(255,255,255,0.05)' }}
                                 contentStyle={{
@@ -84,9 +114,26 @@ const WeeklySummary: React.FC<WeeklySummaryProps> = ({ xpHistory, courseProgress
                                     fontSize: '12px',
                                     boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
                                 }}
+                                formatter={(value: any, name: any) => {
+                                    if (name === 'xp') return [`${value} XP`, 'Experiência'];
+                                    if (name === 'minutes') return [`${value} min`, 'Tempo de Estudo'];
+                                    return [value, name];
+                                }}
                             />
-                            <Bar dataKey="xp" fill={barColor} radius={[4, 4, 4, 4]} />
-                        </BarChart>
+                            {/* XP Bars */}
+                            <Bar yAxisId="left" dataKey="xp" fill={barColor} radius={[4, 4, 4, 4]} barSize={20} />
+
+                            {/* Time Line */}
+                            <Line
+                                yAxisId="right"
+                                type="monotone"
+                                dataKey="minutes"
+                                stroke="#34d399"
+                                strokeWidth={2}
+                                dot={{ fill: '#34d399', r: 3, strokeWidth: 0 }}
+                                activeDot={{ r: 5, strokeWidth: 0 }}
+                            />
+                        </ComposedChart>
                     </ResponsiveContainer>
                 </div>
 

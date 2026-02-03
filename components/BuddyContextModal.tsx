@@ -88,6 +88,7 @@ const BuddyContextModal: React.FC<BuddyContextModalProps> = ({ isOpen, onClose, 
       - NÃO use formatação Markdown como **negrito**, # cabeçalhos ou blocos de código.
       - Para listas, use apenas hifens (-) ou números simples.
       - O texto será lido em um editor simples, então evite caracteres de formatação.
+      - ACESSIBILIDADE: Use aspas duplas ("") em vez de asteriscos para destaque.
     `;
 
         try {

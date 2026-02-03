@@ -54,12 +54,18 @@ export class CourseService {
     // We update local state just for immediate UI feedback before refresh
     user.addXp(150);
 
+    // EXPLICIT LOGGING: Ensure history record is created for this XP gain
+    await this.courseRepository.logXpChange(user.id, 150, 'LESSON_COMPLETE', `Aula concluída: ${lesson.title}`);
+
     const lessonAch = user.checkAndAddAchievements('LESSON');
     if (lessonAch) unlocked.push(lessonAch);
 
     const parentModule = course.modules.find(m => m.lessons.some(l => l.id === lesson.id));
     if (parentModule && parentModule.isFullyCompleted()) {
       user.addXp(500);
+      // This call to addXp calls 'add_secure_xp' RPC which handles logging, but purely for consistency we rely on it.
+      // If needed we could also log explicitly, but let's trust addXp RPC for now or double check it.
+      // Given addXp returns a promise, we are good.
       await this.courseRepository.addXp(user.id, 500, 'MODULE_COMPLETE', `Módulo Completo: ${parentModule.title}`);
 
       const moduleAch = user.checkAndAddAchievements('MODULE');

@@ -75,6 +75,7 @@ export type ProfileRecord = {
   gemini_api_key?: string | null;
   updated_at?: string;
   is_temp_password?: boolean;
+  is_minor?: boolean;
 };
 
 export type CourseEnrollmentRecord = {

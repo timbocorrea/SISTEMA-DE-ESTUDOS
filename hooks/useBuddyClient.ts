@@ -52,6 +52,7 @@ export const useBuddyClient = ({ userId, systemContext = '', currentContext = ''
       6. Responda em português do Brasil.
       7. Mantenha a conversa natural.
       8. VISÃO: Analise imagens se fornecidas.
+      9. ACESSIBILIDADE: O usuário usa leitor de tela. NÃO use markdown de negrito/itálico com asteriscos (*). Em vez disso, use aspas duplas ("") para destacar termos importantes.
     `;
 
         try {

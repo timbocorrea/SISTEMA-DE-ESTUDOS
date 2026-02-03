@@ -6,6 +6,7 @@ import { Toaster, toast } from 'sonner';
 const Sidebar = React.lazy(() => import('./components/Sidebar'));
 const GeminiBuddy = React.lazy(() => import('./components/GeminiBuddy'));
 import AuthForm from './components/AuthForm';
+import { PresenceCheckModal } from './components/PresenceCheckModal';
 const PendingApprovalScreen = React.lazy(() => import('./components/PendingApprovalScreen'));
 import Breadcrumb from './components/Breadcrumb';
 import { LessonRecord } from './domain/admin';
@@ -21,6 +22,7 @@ const AdminSettingsPage = React.lazy(() => import('./components/AdminSettingsPag
 const AdminCourseAccessPage = React.lazy(() => import('./components/AdminCourseAccessPage'));
 const AchievementsPage = React.lazy(() => import('./components/AchievementsPage'));
 const BuddyFullPage = React.lazy(() => import('./components/BuddyFullPage'));
+const AuditPage = React.lazy(() => import('./components/AuditPage'));
 const CourseEnrollmentModal = React.lazy(() => import('./components/CourseEnrollmentModal'));
 const LessonContentEditorPage = React.lazy(() => import('./components/LessonContentEditorPage'));
 const LessonViewer = React.lazy(() => import('./components/LessonViewer')); // If used? It was imported but not clearly used in Routes view. Ah, not in Routes.
@@ -43,6 +45,7 @@ import { SupabaseAdminRepository } from './repositories/SupabaseAdminRepository'
 import { AdminService } from './services/AdminService';
 import LessonLoader from './components/LessonLoader';
 import ForcePasswordChangeModal from './components/ForcePasswordChangeModal';
+import { useActivityTracker } from './hooks/useActivityTracker';
 
 const LessonContentEditorWrapper: React.FC<{ adminService: AdminService }> = ({ adminService }) => {
   const { lessonId } = useParams<{ lessonId: string }>();
@@ -94,8 +97,13 @@ const LessonContentEditorWrapper: React.FC<{ adminService: AdminService }> = ({ 
 const App: React.FC = () => {
   const { user, session, isLoading: authLoading, logout, authService, refreshSession } = useAuth();
 
+
+
   // Instantiate AdminService (Lazy or Memoized)
   const [adminService] = useState(() => new AdminService(new SupabaseAdminRepository()));
+
+  // Start Audit Tracker
+  useActivityTracker();
 
   const {
     availableCourses,
@@ -149,6 +157,7 @@ const App: React.FC = () => {
     if (path === '/courses') return 'courses';
     if (path === '/achievements') return 'achievements';
     if (path === '/history') return 'history';
+    if (path === '/audit') return 'audit';
     if (path === '/buddy') return 'buddy';
     if (path.startsWith('/admin/content')) return 'content';
     if (path.startsWith('/admin/users')) return 'users';
@@ -217,6 +226,7 @@ const App: React.FC = () => {
         case 'courses': navigate('/courses'); break;
         case 'achievements': navigate('/achievements'); break;
         case 'history': navigate('/history'); break;
+        case 'audit': navigate('/audit'); break;
         case 'buddy': navigate('/buddy'); break;
         case 'content': navigate('/admin/content'); break;
         case 'users': navigate('/admin/users'); break;
@@ -480,9 +490,10 @@ const App: React.FC = () => {
                 } />
 
                 {/* Feature Routes */}
-                <Route path="/achievements" element={<AchievementsPage user={user} course={activeCourse} />} />
+                <Route path="/achievements" element={<AchievementsPage user={user} course={activeCourse} adminService={adminService} />} />
                 <Route path="/history" element={<HistoryPageWrapper adminService={adminService} userId={user.id} />} />
                 <Route path="/buddy" element={<BuddyFullPage />} />
+                <Route path="/audit" element={<AuditPage />} />
 
                 {/* Course Routes */}
                 <Route path="/course/:courseId" element={<CourseLayout />}>

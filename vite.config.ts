@@ -138,7 +138,12 @@ export default defineConfig(({ mode }) => {
             'react-vendor': ['react', 'react-dom', 'react-router-dom'],
             'ui-vendor': ['framer-motion', 'sonner'],
             'charts-vendor': ['recharts'],
-            'supabase-vendor': ['@supabase/supabase-js']
+            'supabase-vendor': ['@supabase/supabase-js'],
+            'form-vendor': ['react-hook-form', 'zod', '@hookform/resolvers'],
+            'utils-vendor': ['localforage', 'match-sorter', 'sort-by', 'zustand'],
+            'content-vendor': ['mammoth', 'marked', 'react-highlight-words'],
+            'genai-vendor': ['@google/genai'],
+            'dropbox-vendor': ['dropbox', 'react-dropbox-chooser']
           }
         }
       }

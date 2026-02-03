@@ -24,7 +24,7 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('');
   const [busyId, setBusyId] = useState<string>('');
-  const [editingUser, setEditingUser] = useState<{ id: string; name: string; email: string; role: 'STUDENT' | 'INSTRUCTOR'; apiKey: string } | null>(null);
+  const [editingUser, setEditingUser] = useState<{ id: string; name: string; email: string; role: 'STUDENT' | 'INSTRUCTOR'; apiKey: string; isMinor: boolean } | null>(null);
   const [managingAccessUser, setManagingAccessUser] = useState<ProfileRecord | null>(null);
   const [resettingUser, setResettingUser] = useState<{ id: string; name: string; email: string } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -109,7 +109,8 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
       name: user.name || '',
       email: user.email,
       role: user.role,
-      apiKey: user.gemini_api_key || ''
+      apiKey: user.gemini_api_key || '',
+      isMinor: (user as any).is_minor || false
     });
   };
 
@@ -121,7 +122,8 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
       setIsSaving(true);
       await adminService.updateProfile(editingUser.id, {
         role: editingUser.role,
-        geminiApiKey: editingUser.apiKey?.trim() || null
+        geminiApiKey: editingUser.apiKey?.trim() || null,
+        isMinor: editingUser.isMinor
       });
       setEditingUser(null);
       await loadUsers();
@@ -576,6 +578,7 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
               <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Usuário</th>
               <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Função</th>
               <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Status</th>
+              <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Classificação</th>
               <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Nível</th>
               <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-wider">XP</th>
               <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-right">Ações</th>
@@ -666,6 +669,14 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
                         Ativo
                       </span>
                     )}
+                  </td>
+                  <td className="p-4">
+                    <span className={`text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-wider border ${(u as any).is_minor
+                      ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+                      : 'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                      }`}>
+                      {(u as any).is_minor ? 'Menor' : 'Adulto'}
+                    </span>
                   </td>
                   <td className="p-4">
                     <span className="text-sm font-bold text-slate-400">
@@ -896,6 +907,45 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
                         <i className="fas fa-chalkboard-teacher mr-2"></i> Admin / Instrutor
                       </button>
                     </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
+                        Classificação Etária
+                      </label>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (editingUser) {
+                              setEditingUser({ ...editingUser, isMinor: false });
+                            }
+                          }}
+                          className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold border transition-all ${!editingUser.isMinor
+                            ? 'bg-slate-500/20 border-slate-500/50 text-slate-300 shadow-[0_0_10px_rgba(148,163,184,0.2)]'
+                            : 'bg-black/20 border-white/5 text-slate-500 hover:bg-white/5 hover:text-slate-300'
+                            }`}
+                        >
+                          <i className="fas fa-user mr-2"></i> Adulto
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (editingUser) {
+                              setEditingUser({ ...editingUser, isMinor: true });
+                            }
+                          }}
+                          className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold border transition-all ${editingUser.isMinor
+                            ? 'bg-purple-500/20 border-purple-500/50 text-purple-300 shadow-[0_0_10px_rgba(168,85,247,0.2)]'
+                            : 'bg-black/20 border-white/5 text-slate-500 hover:bg-white/5 hover:text-slate-300'
+                            }`}
+                        >
+                          <i className="fas fa-child mr-2"></i> Menor de Idade
+                        </button>
+                      </div>
+                      <p className="mt-2 text-[10px] text-slate-500">
+                        Menores de idade têm acesso à aba de Auditoria para supervisão dos pais.
+                      </p>
+                    </div>
                   </div>
 
                   <div>
@@ -914,7 +964,8 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
                               name: editingUser.name,
                               email: editingUser.email,
                               role: editingUser.role,
-                              apiKey: e.target.value
+                              apiKey: e.target.value,
+                              isMinor: editingUser.isMinor
                             });
                           }
                         }}

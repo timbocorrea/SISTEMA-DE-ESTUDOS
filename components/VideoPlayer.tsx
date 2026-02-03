@@ -1,6 +1,6 @@
-
 import React, { useRef, useEffect, useState } from 'react';
 import { Lesson } from '../domain/entities';
+import { activityMonitor } from '../services/ActivityMonitor';
 
 interface VideoPlayerProps {
   lesson: Lesson;
@@ -40,7 +40,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, videoUrl, onProgress,
     onProgress(duration);
     setCurrentTime(duration);
     setIsPlaying(false);
+    activityMonitor.setMediaPlaying(false);
   };
+
+  useEffect(() => {
+    return () => {
+      activityMonitor.setMediaPlaying(false); // Cleanup on unmount
+    };
+  }, []);
 
   const markAsCompleted = () => {
     // Botão manual para vídeos demo que não avançam; força progresso total
@@ -54,8 +61,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, videoUrl, onProgress,
 
   const togglePlay = () => {
     if (videoRef.current) {
-      if (isPlaying) videoRef.current.pause();
-      else videoRef.current.play();
+      if (isPlaying) {
+        videoRef.current.pause();
+        activityMonitor.setMediaPlaying(false);
+      } else {
+        videoRef.current.play();
+        activityMonitor.setMediaPlaying(true);
+      }
       setIsPlaying(!isPlaying);
     }
   };
@@ -110,8 +122,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, videoUrl, onProgress,
           className="w-full h-auto aspect-video"
           onTimeUpdate={handleTimeUpdate}
           onClick={togglePlay}
-          onPlay={() => { setIsPlaying(true); onPlay?.(); }}
-          onPause={() => setIsPlaying(false)}
+          onPlay={() => {
+            setIsPlaying(true);
+            activityMonitor.setMediaPlaying(true);
+            onPlay?.();
+          }}
+          onPause={() => {
+            setIsPlaying(false);
+            activityMonitor.setMediaPlaying(false);
+          }}
           onEnded={handleEnded}
         />
       )}
