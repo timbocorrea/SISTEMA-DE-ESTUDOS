@@ -235,7 +235,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   onNavigateFile,
   activeCourse,
   onExpandCourse,
-  isOnline = true, // Default to online
+  isOnline = true,
   isLoadingCourses = false,
   isLoadingAdminCourses = false
 }) => {
@@ -244,16 +244,13 @@ const Sidebar: React.FC<SidebarProps> = ({
   /* Sidebar Expanded by Default */
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [themeDropdownOpen, setThemeDropdownOpen] = useState(false);
-  const [isSupportOpen, setIsSupportOpen] = useState(false); // Support Dialog State
-
-  // Removido o useEffect de persistência para garantir que sempre inicie fechado
+  const [isSupportOpen, setIsSupportOpen] = useState(false);
 
   const [contentMenuOpen, setContentMenuOpen] = useState(activeView === 'content');
   const [coursesMenuOpen, setCoursesMenuOpen] = useState(activeView === 'courses');
   const [expandedCourseId, setExpandedCourseId] = useState<string>('');
   const [expandedModuleId, setExpandedModuleId] = useState<string>('');
 
-  // Optimized callbacks to prevent re-renders
   const handleToggleCourse = useCallback((courseId: string) => {
     setExpandedCourseId(courseId);
     setExpandedModuleId('');
@@ -288,10 +285,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   return (
     <aside
       onClick={(e) => {
-        // Toggle collapse quando clicar no sidebar (exceto mobile e se clicar em botões/links)
         if (!isMobileOpen && window.innerWidth >= 1024) {
           const target = e.target as HTMLElement;
-          // Não toggle se clicar em botão, link, ou input
           if (!target.closest('button') && !target.closest('a') && !target.closest('input')) {
             setIsCollapsed(!isCollapsed);
           }
@@ -317,6 +312,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       {/* Close Button Mobile */}
       <button
         onClick={onCloseMobile}
+        aria-label="Fechar menu"
         className="absolute right-3 top-3 lg:hidden w-11 h-11 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 rounded-xl transition-colors"
       >
         <i className="fas fa-times text-xl"></i>
@@ -339,12 +335,13 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      {/* Collapse/Expand Toggle Button - Desktop Only */}
+      {/* Collapse Toggle */}
       <button
         onClick={(e) => {
           e.stopPropagation();
           setIsCollapsed(!isCollapsed);
         }}
+        aria-label={isActuallyCollapsed ? "Expandir Menu" : "Retrair Menu"}
         className={`
           hidden lg:flex
           items-center justify-center
@@ -380,7 +377,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </button>
 
-
       {/* User Status Card */}
       <div className={`mb-8 bg-slate-100 dark:bg-black/20 backdrop-blur-md rounded-2xl border border-slate-200 dark:border-white/5 transition-all duration-300 overflow-hidden ${isActuallyCollapsed ? 'p-2 mx-0' : 'p-4 mx-0'}`}>
         <div className={`flex items-center ${isActuallyCollapsed ? 'justify-center' : 'gap-3 mb-3'}`}>
@@ -392,8 +388,6 @@ const Sidebar: React.FC<SidebarProps> = ({
             <p className="text-[10px] text-slate-500 font-bold mt-1 uppercase tracking-tighter truncate">{1000 - xpInLevel} XP para prox.</p>
           </div>
         </div>
-
-        {/* Progress bar hides when collapsed for cleaner look */}
         {!isActuallyCollapsed && (
           <div className="w-full h-1.5 bg-slate-300 dark:bg-slate-800/50 rounded-full overflow-hidden animate-in fade-in duration-500">
             <div
@@ -427,7 +421,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           </span>
         </Link>
 
-        {/* Meus Cursos com Submenu */}
+        {/* Courses Menu */}
         <div className={`${isActuallyCollapsed ? 'mt-1 pt-1' : ''}`}>
           <Link
             to="/courses"
@@ -483,10 +477,11 @@ const Sidebar: React.FC<SidebarProps> = ({
           )}
         </div>
 
+        {/* Other Menu Items */}
         {menuItems.map(item => (
           <Link
             key={item.id}
-            to={`/${item.id}`} // Assumes path matches id: /achievements, /history
+            to={`/${item.id}`}
             onClick={(e) => {
               e.stopPropagation();
               onViewChange(item.id);
@@ -506,11 +501,11 @@ const Sidebar: React.FC<SidebarProps> = ({
           </Link>
         ))}
 
+        {/* Admin Links */}
         {isAdmin && (
           <>
             {!isActuallyCollapsed && <p className="px-3 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-8 mb-4 opacity-50 whitespace-nowrap">Administração</p>}
 
-            {/* Admin Section Container */}
             <div className={`${isActuallyCollapsed ? 'mt-4 border-t border-slate-200 dark:border-slate-800 pt-4' : ''}`}>
               <Link
                 to="/admin/content"
@@ -518,7 +513,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                   e.stopPropagation();
                   setContentMenuOpen(open => !open);
                   onViewChange('content', true);
-                  // Auto-expand sidebar logic is optional, removing strict dependency for cleaner UX
                   if (isActuallyCollapsed) setIsCollapsed(false);
                 }}
                 className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight mb-1 group ${activeView === 'content'
@@ -536,7 +530,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                 {!isActuallyCollapsed && <i className={`fas fa-chevron-down text-xs transition-transform ${contentMenuOpen ? 'rotate-180' : ''}`}></i>}
               </Link>
 
-              {/* Submenu Tree (Only visible if expanded) */}
               {!isActuallyCollapsed && contentMenuOpen && (
                 <div className="ml-7 pl-3 border-l border-slate-200 dark:border-white/10 space-y-1 mb-2">
                   {isLoadingAdminCourses && adminCourses.length === 0 && (
@@ -567,6 +560,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </div>
               )}
 
+              {/* Admin Users */}
               <Link
                 to="/admin/users"
                 onClick={(e) => {
@@ -625,6 +619,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 )}
               </div>
 
+              {/* Admin Access */}
               <Link
                 to="/admin/access"
                 onClick={(e) => {
@@ -692,6 +687,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   Configuração do Suporte
                 </span>
               </Link>
+
             </div>
           </>
         )}
@@ -723,6 +719,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               e.stopPropagation();
               setThemeDropdownOpen(!themeDropdownOpen);
             }}
+            aria-label="Alterar Tema"
             className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300 transition-all text-sm font-bold group ${isActuallyCollapsed ? 'justify-center' : ''}`}
             title="Alterar Tema"
           >
@@ -774,7 +771,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           )}
         </div>
 
-        {/* Network Status Indicator - Only shown when offline */}
+        {/* Network Status Indicator */}
         {!isOnline && (
           <div className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl bg-red-900/20 border border-red-500/30 text-sm font-bold ${isActuallyCollapsed ? 'justify-center' : ''}`}>
             <div className="relative flex items-center justify-center w-5">
@@ -787,12 +784,13 @@ const Sidebar: React.FC<SidebarProps> = ({
           </div>
         )}
 
-        {/* Logout Button with Red Glow */}
+        {/* Logout Button */}
         <button
           onClick={(e) => {
             e.stopPropagation();
             onLogout();
           }}
+          aria-label="Encerrar Sessão"
           className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-red-400 hover:bg-red-500/10 transition-all text-sm font-bold group relative ${isActuallyCollapsed ? 'justify-center' : ''} hover:shadow-lg hover:shadow-red-500/10`}
           title="Encerrar Sessão"
         >
@@ -805,13 +803,12 @@ const Sidebar: React.FC<SidebarProps> = ({
         </button>
       </div>
 
-      {/* Support Dialog */}
       <SupportDialog
         isOpen={isSupportOpen}
         onClose={() => setIsSupportOpen(false)}
         adminService={session.user.role === 'INSTRUCTOR' ? new AdminService(new SupabaseAdminRepository()) : undefined}
       />
-    </aside >
+    </aside>
   );
 };
 

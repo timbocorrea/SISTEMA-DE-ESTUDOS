@@ -2,30 +2,35 @@
 import { Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { Toaster, toast } from 'sonner';
-import Sidebar from './components/Sidebar';
-import GeminiBuddy from './components/GeminiBuddy';
+// Lazy Load Heavy UI Components
+const Sidebar = React.lazy(() => import('./components/Sidebar'));
+const GeminiBuddy = React.lazy(() => import('./components/GeminiBuddy'));
 import AuthForm from './components/AuthForm';
-import StudentDashboard from './components/StudentDashboard';
-import AdminContentManagement from './components/AdminContentManagement';
-import UserManagement from './components/UserManagement';
-import FileManagement from './components/FileManagement';
-import { AdminSettingsPage } from './components/AdminSettingsPage';
-import AdminCourseAccessPage from './components/AdminCourseAccessPage';
-import AchievementsPage from './components/AchievementsPage';
-import BuddyFullPage from './components/BuddyFullPage';
-import CourseEnrollmentModal from './components/CourseEnrollmentModal';
+const PendingApprovalScreen = React.lazy(() => import('./components/PendingApprovalScreen'));
 import Breadcrumb from './components/Breadcrumb';
-import LessonContentEditorPage from './components/LessonContentEditorPage';
 import { LessonRecord } from './domain/admin';
-import LessonViewer from './components/LessonViewer';
-import HistoryPage, { HistoryItem } from './components/HistoryPage';
-import PendingApprovalScreen from './components/PendingApprovalScreen';
-import { SystemHealth } from './components/SystemHealth';
-import CourseLayout from './components/CourseLayout';
-import CourseOverview from './components/CourseOverview';
+import { HistoryItem } from './components/HistoryPage'; // Type only
 import { ModernLoader } from './components/ModernLoader';
-import QuestionnaireManagementPage from './components/QuestionnaireManagementPage';
-import DropboxCallbackPage from './components/DropboxCallbackPage';  // [NEW]
+
+// Lazy Imports
+const StudentDashboard = React.lazy(() => import('./components/StudentDashboard'));
+const AdminContentManagement = React.lazy(() => import('./components/AdminContentManagement'));
+const UserManagement = React.lazy(() => import('./components/UserManagement'));
+const FileManagement = React.lazy(() => import('./components/FileManagement'));
+const AdminSettingsPage = React.lazy(() => import('./components/AdminSettingsPage').then(module => ({ default: module.AdminSettingsPage })));
+const AdminCourseAccessPage = React.lazy(() => import('./components/AdminCourseAccessPage'));
+const AchievementsPage = React.lazy(() => import('./components/AchievementsPage'));
+const BuddyFullPage = React.lazy(() => import('./components/BuddyFullPage'));
+const CourseEnrollmentModal = React.lazy(() => import('./components/CourseEnrollmentModal'));
+const LessonContentEditorPage = React.lazy(() => import('./components/LessonContentEditorPage'));
+const LessonViewer = React.lazy(() => import('./components/LessonViewer')); // If used? It was imported but not clearly used in Routes view. Ah, not in Routes.
+const HistoryPage = React.lazy(() => import('./components/HistoryPage'));
+// Duplicate PendingApprovalScreen removed
+const SystemHealth = React.lazy(() => import('./components/SystemHealth').then(module => ({ default: module.SystemHealth }))); // Check if named export
+const CourseLayout = React.lazy(() => import('./components/CourseLayout'));
+const CourseOverview = React.lazy(() => import('./components/CourseOverview'));
+const QuestionnaireManagementPage = React.lazy(() => import('./components/QuestionnaireManagementPage'));
+const DropboxCallbackPage = React.lazy(() => import('./components/DropboxCallbackPage'));
 
 import { useAuth } from './contexts/AuthContext';
 import { useCourse } from './contexts/CourseContext';
@@ -343,7 +348,13 @@ const App: React.FC = () => {
   // App Component Logic
   // ...
   // Pending/Rejected Screens (Keep logic similar to before)
-  if (user.isPending()) return <PendingApprovalScreen userEmail={user.email} onLogout={logout} />;
+  if (user.isPending()) {
+    return (
+      <React.Suspense fallback={<ModernLoader />}>
+        <PendingApprovalScreen userEmail={user.email} onLogout={logout} />
+      </React.Suspense>
+    );
+  }
   if (user.isRejected()) { logout(); return null; }
 
   // Force Password Change Check
@@ -377,34 +388,36 @@ const App: React.FC = () => {
         <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-indigo-500/5 rounded-full blur-[150px] mix-blend-screen animate-pulse-slow"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-emerald-500/5 rounded-full blur-[150px] mix-blend-screen animate-pulse-slow delay-1000"></div>
         <div className="absolute top-[40%] left-[30%] w-[30%] h-[30%] bg-violet-500/5 rounded-full blur-[120px] mix-blend-screen animate-pulse-slow delay-2000"></div>
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.02]"></div>
+        <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-[0.02]"></div>
       </div>
 
       <Toaster theme={theme} richColors position="top-right" />
 
-      {/* Sidebar */}
-      <Sidebar
-        session={session}
-        activeView={activeView}
-        onViewChange={handleViewChange}
-        onLogout={logout}
-        theme={theme}
-        onToggleTheme={() => setTheme(prev => prev === 'light' ? 'dark' : 'light')}
-        user={user}
-        onNavigateFile={(path) => navigate('/admin/files', { state: { path } })}
-        courses={enrolledCourses}
-        adminCourses={adminCourses}
-        onOpenContent={user.role === 'INSTRUCTOR' ? traverseToAdminEditor : verifyEnrollmentAndNavigate}
-        onSelectLesson={(courseId, modId, lessId) => navigate(`/course/${courseId}/lesson/${lessId}`)}
-        isMobileOpen={isMobileMenuOpen}
-        onCloseMobile={() => setIsMobileMenuOpen(false)}
-        activeLessonId={activeLesson?.id}
-        activeCourse={activeCourse}
-        onExpandCourse={(courseId) => selectCourse(courseId)}
-        isOnline={isOnline}
-        isLoadingCourses={isLoadingCourses}
-        isLoadingAdminCourses={isAdminCoursesLoading}
-      />
+      {/* Sidebar - Suspense Wrapper */}
+      <React.Suspense fallback={<div className="w-72 h-full bg-slate-900/60 hidden lg:block" />}>
+        <Sidebar
+          session={session}
+          activeView={activeView}
+          onViewChange={handleViewChange}
+          onLogout={logout}
+          theme={theme}
+          onToggleTheme={() => setTheme(prev => prev === 'light' ? 'dark' : 'light')}
+          user={user}
+          onNavigateFile={(path) => navigate('/admin/files', { state: { path } })}
+          courses={enrolledCourses}
+          adminCourses={adminCourses}
+          onOpenContent={user.role === 'INSTRUCTOR' ? traverseToAdminEditor : verifyEnrollmentAndNavigate}
+          onSelectLesson={(courseId, modId, lessId) => navigate(`/course/${courseId}/lesson/${lessId}`)}
+          isMobileOpen={isMobileMenuOpen}
+          onCloseMobile={() => setIsMobileMenuOpen(false)}
+          activeLessonId={activeLesson?.id}
+          activeCourse={activeCourse}
+          onExpandCourse={(courseId) => selectCourse(courseId)}
+          isOnline={isOnline}
+          isLoadingCourses={isLoadingCourses}
+          isLoadingAdminCourses={isAdminCoursesLoading}
+        />
+      </React.Suspense>
 
       {/* Mobile Overlay */}
       {isMobileMenuOpen && (
@@ -429,82 +442,88 @@ const App: React.FC = () => {
         </header>
 
         <main className="flex-1 overflow-y-auto bg-slate-50/50 dark:bg-transparent scroll-smooth relative pt-[73px] lg:pt-0">
-          <AnimatePresence mode="wait">
-            <Routes location={location} key={location.pathname}>
-              {/* Dashboard Routes */}
-              <Route path="/" element={
-                <StudentDashboard
-                  user={user}
-                  courses={availableCourses}
-                  onCourseClick={handleEnrollRequest}
-                  showEnrollButton={true}
-                  enrolledCourseIds={enrolledCourses.map(c => c.id)}
-                  sectionTitle="Cursos da Plataforma"
-                  onManageCourse={user.role === 'INSTRUCTOR' ? (id) => navigate('/admin/content', { state: { courseId: id } }) : undefined}
-                  onManageContent={user.role === 'INSTRUCTOR' ? () => navigate('/admin/content') : undefined}
-                  isLoading={isLoadingCourses}
-                />
-              } />
-              <Route path="/dashboard" element={<Navigate to="/" replace />} />
-
-              <Route path="/courses" element={
-                <StudentDashboard
-                  user={user}
-                  courses={enrolledCourses}
-                  onCourseClick={(id) => navigate(`/course/${id}`)}
-                  showEnrollButton={false}
-                  sectionTitle="Meus Cursos"
-                  enrolledCourseIds={enrolledCourses.map(c => c.id)}
-                  onManageCourse={user.role === 'INSTRUCTOR' ? (id) => navigate('/admin/content', { state: { courseId: id } }) : undefined}
-                  onManageContent={user.role === 'INSTRUCTOR' ? () => navigate('/admin/content') : undefined}
-                  isLoading={isLoadingCourses}
-                />
-              } />
-
-              {/* Feature Routes */}
-              <Route path="/achievements" element={<AchievementsPage user={user} course={activeCourse} />} />
-              <Route path="/history" element={<HistoryPageWrapper adminService={adminService} userId={user.id} />} />
-              <Route path="/buddy" element={<BuddyFullPage />} />
-
-              {/* Course Routes */}
-              <Route path="/course/:courseId" element={<CourseLayout />}>
-                <Route index element={
-                  // Course Overview (Module List)
-                  // Reusing logic from old App.tsx where we showed module list if no lesson selected
-                  <CourseOverview
+          <React.Suspense fallback={
+            <div className="flex h-full items-center justify-center">
+              <ModernLoader message="Carregando..." />
+            </div>
+          }>
+            <AnimatePresence mode="wait">
+              <Routes location={location} key={location.pathname}>
+                {/* Dashboard Routes */}
+                <Route path="/" element={
+                  <StudentDashboard
                     user={user}
-                    activeCourse={activeCourse}
-                    onSelectModule={(m: any) => selectModule(m.id)}
-                    onSelectLesson={(l: any) => navigate(`/course/${activeCourse?.id}/lesson/${l.id}`)}
+                    courses={availableCourses}
+                    onCourseClick={handleEnrollRequest}
+                    showEnrollButton={true}
+                    enrolledCourseIds={enrolledCourses.map(c => c.id)}
+                    sectionTitle="Cursos da Plataforma"
+                    onManageCourse={user.role === 'INSTRUCTOR' ? (id) => navigate('/admin/content', { state: { courseId: id } }) : undefined}
+                    onManageContent={user.role === 'INSTRUCTOR' ? () => navigate('/admin/content') : undefined}
+                    isLoading={isLoadingCourses}
                   />
                 } />
-                <Route path="lesson/:lessonId" element={
-                  <LessonLoader user={user} theme={theme} onTrackAction={handleTrackAction} />
-                } />
-              </Route>
+                <Route path="/dashboard" element={<Navigate to="/" replace />} />
 
-              {/* Admin Routes */}
-              <Route path="/admin/content" element={
-                <AdminRoute>
-                  <AdminContentManagement
-                    adminService={adminService}
-                    initialCourseId={undefined}
-                    onOpenContentEditor={(lesson) => navigate(`/admin/lesson/${lesson.id}/edit`)}
+                <Route path="/courses" element={
+                  <StudentDashboard
+                    user={user}
+                    courses={enrolledCourses}
+                    onCourseClick={(id) => navigate(`/course/${id}`)}
+                    showEnrollButton={false}
+                    sectionTitle="Meus Cursos"
+                    enrolledCourseIds={enrolledCourses.map(c => c.id)}
+                    onManageCourse={user.role === 'INSTRUCTOR' ? (id) => navigate('/admin/content', { state: { courseId: id } }) : undefined}
+                    onManageContent={user.role === 'INSTRUCTOR' ? () => navigate('/admin/content') : undefined}
+                    isLoading={isLoadingCourses}
                   />
-                </AdminRoute>
-              } />
-              <Route path="/admin/lesson/:lessonId/edit" element={<AdminRoute><LessonContentEditorWrapper adminService={adminService} /></AdminRoute>} />
-              <Route path="/admin/users" element={<AdminRoute><UserManagement adminService={adminService} /></AdminRoute>} />
-              <Route path="/admin/access" element={<AdminRoute><AdminCourseAccessPage adminService={adminService} /></AdminRoute>} />
-              <Route path="/admin/questionnaire" element={<AdminRoute><QuestionnaireManagementPage adminService={adminService} /></AdminRoute>} />
-              <Route path="/admin/files" element={<AdminRoute><FileManagement /></AdminRoute>} />
-              <Route path="/admin/health" element={<AdminRoute><SystemHealth adminService={adminService} /></AdminRoute>} />
-              <Route path="/admin/settings" element={<AdminRoute><AdminSettingsPage adminService={adminService} /></AdminRoute>} />
-              <Route path="/oauth/dropbox" element={<DropboxCallbackPage />} />
+                } />
 
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </AnimatePresence>
+                {/* Feature Routes */}
+                <Route path="/achievements" element={<AchievementsPage user={user} course={activeCourse} />} />
+                <Route path="/history" element={<HistoryPageWrapper adminService={adminService} userId={user.id} />} />
+                <Route path="/buddy" element={<BuddyFullPage />} />
+
+                {/* Course Routes */}
+                <Route path="/course/:courseId" element={<CourseLayout />}>
+                  <Route index element={
+                    // Course Overview (Module List)
+                    // Reusing logic from old App.tsx where we showed module list if no lesson selected
+                    <CourseOverview
+                      user={user}
+                      activeCourse={activeCourse}
+                      onSelectModule={(m: any) => selectModule(m.id)}
+                      onSelectLesson={(l: any) => navigate(`/course/${activeCourse?.id}/lesson/${l.id}`)}
+                    />
+                  } />
+                  <Route path="lesson/:lessonId" element={
+                    <LessonLoader user={user} theme={theme} onTrackAction={handleTrackAction} />
+                  } />
+                </Route>
+
+                {/* Admin Routes */}
+                <Route path="/admin/content" element={
+                  <AdminRoute>
+                    <AdminContentManagement
+                      adminService={adminService}
+                      initialCourseId={undefined}
+                      onOpenContentEditor={(lesson) => navigate(`/admin/lesson/${lesson.id}/edit`)}
+                    />
+                  </AdminRoute>
+                } />
+                <Route path="/admin/lesson/:lessonId/edit" element={<AdminRoute><LessonContentEditorWrapper adminService={adminService} /></AdminRoute>} />
+                <Route path="/admin/users" element={<AdminRoute><UserManagement adminService={adminService} /></AdminRoute>} />
+                <Route path="/admin/access" element={<AdminRoute><AdminCourseAccessPage adminService={adminService} /></AdminRoute>} />
+                <Route path="/admin/questionnaire" element={<AdminRoute><QuestionnaireManagementPage adminService={adminService} /></AdminRoute>} />
+                <Route path="/admin/files" element={<AdminRoute><FileManagement /></AdminRoute>} />
+                <Route path="/admin/health" element={<AdminRoute><SystemHealth adminService={adminService} /></AdminRoute>} />
+                <Route path="/admin/settings" element={<AdminRoute><AdminSettingsPage adminService={adminService} /></AdminRoute>} />
+                <Route path="/oauth/dropbox" element={<DropboxCallbackPage />} />
+
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </AnimatePresence>
+          </React.Suspense>
         </main>
       </div>
 
@@ -527,10 +546,12 @@ const App: React.FC = () => {
       )}
 
       {/* Gemini Buddy (simplified integration) */}
-      <GeminiBuddy
-        userName={user.name}
-        systemContext="Você está no StudySystem v2 com Rotas."
-      />
+      <React.Suspense fallback={null}>
+        <GeminiBuddy
+          userName={user.name}
+          systemContext="Você está no StudySystem v2 com Rotas."
+        />
+      </React.Suspense>
 
       {/* Support Widget removed from here, moved to Sidebar */}
 

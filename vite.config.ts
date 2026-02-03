@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import compression from 'vite-plugin-compression';
 
 export default defineConfig(({ mode }) => {
   // Carrega todas as variáveis do .env.local
@@ -117,7 +118,8 @@ export default defineConfig(({ mode }) => {
         devOptions: {
           enabled: false // Enable for testing in dev
         }
-      })
+      }),
+      compression()
     ],
     define: {
       // Injeta no código como process.env.API_KEY (exigência da SDK Gemini)
@@ -127,6 +129,18 @@ export default defineConfig(({ mode }) => {
       'window.env': {
         SUPABASE_URL: supabaseUrl,
         SUPABASE_ANON_KEY: supabaseAnonKey
+      }
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+            'ui-vendor': ['framer-motion', 'sonner'],
+            'charts-vendor': ['recharts'],
+            'supabase-vendor': ['@supabase/supabase-js']
+          }
+        }
       }
     },
     server: {
