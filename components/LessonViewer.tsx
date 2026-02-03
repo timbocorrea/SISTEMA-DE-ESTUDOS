@@ -69,8 +69,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
     // Local state (kept here as they're specific to this component instance)
     const [lastAccessedId, setLastAccessedId] = useState<string | null>(null);
-    const [isOptionsMenuOpen, setIsOptionsMenu] = useState<boolean>(false);
-    const blockRefs = useRef<{ [key: string]: HTMLDivElement | null }>([]);
+    const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState<boolean>(false);
+    const blockRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
     const optionsMenuRef = useRef<HTMLDivElement | null>(null);
 
     // Image Viewer Modal State
@@ -193,7 +193,15 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
         if (activeBlockId) {
             const element = blockRefs.current[activeBlockId];
             if (element) {
-                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                const rect = element.getBoundingClientRect();
+                const isVisible = (
+                    rect.top >= 0 &&
+                    rect.bottom <= (window.innerHeight || document.documentElement.clientHeight)
+                );
+
+                if (!isVisible) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
             }
         }
     }, [activeBlockId]);

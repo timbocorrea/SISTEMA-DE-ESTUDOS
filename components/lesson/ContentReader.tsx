@@ -28,14 +28,10 @@ const ContentReader: React.FC<ContentReaderProps> = ({
     const { activeBlockId, fontSize, contentTheme } = useLessonStore();
     const contentRef = useRef<HTMLDivElement>(null);
 
-    // Scroll to active block when it changes
+    // Scroll to active block logic moved to parent (LessonViewer) to avoid conflicts
     useEffect(() => {
-        if (activeBlockId && contentRef.current) {
-            const activeElement = contentRef.current.querySelector(`[data-block-id="${activeBlockId}"]`);
-            if (activeElement) {
-                activeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-        }
+        // Keeping this effect empty or removing it entirely if not needed for anything else.
+        // The parent component handles scrolling via ref logic.
     }, [activeBlockId]);
 
     const getBackgroundColor = (color: string) => {

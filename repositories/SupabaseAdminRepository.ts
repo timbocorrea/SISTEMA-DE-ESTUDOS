@@ -373,7 +373,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
   async listProfiles(): Promise<ProfileRecord[]> {
     const { data, error } = await this.client
       .from('profiles')
-      .select('id,email,name,role,xp_total,current_level,gemini_api_key,updated_at,approval_status,approved_at,approved_by,rejection_reason,is_minor')
+      .select('id,email,name,role,xp_total,current_level,gemini_api_key,updated_at,approval_status,approved_at,approved_by,rejection_reason')
       .order('updated_at', { ascending: false });
 
     if (error) throw new DomainError(`Falha ao listar usuários: ${error.message}`);
@@ -383,11 +383,10 @@ export class SupabaseAdminRepository implements IAdminRepository {
 
   // ... (keeping other methods)
 
-  async updateProfile(id: string, patch: { role?: 'STUDENT' | 'INSTRUCTOR'; geminiApiKey?: string | null; isMinor?: boolean }): Promise<void> {
+  async updateProfile(id: string, patch: { role?: 'STUDENT' | 'INSTRUCTOR'; geminiApiKey?: string | null }): Promise<void> {
     const updates: any = { updated_at: new Date().toISOString() };
     if (patch.role) updates.role = patch.role;
     if (patch.geminiApiKey !== undefined) updates.gemini_api_key = patch.geminiApiKey;
-    if (patch.isMinor !== undefined) updates.is_minor = patch.isMinor;
 
     const { error } = await this.client.from('profiles').update(updates).eq('id', id);
     if (error) throw new DomainError(`Falha ao atualizar perfil: ${error.message}`);
@@ -514,14 +513,6 @@ export class SupabaseAdminRepository implements IAdminRepository {
     if (error) throw new DomainError(`Falha ao remover atribuição de curso: ${error.message}`);
   }
 
-  async updateProfile(id: string, patch: { role?: 'STUDENT' | 'INSTRUCTOR'; geminiApiKey?: string | null }): Promise<void> {
-    const updates: any = { updated_at: new Date().toISOString() };
-    if (patch.role) updates.role = patch.role;
-    if (patch.geminiApiKey !== undefined) updates.gemini_api_key = patch.geminiApiKey;
-
-    const { error } = await this.client.from('profiles').update(updates).eq('id', id);
-    if (error) throw new DomainError(`Falha ao atualizar perfil: ${error.message}`);
-  }
   async getSystemStats(): Promise<any> {
     const { data, error } = await this.client.rpc('get_db_stats');
 

@@ -219,6 +219,7 @@ export class User {
     public readonly geminiApiKey: string | null = null,
     public readonly approvalStatus: 'pending' | 'approved' | 'rejected' = 'approved',
     public readonly lastAccess: Date | null = null,
+    public readonly isTempPassword: boolean = false,
     public readonly approvedAt: Date | null = null,
     public readonly approvedBy: string | null = null,
     public readonly rejectionReason: string | null = null,
