@@ -129,6 +129,7 @@ const ContentReader: React.FC<ContentReaderProps> = ({
 
                             // Normal block click (Audio)
                             if (hasAudio && onBlockClick) {
+                                e.stopPropagation(); // Prevent parent handlers (like ContextMenu reset)
                                 onBlockClick(block.id, index);
                                 onTrackAction?.(`Clicou no bloco de áudio ${index + 1}`);
                             }

@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 
 interface ModernLoaderProps {
     message?: string;
@@ -15,50 +16,52 @@ export const ModernLoader: React.FC<ModernLoaderProps> = ({
     size = 'md',
     fullscreen = false
 }) => {
-    const sizeClasses = {
-        sm: 'w-8 h-8',
-        md: 'w-12 h-12',
-        lg: 'w-16 h-16'
+    // Map sizes to pixel widths for the logo
+    const logoSizes = {
+        sm: 'w-16',
+        md: 'w-24',
+        lg: 'w-32'
     };
 
     const containerClasses = fullscreen
-        ? 'fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/95 dark:bg-[#0a0e14]/95 backdrop-blur-sm'
-        : 'flex flex-col items-center justify-center p-8';
+        ? 'fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-950/90 backdrop-blur-md transition-all duration-500'
+        : 'w-full h-full min-h-[50vh] flex flex-col items-center justify-center p-8'; // Ensure height for centering
 
     return (
         <div className={containerClasses}>
-            {/* Animated spinner - using transform for performance */}
-            <div className="relative">
-                {/* Outer ring */}
-                <div
-                    className={`${sizeClasses[size]} rounded-full border-4 border-slate-200 dark:border-slate-800`}
-                />
-                {/* Spinning gradient ring */}
-                <div
-                    className={`
-            ${sizeClasses[size]} 
-            absolute inset-0 
-            rounded-full 
-            border-4 border-transparent 
-            border-t-indigo-600 dark:border-t-indigo-400
-            border-r-indigo-400 dark:border-r-indigo-500
-            animate-spin
-            shadow-lg shadow-indigo-500/20
-          `}
-                    style={{ animationDuration: '0.8s' }}
-                />
-                {/* Center dot pulse */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-2 h-2 bg-indigo-600 dark:bg-indigo-400 rounded-full animate-pulse" />
-                </div>
-            </div>
+            <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{
+                    opacity: [0.8, 1, 0.8],
+                    scale: [0.95, 1.05, 0.95],
+                }}
+                transition={{
+                    duration: 3,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                }}
+                className={`relative z-10 flex flex-col items-center justify-center`}
+            >
+                {/* Glow Effect behind logo */}
+                <div className="absolute inset-0 bg-indigo-500/20 blur-3xl rounded-full scale-150 animate-pulse" />
 
-            {/* Message with fade animation */}
-            {message && (
-                <p className="mt-6 text-sm font-medium text-slate-600 dark:text-slate-400 animate-pulse">
-                    {message}
-                </p>
-            )}
+                <img
+                    src="/logo.svg"
+                    alt="Loading..."
+                    className={`${logoSizes[size] || 'w-24'} drop-shadow-2xl relative z-10`}
+                />
+
+                {message && (
+                    <motion.p
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.5 }}
+                        className="mt-8 text-xs font-black tracking-[0.2em] text-slate-400 uppercase text-center"
+                    >
+                        {message}
+                    </motion.p>
+                )}
+            </motion.div>
         </div>
     );
 };

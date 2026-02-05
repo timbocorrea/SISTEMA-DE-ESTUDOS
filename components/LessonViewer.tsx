@@ -173,6 +173,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
     const lessonProgress = userProgress.find(p => p.lessonId === lesson.id);
 
+    const contentScrollContainerRef = useRef<HTMLDivElement>(null);
+
     // Initial Resume Logic (Scroll and Focus)
     useEffect(() => {
         if (lessonProgress?.lastAccessedBlockId) {
@@ -181,8 +183,20 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
             setTimeout(() => {
                 const element = blockRefs.current[blockId];
-                if (element) {
-                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                const container = contentScrollContainerRef.current;
+
+                if (element && container) {
+                    // Calcular posição centralizada no container
+                    const containerHeight = container.clientHeight;
+                    const elementTop = element.offsetTop;
+                    const elementHeight = element.offsetHeight;
+
+                    const targetScroll = elementTop - (containerHeight / 2) + (elementHeight / 2);
+
+                    container.scrollTo({
+                        top: targetScroll,
+                        behavior: 'smooth'
+                    });
                 }
             }, 500);
         }
@@ -192,15 +206,31 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     useEffect(() => {
         if (activeBlockId) {
             const element = blockRefs.current[activeBlockId];
-            if (element) {
-                const rect = element.getBoundingClientRect();
+            const container = contentScrollContainerRef.current;
+
+            if (element && container) {
+                // Verificar se o elemento já está visível no container
+                const containerRect = container.getBoundingClientRect();
+                const elementRect = element.getBoundingClientRect();
+
                 const isVisible = (
-                    rect.top >= 0 &&
-                    rect.bottom <= (window.innerHeight || document.documentElement.clientHeight)
+                    elementRect.top >= containerRect.top &&
+                    elementRect.bottom <= containerRect.bottom
                 );
 
                 if (!isVisible) {
-                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    // Calcular scroll relativo ao container
+                    // element.offsetTop é relativo ao pai posicionado (o container deve ser relative/absolute)
+                    const containerHeight = container.clientHeight;
+                    const elementTop = element.offsetTop;
+                    const elementHeight = element.offsetHeight;
+
+                    const targetScroll = elementTop - (containerHeight / 2) + (elementHeight / 2);
+
+                    container.scrollTo({
+                        top: targetScroll,
+                        behavior: 'smooth'
+                    });
                 }
             }
         }
@@ -653,6 +683,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
                         {/* Content area - Inner Scroll */}
                         <div
+                            ref={contentScrollContainerRef}
                             className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-indigo-200 dark:scrollbar-thumb-slate-700 p-0 md:p-6 relative"
                             onContextMenu={(e) => {
                                 const selection = window.getSelection();

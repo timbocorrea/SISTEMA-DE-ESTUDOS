@@ -15,6 +15,7 @@ export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate }: UseA
         setActiveBlockId,
         playbackSpeed,
         audioEnabled,
+        setAudioEnabled,
         isPlaying,
         setIsPlaying
     } = useLessonStore();
@@ -76,9 +77,9 @@ export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate }: UseA
     };
 
     const playBlock = (index: number) => {
-        // Prevent playback if audio is disabled
+        // Auto-enable audio if manually clicking a block
         if (!audioEnabled) {
-            return;
+            setAudioEnabled(true);
         }
 
         const blocks = lesson.contentBlocks;
