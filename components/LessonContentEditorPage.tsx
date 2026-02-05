@@ -774,8 +774,25 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
     // Handler for Dropbox Audio Selection
     const handleDropboxAudioSelected = (url: string, filename: string) => {
-        setTempAudioUrl(url);
-        toast.success(`✅ ${filename} selecionado do Dropbox!`);
+        // Se estivermos editando um bloco para áudio, salva automaticamente
+        if (editingBlockForAudio) {
+            updateBlock(editingBlockForAudio.id, { audioUrl: url });
+            setEditingBlockForAudio(null);
+            setTempAudioUrl('');
+
+            // Parar áudio de preview se estiver tocando
+            if (previewAudioRef.current) {
+                previewAudioRef.current.pause();
+                previewAudioRef.current = null;
+            }
+            setIsPlayingPreview(false);
+
+            toast.success(`✅ Áudio salvo automaticamente: ${filename}`);
+        } else {
+            // Fallback caso não tenha bloco (ex: apenas copiou URL)
+            setTempAudioUrl(url);
+            toast.success(`✅ ${filename} selecionado!`);
+        }
         setShowDropboxBrowser(false);
     };
     const [blocksPerPage, setBlocksPerPage] = useState<number | 'all'>('all');

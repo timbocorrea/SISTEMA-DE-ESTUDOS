@@ -27,10 +27,17 @@ const DropboxAudioBrowser: React.FC<DropboxAudioBrowserProps> = ({
 }) => {
   // Estado de Autenticação e Navegação
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentPath, setCurrentPath] = useState('');
+  // Initialize from localStorage if available
+  const [currentPath, setCurrentPath] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('dropbox_last_path') || '';
+    }
+    return '';
+  });
   const [items, setItems] = useState<DropboxItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Estado de Seleção e Preview
   const [selectedItem, setSelectedItem] = useState<DropboxItem | null>(null);
@@ -48,6 +55,13 @@ const DropboxAudioBrowser: React.FC<DropboxAudioBrowserProps> = ({
       }
     }
   }, [isOpen]);
+
+  // Persist path changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dropbox_last_path', currentPath);
+    }
+  }, [currentPath]);
 
   // Carregar pasta
   const loadFolder = async (path: string) => {
@@ -71,8 +85,17 @@ const DropboxAudioBrowser: React.FC<DropboxAudioBrowserProps> = ({
 
       setItems(filtered);
       setCurrentPath(path);
+      setSearchQuery('');
     } catch (err) {
       console.error(err);
+
+      // If loading the persisted path fails (e.g. folder deleted), try root
+      if (path !== '') {
+        console.log('Falha ao carregar path persistido, tentando raiz...');
+        loadFolder('');
+        return;
+      }
+
       setError('Falha ao carregar arquivos. Tente reconectar.');
       if ((err as any).message === 'Sessão expirada') {
         setIsAuthenticated(false);
@@ -209,20 +232,34 @@ const DropboxAudioBrowser: React.FC<DropboxAudioBrowserProps> = ({
           <div className="flex-1 flex flex-col h-full">
 
             {/* Barra de Navegação */}
-            <div className="p-3 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2 bg-slate-50/50 dark:bg-slate-900/50">
-              {currentPath !== '' && (
-                <button onClick={handleBack} className="w-8 h-8 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center text-slate-500">
-                  <i className="fas fa-arrow-left text-xs"></i>
+            <div className="p-3 border-b border-slate-100 dark:border-slate-800 flex flex-col gap-2 bg-slate-50/50 dark:bg-slate-900/50">
+              <div className="flex items-center gap-2">
+                {currentPath !== '' && (
+                  <button onClick={handleBack} className="w-8 h-8 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center text-slate-500">
+                    <i className="fas fa-arrow-left text-xs"></i>
+                  </button>
+                )}
+                <div className="flex-1 overflow-hidden">
+                  <p className="text-xs font-bold text-slate-600 dark:text-slate-300 truncate">
+                    {currentPath === '' ? 'Arquivos' : currentPath.split('/').pop()}
+                  </p>
+                </div>
+                <button onClick={loadFolder.bind(null, currentPath)} className="w-8 h-8 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center text-slate-500">
+                  <i className="fas fa-sync-alt text-xs"></i>
                 </button>
-              )}
-              <div className="flex-1 overflow-hidden">
-                <p className="text-xs font-bold text-slate-600 dark:text-slate-300 truncate">
-                  {currentPath === '' ? 'Arquivos' : currentPath.split('/').pop()}
-                </p>
               </div>
-              <button onClick={loadFolder.bind(null, currentPath)} className="w-8 h-8 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center text-slate-500">
-                <i className="fas fa-sync-alt text-xs"></i>
-              </button>
+
+              {/* Filtro de Arquivos */}
+              <div className="relative">
+                <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                <input
+                  type="text"
+                  placeholder="Filtrar arquivos..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none transition-all"
+                />
+              </div>
             </div>
 
             {/* Lista de Arquivos */}
@@ -254,39 +291,49 @@ const DropboxAudioBrowser: React.FC<DropboxAudioBrowserProps> = ({
                 </div>
               ) : (
                 <div className="space-y-1">
-                  {items.map(item => (
-                    <div
-                      key={item.id}
-                      onClick={() => handleItemClick(item)}
-                      className={`p-3 rounded-xl flex items-center gap-3 cursor-pointer transition-colors group ${selectedItem?.id === item.id
-                        ? 'bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800'
-                        : 'hover:bg-slate-50 dark:hover:bg-slate-800 border border-transparent'
-                        }`}
-                    >
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-lg ${item.tag === 'folder'
-                        ? 'bg-amber-100 text-amber-500 dark:bg-amber-900/30'
-                        : 'bg-indigo-100 text-indigo-500 dark:bg-indigo-900/30'
-                        }`}>
-                        <i className={`fas ${item.tag === 'folder' ? 'fa-folder' : 'fa-music'}`}></i>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-xs font-bold truncate ${selectedItem?.id === item.id
-                          ? 'text-indigo-700 dark:text-indigo-400'
-                          : 'text-slate-700 dark:text-slate-200'
+                  {items
+                    .filter(item => {
+                      if (!searchQuery) return true;
+                      return item.name.toLowerCase().startsWith(searchQuery.toLowerCase());
+                    })
+                    .map(item => (
+                      <div
+                        key={item.id}
+                        onClick={() => handleItemClick(item)}
+                        className={`p-3 rounded-xl flex items-center gap-3 cursor-pointer transition-colors group ${selectedItem?.id === item.id
+                          ? 'bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800'
+                          : 'hover:bg-slate-50 dark:hover:bg-slate-800 border border-transparent'
+                          }`}
+                      >
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-lg ${item.tag === 'folder'
+                          ? 'bg-amber-100 text-amber-500 dark:bg-amber-900/30'
+                          : 'bg-indigo-100 text-indigo-500 dark:bg-indigo-900/30'
                           }`}>
-                          {item.name}
-                        </p>
-                        {item.size && (
-                          <p className="text-[10px] text-slate-400">
-                            {(item.size / 1024 / 1024).toFixed(1)} MB
+                          <i className={`fas ${item.tag === 'folder' ? 'fa-folder' : 'fa-music'}`}></i>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-xs font-bold truncate ${selectedItem?.id === item.id
+                            ? 'text-indigo-700 dark:text-indigo-400'
+                            : 'text-slate-700 dark:text-slate-200'
+                            }`}>
+                            {item.name}
                           </p>
+                          {item.size && (
+                            <p className="text-[10px] text-slate-400">
+                              {(item.size / 1024 / 1024).toFixed(1)} MB
+                            </p>
+                          )}
+                        </div>
+                        {item.tag === 'folder' && (
+                          <i className="fas fa-chevron-right text-xs text-slate-300 group-hover:text-slate-400"></i>
                         )}
                       </div>
-                      {item.tag === 'folder' && (
-                        <i className="fas fa-chevron-right text-xs text-slate-300 group-hover:text-slate-400"></i>
-                      )}
+                    ))}
+                  {items.filter(item => !searchQuery || item.name.toLowerCase().startsWith(searchQuery.toLowerCase())).length === 0 && (
+                    <div className="p-4 text-center text-xs text-slate-400 font-medium">
+                      Nenhum arquivo encontrado com "{searchQuery}"
                     </div>
-                  ))}
+                  )}
                 </div>
               )}
             </div>

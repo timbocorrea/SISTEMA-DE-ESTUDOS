@@ -679,6 +679,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                 }}
                                 onTrackAction={onTrackAction}
                                 currentProgress={progress}
+                                blockRefs={blockRefs}
                             />
 
                             {/* Context Menu Overlay */}

@@ -16,6 +16,7 @@ interface ContentReaderProps {
     onBlockClick?: (blockId: string, index: number) => void;
     onTrackAction?: (action: string) => void;
     currentProgress?: number; // 0 to 100
+    blockRefs?: React.MutableRefObject<{ [key: string]: HTMLDivElement | null }>;
 }
 
 const ContentReader: React.FC<ContentReaderProps> = ({
@@ -23,7 +24,8 @@ const ContentReader: React.FC<ContentReaderProps> = ({
     highlights,
     onBlockClick,
     onTrackAction,
-    currentProgress = 0
+    currentProgress = 0,
+    blockRefs
 }) => {
     const { activeBlockId, fontSize, contentTheme } = useLessonStore();
     const contentRef = useRef<HTMLDivElement>(null);
@@ -88,6 +90,11 @@ const ContentReader: React.FC<ContentReaderProps> = ({
                 return (
                     <div
                         key={block.id}
+                        ref={(el) => {
+                            if (blockRefs) {
+                                blockRefs.current[block.id] = el;
+                            }
+                        }}
                         data-block-id={block.id}
                         className={`content-block ${isActive ? 'active-block' : ''} ${hasAudio ? 'has-audio' : ''}`}
                         style={{
