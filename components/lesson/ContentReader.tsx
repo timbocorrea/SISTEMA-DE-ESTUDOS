@@ -17,6 +17,7 @@ interface ContentReaderProps {
     onTrackAction?: (action: string) => void;
     currentProgress?: number; // 0 to 100
     blockRefs?: React.MutableRefObject<{ [key: string]: HTMLDivElement | null }>;
+    onSeek?: (percentage: number) => void;
 }
 
 const ContentReader: React.FC<ContentReaderProps> = ({
@@ -25,7 +26,8 @@ const ContentReader: React.FC<ContentReaderProps> = ({
     onBlockClick,
     onTrackAction,
     currentProgress = 0,
-    blockRefs
+    blockRefs,
+    onSeek
 }) => {
     const { activeBlockId, fontSize, contentTheme } = useLessonStore();
     const contentRef = useRef<HTMLDivElement>(null);
@@ -156,9 +158,21 @@ const ContentReader: React.FC<ContentReaderProps> = ({
 
                         {/* Audio Progress Bar for Active Block */}
                         {isActive && hasAudio && (
-                            <div className="mt-3 w-full h-1.5 bg-indigo-500/10 rounded-full overflow-hidden">
+                            <div
+                                className="mt-3 w-full h-2 bg-indigo-500/10 rounded-full overflow-hidden cursor-pointer hover:h-2.5 transition-all group"
+                                onClick={(e) => {
+                                    if (onSeek) {
+                                        const rect = e.currentTarget.getBoundingClientRect();
+                                        const x = e.clientX - rect.left;
+                                        const percentage = (x / rect.width) * 100;
+                                        onSeek(Math.max(0, Math.min(100, percentage)));
+                                        onTrackAction?.('Navegou na barra de progresso do áudio');
+                                    }
+                                }}
+                                title="Clique para avançar ou retroceder"
+                            >
                                 <div
-                                    className="h-full bg-indigo-500 transition-all duration-200 ease-linear"
+                                    className="h-full bg-indigo-500 transition-all duration-200 ease-linear group-hover:bg-indigo-600"
                                     style={{
                                         width: `${currentProgress}%`,
                                     }}

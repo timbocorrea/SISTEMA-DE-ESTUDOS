@@ -158,13 +158,26 @@ export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate }: UseA
 
         // Handle end of track - OPTIMIZED for fast transition
         audio.onended = () => {
+            console.log(`🎵 Audio ended for block ${index}`);
+
+            // Prevent immediate re-trigger by checking if audio actually played
+            if (audio.currentTime < 0.5 && audio.duration > 1) {
+                console.warn(`⚠️ Audio ended too quickly (${audio.currentTime}s), skipping auto-advance`);
+                setIsPlaying(false);
+                activityMonitor.setMediaPlaying(false);
+                setActiveBlockId(null);
+                return;
+            }
+
             setAudioProgress(0);
             // Auto-advance IMMEDIATELY without setting isPlaying to false
             const nextIndex = index + 1;
             if (nextIndex < blocks.length && blocks[nextIndex].audioUrl && audioEnabledRef.current) {
                 // Immediate transition to next block
+                console.log(`➡️ Auto-advancing to block ${nextIndex}`);
                 playBlock(nextIndex);
             } else {
+                console.log(`⏹️ Playback finished`);
                 setIsPlaying(false);
                 activityMonitor.setMediaPlaying(false);
                 setActiveBlockId(null);
