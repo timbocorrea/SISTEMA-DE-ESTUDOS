@@ -2356,7 +2356,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
             });
             await navigator.clipboard.write([clipboardItem]);
 
-            alert('Conteúdo copiado com formatação preservada!');
+            // alert('Conteúdo copiado com formatação preservada!');
         } catch (error) {
             console.error('❌ Erro ao copiar bloco:', error);
             alert('Erro ao copiar conteúdo. Por favor, tente novamente.');
