@@ -3856,7 +3856,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                 <div className="p-6 space-y-4">
                                     <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-slate-800">
                                         <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium line-clamp-2 italic">
-                                            "{editingBlockForAudio.text}"
+                                            "{editingBlockForAudio.text.replace(/<[^>]+>/g, '')}"
                                         </p>
                                     </div>
 
