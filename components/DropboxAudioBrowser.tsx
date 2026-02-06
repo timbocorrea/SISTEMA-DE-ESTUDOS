@@ -17,13 +17,15 @@ interface DropboxAudioBrowserProps {
   appKey: string;
   initialFile?: DropboxFile | null;
   variant?: 'modal' | 'panel';
+  usedAudioUrls?: string[]; // URLs of audio files already used in blocks
 }
 
 const DropboxAudioBrowser: React.FC<DropboxAudioBrowserProps> = ({
   isOpen,
   onClose,
   onSelectAudio,
-  variant = 'modal'
+  variant = 'modal',
+  usedAudioUrls = []
 }) => {
   // Estado de Autenticação e Navegação
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -83,7 +85,24 @@ const DropboxAudioBrowser: React.FC<DropboxAudioBrowserProps> = ({
         return a.tag === 'folder' ? -1 : 1;
       });
 
-      setItems(filtered);
+      // Filtrar áudios já utilizados (manter pastas)
+      // usedAudioUrls agora contém os nomes dos arquivos já usados
+      console.log('🎵 Dropbox filter - Used audio filenames:', usedAudioUrls);
+      console.log('📁 Dropbox filter - Total files before filter:', filtered.filter(i => i.tag === 'file').length);
+
+      const availableItems = filtered.filter(item => {
+        if (item.tag === 'folder') return true; // Manter todas as pastas
+        // Remover arquivos cujo nome já foi usado
+        const isUsed = usedAudioUrls.includes(item.name);
+        if (isUsed) {
+          console.log('❌ Filtering out used file:', item.name);
+        }
+        return !isUsed;
+      });
+
+      console.log('✅ Dropbox filter - Files after filter:', availableItems.filter(i => i.tag === 'file').length);
+
+      setItems(availableItems);
       setCurrentPath(path);
       setSearchQuery('');
     } catch (err) {
@@ -260,6 +279,14 @@ const DropboxAudioBrowser: React.FC<DropboxAudioBrowserProps> = ({
                   className="w-full pl-8 pr-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none transition-all"
                 />
               </div>
+
+              {/* Contador de Arquivos Disponíveis */}
+              <div className="flex items-center gap-2 px-2 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
+                <i className="fas fa-music text-indigo-600 dark:text-indigo-400 text-xs"></i>
+                <span className="text-xs font-medium text-indigo-700 dark:text-indigo-300">
+                  {items.filter(item => item.tag === 'file').length} {items.filter(item => item.tag === 'file').length === 1 ? 'arquivo disponível' : 'arquivos disponíveis'}
+                </span>
+              </div>
             </div>
 
             {/* Lista de Arquivos */}
@@ -294,7 +321,8 @@ const DropboxAudioBrowser: React.FC<DropboxAudioBrowserProps> = ({
                   {items
                     .filter(item => {
                       if (!searchQuery) return true;
-                      return item.name.toLowerCase().startsWith(searchQuery.toLowerCase());
+                      // Search for query anywhere in filename (case-insensitive)
+                      return item.name.toLowerCase().includes(searchQuery.toLowerCase());
                     })
                     .map(item => (
                       <div
