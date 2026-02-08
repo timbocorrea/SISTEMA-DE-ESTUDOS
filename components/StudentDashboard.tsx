@@ -315,6 +315,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                       progress={progress.percent}
                       onClick={() => onCourseClick(course.id)}
                       onManage={user.role === 'INSTRUCTOR' ? () => onManageCourse?.(course.id) : undefined}
+                      useInteractiveHoverButton={true}
                     />
                   </motion.div>
                 );

@@ -2,6 +2,7 @@ import React from 'react';
 import { Course } from '../../domain/entities';
 import { motion } from 'framer-motion';
 import { ShinyButton } from '../ui/shiny-button';
+import { InteractiveHoverButton } from '../ui/interactive-hover-button';
 
 import LazyImage from '../ui/LazyImage';
 
@@ -11,6 +12,7 @@ interface CourseCardProps {
     progress?: number;
     onClick: () => void;
     onManage?: () => void;
+    useInteractiveHoverButton?: boolean;
 }
 
 const CourseCard: React.FC<CourseCardProps> = ({
@@ -18,7 +20,8 @@ const CourseCard: React.FC<CourseCardProps> = ({
     isEnrolled,
     progress = 0,
     onClick,
-    onManage
+    onManage,
+    useInteractiveHoverButton = false
 }) => {
     const totalModules = course.modules?.length || 0;
     const totalLessons = course.modules?.reduce((sum, mod) => sum + (mod.lessons?.length || 0), 0) || 0;
@@ -102,30 +105,38 @@ const CourseCard: React.FC<CourseCardProps> = ({
 
                 {/* Action Button */}
                 <div className="flex items-center gap-2 mt-auto pt-4 border-t border-slate-200 dark:border-white/5">
-                    <ShinyButton
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onClick();
-                        }}
-                        className={`flex-1 px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all shadow-lg active:scale-95 group/btn relative overflow-hidden ${isEnrolled
-                            ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/20'
-                            : 'bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-800 dark:text-white border border-slate-300 dark:border-white/10'
-                            }`}
-                    >
-                        <span className="relative z-10 flex items-center justify-center gap-2">
-                            {isEnrolled ? (
-                                <>
-                                    <i className="fas fa-play"></i>
-                                    Continuar
-                                </>
-                            ) : (
-                                <>
-                                    <i className="fas fa-plus"></i>
-                                    Inscrever-se
-                                </>
-                            )}
-                        </span>
-                    </ShinyButton>
+                    {useInteractiveHoverButton ? (
+                        <div className="flex-1" onClick={(e) => { e.stopPropagation(); onClick(); }}>
+                            <InteractiveHoverButton className={`w-full ${isEnrolled ? "bg-indigo-600 text-white" : ""}`}>
+                                {isEnrolled ? "Continuar" : "Inscrever-se"}
+                            </InteractiveHoverButton>
+                        </div>
+                    ) : (
+                        <ShinyButton
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onClick();
+                            }}
+                            className={`flex-1 px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all shadow-lg active:scale-95 group/btn relative overflow-hidden ${isEnrolled
+                                ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/20'
+                                : 'bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-800 dark:text-white border border-slate-300 dark:border-white/10'
+                                }`}
+                        >
+                            <span className="relative z-10 flex items-center justify-center gap-2">
+                                {isEnrolled ? (
+                                    <>
+                                        <i className="fas fa-play"></i>
+                                        Continuar
+                                    </>
+                                ) : (
+                                    <>
+                                        <i className="fas fa-plus"></i>
+                                        Inscrever-se
+                                    </>
+                                )}
+                            </span>
+                        </ShinyButton>
+                    )}
 
                     {onManage && (
                         <button

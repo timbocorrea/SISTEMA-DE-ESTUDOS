@@ -3,6 +3,7 @@ import { Course, User } from '../domain/entities';
 import { AchievementsList } from './AchievementsList';
 import { AdminService } from '../services/AdminService';
 import { XpLogRecord } from '../domain/admin';
+import { NumberTicker } from './ui/number-ticker';
 
 const ACHIEVEMENT_CATALOG_LENGTH = 6;
 const ITEMS_PER_PAGE = 50;
@@ -67,15 +68,15 @@ const AchievementsPage: React.FC<AchievementsPageProps> = ({ user, course, admin
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-sm">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Desbloqueadas</p>
-            <p className="text-2xl font-black text-slate-900 dark:text-white">{unlockedCount}/{total}</p>
+            <p className="text-2xl font-black text-slate-900 dark:text-white"><NumberTicker key={unlockedCount} value={unlockedCount} />/{total}</p>
           </div>
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-sm">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Progresso</p>
-            <p className="text-2xl font-black text-indigo-600 dark:text-indigo-400">{unlockedPercent}%</p>
+            <p className="text-2xl font-black text-indigo-600 dark:text-indigo-400"><NumberTicker key={unlockedPercent} value={Number(unlockedPercent)} />%</p>
           </div>
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-sm">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">XP Total</p>
-            <p className="text-2xl font-black text-slate-900 dark:text-white">{user.xp.toLocaleString()}</p>
+            <p className="text-2xl font-black text-slate-900 dark:text-white"><NumberTicker key={user.xp} value={Number(user.xp)} /></p>
           </div>
         </div>
       </div>

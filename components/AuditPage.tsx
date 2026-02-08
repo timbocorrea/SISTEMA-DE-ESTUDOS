@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { auditService, AuditLogEntry } from '../services/AuditService';
+import { NumberTicker } from './ui/number-ticker';
+import { AnimatedDuration } from './ui/animated-duration';
 
 const AuditPage: React.FC = () => {
     const [logs, setLogs] = useState<AuditLogEntry[]>([]);
@@ -75,6 +77,25 @@ const AuditPage: React.FC = () => {
         return currentTitle;
     };
 
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 15;
+
+    // Reset pagination when filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [dateFilter, statusFilter, logs]);
+
+    // Pagination Logic
+    const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const currentLogs = filteredLogs.slice(startIndex, startIndex + itemsPerPage);
+
+    const handlePageChange = (newPage: number) => {
+        if (newPage >= 1 && newPage <= totalPages) {
+            setCurrentPage(newPage);
+        }
+    };
+
     return (
         <div className="p-6 max-w-7xl mx-auto space-y-6">
             <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -136,8 +157,8 @@ const AuditPage: React.FC = () => {
                         </div>
                         <div>
                             <p className="text-xs uppercase tracking-widest text-slate-500 font-bold">Total Registrado</p>
-                            <h2 className="text-2xl font-black text-slate-800 dark:text-white">
-                                {filteredLogs.length} <span className="text-sm font-medium opacity-50">sessões</span>
+                            <h2 className="text-2xl font-black text-slate-800 dark:text-white flex items-center gap-2">
+                                <NumberTicker value={filteredLogs.length} /> <span className="text-sm font-medium opacity-50">sessões</span>
                             </h2>
                         </div>
                     </div>
@@ -151,7 +172,7 @@ const AuditPage: React.FC = () => {
                         <div>
                             <p className="text-xs uppercase tracking-widest text-slate-500 font-bold">Tempo Útil (Engajado)</p>
                             <h2 className="text-2xl font-black text-slate-800 dark:text-white">
-                                {formatDuration(filteredLogs.reduce((acc, log) => acc + log.activeSeconds, 0))}
+                                <AnimatedDuration seconds={filteredLogs.reduce((acc, log) => acc + log.activeSeconds, 0)} />
                             </h2>
                         </div>
                     </div>
@@ -165,7 +186,7 @@ const AuditPage: React.FC = () => {
                         <div>
                             <p className="text-xs uppercase tracking-widest text-slate-500 font-bold">Tempo Ocioso (AFK)</p>
                             <h2 className="text-2xl font-black text-slate-800 dark:text-white">
-                                {formatDuration(filteredLogs.reduce((acc, log) => acc + log.idleSeconds, 0))}
+                                <AnimatedDuration seconds={filteredLogs.reduce((acc, log) => acc + log.idleSeconds, 0)} />
                             </h2>
                         </div>
                     </div>
@@ -173,7 +194,7 @@ const AuditPage: React.FC = () => {
             </div>
 
             {/* Timeline Table */}
-            <div className="bg-white dark:bg-[#0a0e14]/80 backdrop-blur-xl border border-slate-200 dark:border-white/5 rounded-2xl overflow-hidden shadow-xl shadow-black/5">
+            <div className="bg-white dark:bg-[#0a0e14]/80 backdrop-blur-xl border border-slate-200 dark:border-white/5 rounded-2xl overflow-hidden shadow-xl shadow-black/5 flex flex-col">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm">
                         <thead className="bg-slate-50 dark:bg-white/5 border-b border-slate-200 dark:border-white/5">
@@ -186,14 +207,14 @@ const AuditPage: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200 dark:divide-white/5">
-                            {filteredLogs.length === 0 ? (
+                            {currentLogs.length === 0 ? (
                                 <tr>
                                     <td colSpan={5} className="px-6 py-12 text-center text-slate-500 italic">
                                         Nenhuma atividade encontrada com os filtros atuais.
                                     </td>
                                 </tr>
                             ) : (
-                                filteredLogs.map((log) => (
+                                currentLogs.map((log) => (
                                     <tr key={log.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
                                         <td className="px-6 py-4 text-slate-600 dark:text-slate-300 font-mono text-xs whitespace-nowrap">
                                             {new Date(log.timestamp).toLocaleTimeString()}
@@ -230,6 +251,59 @@ const AuditPage: React.FC = () => {
                         </tbody>
                     </table>
                 </div>
+
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                    <div className="px-6 py-4 border-t border-slate-200 dark:border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/50 dark:bg-white/[0.02]">
+                        <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                            Mostrando <span className="font-bold text-slate-700 dark:text-slate-200">{startIndex + 1}</span> a <span className="font-bold text-slate-700 dark:text-slate-200">{Math.min(startIndex + itemsPerPage, filteredLogs.length)}</span> de <span className="font-bold text-slate-700 dark:text-slate-200">{filteredLogs.length}</span> registros
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => handlePageChange(currentPage - 1)}
+                                disabled={currentPage === 1}
+                                className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                <i className="fas fa-chevron-left text-xs"></i>
+                            </button>
+
+                            <div className="flex items-center gap-1">
+                                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                                    // Logic to show partial pages if too many
+                                    let pageNum = i + 1;
+                                    if (totalPages > 5) {
+                                        if (currentPage > 3) {
+                                            pageNum = currentPage - 2 + i;
+                                        }
+                                        if (pageNum > totalPages) return null;
+                                    }
+
+                                    return (
+                                        <button
+                                            key={pageNum}
+                                            onClick={() => handlePageChange(pageNum)}
+                                            className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-bold transition-all ${currentPage === pageNum
+                                                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20 scale-105'
+                                                : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5'
+                                                }`}
+                                        >
+                                            {pageNum}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            <button
+                                onClick={() => handlePageChange(currentPage + 1)}
+                                disabled={currentPage === totalPages}
+                                className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                <i className="fas fa-chevron-right text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

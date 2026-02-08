@@ -1,6 +1,8 @@
 import React from 'react';
 import { BarChart, ComposedChart, Line, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
 
+import { NumberTicker } from '../ui/number-ticker';
+
 interface WeeklySummaryProps {
     xpHistory: { date: string; xp: number }[];
     courseProgress: { courseId: string; title: string; progress: number }[];
@@ -33,7 +35,7 @@ const WeeklySummary: React.FC<WeeklySummaryProps> = ({ xpHistory, courseProgress
                         </div>
                         <div className="flex-1">
                             <p className="text-[11px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest">XP Esta Semana</p>
-                            <p className="text-xl font-black text-slate-800 dark:text-white">{totalXpThisWeek}</p>
+                            <p className="text-xl font-black text-slate-800 dark:text-white"><NumberTicker value={totalXpThisWeek} /></p>
                         </div>
                     </div>
                 </div>
@@ -45,7 +47,7 @@ const WeeklySummary: React.FC<WeeklySummaryProps> = ({ xpHistory, courseProgress
                         </div>
                         <div className="flex-1">
                             <p className="text-[11px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest">Cursos Concluídos</p>
-                            <p className="text-xl font-black text-slate-800 dark:text-white">{coursesCompleted}</p>
+                            <p className="text-xl font-black text-slate-800 dark:text-white"><NumberTicker value={coursesCompleted} /></p>
                         </div>
                     </div>
                 </div>
@@ -57,7 +59,7 @@ const WeeklySummary: React.FC<WeeklySummaryProps> = ({ xpHistory, courseProgress
                         </div>
                         <div className="flex-1">
                             <p className="text-[11px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest">Progresso Médio</p>
-                            <p className="text-xl font-black text-slate-800 dark:text-white">{avgProgress}%</p>
+                            <p className="text-xl font-black text-slate-800 dark:text-white"><NumberTicker value={avgProgress} />%</p>
                         </div>
                     </div>
                 </div>
