@@ -2,8 +2,24 @@ import { QuizQuestion, QuizOption } from '../domain/quiz-entities';
 
 const isValidUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
 
-export const normalizeQuestions = (parsed: any[]) => {
-    return parsed
+export const normalizeQuestions = (parsed: any[] | any) => {
+    // Determine the array of questions to process
+    let questionsArray: any[] = [];
+
+    if (Array.isArray(parsed)) {
+        // Check if it's a wrapped root object like [{ questions: [...] }]
+        if (parsed.length === 1 && (parsed[0].questions || parsed[0].questoes) && Array.isArray(parsed[0].questions || parsed[0].questoes)) {
+            questionsArray = parsed[0].questions || parsed[0].questoes;
+        } else {
+            // Standard array of questions
+            questionsArray = parsed;
+        }
+    } else {
+        // Direct object { questions: [...] } or single question object
+        questionsArray = parsed.questions || parsed.questoes || [parsed];
+    }
+
+    return questionsArray
         .map((q: any) => {
             // Determine question text from various possible keys
             let text = q.questionText || q.enunciado || q.pergunta || q.texto || q.prompt || q.question || "";
@@ -73,18 +89,36 @@ export const normalizeQuestions = (parsed: any[]) => {
                 })
                 .filter(o => o.optionText);
 
-            return new QuizQuestion(
-                questionId,
-                'temp-quiz',
-                text,
-                'multiple_choice',
-                q.numero || 0,
-                q.points || q.pontos || 1,
-                normalizedOptions,
-                q.dificuldade || q.difficulty || 'medium'
-            );
+            // Pre-validate before creating QuizQuestion to avoid constructor errors
+            if (!text || normalizedOptions.length < 2) {
+                return null;
+            }
+
+            // Ensure at least one correct option exists (QuizQuestion constructor would throw otherwise)
+            if (!normalizedOptions.some(o => o.isCorrect)) {
+                // Determine if we can auto-correct (e.g., if no correct option is marked, maybe marking the first one? No, unsafe.)
+                // Or check if we missed a gabarito format.
+                // For now, filter it out to prevent crash.
+                return null;
+            }
+
+            try {
+                return new QuizQuestion(
+                    questionId,
+                    'temp-quiz',
+                    text,
+                    'multiple_choice',
+                    q.numero || 0,
+                    q.points || q.pontos || 1,
+                    normalizedOptions,
+                    q.dificuldade || q.difficulty || 'medium'
+                );
+            } catch (e) {
+                console.warn('Skipping invalid question:', e);
+                return null;
+            }
         })
-        .filter((q: QuizQuestion) => q.questionText && q.options?.length >= 2);
+        .filter((q: QuizQuestion | null) => q !== null);
 };
 
 
