@@ -132,12 +132,23 @@ export class DropboxService {
         }
 
         try {
-            const response = await this.dbx.filesListFolder({
+            let response = await this.dbx.filesListFolder({
                 path: cleanPath,
                 limit: 100
             });
 
-            return response.result.entries.map((entry: any) => ({
+            let allEntries = response.result.entries;
+
+            // Paginação: Buscar o restante dos arquivos se houver mais
+            while (response.result.has_more) {
+                console.log('🔄 Dropbox: Fetching more files...');
+                response = await this.dbx.filesListFolderContinue({
+                    cursor: response.result.cursor
+                });
+                allEntries = allEntries.concat(response.result.entries);
+            }
+
+            return allEntries.map((entry: any) => ({
                 id: entry.id,
                 name: entry.name,
                 path_lower: entry.path_lower,

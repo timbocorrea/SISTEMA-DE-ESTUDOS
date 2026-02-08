@@ -76,7 +76,7 @@ const DropboxAudioBrowser: React.FC<DropboxAudioBrowserProps> = ({
       const filtered = entries.filter(item => {
         if (item.tag === 'folder') return true;
         const ext = item.name.split('.').pop()?.toLowerCase();
-        return ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'].includes(ext || '');
+        return ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac', 'wma', 'aiff', 'alac', 'm4b', 'opus', 'webm', 'mid', 'midi'].includes(ext || '');
       });
 
       // Ordenar: Pastas primeiro, depois arquivos
@@ -90,17 +90,8 @@ const DropboxAudioBrowser: React.FC<DropboxAudioBrowserProps> = ({
       console.log('🎵 Dropbox filter - Used audio filenames:', usedAudioUrls);
       console.log('📁 Dropbox filter - Total files before filter:', filtered.filter(i => i.tag === 'file').length);
 
-      const availableItems = filtered.filter(item => {
-        if (item.tag === 'folder') return true; // Manter todas as pastas
-        // Remover arquivos cujo nome já foi usado
-        const isUsed = usedAudioUrls.includes(item.name);
-        if (isUsed) {
-          console.log('❌ Filtering out used file:', item.name);
-        }
-        return !isUsed;
-      });
-
-      console.log('✅ Dropbox filter - Files after filter:', availableItems.filter(i => i.tag === 'file').length);
+      console.log('✅ Dropbox filter - Skipping filter to show all files (Used files will be visible)');
+      const availableItems = filtered;
 
       setItems(availableItems);
       setCurrentPath(path);
@@ -415,6 +406,11 @@ const DropboxAudioBrowser: React.FC<DropboxAudioBrowserProps> = ({
                             </p>
                           )}
                         </div>
+                        {usedAudioUrls.includes(item.name) && (
+                          <span className="text-[10px] bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                            Usado
+                          </span>
+                        )}
                         {item.tag === 'folder' && (
                           <i className="fas fa-chevron-right text-xs text-slate-300 group-hover:text-slate-400"></i>
                         )}

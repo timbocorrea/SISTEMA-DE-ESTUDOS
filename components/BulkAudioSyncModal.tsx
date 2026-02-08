@@ -83,7 +83,7 @@ const BulkAudioSyncModal: React.FC<BulkAudioSyncModalProps> = ({
             const filtered = entries.filter(item => {
                 if (item.tag === 'folder') return true;
                 const ext = item.name.split('.').pop()?.toLowerCase();
-                return ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'].includes(ext || '');
+                return ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac', 'wma', 'aiff', 'alac', 'm4b', 'opus', 'webm', 'mid', 'midi'].includes(ext || '');
             });
 
             // Sort: folders first, then files
