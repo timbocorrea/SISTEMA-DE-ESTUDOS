@@ -427,6 +427,34 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
         ? lesson.videoUrls[activeVideoIndex]?.url
         : lesson.videoUrl;
 
+    // Loading State (Partial Content)
+    if (lesson.isLoaded === false) {
+        return (
+            <div className="w-full max-w-[1920px] mx-auto px-2 md:px-6 py-4 md:py-8 space-y-6 animate-pulse">
+                {/* Header Skeleton */}
+                <div className="h-6 w-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+                    <div className="h-8 w-3/4 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                    <div className="flex justify-between">
+                        <div className="h-4 w-1/4 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                        <div className="h-4 w-20 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                    </div>
+                </div>
+                {/* Content Skeleton */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <div className="lg:col-span-9 space-y-8">
+                        <div className="aspect-video bg-slate-200 dark:bg-slate-800 rounded-3xl"></div>
+                        <div className="space-y-4">
+                            <div className="h-4 w-full bg-slate-200 dark:bg-slate-800 rounded"></div>
+                            <div className="h-4 w-full bg-slate-200 dark:bg-slate-800 rounded"></div>
+                            <div className="h-4 w-2/3 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="w-full max-w-[1920px] mx-auto px-2 md:px-6 py-4 md:py-8 space-y-6">
             {/* Header: Voltar + Título */}

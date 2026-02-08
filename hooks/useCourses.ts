@@ -34,19 +34,19 @@ export const useCoursesList = (service: CourseService, userId: string | undefine
                     .slice()
                     .sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0))
                     .map((m: any) => {
-                    const lessons = (m.lessons || [])
-                        .slice()
-                        .sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0))
-                        .map((l: any) => ({
-                        id: l.id,
-                        title: l.title || 'Aula sem titulo',
-                        videoUrl: '',
-                        durationSeconds: 0,
-                        isCompleted: false,
-                        position: l.position || 0
-                    } as any)); // Stub lesson
-                    return new Module(m.id, m.title || 'Modulo sem titulo', lessons);
-                });
+                        const lessons = (m.lessons || [])
+                            .slice()
+                            .sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0))
+                            .map((l: any) => ({
+                                id: l.id,
+                                title: l.title || 'Aula sem titulo',
+                                videoUrl: '',
+                                durationSeconds: 0,
+                                isCompleted: false,
+                                position: l.position || 0
+                            } as any)); // Stub lesson
+                        return new Module(m.id, m.title || 'Modulo sem titulo', lessons);
+                    });
 
                 return new Course(
                     s.id,
@@ -67,11 +67,9 @@ export const useCourseDetails = (service: CourseService, courseId: string | null
         queryKey: ['course', courseId, userId],
         queryFn: async () => {
             if (!courseId) return null;
-            // We need a method in Service to get single course which calls repo.getCourseById
-            // Existing 'fetchAvailableCourses' returned all.
-            // We need 'getCourseById' exposed in Service.
-            // Checking CourseService... I need to update it as well.
-            return service.getCourseById(courseId, userId);
+            // Changed to load structure only for performance
+            // The context will handle loading lesson content on demand
+            return service.loadCourseStructure(courseId, userId);
         },
         enabled: !!courseId && !!userId,
         staleTime: 1000 * 60 * 30, // 30 minutes

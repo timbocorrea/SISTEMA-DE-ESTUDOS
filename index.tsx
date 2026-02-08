@@ -7,6 +7,7 @@ import './styles.css';
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { CourseProvider } from './contexts/CourseContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
@@ -31,11 +32,13 @@ root.render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <AuthProvider>
-          <CourseProvider>
-            <App />
-          </CourseProvider>
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <CourseProvider>
+              <App />
+            </CourseProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </BrowserRouter>
     </QueryClientProvider>
   </React.StrictMode>

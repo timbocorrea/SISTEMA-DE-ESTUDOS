@@ -12,6 +12,7 @@ import { marked } from 'marked'; // Para conversão de Markdown para HTML
 import { toast } from 'sonner';
 import DropboxAudioBrowser, { DropboxFile } from './DropboxAudioBrowser';
 import { DropboxService } from '../services/dropbox/DropboxService';
+import BulkAudioSyncModal from './BulkAudioSyncModal';
 
 const FONT_FAMILIES = [
     { name: 'Padrão', value: 'inherit' },
@@ -896,6 +897,9 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
     // Network Connection Monitoring
     const [isOnline, setIsOnline] = useState(navigator.onLine);
     const [showOfflineModal, setShowOfflineModal] = useState(false);
+
+    // Bulk Audio Sync Modal State (using existing selection system)
+    const [showBulkAudioSyncModal, setShowBulkAudioSyncModal] = useState(false);
 
     // Hierarchy State for Quiz Bank Preview
     const [courseId, setCourseId] = useState<string | undefined>(undefined);
@@ -3373,7 +3377,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                             <div
                                                 key={block.id || originalIndex}
                                                 data-block-id={block.id}
-                                                data-disabled-click={() => {
+                                                onClick={() => {
                                                     // Scroll to corresponding block in manager
                                                     // Use the specific data-instance attribute we added to BlockItem
                                                     // This is robust and doesn't depend on fragile class names
@@ -3687,6 +3691,17 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                         >
                                             <i className="fas fa-trash-alt text-[10px]"></i>
                                             Excluir
+                                        </button>
+
+                                        <Divider />
+
+                                        <button
+                                            onClick={() => setShowBulkAudioSyncModal(true)}
+                                            className="h-9 px-3 rounded-xl font-bold transition-all active:scale-95 flex items-center gap-2 text-[10px] uppercase bg-purple-600 text-white hover:bg-purple-700 shadow-lg shadow-purple-500/20"
+                                            title="Sincronizar áudios do Dropbox em massa"
+                                        >
+                                            <i className="fas fa-music text-[10px]"></i>
+                                            Sincronizar Áudios
                                         </button>
 
                                         <Divider />
@@ -5773,180 +5788,204 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
             }
 
             {/* Audio Filename Sync Modal */}
-            {showAudioSyncModal && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-                        {/* Header */}
-                        <div className="p-6 border-b border-slate-200 dark:border-slate-800">
-                            <div className="flex items-start justify-between mb-4">
-                                <div>
-                                    <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-1">
-                                        <i className="fas fa-sync text-indigo-500 mr-2"></i>
-                                        Sincronizar Nomes de Arquivo
-                                    </h2>
-                                    <p className="text-sm text-slate-600 dark:text-slate-400">
-                                        Re-atribua o áudio para salvar o nome do arquivo
-                                    </p>
+            {
+                showAudioSyncModal && (
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                        <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+                            {/* Header */}
+                            <div className="p-6 border-b border-slate-200 dark:border-slate-800">
+                                <div className="flex items-start justify-between mb-4">
+                                    <div>
+                                        <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-1">
+                                            <i className="fas fa-sync text-indigo-500 mr-2"></i>
+                                            Sincronizar Nomes de Arquivo
+                                        </h2>
+                                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                                            Re-atribua o áudio para salvar o nome do arquivo
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            setShowAudioSyncModal(false);
+                                            setSyncingBlockIndex(0);
+                                            setSyncBannerDismissed(true);
+                                        }}
+                                        className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                                    >
+                                        <i className="fas fa-times text-xl"></i>
+                                    </button>
                                 </div>
+
+                                {/* Progress */}
+                                <div className="flex items-center gap-3">
+                                    <div className="flex-1 h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-indigo-500 transition-all duration-300"
+                                            style={{ width: `${(syncingBlockIndex / totalNeedingSync) * 100}%` }}
+                                        ></div>
+                                    </div>
+                                    <span className="text-xs font-bold text-slate-600 dark:text-slate-400 min-w-[60px] text-right">
+                                        {syncingBlockIndex + 1} / {totalNeedingSync}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Content */}
+                            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                                {blocksNeedingSync.length === 0 ? (
+                                    // Completion State - All blocks synced!
+                                    <div className="flex flex-col items-center justify-center py-12 gap-4">
+                                        <div className="w-20 h-20 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
+                                            <i className="fas fa-check text-4xl text-green-600 dark:text-green-400"></i>
+                                        </div>
+                                        <div className="text-center">
+                                            <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2">
+                                                Sincronização Concluída!
+                                            </h3>
+                                            <p className="text-sm text-slate-600 dark:text-slate-400 max-w-md">
+                                                Todos os blocos de áudio foram atualizados com sucesso. O filtro do Dropbox agora funcionará corretamente.
+                                            </p>
+                                        </div>
+                                        <button
+                                            onClick={() => {
+                                                setShowAudioSyncModal(false);
+                                                setSyncingBlockIndex(0);
+                                                setSyncBannerDismissed(true);
+                                            }}
+                                            className="mt-4 px-8 py-3 bg-green-500 hover:bg-green-600 text-white font-bold rounded-xl transition-all flex items-center gap-2"
+                                        >
+                                            <i className="fas fa-check-circle"></i>
+                                            Fechar
+                                        </button>
+                                    </div>
+                                ) : syncingBlockIndex >= blocksNeedingSync.length ? (
+                                    // Edge case: index out of bounds but blocks still exist
+                                    <div className="flex flex-col items-center justify-center py-12 gap-4">
+                                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                                            Todos os blocos disponíveis foram processados.
+                                        </p>
+                                        <button
+                                            onClick={() => {
+                                                setShowAudioSyncModal(false);
+                                                setSyncingBlockIndex(0);
+                                                setSyncBannerDismissed(true);
+                                            }}
+                                            className="px-6 py-2 bg-indigo-500 hover:bg-indigo-600 text-white font-bold rounded-xl transition-all"
+                                        >
+                                            Fechar
+                                        </button>
+                                    </div>
+                                ) : (
+                                    // Normal sync flow
+                                    <>
+                                        {/* Current Block Info */}
+                                        <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-xl">
+                                            <h3 className="font-bold text-sm text-slate-700 dark:text-slate-300 mb-2">
+                                                <i className="fas fa-file-alt text-indigo-500 mr-2"></i>
+                                                Bloco Atual
+                                            </h3>
+                                            <div
+                                                className="text-sm text-slate-600 dark:text-slate-400 line-clamp-3"
+                                                dangerouslySetInnerHTML={{ __html: blocksNeedingSync[syncingBlockIndex]?.text || '' }}
+                                            />
+                                        </div>
+
+                                        {/* Instructions */}
+                                        <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border-2 border-amber-200 dark:border-amber-800">
+                                            <p className="text-sm text-amber-800 dark:text-amber-200">
+                                                <i className="fas fa-info-circle mr-2"></i>
+                                                <strong>Instruções:</strong> Clique em "Importar do Dropbox" e selecione o áudio correto para este bloco.
+                                                O nome do arquivo será salvo automaticamente.
+                                            </p>
+                                        </div>
+
+                                        {/* Action Buttons */}
+                                        <div className="flex gap-3">
+                                            <button
+                                                onClick={() => {
+                                                    setEditingBlockForAudio(blocksNeedingSync[syncingBlockIndex]);
+                                                    setShowDropboxBrowser(true);
+                                                }}
+                                                className="flex-1 px-4 py-3 bg-indigo-500 hover:bg-indigo-600 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2"
+                                            >
+                                                <i className="fab fa-dropbox"></i>
+                                                Importar do Dropbox
+                                            </button>
+
+                                            <button
+                                                onClick={() => {
+                                                    // Skip this block
+                                                    if (syncingBlockIndex < totalNeedingSync - 1) {
+                                                        setSyncingBlockIndex(syncingBlockIndex + 1);
+                                                    } else {
+                                                        setShowAudioSyncModal(false);
+                                                        setSyncingBlockIndex(0);
+                                                        setSyncBannerDismissed(true);
+                                                    }
+                                                }}
+                                                className="px-4 py-3 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold rounded-xl transition-all"
+                                            >
+                                                Pular
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+
+                            {/* Footer */}
+                            <div className="p-6 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center">
                                 <button
                                     onClick={() => {
                                         setShowAudioSyncModal(false);
                                         setSyncingBlockIndex(0);
                                         setSyncBannerDismissed(true);
                                     }}
-                                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                                    className="text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
                                 >
-                                    <i className="fas fa-times text-xl"></i>
+                                    Cancelar e Voltar
                                 </button>
-                            </div>
 
-                            {/* Progress */}
-                            <div className="flex items-center gap-3">
-                                <div className="flex-1 h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-                                    <div
-                                        className="h-full bg-indigo-500 transition-all duration-300"
-                                        style={{ width: `${(syncingBlockIndex / totalNeedingSync) * 100}%` }}
-                                    ></div>
-                                </div>
-                                <span className="text-xs font-bold text-slate-600 dark:text-slate-400 min-w-[60px] text-right">
-                                    {syncingBlockIndex + 1} / {totalNeedingSync}
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* Content */}
-                        <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                            {blocksNeedingSync.length === 0 ? (
-                                // Completion State - All blocks synced!
-                                <div className="flex flex-col items-center justify-center py-12 gap-4">
-                                    <div className="w-20 h-20 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
-                                        <i className="fas fa-check text-4xl text-green-600 dark:text-green-400"></i>
-                                    </div>
-                                    <div className="text-center">
-                                        <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2">
-                                            Sincronização Concluída!
-                                        </h3>
-                                        <p className="text-sm text-slate-600 dark:text-slate-400 max-w-md">
-                                            Todos os blocos de áudio foram atualizados com sucesso. O filtro do Dropbox agora funcionará corretamente.
-                                        </p>
-                                    </div>
+                                {syncingBlockIndex === totalNeedingSync - 1 && (
                                     <button
                                         onClick={() => {
                                             setShowAudioSyncModal(false);
                                             setSyncingBlockIndex(0);
-                                            setSyncBannerDismissed(true);
+                                            toast.success('Sincronização concluída!');
                                         }}
-                                        className="mt-4 px-8 py-3 bg-green-500 hover:bg-green-600 text-white font-bold rounded-xl transition-all flex items-center gap-2"
+                                        className="px-6 py-2 bg-green-500 hover:bg-green-600 text-white font-bold rounded-xl transition-all"
                                     >
-                                        <i className="fas fa-check-circle"></i>
-                                        Fechar
+                                        <i className="fas fa-check mr-2"></i>
+                                        Finalizar
                                     </button>
-                                </div>
-                            ) : syncingBlockIndex >= blocksNeedingSync.length ? (
-                                // Edge case: index out of bounds but blocks still exist
-                                <div className="flex flex-col items-center justify-center py-12 gap-4">
-                                    <p className="text-sm text-slate-600 dark:text-slate-400">
-                                        Todos os blocos disponíveis foram processados.
-                                    </p>
-                                    <button
-                                        onClick={() => {
-                                            setShowAudioSyncModal(false);
-                                            setSyncingBlockIndex(0);
-                                            setSyncBannerDismissed(true);
-                                        }}
-                                        className="px-6 py-2 bg-indigo-500 hover:bg-indigo-600 text-white font-bold rounded-xl transition-all"
-                                    >
-                                        Fechar
-                                    </button>
-                                </div>
-                            ) : (
-                                // Normal sync flow
-                                <>
-                                    {/* Current Block Info */}
-                                    <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-xl">
-                                        <h3 className="font-bold text-sm text-slate-700 dark:text-slate-300 mb-2">
-                                            <i className="fas fa-file-alt text-indigo-500 mr-2"></i>
-                                            Bloco Atual
-                                        </h3>
-                                        <div
-                                            className="text-sm text-slate-600 dark:text-slate-400 line-clamp-3"
-                                            dangerouslySetInnerHTML={{ __html: blocksNeedingSync[syncingBlockIndex]?.text || '' }}
-                                        />
-                                    </div>
-
-                                    {/* Instructions */}
-                                    <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border-2 border-amber-200 dark:border-amber-800">
-                                        <p className="text-sm text-amber-800 dark:text-amber-200">
-                                            <i className="fas fa-info-circle mr-2"></i>
-                                            <strong>Instruções:</strong> Clique em "Importar do Dropbox" e selecione o áudio correto para este bloco.
-                                            O nome do arquivo será salvo automaticamente.
-                                        </p>
-                                    </div>
-
-                                    {/* Action Buttons */}
-                                    <div className="flex gap-3">
-                                        <button
-                                            onClick={() => {
-                                                setEditingBlockForAudio(blocksNeedingSync[syncingBlockIndex]);
-                                                setShowDropboxBrowser(true);
-                                            }}
-                                            className="flex-1 px-4 py-3 bg-indigo-500 hover:bg-indigo-600 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2"
-                                        >
-                                            <i className="fab fa-dropbox"></i>
-                                            Importar do Dropbox
-                                        </button>
-
-                                        <button
-                                            onClick={() => {
-                                                // Skip this block
-                                                if (syncingBlockIndex < totalNeedingSync - 1) {
-                                                    setSyncingBlockIndex(syncingBlockIndex + 1);
-                                                } else {
-                                                    setShowAudioSyncModal(false);
-                                                    setSyncingBlockIndex(0);
-                                                    setSyncBannerDismissed(true);
-                                                }
-                                            }}
-                                            className="px-4 py-3 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold rounded-xl transition-all"
-                                        >
-                                            Pular
-                                        </button>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-
-                        {/* Footer */}
-                        <div className="p-6 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center">
-                            <button
-                                onClick={() => {
-                                    setShowAudioSyncModal(false);
-                                    setSyncingBlockIndex(0);
-                                    setSyncBannerDismissed(true);
-                                }}
-                                className="text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-                            >
-                                Cancelar e Voltar
-                            </button>
-
-                            {syncingBlockIndex === totalNeedingSync - 1 && (
-                                <button
-                                    onClick={() => {
-                                        setShowAudioSyncModal(false);
-                                        setSyncingBlockIndex(0);
-                                        toast.success('Sincronização concluída!');
-                                    }}
-                                    className="px-6 py-2 bg-green-500 hover:bg-green-600 text-white font-bold rounded-xl transition-all"
-                                >
-                                    <i className="fas fa-check mr-2"></i>
-                                    Finalizar
-                                </button>
-                            )}
+                                )}
+                            </div>
                         </div>
                     </div>
-                </div>
-            )
+                )
             }
+
+            {/* Bulk Audio Sync Modal */}
+            <BulkAudioSyncModal
+                isOpen={showBulkAudioSyncModal}
+                onClose={() => setShowBulkAudioSyncModal(false)}
+                selectedBlocks={blocks.filter(b => selectedBlocks.has(b.id))}
+                onSync={async (blockId: string, audioUrl: string, filename: string) => {
+                    try {
+                        // Find and update the block
+                        setBlocks(prevBlocks =>
+                            prevBlocks.map(block =>
+                                block.id === blockId
+                                    ? { ...block, audioUrl, audioFileName: filename }
+                                    : block
+                            )
+                        );
+                        // toast.success removed in favor of bulk progress bar
+                    } catch (error) {
+                        console.error('Error syncing audio:', error);
+                        throw error;
+                    }
+                }}
+            />
 
         </div >
     );

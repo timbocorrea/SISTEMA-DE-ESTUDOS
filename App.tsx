@@ -123,7 +123,6 @@ const App: React.FC = () => {
   const navigate = useNavigate();
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => (localStorage.getItem('theme') as 'light' | 'dark') || 'light');
 
   // Enrollment Modal State
   const [selectedCourseForEnrollment, setSelectedCourseForEnrollment] = useState<string | null>(null);
@@ -222,14 +221,6 @@ const App: React.FC = () => {
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
-
-  // Theme Logic
-  useEffect(() => {
-    const root = window.document.documentElement;
-    if (theme === 'dark') root.classList.add('dark');
-    else root.classList.remove('dark');
-    localStorage.setItem('theme', theme);
-  }, [theme]);
 
   // Sidebar Navigation Handler
   const handleViewChange = (view: string, keepMobileOpen = false) => {
@@ -352,7 +343,7 @@ const App: React.FC = () => {
           <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03]"></div>
         </div>
 
-        <Toaster theme={theme} richColors position="top-right" />
+        <Toaster theme="dark" richColors position="top-right" />
         <div className="relative z-10 flex flex-col items-center gap-4">
           <div className="w-16 h-16 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin"></div>
           <p className="text-slate-500 font-medium text-sm animate-pulse">Carregando StudySystem...</p>
@@ -386,7 +377,7 @@ const App: React.FC = () => {
   if (user.isTempPassword) {
     return (
       <>
-        <Toaster theme={theme} richColors position="top-right" />
+        <Toaster theme="dark" richColors position="top-right" />
         <ForcePasswordChangeModal
           authService={authService}
           onSuccess={async () => {
@@ -416,7 +407,7 @@ const App: React.FC = () => {
         <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-[0.02]"></div>
       </div>
 
-      <Toaster theme={theme} richColors position="top-right" />
+      <Toaster theme="dark" richColors position="top-right" />
 
       {/* Sidebar - Suspense Wrapper */}
       <React.Suspense fallback={<div className="w-72 h-full bg-slate-900/60 hidden lg:block" />}>
@@ -425,8 +416,6 @@ const App: React.FC = () => {
           activeView={activeView}
           onViewChange={handleViewChange}
           onLogout={logout}
-          theme={theme}
-          onToggleTheme={() => setTheme(prev => prev === 'light' ? 'dark' : 'light')}
           user={user}
           onNavigateFile={(path) => navigate('/admin/files', { state: { path } })}
           courses={enrolledCourses}
@@ -523,7 +512,7 @@ const App: React.FC = () => {
                     />
                   } />
                   <Route path="lesson/:lessonId" element={
-                    <LessonLoader user={user} theme={theme} onTrackAction={handleTrackAction} />
+                    <LessonLoader user={user} onTrackAction={handleTrackAction} />
                   } />
                 </Route>
 

@@ -5,14 +5,14 @@ import LessonViewer from './LessonViewer';
 import LessonSkeleton from './skeletons/LessonSkeleton';
 import { useLessonStore } from '../stores/useLessonStore';
 import { User } from '../domain/entities';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface LessonLoaderProps {
     user: User;
-    theme: 'light' | 'dark';
     onTrackAction: (action: string) => void;
 }
 
-const LessonLoader: React.FC<LessonLoaderProps> = ({ user, theme, onTrackAction }) => {
+const LessonLoader: React.FC<LessonLoaderProps> = ({ user, onTrackAction }) => {
     const { lessonId } = useParams<{ lessonId: string }>();
     const navigate = useNavigate();
     const {
@@ -25,6 +25,7 @@ const LessonLoader: React.FC<LessonLoaderProps> = ({ user, theme, onTrackAction 
 
     const [sidebarTab, setSidebarTab] = React.useState<'materials' | 'notes'>('materials');
     const { contentTheme, setContentTheme } = useLessonStore();
+    const { theme } = useTheme();
 
     // Sync URL -> Context
     useEffect(() => {
@@ -36,18 +37,10 @@ const LessonLoader: React.FC<LessonLoaderProps> = ({ user, theme, onTrackAction 
         }
     }, [lessonId, activeCourse, activeLesson, selectLesson]);
 
-    // Optional: Update local theme if global theme changes, OR keep it strictly independent.
+    // Sync content theme with global theme on change.
     useEffect(() => {
         setContentTheme(theme);
-    }, [theme]);
-    // User requested "only inside content field", implies independence.
-    // However, a sync on mount or prop change is often expected unless overridden.
-    // For now, let's keep it simple: it starts with global theme, then acts independently.
-    // If the user changes global theme while viewing, we can decide to sync or not.
-    // Let's sync it so it feels responsive to global changes too, but local toggle only affects local.
-    useEffect(() => {
-        setContentTheme(theme);
-    }, [theme]);
+    }, [theme, setContentTheme]);
 
     if (isLoadingCourses) {
         return <LessonSkeleton />;

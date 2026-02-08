@@ -17,6 +17,7 @@ export interface ILessonData {
   contentBlocks?: IContentBlock[];
   hasQuiz?: boolean; // NOVO: indica se aula tem quiz
   quizPassed?: boolean; // NOVO: indica se usuário passou no quiz
+  isLoaded?: boolean; // NOVO: indica se o conteúdo da aula foi carregado
 }
 
 export interface IContentBlock {
@@ -113,6 +114,7 @@ export class Lesson {
   // NOVO: Suporte a Quiz System
   private _hasQuiz: boolean;
   private _quizPassed: boolean;
+  private _isLoaded: boolean;
 
   constructor(data: ILessonData) {
     this._id = data.id;
@@ -131,6 +133,7 @@ export class Lesson {
     this._contentBlocks = data.contentBlocks ? [...data.contentBlocks] : [];
     this._hasQuiz = data.hasQuiz || false;
     this._quizPassed = data.quizPassed || false;
+    this._isLoaded = data.isLoaded !== undefined ? data.isLoaded : true; // Default true for backward compatibility
   }
 
   get id(): string { return this._id; }
@@ -149,6 +152,17 @@ export class Lesson {
   get contentBlocks(): IContentBlock[] { return [...this._contentBlocks]; }
   get hasQuiz(): boolean { return this._hasQuiz; }
   get quizPassed(): boolean { return this._quizPassed; }
+  get isLoaded(): boolean { return this._isLoaded; }
+
+  /**
+   * Carrega o conteúdo da aula (Lazy Loading)
+   */
+  public loadContent(content: string, blocks: IContentBlock[], resources: LessonResource[]): void {
+    this._content = content;
+    this._contentBlocks = [...blocks];
+    this._resources = [...resources];
+    this._isLoaded = true;
+  }
 
   // Setter para quiz passed (usado quando usuário passa no quiz)
   public setQuizPassed(passed: boolean): void {

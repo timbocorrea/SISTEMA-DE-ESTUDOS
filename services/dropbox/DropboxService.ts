@@ -185,10 +185,99 @@ export class DropboxService {
 
     /**
      * Obtém Link Temporário para Download/Preview
+     * ⚠️ ATENÇÃO: Este link expira em 4 horas!
      */
     static async getTemporaryLink(path: string): Promise<string> {
         if (!this.dbx) throw new Error('Não autenticado');
         const response = await this.dbx.filesGetTemporaryLink({ path });
         return response.result.link;
+    }
+
+    /**
+     * Cria ou obtém um Link Compartilhado Permanente
+     * Este link NÃO expira e pode ser usado para streaming de áudio
+     */
+    static async createSharedLink(path: string): Promise<string> {
+        if (!this.dbx) throw new Error('Não autenticado');
+
+        // Validar formato do caminho
+        if (!path || !path.startsWith('/')) {
+            console.error('❌ Invalid Dropbox path format:', path);
+            throw new Error(`Caminho inválido: ${path}. O caminho deve começar com '/'`);
+        }
+
+        console.log('🔍 Creating shared link for path:', path);
+        console.log('🔑 Access token present:', !!this.accessToken);
+
+        try {
+            // Primeiro, tenta obter um link compartilhado existente
+            console.log('📋 Checking for existing shared links...');
+            const existingLinks = await this.dbx.sharingListSharedLinks({ path });
+
+            if (existingLinks.result.links && existingLinks.result.links.length > 0) {
+                const link = existingLinks.result.links[0].url;
+                console.log('✅ Using existing shared link:', link);
+                // Converter para link direto (dl=1)
+                return this.convertToDirectLink(link);
+            }
+        } catch (error: any) {
+            console.log('⚠️ No existing shared link found or error checking:', error?.error?.error_summary || error.message);
+            console.log('📝 Full error details:', JSON.stringify(error, null, 2));
+        }
+
+        // Se não existe, cria um novo link compartilhado
+        try {
+            console.log('🆕 Creating new shared link...');
+            const response = await this.dbx.sharingCreateSharedLinkWithSettings({
+                path,
+                settings: {
+                    requested_visibility: { '.tag': 'public' },
+                    audience: { '.tag': 'public' },
+                    access: { '.tag': 'viewer' }
+                }
+            });
+
+            const link = response.result.url;
+            console.log('✅ Created new shared link:', link);
+            // Converter para link direto (dl=1)
+            return this.convertToDirectLink(link);
+        } catch (error: any) {
+            console.error('❌ Error creating shared link:', error);
+            console.error('📝 Error summary:', error?.error?.error_summary);
+            console.error('📝 Error status:', error?.status);
+
+            // Se o erro for porque o link já existe, tenta listar novamente
+            if (error.error?.error_summary?.includes('shared_link_already_exists')) {
+                console.log('🔄 Link already exists, fetching it...');
+                const existingLinks = await this.dbx.sharingListSharedLinks({ path });
+                if (existingLinks.result.links && existingLinks.result.links.length > 0) {
+                    const link = existingLinks.result.links[0].url;
+                    return this.convertToDirectLink(link);
+                }
+            }
+            throw error;
+        }
+    }
+
+    /**
+     * Converte um link compartilhado do Dropbox para link direto de download/streaming
+     * Exemplo: https://www.dropbox.com/s/abc123/file.mp3?dl=0 
+     *       -> https://www.dropbox.com/s/abc123/file.mp3?dl=1
+     */
+    private static convertToDirectLink(url: string): string {
+        // Remove dl=0 e adiciona dl=1 para forçar download direto
+        let directUrl = url.replace('?dl=0', '?dl=1').replace('&dl=0', '&dl=1');
+
+        // Se não tem parâmetro dl, adiciona
+        if (!directUrl.includes('dl=')) {
+            directUrl += (directUrl.includes('?') ? '&' : '?') + 'dl=1';
+        }
+
+        // Também pode converter para dl.dropboxusercontent.com para melhor performance
+        directUrl = directUrl.replace('www.dropbox.com', 'dl.dropboxusercontent.com')
+            .replace('dropbox.com', 'dl.dropboxusercontent.com');
+
+        console.log('🔄 Converted to direct link:', directUrl);
+        return directUrl;
     }
 }

@@ -48,7 +48,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
     return progressMap;
   }
 
-  private mapLesson(row: DatabaseLessonResponse, progressMap: Map<string, LessonProgressRow>): Lesson {
+  private mapLesson(row: DatabaseLessonResponse, progressMap: Map<string, LessonProgressRow>, isStructureOnly: boolean = false): Lesson {
     const progress = progressMap.get(row.id);
     const resources = this.mapResources((row as any).resources || (row as any).lesson_resources || []);
     const payload: ILessonData = {
@@ -65,7 +65,8 @@ export class SupabaseCourseRepository implements ICourseRepository {
       isCompleted: progress?.is_completed || false,
       position: row.position || 0,
       lastAccessedBlockId: progress?.last_accessed_block_id || null,
-      contentBlocks: (row as any).content_blocks || []
+      contentBlocks: (row as any).content_blocks || [],
+      isLoaded: !isStructureOnly
     };
     return new Lesson(payload);
   }
@@ -82,10 +83,10 @@ export class SupabaseCourseRepository implements ICourseRepository {
       }));
   }
 
-  private mapModule(row: DatabaseModuleResponse, progressMap: Map<string, LessonProgressRow>): Module {
+  private mapModule(row: DatabaseModuleResponse, progressMap: Map<string, LessonProgressRow>, isStructureOnly: boolean = false): Module {
     const lessons = (row.lessons || [])
       .sort((a, b) => (a.position || 0) - (b.position || 0))
-      .map((lesson) => this.mapLesson(lesson, progressMap));
+      .map((lesson) => this.mapLesson(lesson, progressMap, isStructureOnly));
     return new Module(row.id, row.title, lessons);
   }
 
@@ -159,15 +160,113 @@ export class SupabaseCourseRepository implements ICourseRepository {
   }
 
   /**
+   * Busca apenas a estrutura do curso.
+   * Super leve: Sem content, sem content_blocks, sem recursos.
+   */
+  async getCourseStructure(id: string, userId?: string): Promise<Course> {
+    try {
+      // Ainda precisamos do progresso para saber quais aulas foram concluídas na sidebar
+      const progressMap = await this.getProgressByUser(userId);
+
+      const { data: courseData, error } = await this.client
+        .from('courses')
+        .select(`
+          id,
+          title,
+          description,
+          image_url,
+          modules:modules (
+            id,
+            title,
+            position,
+            lessons:lessons (
+              id,
+              title,
+              position,
+              duration_seconds,
+              image_url,
+              video_url, 
+              audio_url
+            )
+          )
+        `)
+        .eq('id', id)
+        .single();
+
+      if (error || !courseData) {
+        throw new NotFoundError('Course', id);
+      }
+
+      const modules = (courseData.modules || [])
+        .sort((a: any, b: any) => (a.position || 0) - (b.position || 0))
+        .map((m: any) => this.mapModule(m, progressMap, true));
+
+      return new Course(courseData.id, courseData.title, courseData.description, courseData.image_url || null, modules);
+    } catch (err) {
+      if (err instanceof NotFoundError) throw err;
+      throw new DomainError(`Erro ao carregar estrutura do curso: ${(err as Error).message}`);
+    }
+  }
+
+  /**
+   * Busca o conteúdo completo de UMA aula.
+   */
+  async getLessonById(lessonId: string, userId?: string): Promise<Lesson | null> {
+    try {
+      const progressMap = await this.getProgressByUser(userId);
+
+      const { data: lessonData, error } = await this.client
+        .from('lessons')
+        .select(`
+          id,
+          title,
+          content,
+          video_url,
+          video_urls,
+          audio_url,
+          image_url,
+          duration_seconds,
+          position,
+          content_blocks,
+          resources:lesson_resources (
+            id,
+            title,
+            resource_type,
+            url,
+            position
+          )
+        `)
+        .eq('id', lessonId)
+        .single();
+
+      if (error) {
+        throw new DomainError(`Erro ao buscar aula: ${error.message}`);
+      }
+
+      if (!lessonData) return null;
+
+      // Reutiliza mapLesson passando o progressMap para manter o status de concluído/progresso
+      // Note: DatabaseLessonResponse might not exact match what select returns if type is strict, 
+      // but mapLesson accepts 'any' in practice for nested fields.
+      return this.mapLesson(lessonData as any, progressMap);
+    } catch (err) {
+      throw new DomainError(`Erro ao carregar aula ${lessonId}: ${(err as Error).message}`);
+    }
+  }
+
+  /**
    * Salva o progresso técnico da aula.
    */
   async updateLessonProgress(userId: string, lessonId: string, watchedSeconds: number, isCompleted: boolean, lastBlockId?: string): Promise<void> {
     // 1. Tentar usar a RPC segura (Backend Optimization)
+    // Ensure lastBlockId is a valid UUID or null
+    const blockIdParam = (lastBlockId && lastBlockId.trim() !== '') ? lastBlockId : null;
+
     const { error: rpcError } = await this.client.rpc('update_lesson_progress_secure', {
       p_lesson_id: lessonId,
       p_watched_seconds: watchedSeconds,
       p_is_completed: isCompleted,
-      p_last_block_id: lastBlockId || null
+      p_last_block_id: blockIdParam
     });
 
     if (!rpcError) {
@@ -197,7 +296,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
           lesson_id: lessonId,
           watched_seconds: watchedSeconds,
           is_completed: isCompleted,
-          last_accessed_block_id: lastBlockId || null,
+          last_accessed_block_id: blockIdParam,
           video_progress: videoProgress,
           updated_at: new Date().toISOString()
         },
@@ -465,7 +564,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
       const { data, error } = await this.client.from('courses').select('id');
       if (error) throw new DomainError('Falha ao buscar cursos');
       const ids = (data || []).map((c: any) => c.id);
-      const results = await Promise.allSettled(ids.map(id => this.getCourseById(id)));
+      const results = await Promise.allSettled(ids.map(id => this.getCourseStructure(id)));
       return results
         .filter(r => r.status === 'fulfilled')
         .map(r => (r as any).value as Course);
@@ -475,7 +574,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
     if (assignedIds.length === 0) return [];
 
     const results = await Promise.allSettled(
-      assignedIds.map(id => this.getCourseById(id, userId))
+      assignedIds.map(id => this.getCourseStructure(id, userId))
     );
     return results
       .filter(r => r.status === 'fulfilled')
@@ -510,9 +609,9 @@ export class SupabaseCourseRepository implements ICourseRepository {
 
     if (validCourseIds.length === 0) return [];
 
-    // Buscar cursos completos usando getCourseById
+    // Buscar cursos completos usando getCourseStructure
     const results = await Promise.allSettled(
-      validCourseIds.map(id => this.getCourseById(id, userId))
+      validCourseIds.map(id => this.getCourseStructure(id, userId))
     );
 
     return results

@@ -7,6 +7,8 @@ import { loginSchema, signupSchema, type LoginFormData, type SignupFormData } fr
 import { SupportDialog } from './SupportDialog';
 import { AdminService } from '../services/AdminService';
 import { SupabaseAdminRepository } from '../repositories/SupabaseAdminRepository';
+import { MagicCard } from './ui/magic-card';
+import { DotPattern } from './ui/dot-pattern';
 
 interface AuthFormProps {
   authService: AuthService;
@@ -73,10 +75,17 @@ const AuthForm: React.FC<AuthFormProps> = ({ authService, onSuccess }) => {
   return (
     <div className="h-screen flex items-center justify-center bg-[#050810] px-4 overflow-y-auto relative">
       {/* Dynamic Background */}
-      <div className="absolute inset-0">
-        <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[120px] mix-blend-screen animate-pulse-slow"></div>
-        <div className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] bg-indigo-500/10 rounded-full blur-[120px] mix-blend-screen animate-pulse-slow delay-1000"></div>
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03]"></div>
+      {/* Dynamic Background */}
+      <div className="absolute inset-0 overflow-hidden">
+        <DotPattern
+          width={20}
+          height={20}
+          cx={1}
+          cy={1}
+          cr={1}
+          className="absolute inset-0 text-white/20 [mask-image:radial-gradient(ellipse_at_center,white,transparent)]"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#050810] via-transparent to-transparent"></div>
       </div>
 
       <motion.div
@@ -98,7 +107,12 @@ const AuthForm: React.FC<AuthFormProps> = ({ authService, onSuccess }) => {
           <p className="text-slate-400 mt-2 text-base font-medium">Sua jornada de conhecimento</p>
         </div>
 
-        <div className="bg-slate-900/40 backdrop-blur-2xl border border-white/5 p-6 sm:p-8 rounded-[24px] shadow-2xl relative overflow-hidden group">
+        <MagicCard
+          className="backdrop-blur-2xl border border-white/5 p-6 sm:p-8 rounded-[24px] shadow-2xl relative overflow-hidden group"
+          gradientSize={400}
+          gradientColor="#10b981"
+          gradientOpacity={0.15}
+        >
           {/* Subtle glassy border highlight */}
           <div className="absolute inset-0 border border-white/5 rounded-[24px] pointer-events-none"></div>
 
@@ -350,7 +364,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ authService, onSuccess }) => {
               </button>
             </div>
           </div>
-        </div>
+        </MagicCard>
       </motion.div>
 
       <SupportDialog

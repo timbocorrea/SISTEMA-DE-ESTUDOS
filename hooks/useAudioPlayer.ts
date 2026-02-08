@@ -86,11 +86,60 @@ export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate }: UseA
         if (!blocks || index < 0 || index >= blocks.length) return;
 
         const block = blocks[index];
+
+        // Validate audio URL
         if (!block.audioUrl) {
+            console.warn(`⚠️ Block ${index} (${block.id}) has no audioUrl`);
             setActiveBlockId(null);
             setIsPlaying(false);
             return;
         }
+
+        // Check if audioUrl is valid
+        if (typeof block.audioUrl !== 'string' || block.audioUrl.trim() === '') {
+            console.error(`❌ Block ${index} (${block.id}) has invalid audioUrl:`, block.audioUrl);
+            setActiveBlockId(null);
+            setIsPlaying(false);
+            return;
+        }
+
+        console.log(`🎵 Attempting to play audio for block ${index}:`, {
+            blockId: block.id,
+            audioUrl: block.audioUrl,
+            urlLength: block.audioUrl.length,
+            urlPreview: block.audioUrl.substring(0, 100)
+        });
+
+        // Convert Dropbox temporary URLs to direct download links
+        const convertDropboxUrl = (url: string): string => {
+            // Check if it's a Dropbox URL
+            if (url.includes('dropboxusercontent.com') || url.includes('dropbox.com')) {
+                console.log('🔄 Converting Dropbox URL to direct download link...');
+
+                // If it's already a dl.dropboxusercontent.com link, it might be temporary
+                // Try to convert to a more stable format
+                if (url.includes('dl.dropboxusercontent.com')) {
+                    // These URLs are temporary and expire quickly
+                    console.warn('⚠️ Detected temporary Dropbox URL. This may expire soon.');
+                    // Return as-is for now, but log the warning
+                    return url;
+                }
+
+                // If it's a regular dropbox.com/s/ link, convert to direct download
+                if (url.includes('dropbox.com/s/')) {
+                    const directUrl = url.replace('www.dropbox.com', 'dl.dropboxusercontent.com')
+                        .replace('dropbox.com', 'dl.dropboxusercontent.com')
+                        .replace('?dl=0', '')
+                        .replace('?dl=1', '');
+                    console.log('✅ Converted to direct download URL:', directUrl);
+                    return directUrl;
+                }
+            }
+            return url;
+        };
+
+        const audioUrl = convertDropboxUrl(block.audioUrl);
+        console.log('🎵 Final audio URL:', audioUrl);
 
         // Toggle pause if clicking the active block
         if (activeBlockId === block.id && audioRef.current) {
@@ -129,12 +178,12 @@ export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate }: UseA
         let audio: HTMLAudioElement;
 
         // OPTIMIZATION: Reuse prefetched audio if available
-        if (nextAudioRef.current && nextAudioRef.current.src === block.audioUrl) {
+        if (nextAudioRef.current && nextAudioRef.current.src === audioUrl) {
             console.log(`✅ Using prefetched audio [${index}]`);
             audio = nextAudioRef.current;
             nextAudioRef.current = null; // Clear prefetch
         } else {
-            audio = new Audio(block.audioUrl);
+            audio = new Audio(audioUrl);  // Use converted URL
             audio.preload = 'auto';
         }
 
@@ -186,15 +235,29 @@ export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate }: UseA
 
         // Handle errors
         audio.onerror = (e) => {
-            console.error("Audio playback error", e);
+            console.error("❌ Audio playback error for block", index, {
+                blockId: block.id,
+                audioUrl: block.audioUrl,
+                error: e,
+                audioReadyState: audio.readyState,
+                audioNetworkState: audio.networkState,
+                audioError: audio.error
+            });
             setIsPlaying(false);
             activityMonitor.setMediaPlaying(false);
         };
 
         audio.play().then(() => {
+            console.log(`✅ Audio playing successfully for block ${index}`);
             activityMonitor.setMediaPlaying(true);
         }).catch(err => {
-            console.error("Audio playback failed", err);
+            console.error("❌ Audio playback failed for block", index, {
+                blockId: block.id,
+                audioUrl: block.audioUrl,
+                error: err,
+                errorMessage: err.message,
+                errorName: err.name
+            });
             setIsPlaying(false);
             activityMonitor.setMediaPlaying(false);
         });

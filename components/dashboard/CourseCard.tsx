@@ -1,6 +1,7 @@
 import React from 'react';
 import { Course } from '../../domain/entities';
 import { motion } from 'framer-motion';
+import { ShinyButton } from '../ui/shiny-button';
 
 interface CourseCardProps {
     course: Course;
@@ -23,7 +24,7 @@ const CourseCard: React.FC<CourseCardProps> = ({
     return (
         <motion.div
             layoutId={`course-card-${course.id}`}
-            className="group bg-black/40 backdrop-blur-md rounded-2xl border border-white/5 overflow-hidden hover:shadow-2xl hover:shadow-indigo-500/10 hover:border-indigo-500/30 transition-all duration-300 cursor-pointer flex flex-col h-full relative ring-1 ring-white/5"
+            className="group bg-white dark:bg-black/40 backdrop-blur-md rounded-2xl border border-slate-200 dark:border-white/5 overflow-hidden hover:shadow-[0_0_30px_-5px_rgba(99,102,241,0.6)] hover:border-indigo-500/80 dark:hover:shadow-[0_0_30px_-5px_rgba(99,102,241,0.4)] dark:hover:border-indigo-500/80 transition-all duration-300 cursor-pointer flex flex-col h-full relative ring-1 ring-slate-200 dark:ring-white/5"
             onClick={onClick}
             whileHover={{ y: -5 }}
             initial={{ opacity: 0, y: 20 }}
@@ -32,7 +33,7 @@ const CourseCard: React.FC<CourseCardProps> = ({
             {/* Course Image */}
             <motion.div
                 layoutId={`course-cover-${course.id}`}
-                className="relative h-48 bg-gradient-to-br from-slate-900 to-slate-800 overflow-hidden flex-shrink-0"
+                className="relative h-48 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-900 dark:to-slate-800 overflow-hidden flex-shrink-0"
             >
                 {course.imageUrl ? (
                     <>
@@ -78,36 +79,36 @@ const CourseCard: React.FC<CourseCardProps> = ({
 
             {/* Course Content */}
             <div className="p-5 flex flex-col flex-1 relative">
-                <h3 className="text-lg font-black text-white mb-2 line-clamp-2 leading-tight group-hover:text-indigo-400 transition-colors drop-shadow-sm">
+                <h3 className="text-lg font-black text-slate-800 dark:text-white mb-2 line-clamp-2 leading-tight group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors drop-shadow-sm">
                     {course.title}
                 </h3>
 
-                <p className="text-xs text-slate-400 mb-4 line-clamp-2 h-8 flex-shrink-0 leading-relaxed font-medium">
+                <p className="text-xs text-slate-600 dark:text-slate-400 mb-4 line-clamp-2 h-8 flex-shrink-0 leading-relaxed font-medium">
                     {course.description || 'Sem descrição disponível.'}
                 </p>
 
                 {/* Stats */}
-                <div className="flex items-center gap-4 mb-5 text-[11px] font-bold text-slate-500 uppercase tracking-wide mt-auto">
-                    <div className="flex items-center gap-1.5 bg-white/5 px-2 py-1 rounded-md border border-white/5">
-                        <i className="fas fa-layer-group text-slate-400"></i>
+                <div className="flex items-center gap-4 mb-5 text-[11px] font-bold text-slate-600 dark:text-slate-500 uppercase tracking-wide mt-auto">
+                    <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-white/5 px-2 py-1 rounded-md border border-slate-200 dark:border-white/5">
+                        <i className="fas fa-layer-group text-slate-500 dark:text-slate-400"></i>
                         <span>{totalModules} {totalModules === 1 ? 'Módulo' : 'Módulos'}</span>
                     </div>
-                    <div className="flex items-center gap-1.5 bg-white/5 px-2 py-1 rounded-md border border-white/5">
-                        <i className="fas fa-play-circle text-slate-400"></i>
+                    <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-white/5 px-2 py-1 rounded-md border border-slate-200 dark:border-white/5">
+                        <i className="fas fa-play-circle text-slate-500 dark:text-slate-400"></i>
                         <span>{totalLessons} {totalLessons === 1 ? 'Aula' : 'Aulas'}</span>
                     </div>
                 </div>
 
                 {/* Action Button */}
-                <div className="flex items-center gap-2 mt-auto pt-4 border-t border-white/5">
-                    <button
+                <div className="flex items-center gap-2 mt-auto pt-4 border-t border-slate-200 dark:border-white/5">
+                    <ShinyButton
                         onClick={(e) => {
                             e.stopPropagation();
                             onClick();
                         }}
                         className={`flex-1 px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all shadow-lg active:scale-95 group/btn relative overflow-hidden ${isEnrolled
                             ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/20'
-                            : 'bg-white/5 hover:bg-white/10 text-white border border-white/10'
+                            : 'bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-800 dark:text-white border border-slate-300 dark:border-white/10'
                             }`}
                     >
                         <span className="relative z-10 flex items-center justify-center gap-2">
@@ -123,9 +124,7 @@ const CourseCard: React.FC<CourseCardProps> = ({
                                 </>
                             )}
                         </span>
-                        {/* Shimmer effect on hover */}
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover/btn:animate-shimmer" />
-                    </button>
+                    </ShinyButton>
 
                     {onManage && (
                         <button
@@ -133,7 +132,7 @@ const CourseCard: React.FC<CourseCardProps> = ({
                                 e.stopPropagation();
                                 onManage();
                             }}
-                            className="px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/5 transition-colors"
+                            className="px-4 py-3 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white border border-slate-300 dark:border-white/5 transition-colors"
                             title="Gerenciar curso"
                         >
                             <i className="fas fa-cog"></i>

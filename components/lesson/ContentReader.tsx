@@ -138,18 +138,55 @@ const ContentReader: React.FC<ContentReaderProps> = ({
                         }}
                     >
                         {hasAudio && (
-                            <div className="audio-indicator" style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                marginBottom: '8px',
-                                fontSize: '12px',
-                                fontWeight: 600,
-                                color: '#6366f1',
-                            }}>
-                                <i className={`fas ${isActive ? 'fa-volume-up' : 'fa-headphones'}`}></i>
-                                <span>{isActive ? 'Tocando...' : 'Clique para ouvir'}</span>
-                            </div>
+                            <>
+                                {/* Check if URL is expired temporary Dropbox link */}
+                                {(() => {
+                                    const isExpiredDropboxUrl = block.audioUrl &&
+                                        (block.audioUrl.includes('dl.dropboxusercontent.com/cd/0/get/') ||
+                                            block.audioUrl.includes('uc84454b801acebe9d64c74754ef'));
+
+                                    if (isExpiredDropboxUrl) {
+                                        return (
+                                            <div className="audio-warning" style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '8px',
+                                                marginBottom: '8px',
+                                                padding: '8px 12px',
+                                                backgroundColor: contentTheme === 'dark' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)',
+                                                borderLeft: '4px solid #ef4444',
+                                                borderRadius: '6px',
+                                                fontSize: '11px',
+                                                fontWeight: 600,
+                                                color: '#ef4444',
+                                            }}>
+                                                <i className="fas fa-exclamation-triangle"></i>
+                                                <div style={{ flex: 1 }}>
+                                                    <div style={{ fontWeight: 700 }}>URL de Áudio Expirada</div>
+                                                    <div style={{ fontSize: '10px', marginTop: '2px', opacity: 0.9 }}>
+                                                        Este áudio precisa ser re-adicionado do Dropbox
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+
+                                    return (
+                                        <div className="audio-indicator" style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px',
+                                            marginBottom: '8px',
+                                            fontSize: '12px',
+                                            fontWeight: 600,
+                                            color: '#6366f1',
+                                        }}>
+                                            <i className={`fas ${isActive ? 'fa-volume-up' : 'fa-headphones'}`}></i>
+                                            <span>{isActive ? 'Tocando...' : 'Clique para ouvir'}</span>
+                                        </div>
+                                    );
+                                })()}
+                            </>
                         )}
                         <div
                             dangerouslySetInnerHTML={{ __html: htmlWithHighlights }}

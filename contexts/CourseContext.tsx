@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Course, Lesson, Module } from '../domain/entities';
 import { CourseService } from '../services/CourseService';
 import { SupabaseCourseRepository } from '../repositories/SupabaseCourseRepository';
@@ -74,14 +75,59 @@ export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
     };
 
-    const selectLesson = (lessonId: string) => {
+    const queryClient = useQueryClient();
+
+    const selectLesson = async (lessonId: string) => {
         if (!activeCourse) return;
+
+        let foundMod: Module | null = null;
+        let foundLesson: Lesson | null = null;
+
         for (const mod of activeCourse.modules) {
-            const lesson = mod.lessons.find(l => l.id === lessonId);
-            if (lesson) {
-                setActiveModule(mod);
-                setActiveLesson(lesson);
-                return;
+            const l = mod.lessons.find(l => l.id === lessonId);
+            if (l) {
+                foundMod = mod;
+                foundLesson = l;
+                break;
+            }
+        }
+
+        if (!foundLesson || !foundMod) return;
+
+        // Set active items immediately (Skeleton will show if !isLoaded)
+        setActiveModule(foundMod);
+        setActiveLesson(foundLesson);
+
+        // Fetch content if missing
+        if (!foundLesson.isLoaded && user?.id) {
+            try {
+                const fullLesson = await courseService.loadLessonContent(lessonId, user.id);
+                if (fullLesson) {
+                    // Update Active Lesson State
+                    setActiveLesson(fullLesson);
+
+                    // Update Course in Query Cache to persist loaded content
+                    const newModules = activeCourse.modules.map(m => {
+                        if (m.id === foundMod!.id) {
+                            const newLessons = m.lessons.map(l => l.id === lessonId ? fullLesson : l);
+                            return new Module(m.id, m.title, newLessons);
+                        }
+                        return m;
+                    });
+
+                    const newCourse = new Course(
+                        activeCourse.id,
+                        activeCourse.title,
+                        activeCourse.description,
+                        activeCourse.imageUrl,
+                        newModules
+                    );
+
+                    queryClient.setQueryData(['course', activeCourse.id, user.id], newCourse);
+                }
+            } catch (err) {
+                console.error("Failed to load lesson content", err);
+                // Optional: Toast error
             }
         }
     };

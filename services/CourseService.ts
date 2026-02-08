@@ -5,7 +5,22 @@ export class CourseService {
   constructor(private courseRepository: ICourseRepository) { }
 
   public async loadCourseDetails(id: string, userId?: string): Promise<Course> {
+    // Mantendo endpoint original, mas UI deve migrar para loadCourseStructure + loadLessonContent
     return this.courseRepository.getCourseById(id, userId);
+  }
+
+  /**
+   * Carrega apenas estrutura (rápido)
+   */
+  public async loadCourseStructure(id: string, userId?: string): Promise<Course> {
+    return this.courseRepository.getCourseStructure(id, userId);
+  }
+
+  /**
+   * Carrega conteúdo da aula (sob demanda)
+   */
+  public async loadLessonContent(lessonId: string, userId?: string): Promise<Lesson | null> {
+    return this.courseRepository.getLessonById(lessonId, userId);
   }
 
   public async updateUserProgress(

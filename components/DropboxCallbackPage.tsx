@@ -10,33 +10,35 @@ const DropboxCallbackPage: React.FC = () => {
     useEffect(() => {
         const processCallback = () => {
             try {
+                // Tenta extrair o token da URL
                 const token = DropboxService.handleAuthCallback();
+
                 if (token) {
                     setStatus('success');
-                    // Flag to tell the editor (or other components) we just logged in
-                    localStorage.setItem('dropbox_just_logged_in', 'true');
 
-                    // Retrieve original URL or default to home
-                    const returnUrl = localStorage.getItem('dropbox_return_url') || '/';
-                    localStorage.removeItem('dropbox_return_url'); // Cleanup
+                    // Verifica se está rodando em um popup
+                    if (window.opener) {
+                        // Envia o token para a janela principal
+                        window.opener.postMessage({
+                            type: 'DROPBOX_AUTH_SUCCESS',
+                            token: token
+                        }, window.location.origin);
 
-                    // Small delay to show success state (optional)
-                    setTimeout(() => {
-                        window.location.href = returnUrl;
-                        // Using window.location.href to ensure full state reload if needed, 
-                        // or navigate(returnUrl) if within react-router context and path is relative.
-                        // Since returnUrl might be full absolute URL, window.location is safer if it differs slightly.
-                        // However, assuming same app, navigate is better for SPA.
-                        // Let's normalize. 
-                        if (returnUrl.startsWith(window.location.origin)) {
-                            const relativePath = returnUrl.replace(window.location.origin, '');
-                            navigate(relativePath);
-                        } else if (returnUrl.startsWith('/')) {
-                            navigate(returnUrl);
-                        } else {
+                        // Fecha o popup após um breve delay
+                        setTimeout(() => {
+                            window.close();
+                        }, 1000);
+                    } else {
+                        // Fallback para comportamento antigo (redirecionamento) se não for popup
+                        localStorage.setItem('dropbox_access_token', token);
+                        localStorage.setItem('dropbox_just_logged_in', 'true');
+                        const returnUrl = localStorage.getItem('dropbox_return_url') || '/';
+                        localStorage.removeItem('dropbox_return_url');
+
+                        setTimeout(() => {
                             window.location.href = returnUrl;
-                        }
-                    }, 500);
+                        }, 500);
+                    }
                 } else {
                     setStatus('error');
                     setErrorMessage('Não foi possível obter o token de acesso. Verifique se você autorizou o aplicativo.');
@@ -69,7 +71,7 @@ const DropboxCallbackPage: React.FC = () => {
                             <i className="fas fa-check"></i>
                         </div>
                         <h2 className="text-xl font-bold text-slate-900 dark:text-white">Conectado com Sucesso!</h2>
-                        <p className="text-sm text-slate-500">Redirecionando você de volta...</p>
+                        <p className="text-sm text-slate-500">Esta janela será fechada automaticamente...</p>
                     </div>
                 )}
 
@@ -81,13 +83,10 @@ const DropboxCallbackPage: React.FC = () => {
                         <h2 className="text-xl font-bold text-slate-900 dark:text-white">Falha na Conexão</h2>
                         <p className="text-sm text-slate-500">{errorMessage}</p>
                         <button
-                            onClick={() => {
-                                const returnUrl = localStorage.getItem('dropbox_return_url') || '/';
-                                navigate(returnUrl.replace(window.location.origin, ''));
-                            }}
+                            onClick={() => window.close()}
                             className="mt-4 px-6 py-2 bg-slate-200 dark:bg-slate-700 rounded-lg hover:bg-slate-300 transition-colors text-slate-800 dark:text-slate-200 font-medium"
                         >
-                            Voltar
+                            Fechar
                         </button>
                     </div>
                 )}

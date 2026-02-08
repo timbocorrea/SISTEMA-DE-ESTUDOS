@@ -5,14 +5,14 @@ import { SupportDialog } from './SupportDialog';
 import { AdminService } from '../services/AdminService';
 import { SupabaseAdminRepository } from '../repositories/SupabaseAdminRepository';
 import { Link } from 'react-router-dom';
+import { AnimatedThemeToggler } from './ui/animated-theme-toggler';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface SidebarProps {
   session: IUserSession;
   activeView: string;
   onViewChange: (view: string, keepMobileOpen?: boolean) => void;
   onLogout: () => void;
-  theme: 'light' | 'dark';
-  onToggleTheme: () => void;
   courses?: Course[];
   adminCourses?: Course[];
   onOpenContent?: (courseId: string, moduleId?: string, lessonId?: string) => void;
@@ -222,8 +222,6 @@ const Sidebar: React.FC<SidebarProps> = ({
   activeView,
   onViewChange,
   onLogout,
-  theme,
-  onToggleTheme,
   user,
   courses = [],
   adminCourses = [],
@@ -243,8 +241,8 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   /* Sidebar Expanded by Default */
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [themeDropdownOpen, setThemeDropdownOpen] = useState(false);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
+  const { theme, toggleTheme } = useTheme();
 
   const [contentMenuOpen, setContentMenuOpen] = useState(activeView === 'content');
   const [coursesMenuOpen, setCoursesMenuOpen] = useState(activeView === 'courses');
@@ -432,19 +430,24 @@ const Sidebar: React.FC<SidebarProps> = ({
               onViewChange('courses', true);
               if (isActuallyCollapsed) setIsCollapsed(false);
             }}
-            className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight mb-1 group ${activeView === 'courses'
-              ? 'bg-indigo-50 dark:bg-white/10 text-indigo-600 dark:text-white shadow-lg shadow-indigo-500/10 dark:shadow-white/5 ring-1 ring-indigo-200 dark:ring-white/10'
+            className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight mb-1 group relative overflow-hidden ${activeView === 'courses'
+              ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/40 ring-1 ring-indigo-400/50'
               : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
               } ${isActuallyCollapsed ? 'justify-center' : ''}`}
             title="Meus Cursos"
           >
-            <div className="flex items-center gap-3 min-w-0">
+            <div className="flex items-center gap-3 min-w-0 relative z-10">
               <div className={`transition-transform duration-300 ${activeView === 'courses' ? 'scale-110' : 'group-hover:scale-110'}`}>
-                <i className={`fas fa-graduation-cap w-5 text-center ${activeView === 'courses' ? 'text-indigo-400' : ''}`}></i>
+                <i className={`fas fa-graduation-cap w-5 text-center ${activeView === 'courses' ? 'text-white drop-shadow-md' : ''}`}></i>
               </div>
               <span className={`truncate transition-all duration-300 ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>Meus Cursos</span>
             </div>
-            {!isActuallyCollapsed && <i className={`fas fa-chevron-down text-xs transition-transform ${coursesMenuOpen ? 'rotate-180' : ''}`}></i>}
+            {!isActuallyCollapsed && <i className={`fas fa-chevron-down text-xs transition-transform relative z-10 ${coursesMenuOpen ? 'rotate-180' : ''}`}></i>}
+
+            {/* Active Glow Effect */}
+            {activeView === 'courses' && (
+              <div className="absolute inset-0 bg-white/10 animate-pulse pointer-events-none rounded-xl"></div>
+            )}
           </Link>
 
           {!isActuallyCollapsed && coursesMenuOpen && (
@@ -716,6 +719,30 @@ const Sidebar: React.FC<SidebarProps> = ({
 
       <div className={`mt-auto pt-6 space-y-2 border-t border-slate-200 dark:border-white/5 transition-all ${isActuallyCollapsed ? 'flex flex-col items-center' : ''}`}>
 
+        {/* Theme Toggle */}
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl bg-slate-100/80 dark:bg-white/5 border border-slate-200/60 dark:border-white/5 transition-all ${isActuallyCollapsed ? 'justify-center' : 'justify-between'}`}
+        >
+          {!isActuallyCollapsed && (
+            <div className="flex flex-col">
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Tema</span>
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                {theme === 'dark' ? 'Escuro' : 'Claro'}
+              </span>
+            </div>
+          )}
+          <AnimatedThemeToggler
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleTheme();
+            }}
+            className="w-10 h-10 rounded-lg flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors"
+            aria-label="Alternar tema"
+          />
+        </div>
+
         {/* Support Button */}
         <button
           onClick={(e) => {
@@ -733,64 +760,6 @@ const Sidebar: React.FC<SidebarProps> = ({
           </span>
         </button>
 
-        {/* Theme Button with Dropdown */}
-        <div className="relative">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setThemeDropdownOpen(!themeDropdownOpen);
-            }}
-            aria-label="Alterar Tema"
-            className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300 transition-all text-sm font-bold group ${isActuallyCollapsed ? 'justify-center' : ''}`}
-            title="Alterar Tema"
-          >
-            <div className="group-hover:scale-110 transition-transform duration-300">
-              <i className="fas fa-palette w-5 text-center"></i>
-            </div>
-            <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
-              Tema
-            </span>
-            {!isActuallyCollapsed && (
-              <i className={`fas fa-chevron-${themeDropdownOpen ? 'up' : 'down'} ml-auto text-xs opacity-50`}></i>
-            )}
-          </button>
-
-          {/* Dropdown Menu */}
-          {themeDropdownOpen && !isActuallyCollapsed && (
-            <div className="absolute bottom-full left-0 right-0 mb-2 bg-white dark:bg-[#0a0e14]/90 backdrop-blur-xl rounded-xl shadow-xl shadow-black/20 dark:shadow-black/50 border border-slate-200 dark:border-white/10 overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleTheme();
-                  if (theme === 'dark') setThemeDropdownOpen(false);
-                }}
-                className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors ${theme === 'light'
-                  ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-500'
-                  : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5'
-                  }`}
-              >
-                <i className="fas fa-sun w-4"></i>
-                <span>Claro</span>
-                {theme === 'light' && <i className="fas fa-check ml-auto text-xs"></i>}
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleTheme();
-                  if (theme === 'light') setThemeDropdownOpen(false);
-                }}
-                className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors ${theme === 'dark'
-                  ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'
-                  : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5'
-                  }`}
-              >
-                <i className="fas fa-moon w-4"></i>
-                <span>Escuro</span>
-                {theme === 'dark' && <i className="fas fa-check ml-auto text-xs"></i>}
-              </button>
-            </div>
-          )}
-        </div>
 
         {/* Network Status Indicator */}
         {!isOnline && (
@@ -829,7 +798,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         onClose={() => setIsSupportOpen(false)}
         adminService={session.user.role === 'INSTRUCTOR' ? new AdminService(new SupabaseAdminRepository()) : undefined}
       />
-    </aside>
+    </aside >
   );
 };
 

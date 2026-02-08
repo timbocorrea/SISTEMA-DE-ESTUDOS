@@ -127,18 +127,64 @@ const DropboxAudioBrowser: React.FC<DropboxAudioBrowserProps> = ({
   // Autenticação
   const handleLogin = async () => {
     try {
-      // Save current URL to return to after auth
-      localStorage.setItem('dropbox_return_url', window.location.href);
-
-      // Redirect to Dropbox using the stable Redirect URI
+      // Obter URL de autenticação
       const authUrl = await DropboxService.getAuthUrl();
-      window.location.href = authUrl;
+
+      // Abrir em um popup centralizado
+      const width = 600;
+      const height = 700;
+      const left = window.screen.width / 2 - width / 2;
+      const top = window.screen.height / 2 - height / 2;
+
+      const popup = window.open(
+        authUrl,
+        'DropboxAuth',
+        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes`
+      );
+
+      if (!popup) {
+        setError('O bloqueador de popups impediu a abertura da janela de login.');
+        return;
+      }
+
+      setLoading(true);
+
+      // Função para escutar a mensagem do popup
+      const handleMessage = (event: MessageEvent) => {
+        // Verificar origem por segurança (opcional, mas recomendado)
+        if (event.origin !== window.location.origin) return;
+
+        if (event.data?.type === 'DROPBOX_AUTH_SUCCESS' && event.data?.token) {
+          const token = event.data.token;
+
+          // Salvar token e atualizar estado
+          DropboxService.setAccessToken(token);
+          setIsAuthenticated(true);
+          loadFolder(''); // Carrega raiz
+
+          // Limpar listener e fechar popup (caso não tenha fechado)
+          window.removeEventListener('message', handleMessage);
+          popup.close();
+          setLoading(false);
+        }
+      };
+
+      window.addEventListener('message', handleMessage);
+
+      // Monitorar se o popup foi fechado manualmente pelo usuário
+      const checkPopupUrl = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(checkPopupUrl);
+          window.removeEventListener('message', handleMessage);
+          setLoading(false);
+          // Se não autenticou, não faz nada (usuário apenas fechou)
+        }
+      }, 1000);
+
     } catch (err) {
       console.error('Erro ao iniciar login:', err);
-      // Assuming 'toast' is available globally or imported
-      // If not, replace with a simple setError or alert
-      // setError('Erro ao conectar com Dropbox');
-      // toast.error('Erro ao conectar com Dropbox'); 
+      setError('Erro ao iniciar conexão com Dropbox');
+      setLoading(false);
     }
   };
 
@@ -152,12 +198,29 @@ const DropboxAudioBrowser: React.FC<DropboxAudioBrowserProps> = ({
       setSelectedItem(item);
       setLoading(true);
       try {
-        // Obter link temporário
-        const link = await DropboxService.getTemporaryLink(item.path_lower || item.id);
+        // Validar que temos um caminho válido
+        const filePath = item.path_lower || item.path_display;
+        if (!filePath) {
+          throw new Error('Caminho do arquivo não disponível');
+        }
+
+        // Obter link compartilhado PERMANENTE (não expira)
+        console.log('🔗 Creating permanent shared link for:', item.name);
+        console.log('📂 File path:', filePath);
+        const link = await DropboxService.createSharedLink(filePath);
+        console.log('✅ Permanent link created:', link);
         setPreviewUrl(link);
-      } catch (err) {
-        console.error(err);
-        setError('Erro ao obter link do arquivo');
+      } catch (err: any) {
+        console.error('Error creating shared link:', err);
+
+        // Verificar se é erro de autenticação
+        if (err?.status === 401 || err?.error?.error_summary?.includes('invalid_access_token')) {
+          setError('Sessão do Dropbox expirada. Por favor, reconecte.');
+        } else if (err?.status === 400) {
+          setError('Erro ao obter link do arquivo. Verifique se o arquivo existe no Dropbox.');
+        } else {
+          setError('Erro ao obter link do arquivo. Tentar reconectar.');
+        }
       } finally {
         setLoading(false);
       }
@@ -375,7 +438,7 @@ const DropboxAudioBrowser: React.FC<DropboxAudioBrowserProps> = ({
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    <audio ref={audioRef} src={previewUrl || ''} onEnded={() => setIsPlaying(false)} className="hidden" />
+                    <audio ref={audioRef} src={previewUrl || undefined} onEnded={() => setIsPlaying(false)} className="hidden" />
 
                     <div className="flex gap-2">
                       <button

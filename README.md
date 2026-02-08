@@ -18,7 +18,7 @@ Sistema de estudos com IA integrada, gamificação e gestão de conteúdo educac
 ## 🛠️ Configuração Local
 
 ### Pré-requisitos
-- Node.js 18.x ou superior
+- **Node.js** 18.x ou superior
 - Conta no [Supabase](https://supabase.com)
 - [Google Gemini API Key](https://aistudio.google.com/app/apikey)
 
@@ -39,15 +39,15 @@ Crie um arquivo `.env.local` na raiz do projeto baseado no [.env.example](.env.e
 
 ```env
 # Supabase Configuration
-VITE_SUPABASE_URL=https://hhsiylkfkhyvosgrkgqo.supabase.co
-VITE_SUPABASE_ANON_KEY=sua_supabase_anon_key
+VITE_SUPABASE_URL=https://<YOUR_PROJECT_ID>.supabase.co
+VITE_SUPABASE_ANON_KEY=<YOUR_SUPABASE_ANON_KEY>
 
 # Google Gemini API
-VITE_API_KEY=sua_gemini_api_key
+VITE_API_KEY=<YOUR_GEMINI_API_KEY>
 ```
 
 **Onde encontrar as chaves:**
-- **Supabase**: [Project Settings → API](https://supabase.com/dashboard/project/hhsiylkfkhyvosgrkgqo/settings/api)
+- **Supabase**: Acesse seu projeto em [Supabase Dashboard](https://supabase.com/dashboard) → Project Settings → API
 - **Gemini API**: [Google AI Studio](https://aistudio.google.com/app/apikey)
 
 ### 4. Execute o app
@@ -70,20 +70,23 @@ O app estará disponível em `http://localhost:3000`
 3. **Configure o projeto**:
    - **Framework Preset**: Vite
    - **Root Directory**: `./`
-   - **Build Command**: `npm run build`
+   - **Build Command**: `npm run build` (executa `vite build` internamente)
    - **Output Directory**: `dist`
 
 4. **Adicione as variáveis de ambiente**:
    ```
-   VITE_SUPABASE_URL=https://hhsiylkfkhyvosgrkgqo.supabase.co
-   VITE_SUPABASE_ANON_KEY=sua_supabase_anon_key
-   VITE_API_KEY=sua_gemini_api_key
+   VITE_SUPABASE_URL=https://<YOUR_PROJECT_ID>.supabase.co
+   VITE_SUPABASE_ANON_KEY=<YOUR_SUPABASE_ANON_KEY>
+   VITE_API_KEY=<YOUR_GEMINI_API_KEY>
    ```
 
 5. **Clique em "Deploy"**
 
-6. **Após o deploy, atualize o Supabase**:
-   - Acesse: [Supabase Auth Settings](https://supabase.com/dashboard/project/hhsiylkfkhyvosgrkgqo/auth/url-configuration)
+6. **⚠️ IMPORTANTE: Após o deploy, atualize o Supabase**:
+   
+   > **Atenção:** Sem esta configuração, a autenticação NÃO funcionará em produção!
+   
+   - Acesse seu projeto no [Supabase Dashboard](https://supabase.com/dashboard) → Authentication → URL Configuration
    - Em **Site URL**, adicione: `https://seu-app.vercel.app`
    - Em **Redirect URLs**, adicione: `https://seu-app.vercel.app/**`
 
@@ -96,24 +99,54 @@ O banco de dados já está configurado com:
 - ✅ Autenticação configurada
 
 Para recriar o banco em outro projeto Supabase, execute os scripts SQL:
-1. [`database_migration.sql`](./database_migration.sql) - Cria tabelas e RLS policies
-2. [`storage_setup.sql`](./storage_setup.sql) - Configura storage buckets
+1. [`database_migration.sql`](./database_migration.sql) - Cria tabelas e políticas RLS
+2. [`storage_setup.sql`](./storage_setup.sql) - Configura buckets de armazenamento
 
 ## 📚 Estrutura do Projeto
 
-- **`/components`** - Componentes React reutilizáveis
-- **`/domain`** - Modelos de domínio e tipos TypeScript
-- **`/repositories`** - Camada de acesso a dados (Supabase)
-- **`/services`** - Lógica de negócio e serviços externos
+```
+src/
+├── components/       # Componentes React reutilizáveis (UI)
+│   ├── DropboxAudioBrowser.tsx
+│   ├── LessonViewer.tsx
+│   └── ...
+├── domain/          # Modelos de domínio e tipos TypeScript
+│   ├── Course.ts
+│   ├── Lesson.ts
+│   └── User.ts
+├── repositories/    # Camada de acesso a dados (Supabase)
+│   ├── SupabaseCourseRepository.ts
+│   └── SupabaseUserRepository.ts
+├── services/        # Lógica de negócio e integrações externas
+│   ├── GeminiService.ts    # Integração com Google Gemini AI
+│   └── AudioService.ts
+├── hooks/           # Custom React hooks
+│   ├── useAudioPlayer.ts
+│   └── useCourses.ts
+├── contexts/        # React Context providers
+│   └── AuthContext.tsx
+└── utils/           # Funções utilitárias
+    └── formatters.ts
+```
+
+**Arquitetura:**
+- **Domain-Driven Design (DDD)**: Modelos de domínio separados da infraestrutura
+- **Repository Pattern**: Abstração da camada de dados
+- **Service Layer**: Lógica de negócio isolada dos componentes
 
 ## 🤝 Contribuindo
 
 1. Fork o projeto
 2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
-3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
-4. Push para a branch (`git push origin feature/AmazingFeature`)
-5. Abra um Pull Request
+3. **Execute as validações locais:**
+   ```bash
+   npm run test      # Testes unitários com Vitest
+   npm run build     # Verifica se o build está funcionando
+   ```
+4. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
+5. Push para a branch (`git push origin feature/AmazingFeature`)
+6. Abra um Pull Request
 
 ## 📝 Licença
 
-Este projeto é privado e pertence a timbocorrea.
+Este projeto pertence a **timbocorrea**. Todos os direitos reservados.
