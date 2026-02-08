@@ -1,5 +1,6 @@
 // Fixed syntax
 import React, { useState, useEffect, useRef } from 'react';
+import { ShimmerButton } from './ui/shimmer-button';
 import { Course, Lesson, User, UserProgress } from '../domain/entities';
 import VideoPlayer from './VideoPlayer';
 import LessonMaterialsSidebar from './LessonMaterialsSidebar';
@@ -456,29 +457,42 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     }
 
     return (
-        <div className="w-full max-w-[1920px] mx-auto px-2 md:px-6 py-4 md:py-8 space-y-6">
-            {/* Header: Voltar + Título */}
-            <button
-                onClick={onBackToLessons}
-                className="text-slate-500 dark:text-slate-400 text-sm font-black flex items-center gap-2 hover:text-indigo-500 transition uppercase tracking-wider"
-            >
-                <i className="fas fa-arrow-left"></i> Voltar às aulas
-            </button>
+        <div className="w-full max-w-[1920px] mx-auto px-2 md:px-6 py-4 md:py-6 space-y-6">
+            {/* Header: Título + Voltar (Alinhados) */}
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                <div className="flex flex-col-reverse md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h2 className="text-lg md:text-2xl font-black text-slate-800 dark:text-white tracking-tight leading-tight">{lesson.title}</h2>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mt-1">
+                            {course.title}
+                        </p>
+                    </div>
 
-            <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-                <h2 className="text-xl md:text-3xl font-black text-slate-800 dark:text-white tracking-tight">{lesson.title}</h2>
-                <div className="flex items-center justify-between">
-                    <p className="text-slate-500 dark:text-slate-400 font-medium">
-                        {course.title}
-                    </p>
-                    <div className="flex items-center gap-3">
-                        <div
-                            className={`w-3 h-3 rounded-full ${lesson.isCompleted ? 'bg-green-500' : 'bg-indigo-500 animate-pulse'
-                                }`}
-                        ></div>
-                        <span className="text-xs font-black uppercase tracking-widest text-slate-400">
-                            {lesson.isCompleted ? 'Aula Concluída' : 'Em progresso'}
-                        </span>
+                    <div className="flex items-center justify-between md:justify-end gap-6">
+                        {/* Status Indicator */}
+                        <div className="flex items-center gap-3">
+                            <div
+                                className={`w-2.5 h-2.5 rounded-full ${lesson.isCompleted ? 'bg-green-500' : 'bg-indigo-500 animate-pulse'
+                                    }`}
+                            ></div>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                {lesson.isCompleted ? 'Concluída' : 'Em andamento'}
+                            </span>
+                        </div>
+
+                        {/* Back Button */}
+                        <ShimmerButton
+                            onClick={onBackToLessons}
+                            className="h-10 px-6 shadow-lg transition-all hover:scale-105 active:scale-95"
+                            background="radial-gradient(ellipse 80% 80% at 50% -20%,rgba(79,70,229,0.3),rgba(15,23,42,1))"
+                            shimmerColor="#818cf8"
+                            shimmerSize="0.1em"
+                            borderRadius="12px"
+                        >
+                            <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-white">
+                                <i className="fas fa-arrow-left"></i> Voltar às aulas
+                            </span>
+                        </ShimmerButton>
                     </div>
                 </div>
             </div>

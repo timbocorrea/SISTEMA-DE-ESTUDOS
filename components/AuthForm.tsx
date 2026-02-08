@@ -73,7 +73,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ authService, onSuccess }) => {
   };
 
   return (
-    <div className="h-screen flex items-center justify-center bg-[#050810] px-4 overflow-y-auto relative">
+    <div className="dark h-screen flex items-center justify-center bg-[#050810] px-4 overflow-y-auto relative">
       {/* Dynamic Background */}
       {/* Dynamic Background */}
       <div className="absolute inset-0 overflow-hidden">
