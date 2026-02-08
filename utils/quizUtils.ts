@@ -1,5 +1,7 @@
 import { QuizQuestion, QuizOption } from '../domain/quiz-entities';
 
+const isValidUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+
 export const normalizeQuestions = (parsed: any[]) => {
     return parsed
         .map((q: any) => {
@@ -34,10 +36,14 @@ export const normalizeQuestions = (parsed: any[]) => {
             let rawGabarito = q.gabarito ?? q.resposta ?? q.respostaCorreta ?? q.correct ?? q.correct_option ?? "";
             const gabarito = String(rawGabarito).trim().toUpperCase();
 
+            // Generate valid UUID for question if not provided or invalid
+            const generateUUID = () => crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2);
+            const questionId = (q.id && isValidUUID(q.id)) ? q.id : generateUUID();
+
             const normalizedOptions = opts
                 .map((o: any) => {
-                    const optionText = o.optionText || "";
-                    let isCorrect = Boolean(o.isCorrect);
+                    const optionText = o.optionText || o.text || o.texto || "";
+                    let isCorrect = Boolean(o.isCorrect || o.is_correct || o.correta);
 
                     // If we have a gabarito, try to match it against key, letter index, numeric index, or text
                     if (gabarito !== "") {
@@ -55,9 +61,11 @@ export const normalizeQuestions = (parsed: any[]) => {
                         }
                     }
 
+                    const optionId = (o.id && isValidUUID(o.id)) ? o.id : generateUUID();
+
                     return new QuizOption(
-                        o.id || (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2)),
-                        q.id || 'temp-q',
+                        optionId,
+                        questionId,
                         optionText,
                         isCorrect,
                         o.index
@@ -66,23 +74,26 @@ export const normalizeQuestions = (parsed: any[]) => {
                 .filter(o => o.optionText);
 
             return new QuizQuestion(
-                q.id || (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2)),
+                questionId,
                 'temp-quiz',
                 text,
                 'multiple_choice',
                 q.numero || 0,
                 q.points || q.pontos || 1,
                 normalizedOptions,
-                q.difficulty || q.dificuldade || 'medium'
+                q.dificuldade || q.difficulty || 'medium'
             );
         })
         .filter((q: QuizQuestion) => q.questionText && q.options?.length >= 2);
 };
 
+
 export const parseMarkdownQuestions = (markdown: string): any[] => {
     const questions: any[] = [];
-    // Split by double newlines or lines starting with '###' or multiple dashes to separate questions
-    const blocks = markdown.split(/\n\s*\n|(?=\n\s*#{1,3}\s+)/).filter(b => b.trim().length > 0);
+
+    // Improved splitting: look for headers or question numbers at the start of lines
+    // This handles both "## Question" and "1. Question" styles
+    const blocks = markdown.split(/\n\s*(?=#{1,3}\s+|\d+[\)\.]\s+)/).filter(b => b.trim().length > 0);
 
     for (const block of blocks) {
         const lines = block.split('\n').map(l => l.trim()).filter(l => l);
@@ -92,25 +103,27 @@ export const parseMarkdownQuestions = (markdown: string): any[] => {
         const options: any[] = [];
         let gabarito = "";
         let justificativa = "";
+        let difficulty = "medium";
         let isParsingOptions = false;
 
-        // Try to identify the question text (usually the first lines until an option starts)
-        // Options usually start with "A)", "a)", "1.", "-", "*", "- [ ]", "[ ]", "- [x]", "[x]"
-        // Regex groups:
-        // 1: Parenthesis/Dot style (A., 1)
-        // 2: Text for group 1
-        // 3: Checklist style checkbox [ ] or [x] or [X] (optional dash prefix handled by start anchor)
-        // 4: Text for group 3
-        // 5: Bullet style (- or *)
-        // 6: Text for group 5
-        const optionRegex = /^([a-zA-Z0-9]+)[\)\.]\s+(.+)$|^(-\s*)?\[([ xX])\]\s+(.+)$|^[\-\*]\s+(.+)$/;
-        const gabaritoRegex = /^(?:Gabarito|Resposta|Correct|Answer):\s*(.+)$/i;
+        // Expanded regex for options to handle:
+        // 1. A) Text
+        // 2. [ ] Text
+        // 3. - [ ] Text
+        // 4. - [ ] "Text"
+        // 5. - "a)" Text
+        const optionRegex = /^([a-zA-Z0-9]+)[\)\.]\s*(.*)$|^(-\s*)?\[([ xX])\]\s*(.*)$|^[\-\*]\s*(.*)$/;
+        const gabaritoRegex = /^(?:Gabarito|Resposta|Correct|Answer|Resposta correta):\s*(.+)$/i;
         const justificativaRegex = /^(?:Justificativa|Explicação|Explanation|Feedback|Reason):\s*(.+)$/i;
+        const difficultyRegex = /^(?:Dificuldade|Difficulty):\s*(.+)$/i;
 
         for (const line of lines) {
-            // Check for metadata at bottom
-            const gabaritoMatch = line.match(gabaritoRegex);
-            const justificativaMatch = line.match(justificativaRegex);
+            // Clean markdown bold/italic from start/end of line for metadata checks
+            const cleanLine = line.replace(/^\*\*|\*\*$/g, '').trim();
+
+            const gabaritoMatch = cleanLine.match(gabaritoRegex);
+            const justificativaMatch = cleanLine.match(justificativaRegex);
+            const difficultyMatch = cleanLine.match(difficultyRegex);
 
             if (gabaritoMatch) {
                 gabarito = gabaritoMatch[1].trim();
@@ -119,6 +132,21 @@ export const parseMarkdownQuestions = (markdown: string): any[] => {
 
             if (justificativaMatch) {
                 justificativa = justificativaMatch[1].trim();
+                continue;
+            }
+
+            if (difficultyMatch) {
+                const rawDiff = difficultyMatch[1].trim().toLowerCase();
+                // Map Portuguese terms to English values expected by DB constraint
+                if (rawDiff.includes('fácil') || rawDiff.includes('facil') || rawDiff.includes('easy')) {
+                    difficulty = 'easy';
+                } else if (rawDiff.includes('médio') || rawDiff.includes('medio') || rawDiff.includes('medium')) {
+                    difficulty = 'medium';
+                } else if (rawDiff.includes('difícil') || rawDiff.includes('dificil') || rawDiff.includes('hard')) {
+                    difficulty = 'hard';
+                } else {
+                    difficulty = 'medium'; // fallback
+                }
                 continue;
             }
 
@@ -139,43 +167,45 @@ export const parseMarkdownQuestions = (markdown: string): any[] => {
                     const checkMark = optionMatch[4].toLowerCase();
                     markedCorrect = checkMark === 'x';
                     text = optionMatch[5];
-                    // Clean "**A)**" prefix if present inside checklist text
-                    // Example: "- [ ] **A)** Text" -> Key A, Text "Text"
-                    const innerPrefix = text.match(/^\*\*([a-zA-Z0-9]+)\)[\*]*\s+(.+)$/);
+
+                    // Handle inner quotes or AI prefixes like "- [ ] "a)" Text" or "- [ ] **a)** Text"
+                    text = text.replace(/^["']|["']$/g, '').trim();
+                    // Match pattern: optional asterisks, key (A/1), dot/paren, optional asterisks, any space
+                    const innerPrefix = text.match(/^([\*\s]*)?([a-zA-Z0-9]+)[\)\.]([\*\s]*)?\s*(.*)$/);
                     if (innerPrefix) {
-                        key = innerPrefix[1];
-                        text = innerPrefix[2];
+                        key = innerPrefix[2];
+                        text = innerPrefix[4];
                     }
                 } else if (optionMatch[6]) {
                     // "- Text"
                     text = optionMatch[6];
                 }
 
-                // Check if the option is marked as correct inline (e.g. *Option Text*)
-                let isCorrect = markedCorrect;
-                if (!isCorrect) {
-                    if (text.startsWith('*') && text.endsWith('*')) {
-                        isCorrect = true;
-                        text = text.slice(1, -1);
-                    } else if (text.startsWith('**') && text.endsWith('**')) {
-                        isCorrect = true;
-                        text = text.slice(2, -2);
-                    }
-                }
+                // Final cleaning: 
+                // 1. Remove optional markdown markers at start/end of the resulting string
+                // 2. Remove redundant internal keys if they leaked (e.g. "**a)**")
+                text = text.replace(/^[\*\s]+|[\*\s]+$/g, '') // remove leading/trailing stars and space
+                    .replace(/^([a-zA-Z0-9]+)[\)\.]\s*/, '') // remove redundant internal prefix "a) "
+                    .replace(/^[\*\s]+|[\*\s]+$/g, '') // one more star cleanup
+                    .trim();
 
                 options.push({
                     key: key,
-                    optionText: text.trim(),
-                    isCorrect: isCorrect
+                    optionText: text,
+                    isCorrect: markedCorrect
                 });
                 continue;
             }
 
             // If we haven't started parsing options, append to question text
             if (!isParsingOptions) {
-                // Remove Markdown headers if present
-                const cleanLine = line.replace(/^#{1,6}\s+/, '').replace(/^\d+[\)\.]\s+/, '');
-                questionText += (questionText ? "\n" : "") + cleanLine;
+                // Ignore metadata-like lines in question text
+                if (cleanLine.match(/^(?:Data|Questão|Question)\s*[:\d]/i)) continue;
+
+                const cleanQuestionLine = line.replace(/^#{1,6}\s+/, '').replace(/^\d+[\)\.]\s+/, '');
+                if (cleanQuestionLine) {
+                    questionText += (questionText ? "\n" : "") + cleanQuestionLine;
+                }
             }
         }
 
@@ -185,7 +215,7 @@ export const parseMarkdownQuestions = (markdown: string): any[] => {
                 options: options,
                 gabarito: gabarito,
                 justificativa: justificativa,
-                difficulty: 'medium' // default
+                difficulty: difficulty || 'medium'
             });
         }
     }

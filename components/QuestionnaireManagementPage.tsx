@@ -154,6 +154,7 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
         const timer = setTimeout(() => {
             loadQuestions();
             setCurrentPage(1); // Reset to page 1 when filters change
+            setSelectedQuestions(new Set()); // Reset selection
         }, 300); // 300ms debounce
         return () => clearTimeout(timer);
     }, [selectedCourseId, selectedModuleId, selectedLessonId, selectedDifficulty, searchKeyword]);
@@ -210,6 +211,61 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
             loadSystemStats(); // Refresh stats on delete
         } catch (error) {
             toast.error('Erro ao excluir questão');
+        }
+    };
+
+    // Bulk Selection Logic
+    const [selectedQuestions, setSelectedQuestions] = useState<Set<string>>(new Set());
+
+    const toggleSelectAll = () => {
+        const allIds = paginatedQuestions.map(q => q.id);
+        const allSelected = allIds.every(id => selectedQuestions.has(id));
+
+        if (allSelected) {
+            const newSelected = new Set(selectedQuestions);
+            allIds.forEach(id => newSelected.delete(id));
+            setSelectedQuestions(newSelected);
+        } else {
+            const newSelected = new Set(selectedQuestions);
+            allIds.forEach(id => newSelected.add(id));
+            setSelectedQuestions(newSelected);
+        }
+    };
+
+    const toggleSelectQuestion = (id: string) => {
+        const newSelected = new Set(selectedQuestions);
+        if (newSelected.has(id)) {
+            newSelected.delete(id);
+        } else {
+            newSelected.add(id);
+        }
+        setSelectedQuestions(newSelected);
+    };
+
+    const handleBulkDelete = async () => {
+        if (selectedQuestions.size === 0) return;
+        if (!confirm(`Deseja realmente excluir ${selectedQuestions.size} questões? Esta ação não pode ser desfeita.`)) return;
+
+        setIsBusy(true);
+        try {
+            // Execute deletes in parallel batches to avoid overwhelming the server
+            const idsToDelete = Array.from(selectedQuestions);
+            const batchSize = 5;
+
+            for (let i = 0; i < idsToDelete.length; i += batchSize) {
+                const batch = idsToDelete.slice(i, i + batchSize);
+                await Promise.all(batch.map(id => repository.deleteQuestion(id)));
+            }
+
+            toast.success(`${selectedQuestions.size} questões excluídas com sucesso.`);
+            setSelectedQuestions(new Set());
+            loadQuestions();
+            loadSystemStats();
+        } catch (error) {
+            console.error('Erro ao excluir questões em massa:', error);
+            toast.error('Erro ao excluir algumas questões. Tente novamente.');
+        } finally {
+            setIsBusy(false);
         }
     };
 
@@ -338,6 +394,17 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
 
                         {/* Action Buttons */}
                         <div className="flex items-center gap-3">
+                            {selectedQuestions.size > 0 && (
+                                <button
+                                    onClick={handleBulkDelete}
+                                    className="h-9 px-4 rounded-lg font-black transition-all active:scale-95 flex items-center gap-2 text-[10px] uppercase bg-red-100 text-red-600 border border-red-200 hover:bg-red-200 dark:bg-red-500/10 dark:border-red-500/20 dark:text-red-400 dark:hover:bg-red-500/20 animate-in fade-in zoom-in duration-200"
+                                    title="Excluir Selecionados"
+                                >
+                                    <i className="fas fa-trash-alt text-[10px]"></i>
+                                    Excluir ({selectedQuestions.size})
+                                </button>
+                            )}
+
                             {questions.length > 0 && (
                                 <button
                                     onClick={() => setIsSimulationOpen(true)}
@@ -523,8 +590,19 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
                     <div className="space-y-4">
                         {/* Pagination Info */}
                         {questions.length > 0 && (
-                            <div className="flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
+                            <div className="flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sticky top-20 z-40 shadow-sm">
                                 <div className="flex items-center gap-4">
+                                    <div className="flex items-center gap-2 pl-2 border-r border-slate-200 dark:border-slate-800 pr-4">
+                                        <input
+                                            type="checkbox"
+                                            checked={paginatedQuestions.length > 0 && paginatedQuestions.every(q => selectedQuestions.has(q.id))}
+                                            onChange={toggleSelectAll}
+                                            className="w-4 h-4 rounded-md border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                                        />
+                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-widest cursor-pointer" onClick={toggleSelectAll}>
+                                            Todos
+                                        </label>
+                                    </div>
                                     <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
                                         Exibindo <span className="text-indigo-600 dark:text-indigo-400">{startIndex + 1}-{Math.min(endIndex, questions.length)}</span> de <span className="text-indigo-600 dark:text-indigo-400">{questions.length}</span> questões
                                     </p>
@@ -553,71 +631,86 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
                         ) : paginatedQuestions.length > 0 ? (
                             <div className="grid grid-cols-1 gap-4">
                                 {paginatedQuestions.map(q => (
-                                    <div key={q.id} className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 flex items-start justify-between gap-6 hover:border-indigo-500/30 transition-all group">
-                                        <div className="flex items-start gap-6 min-w-0">
-                                            {q.imageUrl && (
-                                                <div className="w-24 h-24 rounded-2xl overflow-hidden flex-shrink-0 border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
-                                                    <img src={q.imageUrl} alt="Questão" className="w-full h-full object-cover" />
-                                                </div>
-                                            )}
-                                            <div className="space-y-2 min-w-0">
-                                                <div className="flex items-center gap-2">
-                                                    <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest ${q.difficulty === 'easy' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' :
-                                                        q.difficulty === 'medium' ? 'bg-amber-100 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400' :
-                                                            'bg-rose-100 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400'
-                                                        }`}>
-                                                        {q.difficulty === 'easy' ? 'Fácil' : q.difficulty === 'medium' ? 'Médio' : 'Difícil'}
-                                                    </span>
-                                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                                        {q.points} Pontos
-                                                    </span>
-                                                </div>
-
-                                                {(q.courseName || q.moduleName || q.lessonName) && (
-                                                    <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800/50 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-tight mb-1">
-                                                        <i className="fas fa-folder-open text-indigo-500 opacity-80"></i>
-                                                        {q.courseName && <span>{q.courseName}</span>}
-                                                        {q.moduleName && (
-                                                            <>
-                                                                <i className="fas fa-chevron-right text-[7px] opacity-30"></i>
-                                                                <span>{q.moduleName}</span>
-                                                            </>
-                                                        )}
-                                                        {q.lessonName && (
-                                                            <>
-                                                                <i className="fas fa-chevron-right text-[7px] opacity-30"></i>
-                                                                <span className="text-indigo-600 dark:text-indigo-400">{q.lessonName}</span>
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                )}
-                                                <p className="text-[15px] font-bold text-slate-800 dark:text-white leading-relaxed whitespace-pre-wrap">{q.questionText}</p>
-                                                <div className="flex flex-wrap gap-2 pt-1">
-                                                    {q.options.map((opt, idx) => (
-                                                        <div key={idx} className={`px-3 py-1.5 rounded-xl text-[14px] font-medium border ${opt.isCorrect
-                                                            ? 'bg-emerald-50 border-emerald-200 text-emerald-600 dark:bg-emerald-500/5 dark:border-emerald-500/20 dark:text-emerald-400'
-                                                            : 'bg-slate-50 border-slate-100 text-slate-400 dark:bg-slate-800/50 dark:border-slate-800 dark:text-slate-500'
-                                                            }`}>
-                                                            {opt.isCorrect && <i className="fas fa-check-circle mr-1.5"></i>}
-                                                            {opt.optionText}
+                                    <div key={q.id} className={`bg-white dark:bg-slate-900 p-6 rounded-3xl border transition-all group relative ${selectedQuestions.has(q.id)
+                                        ? 'border-indigo-500 bg-indigo-50/10 dark:bg-indigo-900/10'
+                                        : 'border-slate-200 dark:border-slate-800 hover:border-indigo-500/30'
+                                        }`}>
+                                        <div className="flex items-start gap-4">
+                                            <div className="pt-2">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedQuestions.has(q.id)}
+                                                    onChange={() => toggleSelectQuestion(q.id)}
+                                                    className="w-5 h-5 rounded-lg border-2 border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 cursor-pointer transition-all"
+                                                />
+                                            </div>
+                                            <div className="flex-1 flex items-start justify-between gap-6 min-w-0">
+                                                <div className="flex items-start gap-6 min-w-0">
+                                                    {q.imageUrl && (
+                                                        <div className="w-24 h-24 rounded-2xl overflow-hidden flex-shrink-0 border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
+                                                            <img src={q.imageUrl} alt="Questão" className="w-full h-full object-cover" />
                                                         </div>
-                                                    ))}
+                                                    )}
+                                                    <div className="space-y-2 min-w-0">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest ${q.difficulty === 'easy' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' :
+                                                                q.difficulty === 'medium' ? 'bg-amber-100 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400' :
+                                                                    'bg-rose-100 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400'
+                                                                }`}>
+                                                                {q.difficulty === 'easy' ? 'Fácil' : q.difficulty === 'medium' ? 'Médio' : 'Difícil'}
+                                                            </span>
+                                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                                                {q.points} Pontos
+                                                            </span>
+                                                        </div>
+
+                                                        {(q.courseName || q.moduleName || q.lessonName) && (
+                                                            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800/50 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-tight mb-1">
+                                                                <i className="fas fa-folder-open text-indigo-500 opacity-80"></i>
+                                                                {q.courseName && <span>{q.courseName}</span>}
+                                                                {q.moduleName && (
+                                                                    <>
+                                                                        <i className="fas fa-chevron-right text-[7px] opacity-30"></i>
+                                                                        <span>{q.moduleName}</span>
+                                                                    </>
+                                                                )}
+                                                                {q.lessonName && (
+                                                                    <>
+                                                                        <i className="fas fa-chevron-right text-[7px] opacity-30"></i>
+                                                                        <span className="text-indigo-600 dark:text-indigo-400">{q.lessonName}</span>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                        <p className="text-[15px] font-bold text-slate-800 dark:text-white leading-relaxed whitespace-pre-wrap">{q.questionText}</p>
+                                                        <div className="flex flex-wrap gap-2 pt-1">
+                                                            {q.options.map((opt, idx) => (
+                                                                <div key={idx} className={`px-3 py-1.5 rounded-xl text-[14px] font-medium border ${opt.isCorrect
+                                                                    ? 'bg-emerald-50 border-emerald-200 text-emerald-600 dark:bg-emerald-500/5 dark:border-emerald-500/20 dark:text-emerald-400'
+                                                                    : 'bg-slate-50 border-slate-100 text-slate-400 dark:bg-slate-800/50 dark:border-slate-800 dark:text-slate-500'
+                                                                    }`}>
+                                                                    {opt.isCorrect && <i className="fas fa-check-circle mr-1.5"></i>}
+                                                                    {opt.optionText}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="flex flex-shrink-0 gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button
+                                                        onClick={() => { setEditingQuestion(q); setIsEditorOpen(true); }}
+                                                        className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                                                    >
+                                                        <i className="fas fa-pen"></i>
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteQuestion(q.id)}
+                                                        className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-red-500 hover:text-white transition-colors"
+                                                    >
+                                                        <i className="fas fa-trash-alt"></i>
+                                                    </button>
                                                 </div>
                                             </div>
-                                        </div>
-                                        <div className="flex flex-shrink-0 gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button
-                                                onClick={() => { setEditingQuestion(q); setIsEditorOpen(true); }}
-                                                className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-                                            >
-                                                <i className="fas fa-pen"></i>
-                                            </button>
-                                            <button
-                                                onClick={() => handleDeleteQuestion(q.id)}
-                                                className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-red-500 hover:text-white transition-colors"
-                                            >
-                                                <i className="fas fa-trash-alt"></i>
-                                            </button>
                                         </div>
                                     </div>
                                 ))}

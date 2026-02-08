@@ -181,6 +181,18 @@ export class SupabaseQuestionBankRepository implements IQuestionBankRepository {
     }
 
     async deleteQuestion(id: string): Promise<void> {
+        // Explicitly delete options first to ensure no foreign key issues
+        // (even if cascade is on, this is safer for debugging)
+        const { error: optionsError } = await this.client
+            .from('question_bank_options')
+            .delete()
+            .eq('question_id', id);
+
+        if (optionsError) {
+            console.error('Error deleting options:', optionsError);
+            throw new DomainError(`Erro ao deletar opções da questão: ${optionsError.message}`);
+        }
+
         const { error } = await this.client.from('question_bank').delete().eq('id', id);
         if (error) throw new DomainError(`Erro ao deletar questão: ${error.message}`);
     }
