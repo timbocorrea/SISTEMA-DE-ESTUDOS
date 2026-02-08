@@ -70,6 +70,7 @@ export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate }: UseA
             const nextAudio = new Audio(blocks[nextIndex].audioUrl);
             nextAudio.preload = 'auto';
             nextAudio.playbackRate = playbackSpeedRef.current;
+            nextAudio.load(); // Force browser to start buffering immediately
             nextAudioRef.current = nextAudio;
 
             console.log(`🔊 Prefetching next audio [${nextIndex}]`);
@@ -198,7 +199,7 @@ export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate }: UseA
                 const progress = (audio.currentTime / audio.duration) * 100;
                 setAudioProgress(progress);
 
-                // Prefetch next audio when current reaches 30%
+                // Prefetch next audio when current reaches 30% (Fallback if immediate prefetch failed)
                 if (progress >= 30 && !nextAudioRef.current) {
                     prefetchNextAudio(index);
                 }
@@ -250,6 +251,12 @@ export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate }: UseA
         audio.play().then(() => {
             console.log(`✅ Audio playing successfully for block ${index}`);
             activityMonitor.setMediaPlaying(true);
+
+            // GAPLESS OPTIMIZATION: Prefetch next audio IMMEDIATELY after start
+            // This gives the maximum amount of time for the next track to buffer
+            if (!nextAudioRef.current) {
+                prefetchNextAudio(index);
+            }
         }).catch(err => {
             console.error("❌ Audio playback failed for block", index, {
                 blockId: block.id,

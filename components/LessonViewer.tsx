@@ -204,35 +204,34 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     }, [lesson.id]);
 
     // Auto-scroll to active block
+    // Auto-scroll to active block
     useEffect(() => {
         if (activeBlockId) {
             const element = blockRefs.current[activeBlockId];
             const container = contentScrollContainerRef.current;
 
             if (element && container) {
-                // Verificar se o elemento já está visível no container
-                const containerRect = container.getBoundingClientRect();
-                const elementRect = element.getBoundingClientRect();
+                // Use setTimeout to ensure UI has settled
+                setTimeout(() => {
+                    // Use getBoundingClientRect for robust calculation relative to viewport
+                    // This avoids issues with zoom, offsetParent, and prevents window scrolling (unlike scrollIntoView)
+                    const containerRect = container.getBoundingClientRect();
+                    const elementRect = element.getBoundingClientRect();
 
-                const isVisible = (
-                    elementRect.top >= containerRect.top &&
-                    elementRect.bottom <= containerRect.bottom
-                );
+                    // Calculate the relative position of the element inside the visible container area
+                    const relativeTop = elementRect.top - containerRect.top;
+                    const elementHeight = elementRect.height;
+                    const containerHeight = containerRect.height;
 
-                if (!isVisible) {
-                    // Calcular scroll relativo ao container
-                    // element.offsetTop é relativo ao pai posicionado (o container deve ser relative/absolute)
-                    const containerHeight = container.clientHeight;
-                    const elementTop = element.offsetTop;
-                    const elementHeight = element.offsetHeight;
-
-                    const targetScroll = elementTop - (containerHeight / 2) + (elementHeight / 2);
+                    // Calculate desired scroll position to center the element
+                    // container.scrollTop is the current scroll. We add relativeTop to get to element, then subtract half container to center.
+                    const targetScrollTop = container.scrollTop + relativeTop - (containerHeight / 2) + (elementHeight / 2);
 
                     container.scrollTo({
-                        top: targetScroll,
+                        top: targetScrollTop,
                         behavior: 'smooth'
                     });
-                }
+                }, 100);
             }
         }
     }, [activeBlockId]);

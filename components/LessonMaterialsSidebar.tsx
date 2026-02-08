@@ -130,6 +130,21 @@ const LessonMaterialsSidebar: React.FC<Props> = ({ lesson, onTrackAction }) => {
   const [currentAudio, setCurrentAudio] = useState<MaterialItem | null>(null);
   const [isMinimized, setIsMinimized] = useState(false);
 
+  // Helper function to convert Dropbox URLs to direct links
+  const convertDropboxUrl = (url: string): string => {
+    if (url.includes('dropboxusercontent.com') || url.includes('dropbox.com')) {
+      if (url.includes('dl.dropboxusercontent.com')) return url; // Already direct
+
+      // Replace generic dropbox domain with direct download domain
+      // and remove download query params to ensure clean display
+      return url.replace('www.dropbox.com', 'dl.dropboxusercontent.com')
+        .replace('dropbox.com', 'dl.dropboxusercontent.com')
+        .replace('?dl=0', '')
+        .replace('?dl=1', '');
+    }
+    return url;
+  };
+
   const handleItemClick = (item: MaterialItem) => {
     // Helper to check extensions
     let effectiveType = item.type;
@@ -148,11 +163,13 @@ const LessonMaterialsSidebar: React.FC<Props> = ({ lesson, onTrackAction }) => {
         onTrackAction?.(`Abriu Player Áudio: ${item.title}`);
         break;
       case 'IMAGE':
-        setModalImage(item.url);
+        // Fix: Convert Dropbox sharing links to direct image links
+        setModalImage(convertDropboxUrl(item.url));
         onTrackAction?.(`Visualizou Imagem: ${item.title}`);
         break;
       case 'PDF':
-        setModalPDF(item.url);
+        // PDF viewer usually handles redirect, but direct link is safer
+        setModalPDF(convertDropboxUrl(item.url));
         onTrackAction?.(`Visualizou PDF: ${item.title}`);
         break;
       case 'LINK':

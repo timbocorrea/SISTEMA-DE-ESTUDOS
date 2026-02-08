@@ -85,11 +85,6 @@ const DropboxAudioBrowser: React.FC<DropboxAudioBrowserProps> = ({
         return a.tag === 'folder' ? -1 : 1;
       });
 
-      // Filtrar áudios já utilizados (manter pastas)
-      // usedAudioUrls agora contém os nomes dos arquivos já usados
-      console.log('🎵 Dropbox filter - Used audio filenames:', usedAudioUrls);
-      console.log('📁 Dropbox filter - Total files before filter:', filtered.filter(i => i.tag === 'file').length);
-
       console.log('✅ Dropbox filter - Skipping filter to show all files (Used files will be visible)');
       const availableItems = filtered;
 
