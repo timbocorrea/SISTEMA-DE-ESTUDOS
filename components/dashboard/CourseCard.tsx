@@ -3,6 +3,8 @@ import { Course } from '../../domain/entities';
 import { motion } from 'framer-motion';
 import { ShinyButton } from '../ui/shiny-button';
 
+import LazyImage from '../ui/LazyImage';
+
 interface CourseCardProps {
     course: Course;
     isEnrolled: boolean;
@@ -24,9 +26,8 @@ const CourseCard: React.FC<CourseCardProps> = ({
     return (
         <motion.div
             layoutId={`course-card-${course.id}`}
-            className="group bg-white dark:bg-black/40 backdrop-blur-md rounded-2xl border border-slate-200 dark:border-white/5 overflow-hidden hover:shadow-[0_0_30px_-5px_rgba(99,102,241,0.6)] hover:border-indigo-500/80 dark:hover:shadow-[0_0_30px_-5px_rgba(99,102,241,0.4)] dark:hover:border-indigo-500/80 transition-all duration-300 cursor-pointer flex flex-col h-full relative ring-1 ring-slate-200 dark:ring-white/5"
+            className="group bg-white dark:bg-black/40 backdrop-blur-md rounded-2xl border border-slate-200 dark:border-white/5 overflow-hidden transition-all duration-300 cursor-pointer flex flex-col h-full relative ring-1 ring-slate-200 dark:ring-white/5 hover:transform-none lg:hover:-translate-y-1 lg:hover:shadow-[0_0_30px_-5px_rgba(99,102,241,0.6)] lg:hover:border-indigo-500/80 lg:dark:hover:shadow-[0_0_30px_-5px_rgba(99,102,241,0.4)] lg:dark:hover:border-indigo-500/80"
             onClick={onClick}
-            whileHover={{ y: -5 }}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
         >
@@ -37,7 +38,7 @@ const CourseCard: React.FC<CourseCardProps> = ({
             >
                 {course.imageUrl ? (
                     <>
-                        <img
+                        <LazyImage
                             src={course.imageUrl}
                             alt={course.title}
                             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 opacity-90 group-hover:opacity-100"

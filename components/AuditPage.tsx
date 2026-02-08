@@ -54,6 +54,27 @@ const AuditPage: React.FC = () => {
         return 'bg-red-500/10 border-red-500/30 text-red-400';
     };
 
+    const getFriendlyPageName = (path: string, currentTitle: string) => {
+        // Priority Mappings
+        if (path === '/' || path === '') return 'Dashboard';
+        if (path === '/courses') return 'Meus Cursos';
+        if (path === '/history') return 'Histórico';
+        if (path === '/achievements') return 'Conquistas';
+        if (path === '/audit') return 'Auditoria (Pais)';
+        if (path === '/profile') return 'Meu Perfil';
+        if (path === '/settings') return 'Configurações';
+        if (path.startsWith('/admin')) return 'Administração';
+        if (path.startsWith('/course/')) return 'Sala de Aula';
+
+        // Helper for raw paths that might have slipped in as titles
+        if (currentTitle.startsWith('/')) {
+            if (currentTitle.includes('course')) return 'Sala de Aula';
+            return currentTitle; // Keep distinct if unknown
+        }
+
+        return currentTitle;
+    };
+
     return (
         <div className="p-6 max-w-7xl mx-auto space-y-6">
             <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -91,7 +112,7 @@ const AuditPage: React.FC = () => {
                             <option value="regular">Regular (Amarelo)</option>
                             <option value="idle">Ocioso/AFK (Vermelho)</option>
                         </select>
-                        <i className="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-[10px] pointer-events-none"></i>
+                        <i className="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
                     </div>
 
                     {(dateFilter || statusFilter !== 'all') && (
@@ -180,7 +201,7 @@ const AuditPage: React.FC = () => {
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex flex-col">
-                                                <span className="font-bold text-slate-800 dark:text-white">{log.pageTitle}</span>
+                                                <span className="font-bold text-slate-800 dark:text-white">{getFriendlyPageName(log.path, log.pageTitle)}</span>
                                                 <span className="text-[10px] text-slate-500 font-mono opacity-70 truncate max-w-[200px]">{log.path}</span>
                                             </div>
                                         </td>
