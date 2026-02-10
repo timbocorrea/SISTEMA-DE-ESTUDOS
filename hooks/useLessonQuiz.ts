@@ -193,17 +193,36 @@ export const useLessonQuiz = ({
             try {
                 const { createSupabaseClient } = await import('../services/supabaseClient');
                 const { SupabaseQuestionBankRepository } = await import('../repositories/SupabaseQuestionBankRepository');
+                const { SupabaseCourseRepository } = await import('../repositories/SupabaseCourseRepository');
                 const { QuizQuestion } = await import('../domain/quiz-entities');
 
                 const supabase = createSupabaseClient();
                 const bankRepo = new SupabaseQuestionBankRepository(supabase);
+                const courseRepo = new SupabaseCourseRepository(supabase);
+
+                // Check for previous failed attempt to exclude questions
+                let excludeIds: string[] = [];
+                try {
+                    const lastAttempt = await courseRepo.getLatestQuizAttempt(user.id, quiz.id);
+                    if (lastAttempt && !lastAttempt.passed && lastAttempt.answers) {
+                        excludeIds = Object.keys(lastAttempt.answers);
+                        console.log('Excluding questions from previous failed attempt:', excludeIds);
+                    }
+                } catch (err) {
+                    console.error('Error fetching previous attempt for exclusion:', err);
+                    // Continue without exclusion if error occurs
+                }
+
+                // Default to 20 questions if not specified, or use the configured count
+                const countToFetch = quiz.questionsCount > 0 ? quiz.questionsCount : 20;
 
                 const bankQuestions = await bankRepo.getRandomQuestions(
-                    quiz.questionsCount,
+                    countToFetch,
                     {
                         difficulty: quiz.poolDifficulty || undefined,
                         courseId: course.id,
-                        lessonId: lesson.id
+                        lessonId: lesson.id,
+                        excludeIds: excludeIds.length > 0 ? excludeIds : undefined
                     }
                 );
 

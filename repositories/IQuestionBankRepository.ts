@@ -36,5 +36,6 @@ export interface IQuestionBankRepository {
         moduleId?: string;
         lessonId?: string;
         difficulty?: QuestionDifficulty;
+        excludeIds?: string[];
     }): Promise<QuizQuestion[]>;
 }

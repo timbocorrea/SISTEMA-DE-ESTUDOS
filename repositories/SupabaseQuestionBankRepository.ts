@@ -202,18 +202,20 @@ export class SupabaseQuestionBankRepository implements IQuestionBankRepository {
         moduleId?: string;
         lessonId?: string;
         difficulty?: QuestionDifficulty;
+        excludeIds?: string[];
     }): Promise<QuizQuestion[]> {
         // Supabase doesn't have a direct 'order by random' with filter in simple API
         // We'll use a RPC or fetch all IDs and then select random ones, 
         // but for now, we can fetch a pool and shuffle in memory if the pool is small.
-        // Better: Use a custom RPC 'get_random_questions' for performance.
+        // Better: Use a custom RPC 'get_random_bank_questions' for performance.
 
         const { data, error } = await this.client.rpc('get_random_bank_questions', {
             p_count: count,
             p_course_id: filters.courseId || null,
             p_module_id: filters.moduleId || null,
             p_lesson_id: filters.lessonId || null,
-            p_difficulty: filters.difficulty || null
+            p_difficulty: filters.difficulty || null,
+            p_exclude_ids: filters.excludeIds || null
         });
 
         if (error) {

@@ -3378,20 +3378,23 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                                 key={block.id || originalIndex}
                                                 data-block-id={block.id}
                                                 onClick={() => {
-                                                    // Scroll to corresponding block in manager
-                                                    // Use the specific data-instance attribute we added to BlockItem
-                                                    // This is robust and doesn't depend on fragile class names
                                                     const editorBlock = document.querySelector(`[data-block-id="${block.id}"][data-instance="editor"]`) as HTMLElement;
+                                                    const scrollContainer = document.getElementById('blocks-scroll-container');
 
-                                                    if (editorBlock) {
-                                                        // Expand the block FIRST
+                                                    if (editorBlock && scrollContainer) {
                                                         setExpandedBlockId(block.id);
-
-                                                        // Wait for expansion animation/render to complete/start before scrolling
-                                                        // This ensures the scroll center calculation includes the expanded height
                                                         setTimeout(() => {
-                                                            editorBlock.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                                            // Add highlight flash animation
+                                                            const containerRect = scrollContainer.getBoundingClientRect();
+                                                            const blockRect = editorBlock.getBoundingClientRect();
+                                                            const relativeTop = blockRect.top - containerRect.top;
+                                                            const currentScroll = scrollContainer.scrollTop;
+                                                            const targetScroll = currentScroll + relativeTop - (scrollContainer.clientHeight / 2) + (blockRect.height / 2);
+
+                                                            scrollContainer.scrollTo({
+                                                                top: targetScroll,
+                                                                behavior: 'smooth'
+                                                            });
+
                                                             editorBlock.classList.add('highlight-flash');
                                                             setTimeout(() => {
                                                                 editorBlock.classList.remove('highlight-flash');
@@ -3425,7 +3428,8 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                                 {/* Overlay clicável para garantir captura do clique em toda a área */}
                                                 <div
                                                     className="absolute inset-0 z-10 cursor-pointer block-overlay"
-                                                    onClick={() => {
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
                                                         const editorBlock = document.querySelector(`[data-block-id="${block.id}"][data-instance="editor"]`) as HTMLElement;
                                                         const scrollContainer = document.getElementById('blocks-scroll-container');
 

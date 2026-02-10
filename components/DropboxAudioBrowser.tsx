@@ -167,9 +167,9 @@ const DropboxAudioBrowser: React.FC<DropboxAudioBrowserProps> = ({
         }
       }, 1000);
 
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao iniciar login:', err);
-      setError('Erro ao iniciar conexão com Dropbox');
+      setError(err.message || 'Erro ao iniciar conexão com Dropbox');
       setLoading(false);
     }
   };
@@ -294,6 +294,13 @@ const DropboxAudioBrowser: React.FC<DropboxAudioBrowserProps> = ({
               <i className="fas fa-sign-in-alt"></i>
               Conectar Dropbox
             </button>
+
+            {error && (
+              <div className="text-red-500 text-xs mt-4 text-center bg-red-50 dark:bg-red-900/20 p-2 rounded-lg animate-pulse">
+                <i className="fas fa-exclamation-circle mr-1"></i>
+                {error}
+              </div>
+            )}
           </div>
         ) : (
           // Navegador de Arquivos (Se autenticado)
