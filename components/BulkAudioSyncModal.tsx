@@ -37,6 +37,7 @@ const BulkAudioSyncModal: React.FC<BulkAudioSyncModalProps> = ({
     const [totalToSync, setTotalToSync] = useState(0);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [authError, setAuthError] = useState<string | null>(null);
+    const blockRefs = React.useRef<(HTMLDivElement | null)[]>([]);
 
     // Initialize mappings when blocks change
     // Initialize/Update mappings when blocks change
@@ -55,12 +56,13 @@ const BulkAudioSyncModal: React.FC<BulkAudioSyncModalProps> = ({
             // Add new blocks without overwriting existing ones
             selectedBlocks.forEach(block => {
                 if (!newMappings.has(block.id)) {
+                    const hasAudio = !!block.audioUrl;
                     newMappings.set(block.id, {
                         blockId: block.id,
-                        audioPath: null,
-                        audioUrl: null,
-                        filename: null,
-                        status: 'pending'
+                        audioPath: hasAudio ? (block.audioUrl || null) : null, // Use URL as path identifier for synced blocks
+                        audioUrl: block.audioUrl || null,
+                        filename: hasAudio ? 'Áudio Já Sincronizado' : null,
+                        status: hasAudio ? 'success' : 'pending'
                     });
                 }
             });
@@ -167,6 +169,17 @@ const BulkAudioSyncModal: React.FC<BulkAudioSyncModalProps> = ({
             }
             return newMappings;
         });
+
+        // Auto-scroll to next block
+        const currentIndex = selectedBlocks.findIndex(b => b.id === blockId);
+        if (currentIndex !== -1 && currentIndex + 1 < selectedBlocks.length) {
+            setTimeout(() => {
+                blockRefs.current[currentIndex + 1]?.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center'
+                });
+            }, 300); // Small delay to allow visual update of current block
+        }
     };
 
     const handleFolderClick = (path: string) => {
@@ -390,6 +403,7 @@ const BulkAudioSyncModal: React.FC<BulkAudioSyncModalProps> = ({
                                     return (
                                         <div
                                             key={block.id}
+                                            ref={(el) => { blockRefs.current[index] = el; }}
                                             className={`rounded-xl p-4 border transition-all duration-300 ${isSelected
                                                 ? 'bg-green-50/50 dark:bg-green-900/10 border-green-500 dark:border-green-500 ring-1 ring-green-500'
                                                 : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700'
@@ -435,7 +449,8 @@ const BulkAudioSyncModal: React.FC<BulkAudioSyncModalProps> = ({
                                                         {mapping.audioPath && (
                                                             <div className="flex-shrink-0 flex items-center gap-1">
                                                                 <MiniAudioPlayer
-                                                                    path={mapping.audioPath}
+                                                                    path={mapping.audioPath || undefined}
+                                                                    url={mapping.audioUrl || undefined}
                                                                     filename={mapping.filename || 'Audio'}
                                                                 />
                                                                 <button

@@ -2,27 +2,32 @@ import React, { useState, useRef, useEffect } from 'react';
 import { DropboxService } from '../services/dropbox/DropboxService';
 
 interface MiniAudioPlayerProps {
-    path: string;
+    path?: string;
+    url?: string;
     filename: string;
 }
 
-export const MiniAudioPlayer: React.FC<MiniAudioPlayerProps> = ({ path, filename }) => {
+export const MiniAudioPlayer: React.FC<MiniAudioPlayerProps> = ({ path, url: directUrl, filename }) => {
     const [audioUrl, setAudioUrl] = useState<string | null>(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const audioRef = useRef<HTMLAudioElement | null>(null);
 
-    // Reset state when path changes
+    // Reset state when path or url changes
     useEffect(() => {
-        setAudioUrl(null);
+        if (directUrl) {
+            setAudioUrl(directUrl);
+        } else {
+            setAudioUrl(null);
+        }
         setIsPlaying(false);
         setError(null);
         if (audioRef.current) {
             audioRef.current.pause();
             audioRef.current.currentTime = 0;
         }
-    }, [path]);
+    }, [path, directUrl]);
 
     const handlePlay = async () => {
         setError(null);
@@ -30,6 +35,11 @@ export const MiniAudioPlayer: React.FC<MiniAudioPlayerProps> = ({ path, filename
         if (audioUrl) {
             audioRef.current?.play();
             setIsPlaying(true);
+            return;
+        }
+
+        if (!path) {
+            setError('Caminho do áudio não encontrado');
             return;
         }
 
