@@ -292,13 +292,13 @@ const Sidebar: React.FC<SidebarProps> = ({
         }
       }}
       className={`
-      ${isMobileOpen ? 'flex fixed' : 'hidden'} 
-      lg:flex lg:relative 
+      ${isMobileOpen ? 'flex fixed h-[100dvh] overflow-y-auto' : 'hidden'} 
+      lg:flex lg:relative lg:h-full lg:overflow-hidden
       flex-col
       inset-y-0 left-0 
       z-[70] lg:z-0 
       ${isActuallyCollapsed ? 'lg:w-20' : 'lg:w-72'} 
-      w-72 h-full 
+      w-72
       bg-white/90 dark:bg-slate-900/60 backdrop-blur-xl
       border-r border-slate-200 dark:border-white/5 
       p-4 
@@ -312,7 +312,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       <button
         onClick={onCloseMobile}
         aria-label="Fechar menu"
-        className="absolute right-3 top-3 lg:hidden w-11 h-11 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 rounded-xl transition-colors"
+        className="absolute right-3 top-3 lg:hidden w-11 h-11 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 rounded-xl transition-colors z-50"
       >
         <i className="fas fa-times text-xl"></i>
       </button>
@@ -397,7 +397,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         )}
       </div>
 
-      <nav className="flex-1 space-y-1 overflow-y-auto scrollbar-hide overflow-x-hidden">
+      <nav className={`flex-1 space-y-1 overflow-x-hidden ${isMobileOpen ? 'min-h-min' : 'overflow-y-auto scrollbar-hide'} lg:overflow-y-auto lg:scrollbar-hide`}>
         {!isActuallyCollapsed && <p className="px-3 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4 opacity-50 whitespace-nowrap">Menu Principal</p>}
 
         <Link

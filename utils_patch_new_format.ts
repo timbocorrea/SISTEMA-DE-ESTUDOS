@@ -1,133 +1,9 @@
-import { QuizQuestion, QuizOption } from '../domain/quiz-entities';
 
-const isValidUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
-
-export const normalizeQuestions = (parsed: any[] | any) => {
-    // Determine the array of questions to process
-    let questionsArray: any[] = [];
-
-    if (Array.isArray(parsed)) {
-        // Check if it's a wrapped root object like [{ questions: [...] }]
-        if (parsed.length === 1 && (parsed[0].questions || parsed[0].questoes) && Array.isArray(parsed[0].questions || parsed[0].questoes)) {
-            questionsArray = parsed[0].questions || parsed[0].questoes;
-        } else {
-            // Standard array of questions
-            questionsArray = parsed;
-        }
-    } else {
-        // Direct object { questions: [...] } or single question object
-        questionsArray = parsed.questions || parsed.questoes || [parsed];
-    }
-
-    return questionsArray
-        .map((q: any) => {
-            // Determine question text from various possible keys
-            let text = q.questionText || q.enunciado || q.pergunta || q.texto || q.prompt || q.question || "";
-
-            // Append justification if available
-            const justification = q.justificativa || q.explicacao || q.feedback || q.reason || q.justification;
-            if (justification && text) {
-                text += `\n\n*Justificativa:* ${justification}`;
-            }
-
-            // Determine options from various possible keys
-            let opts: any[] = [];
-            const rawOptions = q.options || q.alternativas || q.opcoes || q.choices || q.respostas || q.answers || [];
-
-            if (Array.isArray(rawOptions)) {
-                opts = rawOptions.map((o, idx) => {
-                    if (typeof o === 'string') return { optionText: o, index: idx };
-                    return { ...o, index: idx };
-                });
-            } else if (typeof rawOptions === 'object' && rawOptions !== null) {
-                opts = Object.entries(rawOptions).map(([key, val], idx) => ({
-                    key: key,
-                    optionText: String(val),
-                    index: idx
-                }));
-            }
-
-            // Determine correct answer (gabarito)
-            // Fix: Include 'respostaCorreta' and 'correct_option' and ensure we handle numeric 0 which might evaluate to false in || chain.
-            let rawGabarito = q.gabarito ?? q.resposta ?? q.respostaCorreta ?? q.correct ?? q.correct_option ?? "";
-            const gabarito = String(rawGabarito).trim().toUpperCase();
-
-            // Generate valid UUID for question if not provided or invalid
-            const generateUUID = () => crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2);
-            const questionId = (q.id && isValidUUID(q.id)) ? q.id : generateUUID();
-
-            const normalizedOptions = opts
-                .map((o: any) => {
-                    const optionText = o.optionText || o.text || o.texto || "";
-                    let isCorrect = Boolean(o.isCorrect || o.is_correct || o.correta);
-
-                    // If we have a gabarito, try to match it against key, letter index, numeric index, or text
-                    if (gabarito !== "") {
-                        const optionKey = String(o.key || "").toUpperCase();
-                        const optionLetter = String.fromCharCode(65 + o.index).toUpperCase(); // A, B, C...
-                        const optionIndex = String(o.index);
-
-                        if (
-                            optionKey === gabarito ||
-                            optionLetter === gabarito ||
-                            optionIndex === gabarito ||
-                            optionText.toUpperCase() === gabarito
-                        ) {
-                            isCorrect = true;
-                        }
-                    }
-
-                    const optionId = (o.id && isValidUUID(o.id)) ? o.id : generateUUID();
-
-                    return new QuizOption(
-                        optionId,
-                        questionId,
-                        optionText,
-                        isCorrect,
-                        o.index
-                    );
-                })
-                .filter(o => o.optionText);
-
-            // Pre-validate before creating QuizQuestion to avoid constructor errors
-            if (!text || normalizedOptions.length < 2) {
-                return null;
-            }
-
-            // Ensure at least one correct option exists (QuizQuestion constructor would throw otherwise)
-            if (!normalizedOptions.some(o => o.isCorrect)) {
-                // Determine if we can auto-correct (e.g., if no correct option is marked, maybe marking the first one? No, unsafe.)
-                // Or check if we missed a gabarito format.
-                // For now, filter it out to prevent crash.
-                return null;
-            }
-
-            try {
-                return new QuizQuestion(
-                    questionId,
-                    'temp-quiz',
-                    text,
-                    'multiple_choice',
-                    q.numero || 0,
-                    q.points || q.pontos || 1,
-                    normalizedOptions,
-                    q.dificuldade || q.difficulty || 'medium'
-                );
-            } catch (e) {
-                console.warn('Skipping invalid question:', e);
-                return null;
-            }
-        })
-        .filter((q: QuizQuestion | null) => q !== null);
-};
-
-
-export const parseMarkdownQuestions = (markdown: string): any[] => {
+const parseMarkdownQuestionsPatched = (markdown: string): any[] => {
     const questions: any[] = [];
 
-    // Improved block splitting: Look for standard headers, question numbers, or metadata headers as primary delimiters
-    // We split by "###", "##", or lines starting with numeric questions "1." 
-    // AND ALSO split by the specific format "### Questão" if present
+    // Improved splitting: Look for "### Questão", "### Question", "## Question" or numeric starts
+    // We split by standard headers or question patterns
     const blocks = markdown.split(/\n\s*(?=#{1,3}\s+Questão|#{1,3}\s+Question|\d+[\)\.]\s+)/i).filter(b => b.trim().length > 0);
 
     for (const block of blocks) {
@@ -162,6 +38,7 @@ export const parseMarkdownQuestions = (markdown: string): any[] => {
         const difficultyRegex = /^(?:Dificuldade|Difficulty):\s*(.+)$/i;
 
         // Metadata with bold prefixes (e.g., **Gabarito:** or **Explicação:**)
+        // These might appear at start of line
         const boldGabaritoRegex = /^\*\*(?:Gabarito|Resposta|Correct|Answer|Resposta correta):\*\*\s*(.+)$/i;
         const boldJustificativaRegex = /^\*\*(?:Justificativa|Explicação|Explanation|Feedback|Reason):\*\*\s*(.+)$/i;
 
@@ -176,12 +53,15 @@ export const parseMarkdownQuestions = (markdown: string): any[] => {
             }
 
             // Clean markdown bold/italic from start/end of line for metadata checks if needed
+            // But be careful not to strip bold prefixes we want to match specifically
             const cleanLine = line.replace(/^\*\*|\*\*$/g, '').trim();
 
             // 0. Check Header Topic (if line is the first line or starts with #)
             const headerTopicMatch = line.match(headerTopicRegex);
             if (headerTopicMatch) {
                 topic = headerTopicMatch[1].trim();
+                // Don't continue, as the header line might contain other info? 
+                // Usually header is just header.
                 continue;
             }
 
@@ -227,10 +107,13 @@ export const parseMarkdownQuestions = (markdown: string): any[] => {
             }
 
             // 5. Check standard/bold metadata if not in blockquote
+            // Check matches with bold prefix first
             if (line.match(boldGabaritoRegex)) { gabarito = line.match(boldGabaritoRegex)![1].trim(); continue; }
-            if (line.match(boldJustificativaRegex)) { justificativa = line.match(boldJustificativaRegex)![1].trim(); isParsingStructure = 'justification'; continue; }
+            if (line.match(boldJustificativaRegex)) { justificativa = line.match(boldJustificativaRegex)![1].trim(); isParsingStructure = 'justification'; continue; } // switch to Justification mode to capture multi-line explanations
 
+            // Check matches without bold prefix (legacy or cleanLine)
             if (cleanLine.match(gabaritoRegex)) { gabarito = cleanLine.match(gabaritoRegex)![1].trim(); continue; }
+            // If cleanLine matches justification, it might match "**Justificativa:** Text" -> "Justificativa: Text"
             if (cleanLine.match(justificativaRegex)) { justificativa = cleanLine.match(justificativaRegex)![1].trim(); isParsingStructure = 'justification'; continue; }
 
             if (line.match(difficultyRegex)) {
@@ -249,6 +132,9 @@ export const parseMarkdownQuestions = (markdown: string): any[] => {
             }
 
             if (isParsingStructure === 'justification') {
+                // If we hit a separator or new header, we stop. But loop handles new header by splitting blocks.
+                // So we just accumulate until end of block or next metadata?
+                // Be careful not to swallow options if justification came before options (unlikely).
                 justificativa += " " + line;
                 continue;
             }
@@ -275,8 +161,8 @@ export const parseMarkdownQuestions = (markdown: string): any[] => {
             }
 
             if (isParsingStructure !== 'justification' && isParsingStructure !== 'options') {
-                if (cleanLine.match(/^(?:Data|Questão|Question)\s*[:\d]/i)) continue;
-                if (line.match(/^#{1,3}\s+Questão/i)) continue;
+                if (cleanLine.match(/^(?:Data|Questão|Question)\s*[:\d]/i)) continue; // ignore "Questão 1" standalone lines if they existed, but we split by them now
+                if (line.match(/^#{1,3}\s+Questão/i)) continue; // Extra safety if split kept header? split usually removes separator unless lookahead
 
                 const cleanQuestionLine = line.replace(/^#{1,6}\s+/, '').replace(/^\d+[\)\.]\s+/, '');
                 if (cleanQuestionLine) {
@@ -289,19 +175,13 @@ export const parseMarkdownQuestions = (markdown: string): any[] => {
         if (topic) finalQuestionText += `**Tópico:** ${topic}\n\n`;
         if (context) finalQuestionText += `**Contexto:** ${context.trim()}\n\n`;
         finalQuestionText += questionText.trim();
+        if (justificativa) finalQuestionText += `\n\n> **Justificativa:** ${justificativa.trim()}`;
 
-        if (justificativa) {
-            finalQuestionText += `\n\n> **Justificativa:** ${justificativa.trim()}`;
-        }
-
-        // Match Gabarito
         if (gabarito) {
             const cleanGabarito = gabarito.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
             options.forEach((opt, idx) => {
                 const optKey = opt.key ? opt.key.toUpperCase() : String.fromCharCode(65 + idx);
-                if (optKey === cleanGabarito || opt.optionText.startsWith(gabarito + ")")) {
-                    opt.isCorrect = true;
-                }
+                if (optKey === cleanGabarito || opt.optionText.startsWith(gabarito + ")")) { opt.isCorrect = true; }
             });
         }
 
@@ -315,6 +195,39 @@ export const parseMarkdownQuestions = (markdown: string): any[] => {
             });
         }
     }
-
     return questions;
 };
+
+// NEW INPUT FORMAT
+const markdownInputNew = `
+### Questão 1 (Tópico: 1 Programação por blocos: variáveis e entrada de dados)
+
+O texto descreve a evolução dos computadores de dispositivos de função única para a arquitetura de von Neumann...
+
+A) A necessidade de alterar fisicamente os componentes ou desligar a máquina para mudar sua função.
+B) A capacidade de armazenar tanto as instruções quanto os dados na memória de acesso aleatório (RAM), eliminando interruptores externos.
+C) O uso de sistemas decimais em vez de binários para processar instruções complexas de entrada e saída.
+D) A separação total entre a unidade de memória e a unidade de processamento, impedindo a interação entre dados e instruções.
+
+**Gabarito:** B
+
+**Explicação:** O texto afirma explicitamente que os computadores com arquitetura von Neumann são conhecidos como programas armazenados...
+
+--- 
+`;
+
+console.log("Running PATCHED Parser on Format 2...");
+const results = parseMarkdownQuestionsPatched(markdownInputNew);
+console.log(JSON.stringify(results, null, 2));
+
+if (results.length > 0) {
+    const q1 = results[0];
+    console.log("--- Check Q1 ---");
+    console.log("Topic extracted?", q1.questionText.includes("**Tópico:** 1 Programação por blocos"));
+    console.log("Gabarito found?", q1.gabarito === 'B');
+    console.log("Justification found?", q1.justificativa.includes("O texto afirma explicitamente"));
+    console.log("Correct Option Set?", q1.options.find((o: any) => o.key === 'B').isCorrect);
+} else {
+    console.error("No questions parsed!");
+}
+export { };

@@ -35,6 +35,8 @@ const BulkAudioSyncModal: React.FC<BulkAudioSyncModalProps> = ({
     const [syncing, setSyncing] = useState(false);
     const [progress, setProgress] = useState(0);
     const [totalToSync, setTotalToSync] = useState(0);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [authError, setAuthError] = useState<string | null>(null);
 
     // Initialize mappings when blocks change
     // Initialize/Update mappings when blocks change
@@ -67,12 +69,66 @@ const BulkAudioSyncModal: React.FC<BulkAudioSyncModalProps> = ({
         });
     }, [selectedBlocks]);
 
-    // Load Dropbox files
+    // Check authentication and load files
     useEffect(() => {
-        if (isOpen && DropboxService.isAuthenticated()) {
-            loadDropboxFiles(currentPath);
+        if (isOpen) {
+            const auth = DropboxService.isAuthenticated();
+            setIsAuthenticated(auth);
+            if (auth) {
+                loadDropboxFiles(currentPath);
+            }
         }
     }, [isOpen, currentPath]);
+
+    const handleLogin = async () => {
+        try {
+            setAuthError(null);
+            const authUrl = await DropboxService.getAuthUrl();
+
+            const width = 600;
+            const height = 700;
+            const left = window.screen.width / 2 - width / 2;
+            const top = window.screen.height / 2 - height / 2;
+
+            const popup = window.open(
+                authUrl,
+                'DropboxAuth',
+                `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes`
+            );
+
+            if (!popup) {
+                setAuthError('O bloqueador de popups impediu a abertura da janela de login.');
+                return;
+            }
+
+            const handleMessage = (event: MessageEvent) => {
+                if (event.origin !== window.location.origin) return;
+
+                if (event.data?.type === 'DROPBOX_AUTH_SUCCESS' && event.data?.token) {
+                    const token = event.data.token;
+                    DropboxService.setAccessToken(token);
+                    setIsAuthenticated(true);
+                    loadDropboxFiles('');
+
+                    window.removeEventListener('message', handleMessage);
+                    popup.close();
+                }
+            };
+
+            window.addEventListener('message', handleMessage);
+
+            const checkPopupUrl = setInterval(() => {
+                if (popup.closed) {
+                    clearInterval(checkPopupUrl);
+                    window.removeEventListener('message', handleMessage);
+                }
+            }, 1000);
+
+        } catch (err: any) {
+            console.error('Erro ao iniciar login:', err);
+            setAuthError(err.message || 'Erro ao iniciar conexão com Dropbox');
+        }
+    };
 
     const loadDropboxFiles = async (path: string) => {
         setLoading(true);
@@ -255,10 +311,36 @@ const BulkAudioSyncModal: React.FC<BulkAudioSyncModalProps> = ({
                             Navegador
                         </div>
                         <div className="flex-1 overflow-y-auto p-2">
-                            <DropboxFileTree
-                                currentPath={currentPath}
-                                onSelectFolder={handleFolderClick}
-                            />
+                            {isAuthenticated ? (
+                                <DropboxFileTree
+                                    currentPath={currentPath}
+                                    onSelectFolder={handleFolderClick}
+                                />
+                            ) : (
+                                <div className="h-full flex flex-col items-center justify-center p-6 text-center space-y-6">
+                                    <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center mb-2">
+                                        <i className="fab fa-dropbox text-3xl text-[#0061FE]"></i>
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-slate-800 dark:text-white">Conectar Dropbox</h4>
+                                        <p className="text-xs text-slate-500 mt-2">
+                                            Conecte sua conta para selecionar seus arquivos de áudio.
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={handleLogin}
+                                        className="w-full py-2.5 bg-[#0061FE] hover:bg-blue-600 text-white rounded-xl font-bold text-xs shadow-lg shadow-blue-500/20 transition-all active:scale-95 flex items-center justify-center gap-2"
+                                    >
+                                        <i className="fas fa-sign-in-alt"></i>
+                                        Conectar
+                                    </button>
+                                    {authError && (
+                                        <div className="text-red-500 text-[10px] bg-red-50 dark:bg-red-900/20 p-2 rounded-lg">
+                                            {authError}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
 
