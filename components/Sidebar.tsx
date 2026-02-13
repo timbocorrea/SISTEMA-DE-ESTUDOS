@@ -27,6 +27,7 @@ interface SidebarProps {
   isOnline?: boolean; // Network connection status
   isLoadingCourses?: boolean;
   isLoadingAdminCourses?: boolean;
+  isHiddenOnDesktop?: boolean;
 }
 
 // Memoized Lesson Item Component for instant rendering
@@ -94,29 +95,44 @@ const ModuleItem = memo<{
 }>(({ module, isOpen, isAdminMode, courseId, activeLessonId, onToggle, onOpenContent, onViewChange, onSelectLesson, onCloseMobile }) => {
   const lessons = module.lessons || [];
 
-  const handleClick = useCallback((e: React.MouseEvent) => {
+  const handleToggle = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     onToggle(module.id);
-    if (isAdminMode) {
-      onOpenContent?.(courseId, module.id);
-      onViewChange('content');
-    }
-  }, [module.id, onToggle, isAdminMode, onOpenContent, courseId, onViewChange]);
+  }, [module.id, onToggle]);
+
+  const handleAdminClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onToggle(module.id);
+    onOpenContent?.(courseId, module.id);
+    onViewChange('content');
+  }, [module.id, onToggle, onOpenContent, courseId, onViewChange]);
+
+  const itemClasses = `w-full text-left px-3 py-2 rounded-lg transition-colors duration-100 text-sm font-bold normal-case tracking-tight whitespace-normal break-words block ${isOpen
+    ? 'bg-cyan-500/10 text-cyan-400'
+    : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
+    }`;
 
   return (
     <div className="space-y-1">
-      <Link
-        to={isAdminMode ? "/admin/content" : "/courses"}
-        state={isAdminMode ? { courseId, moduleId: module.id } : undefined}
-        onClick={handleClick}
-        data-sidebar-casing="normal"
-        className={`w-full text-left px-3 py-2 rounded-lg transition-colors duration-100 text-sm font-bold normal-case tracking-tight whitespace-normal break-words block ${isOpen
-          ? 'bg-cyan-500/10 text-cyan-400'
-          : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
-          }`}
-      >
-        {module.title}
-      </Link>
+      {isAdminMode ? (
+        <Link
+          to="/admin/content"
+          state={{ courseId, moduleId: module.id }}
+          onClick={handleAdminClick}
+          data-sidebar-casing="normal"
+          className={itemClasses}
+        >
+          {module.title}
+        </Link>
+      ) : (
+        <button
+          onClick={handleToggle}
+          data-sidebar-casing="normal"
+          className={itemClasses}
+        >
+          {module.title}
+        </button>
+      )}
 
       {isOpen && lessons.length > 0 && (
         <div className="ml-3 pl-3 border-l border-white/10 space-y-1">
@@ -164,33 +180,52 @@ const CourseItem = memo<{
     : (course.modules || []);
   const shouldShowLoading = isOpen && modules.length === 0 && isLoadingModules;
 
-  const handleClick = useCallback((e: React.MouseEvent) => {
+  const handleToggle = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     const newId = isOpen ? '' : course.id;
     onToggleCourse(newId);
     if (newId) {
       onExpandCourse?.(newId);
     }
-    if (isAdminMode) {
-      onOpenContent?.(course.id);
-      onViewChange('content');
+  }, [isOpen, course.id, onToggleCourse, onExpandCourse]);
+
+  const handleAdminClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    const newId = isOpen ? '' : course.id;
+    onToggleCourse(newId);
+    if (newId) {
+      onExpandCourse?.(newId);
     }
-  }, [isOpen, course.id, onToggleCourse, onExpandCourse, isAdminMode, onOpenContent, onViewChange]);
+    onOpenContent?.(course.id);
+    onViewChange('content');
+  }, [isOpen, course.id, onToggleCourse, onExpandCourse, onOpenContent, onViewChange]);
+
+  const itemClasses = `w-full text-left px-3 py-2 rounded-lg transition-colors duration-150 text-sm font-bold normal-case tracking-tight whitespace-normal break-words block ${isOpen
+    ? 'bg-amber-500/10 text-amber-500'
+    : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
+    }`;
 
   return (
     <div className="space-y-1">
-      <Link
-        to={isAdminMode ? "/admin/content" : "/courses"}
-        state={isAdminMode ? { courseId: course.id } : undefined}
-        onClick={handleClick}
-        data-sidebar-casing="normal"
-        className={`w-full text-left px-3 py-2 rounded-lg transition-colors duration-150 text-sm font-bold normal-case tracking-tight whitespace-normal break-words block ${isOpen
-          ? 'bg-amber-500/10 text-amber-500'
-          : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
-          }`}
-      >
-        {course.title}
-      </Link>
+      {isAdminMode ? (
+        <Link
+          to="/admin/content"
+          state={{ courseId: course.id }}
+          onClick={handleAdminClick}
+          data-sidebar-casing="normal"
+          className={itemClasses}
+        >
+          {course.title}
+        </Link>
+      ) : (
+        <button
+          onClick={handleToggle}
+          data-sidebar-casing="normal"
+          className={itemClasses}
+        >
+          {course.title}
+        </button>
+      )}
 
       {isOpen && (
         <div className="ml-3 pl-3 border-l border-white/10 space-y-1">
@@ -239,7 +274,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   onExpandCourse,
   isOnline = true,
   isLoadingCourses = false,
-  isLoadingAdminCourses = false
+  isLoadingAdminCourses = false,
+  isHiddenOnDesktop = false
 }) => {
   const isAdmin = session.user.role === 'INSTRUCTOR';
 
@@ -297,12 +333,12 @@ const Sidebar: React.FC<SidebarProps> = ({
       }}
       className={`
       ${isMobileOpen ? 'flex fixed h-[100dvh] overflow-y-auto' : 'hidden'} 
-      lg:flex lg:relative lg:h-full lg:overflow-hidden
+      ${isHiddenOnDesktop ? '' : 'lg:flex lg:relative lg:h-full lg:overflow-hidden lg:z-0'}
       flex-col
       inset-y-0 left-0 
-      z-[70] lg:z-0 
-      ${isActuallyCollapsed ? 'lg:w-20' : 'lg:w-72'} 
-      w-72
+      z-[70] 
+      ${isActuallyCollapsed && !isHiddenOnDesktop ? 'lg:w-20' : 'lg:w-[432px]'} 
+      w-[432px]
       bg-white/90 dark:bg-slate-900/60 backdrop-blur-xl
       border-r border-slate-200 dark:border-white/5 
       p-4 
@@ -381,25 +417,33 @@ const Sidebar: React.FC<SidebarProps> = ({
       </button>
 
       {/* User Status Card */}
-      <div className={`mb-8 bg-slate-100 dark:bg-black/20 backdrop-blur-md rounded-2xl border border-slate-200 dark:border-white/5 transition-all duration-300 overflow-hidden ${isActuallyCollapsed ? 'p-2 mx-0' : 'p-4 mx-0'}`}>
-        <div className={`flex items-center ${isActuallyCollapsed ? 'justify-center' : 'gap-3 mb-3'}`}>
-          <div className={`rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center font-black text-white border-2 border-slate-900 shadow-lg shadow-orange-500/20 transition-all ${isActuallyCollapsed ? 'w-8 h-8 text-[10px]' : 'w-10 h-10 text-[12px]'}`}>
+      {isActuallyCollapsed ? (
+        /* Collapsed: Just centered badge, no card wrapper to avoid clipping */
+        <div className="mb-6 flex justify-center shrink-0">
+          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center font-black text-white text-[11px] border-2 border-white dark:border-slate-700 shadow-md" title={`Nível ${level}`}>
             {level}
           </div>
-          <div className={`flex-1 overflow-hidden transition-all duration-300 ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
-            <p className="text-xs font-black text-slate-700 dark:text-slate-200 leading-none uppercase tracking-tight whitespace-nowrap">Nível {level}</p>
-            <p className="text-[10px] text-slate-500 font-bold mt-1 uppercase tracking-tighter truncate">{1000 - xpInLevel} XP para prox.</p>
-          </div>
         </div>
-        {!isActuallyCollapsed && (
-          <div className="w-full h-1.5 bg-slate-300 dark:bg-slate-800/50 rounded-full overflow-hidden animate-in fade-in duration-500">
+      ) : (
+        /* Expanded: Full card with text and progress bar */
+        <div className="mb-8 shrink-0 bg-slate-100 dark:bg-slate-800/80 backdrop-blur-md rounded-2xl border border-slate-200 dark:border-slate-700/50 p-4">
+          <div className="flex items-center gap-3 mb-3 min-w-0">
+            <div className="shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center font-black text-white text-[12px] border-2 border-slate-900 shadow-lg shadow-orange-500/20">
+              {level}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-black text-slate-700 dark:text-slate-100 leading-none uppercase tracking-tight truncate">Nível {level}</p>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold mt-1 uppercase tracking-tighter truncate">{1000 - xpInLevel} XP para prox.</p>
+            </div>
+          </div>
+          <div className="w-full h-1.5 bg-slate-300 dark:bg-slate-700/60 rounded-full overflow-hidden">
             <div
               className="h-full bg-gradient-to-r from-amber-500 to-orange-600 rounded-full shadow-[0_0_10px_rgba(249,115,22,0.3)] transition-all duration-700"
               style={{ width: `${progressPercent}%` }}
             ></div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       <nav className={`flex-1 space-y-1 overflow-x-hidden ${isMobileOpen ? 'min-h-min' : 'overflow-y-auto scrollbar-hide'} lg:overflow-y-auto lg:scrollbar-hide`}>
         {!isActuallyCollapsed && <p className="px-3 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4 opacity-50 whitespace-nowrap">Menu Principal</p>}
@@ -446,7 +490,19 @@ const Sidebar: React.FC<SidebarProps> = ({
               </div>
               <span className={`truncate transition-all duration-300 ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>Meus Cursos</span>
             </div>
-            {!isActuallyCollapsed && <i className={`fas fa-chevron-down text-xs transition-transform relative z-10 ${coursesMenuOpen ? 'rotate-180' : ''}`}></i>}
+            {!isActuallyCollapsed && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setCoursesMenuOpen(open => !open);
+                }}
+                className="relative z-20 p-1 -m-1 rounded-lg hover:bg-white/20 dark:hover:bg-white/10 transition-colors"
+              >
+                <i className={`fas fa-chevron-down text-xs transition-transform ${coursesMenuOpen ? 'rotate-180' : ''}`}></i>
+              </button>
+            )}
 
             {/* Active Glow Effect */}
             {activeView === 'courses' && (
@@ -535,7 +591,19 @@ const Sidebar: React.FC<SidebarProps> = ({
                   </div>
                   <span className={`truncate transition-all duration-300 ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>Gestão de Conteúdo</span>
                 </div>
-                {!isActuallyCollapsed && <i className={`fas fa-chevron-down text-xs transition-transform ${contentMenuOpen ? 'rotate-180' : ''}`}></i>}
+                {!isActuallyCollapsed && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setContentMenuOpen(open => !open);
+                    }}
+                    className="relative z-20 p-1 -m-1 rounded-lg hover:bg-indigo-100 dark:hover:bg-white/10 transition-colors"
+                  >
+                    <i className={`fas fa-chevron-down text-xs transition-transform ${contentMenuOpen ? 'rotate-180' : ''}`}></i>
+                  </button>
+                )}
               </Link>
 
               {!isActuallyCollapsed && contentMenuOpen && (

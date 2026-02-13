@@ -235,13 +235,13 @@ const VideoPlayer = React.forwardRef<VideoPlayerRef, VideoPlayerProps>(({ lesson
       {isYoutube ? (
         <div
           ref={iframeRef}
-          className="w-full aspect-video"
+          className="w-full aspect-[4/3]"
         />
       ) : (
         <video
           ref={videoRef}
           src={currentVideoUrl}
-          className="w-full h-auto aspect-video"
+          className="w-full h-auto aspect-[4/3]"
           onTimeUpdate={handleTimeUpdate}
           onClick={togglePlay}
           onPlay={() => {

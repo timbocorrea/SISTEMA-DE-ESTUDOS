@@ -10,9 +10,10 @@ import { useTheme } from '../contexts/ThemeContext';
 interface LessonLoaderProps {
     user: User;
     onTrackAction: (action: string) => void;
+    onToggleSidebar?: () => void;
 }
 
-const LessonLoader: React.FC<LessonLoaderProps> = ({ user, onTrackAction }) => {
+const LessonLoader: React.FC<LessonLoaderProps> = ({ user, onTrackAction, onToggleSidebar }) => {
     const { lessonId } = useParams<{ lessonId: string }>();
     const navigate = useNavigate();
     const {
@@ -80,6 +81,7 @@ const LessonLoader: React.FC<LessonLoaderProps> = ({ user, onTrackAction }) => {
             sidebarTab={sidebarTab}
             setSidebarTab={setSidebarTab}
             onTrackAction={onTrackAction}
+            onToggleSidebar={onToggleSidebar}
         />
     );
 };

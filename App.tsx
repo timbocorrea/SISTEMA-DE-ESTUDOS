@@ -171,6 +171,7 @@ const App: React.FC = () => {
   };
 
   const activeView = getActiveView();
+  const isLessonRoute = location.pathname.match(/\/course\/[^/]+\/lesson\//) !== null;
 
   // Derive active lesson ID from URL for admin routes or from context for student routes
   const getActiveLessonId = () => {
@@ -410,7 +411,7 @@ const App: React.FC = () => {
       <Toaster theme="dark" richColors position="top-right" />
 
       {/* Sidebar - Suspense Wrapper */}
-      <React.Suspense fallback={<div className="w-72 h-full bg-slate-900/60 hidden lg:block" />}>
+      <React.Suspense fallback={<div className="w-[432px] h-full bg-slate-900/60 hidden lg:block" />}>
         <Sidebar
           session={session}
           activeView={activeView}
@@ -430,20 +431,23 @@ const App: React.FC = () => {
           isOnline={isOnline}
           isLoadingCourses={isLoadingCourses}
           isLoadingAdminCourses={isAdminCoursesLoading}
+          isHiddenOnDesktop={isLessonRoute}
         />
       </React.Suspense>
 
-      {/* Mobile Overlay */}
+      {/* Overlay (works on mobile always, and on desktop when on lesson route) */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[55] lg:hidden animate-in fade-in duration-300" onClick={() => setIsMobileMenuOpen(false)} />
+        <div className={`fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[55] ${isLessonRoute ? '' : 'lg:hidden'} animate-in fade-in duration-300`} onClick={() => setIsMobileMenuOpen(false)} />
       )}
 
       {/* Content Area */}
       <div className="flex-1 flex flex-col min-h-0 w-full overflow-hidden h-full">
-        {/* Header / Breadcrumb */}
-        <div className="hidden lg:block">
-          <Breadcrumb items={getBreadcrumbItems()} />
-        </div>
+        {/* Header / Breadcrumb (hidden on lesson route since LessonViewer has its own header) */}
+        {!isLessonRoute && (
+          <div className="hidden lg:block">
+            <Breadcrumb items={getBreadcrumbItems()} />
+          </div>
+        )}
 
         {/* Mobile Header (Simplified for refactor) */}
         <header className="flex items-center gap-4 px-4 py-3 bg-[#e2e8f0] dark:bg-[#0a0e14] border-b border-slate-200 dark:border-slate-800 lg:hidden fixed top-0 left-0 right-0 z-50">
@@ -512,7 +516,7 @@ const App: React.FC = () => {
                     />
                   } />
                   <Route path="lesson/:lessonId" element={
-                    <LessonLoader user={user} onTrackAction={handleTrackAction} />
+                    <LessonLoader user={user} onTrackAction={handleTrackAction} onToggleSidebar={() => setIsMobileMenuOpen(true)} />
                   } />
                 </Route>
 

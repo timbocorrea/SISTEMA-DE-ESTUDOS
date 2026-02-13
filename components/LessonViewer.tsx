@@ -37,6 +37,7 @@ interface LessonViewerProps {
     setSidebarTab: (tab: 'materials' | 'notes') => void;
     userProgress?: UserProgress[];
     onTrackAction?: (action: string) => void;
+    onToggleSidebar?: () => void;
 }
 
 const LessonViewer: React.FC<LessonViewerProps> = ({
@@ -53,7 +54,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     sidebarTab,
     setSidebarTab,
     userProgress = [],
-    onTrackAction
+    onTrackAction,
+    onToggleSidebar
 }) => {
     // Global state from Zustand store
     const {
@@ -98,6 +100,17 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     // Video switcher state
     const activeVideoRef = useRef<VideoPlayerRef>(null);
     const [activeVideoIndex, setActiveVideoIndex] = useState<number>(0);
+
+    // Materials/Notes panel state (overlay on desktop)
+    const [isMaterialsPanelOpen, setIsMaterialsPanelOpen] = useState(false);
+
+    // Audio playback state (persists across panel open/close)
+    const [isAudioActive, setIsAudioActive] = useState(false);
+    const [audioTitle, setAudioTitle] = useState<string | undefined>();
+    const handleAudioStateChange = useCallback((playing: boolean, title?: string) => {
+        setIsAudioActive(playing);
+        setAudioTitle(title);
+    }, []);
 
     // Quiz State - Managed by custom hook
     const {
@@ -590,11 +603,24 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                         <div className="h-4 w-20 bg-slate-200 dark:bg-slate-800 rounded"></div>
                     </div>
                 </div>
-                {/* Content Skeleton */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                    <div className="lg:col-span-9 space-y-8">
-                        <div className="aspect-video bg-slate-200 dark:bg-slate-800 rounded-3xl"></div>
-                        <div className="space-y-4">
+                {/* Content Skeleton: Flex 2 Colunas (40% Vídeo | 60% Texto) */}
+                <div className="flex flex-col lg:flex-row gap-4">
+                    {/* Coluna Esquerda: Vídeo (40%) */}
+                    <div className="lg:w-[40%] shrink-0 space-y-3">
+                        <div className="aspect-[4/3] bg-slate-200 dark:bg-slate-800 rounded-xl"></div>
+                        <div className="h-10 bg-slate-200 dark:bg-slate-800 rounded-xl"></div>
+                    </div>
+                    {/* Coluna Direita: Texto (60%) */}
+                    <div className="flex-1 min-w-0 space-y-4">
+                        <div className="h-8 w-2/3 bg-slate-200 dark:bg-slate-800 rounded-lg"></div>
+                        <div className="space-y-3">
+                            <div className="h-4 w-full bg-slate-200 dark:bg-slate-800 rounded"></div>
+                            <div className="h-4 w-full bg-slate-200 dark:bg-slate-800 rounded"></div>
+                            <div className="h-4 w-11/12 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                            <div className="h-4 w-full bg-slate-200 dark:bg-slate-800 rounded"></div>
+                            <div className="h-4 w-3/4 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                        </div>
+                        <div className="space-y-3 mt-4">
                             <div className="h-4 w-full bg-slate-200 dark:bg-slate-800 rounded"></div>
                             <div className="h-4 w-full bg-slate-200 dark:bg-slate-800 rounded"></div>
                             <div className="h-4 w-2/3 bg-slate-200 dark:bg-slate-800 rounded"></div>
@@ -606,22 +632,34 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     }
 
     return (
-        <div className="w-full max-w-[1920px] mx-auto px-2 md:px-6 py-4 md:py-6 space-y-6">
-            {/* Header: Título + Voltar (Alinhados) */}
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                <div className="flex flex-col-reverse md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                        <h2 className="text-lg md:text-2xl font-black text-slate-800 dark:text-white tracking-tight leading-tight">{lesson.title}</h2>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mt-1">
-                            {course.title}
-                        </p>
+        <div className="w-full max-w-[1920px] mx-auto px-2 md:px-6 py-4 md:py-6 space-y-4">
+            {/* Header: Título + Botões de Navegação */}
+            <div className="bg-white dark:bg-slate-900 p-4 md:p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                <div className="flex items-center justify-between gap-3">
+                    {/* Left: Hamburger + Title */}
+                    <div className="flex items-center gap-3 min-w-0">
+                        {/* Hamburger - opens sidebar overlay (desktop) */}
+                        <button
+                            onClick={onToggleSidebar}
+                            className="hidden lg:flex w-10 h-10 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors shrink-0"
+                            title="Menu de Navegação"
+                        >
+                            <i className="fas fa-bars text-sm"></i>
+                        </button>
+                        <div className="min-w-0">
+                            <h2 className="text-sm md:text-xl font-black text-slate-800 dark:text-white tracking-tight leading-tight truncate">{lesson.title}</h2>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5 truncate">
+                                {course.title}
+                            </p>
+                        </div>
                     </div>
 
-                    <div className="flex items-center justify-between md:justify-end gap-6">
+                    {/* Right: Actions */}
+                    <div className="flex items-center gap-2 shrink-0">
                         {/* Status Indicator */}
-                        <div className="flex items-center gap-3">
+                        <div className="hidden md:flex items-center gap-2">
                             <div
-                                className={`w-2.5 h-2.5 rounded-full ${lesson.isCompleted ? 'bg-green-500' : 'bg-indigo-500 animate-pulse'
+                                className={`w-2 h-2 rounded-full ${lesson.isCompleted ? 'bg-green-500' : 'bg-indigo-500 animate-pulse'
                                     }`}
                             ></div>
                             <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
@@ -629,38 +667,51 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                             </span>
                         </div>
 
+                        {/* Materials/Notes Button (desktop) */}
+                        <button
+                            onClick={() => {
+                                setIsMaterialsPanelOpen(true);
+                                onTrackAction?.('Abriu Materiais/Notas');
+                            }}
+                            className="hidden lg:flex items-center gap-2 h-9 px-3 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 transition-colors text-xs font-bold border border-indigo-200 dark:border-indigo-800"
+                            title="Materiais e Notas"
+                        >
+                            <i className="fas fa-book-reader text-xs"></i>
+                            <span>Materiais</span>
+                        </button>
+
                         {/* Back Button */}
                         <ShimmerButton
                             onClick={onBackToLessons}
-                            className="h-10 px-6 shadow-lg transition-all hover:scale-105 active:scale-95"
+                            className="h-9 px-4 shadow-lg transition-all hover:scale-105 active:scale-95"
                             background="radial-gradient(ellipse 80% 80% at 50% -20%,rgba(79,70,229,0.3),rgba(15,23,42,1))"
                             shimmerColor="#818cf8"
                             shimmerSize="0.1em"
                             borderRadius="12px"
                         >
-                            <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-white">
-                                <i className="fas fa-arrow-left"></i> Voltar às aulas
+                            <span className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-white">
+                                <i className="fas fa-arrow-left"></i> <span className="hidden sm:inline">Voltar</span>
                             </span>
                         </ShimmerButton>
+                        <a
+                            href="/courses"
+                            className="h-9 px-4 flex items-center gap-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-all hover:scale-105 active:scale-95"
+                            title="Ir para o Dashboard"
+                        >
+                            <i className="fas fa-home text-sm"></i>
+                            <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-wider">Home</span>
+                        </a>
                     </div>
                 </div>
             </div>
 
-            {/* Layout 3 Colunas: Lista Vídeos | Player | Sidebar */}
-            {/* Layout Principal: 2 Colunas (Conteúdo Esquerda | Sidebar Direita) */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Layout Principal: Flex 2 Colunas (Vídeo 40% | Texto 60%) em Desktop */}
+            <div className={`flex flex-col ${!isCinemaMode && (lesson.videoUrl || (lesson.videoUrls && lesson.videoUrls.length > 0)) ? 'lg:flex-row' : ''} gap-4 relative`}>
 
-                {/* Coluna Esquerda: Vídeo + Conteúdo (75% normal, 100% cinema mode) */}
-                <motion.div
-                    layoutId={`course-card-${course.id}`}
-                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                    className={`space-y-8 ${isCinemaMode ? 'lg:col-span-12' : 'lg:col-span-9'}`}
-                >
-
-                    {/* Seção de Vídeo (Condicional) */}
-                    {/* Seção de Vídeo (Condicional) */}
-                    {(lesson.videoUrl || (lesson.videoUrls && lesson.videoUrls.length > 0)) && (
-                        <div className="space-y-6">
+                {/* Coluna Esquerda: Vídeo + Playlist (40% desktop, 100% mobile, hidden cinema mode) */}
+                {(lesson.videoUrl || (lesson.videoUrls && lesson.videoUrls.length > 0)) && !isCinemaMode && (
+                    <div className="lg:w-[40%] shrink-0 space-y-3">
+                        <div className="lg:sticky lg:top-4 space-y-3">
                             {/* Player */}
                             <div className="w-full">
                                 <VideoPlayer
@@ -683,75 +734,103 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                         toggleCinemaMode();
                                         onTrackAction?.(isCinemaMode ? 'Desativou Modo Cinema' : 'Ativou Modo Cinema');
                                     }}
-                                    className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors flex items-center gap-2 text-sm font-medium"
+                                    className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors flex items-center gap-2 text-xs font-medium"
                                     title={isCinemaMode ? 'Sair do Modo Cinema' : 'Ativar Modo Cinema'}
                                 >
-                                    <i className={`fas ${isCinemaMode ? 'fa-compress' : 'fa-expand'}`}></i>
+                                    <i className={`fas ${isCinemaMode ? 'fa-compress' : 'fa-expand'} text-xs`}></i>
                                     <span className="hidden sm:inline">{isCinemaMode ? 'Sair do Cinema' : 'Modo Cinema'}</span>
                                 </motion.button>
                             </div>
 
-                            {/* Carrossel de Vídeos */}
-                            {hasMultipleVideos && (
-                                <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                                    <div className="flex items-center gap-2 mb-4">
-                                        <i className="fas fa-film text-indigo-500 text-sm"></i>
-                                        <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300">Playlist da Aula</h3>
-                                        <span className="text-xs font-medium text-slate-400 dark:text-slate-500 ml-auto bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-full">
-                                            {activeVideoIndex + 1} / {lesson.videoUrls!.length}
+                            {/* Playlist Vertical de Vídeos */}
+                            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                                <div className="flex items-center gap-2 p-3 border-b border-slate-200 dark:border-slate-800">
+                                    <i className="fas fa-film text-indigo-500 text-xs"></i>
+                                    <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300">Playlist</h3>
+                                    {lesson.videoUrls && lesson.videoUrls.length > 1 && (
+                                        <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 ml-auto bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+                                            {activeVideoIndex + 1} / {lesson.videoUrls.length}
                                         </span>
-                                    </div>
-
-                                    <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-indigo-200 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent snap-x">
-                                        {lesson.videoUrls!.map((video, index) => (
-                                            <motion.button
-                                                whileTap={{ scale: 0.95 }}
-                                                key={index}
-                                                onClick={() => {
-                                                    setActiveVideoIndex(index);
-                                                    onTrackAction?.(`Trocou para vídeo: ${video.title}`);
-                                                }}
-                                                className={`min-w-[160px] w-[160px] md:min-w-[200px] md:w-[200px] flex-shrink-0 group relative rounded-xl overflow-hidden aspect-video border-2 transition-all snap-start text-left ${activeVideoIndex === index
-                                                    ? 'border-indigo-500 shadow-lg shadow-indigo-500/30'
-                                                    : 'border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-slate-600'
-                                                    }`}
-                                            >
-                                                {/* Thumbnail Placeholder or Image */}
-                                                <div className="absolute inset-0 bg-slate-800 flex items-center justify-center group-hover:scale-105 transition-transform duration-500">
-                                                    {video.imageUrl ? (
-                                                        <>
-                                                            <img
-                                                                src={video.imageUrl}
-                                                                alt={video.title}
-                                                                className="w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity"
-                                                            />
-                                                            <i className={`fas ${activeVideoIndex === index ? 'fa-play-circle text-indigo-500' : 'fa-play text-white'} text-3xl absolute shadow-xl`}></i>
-                                                        </>
-                                                    ) : (
-                                                        <i className={`fas ${activeVideoIndex === index ? 'fa-play-circle text-indigo-500' : 'fa-play text-white/30'} text-3xl group-hover:text-white transition-colors`}></i>
-                                                    )}
-                                                </div>
-
-                                                {/* Overlay Status */}
-                                                <div className="absolute top-2 left-2">
-                                                    {activeVideoIndex === index && (
-                                                        <div className="bg-indigo-600 text-white text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-md shadow-sm animate-pulse">
-                                                            Reproduzindo
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                                {/* Overlay Title */}
-                                                <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/90 via-black/50 to-transparent">
-                                                    <p className="text-white text-xs font-bold line-clamp-2 drop-shadow-md">{video.title}</p>
-                                                </div>
-                                            </motion.button>
-                                        ))}
-                                    </div>
+                                    )}
                                 </div>
-                            )}
+
+                                <div className="max-h-[300px] overflow-y-auto scrollbar-thin scrollbar-thumb-indigo-200 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent">
+                                    {(lesson.videoUrls && lesson.videoUrls.length > 0 ? lesson.videoUrls : [{ url: lesson.videoUrl, title: lesson.title }]).map((video: any, index: number) => (
+                                        <button
+                                            key={index}
+                                            onClick={() => {
+                                                setActiveVideoIndex(index);
+                                                onTrackAction?.(`Trocou para vídeo: ${video.title}`);
+                                            }}
+                                            className={`w-full flex items-center gap-3 p-3 text-left transition-all border-b last:border-b-0 ${activeVideoIndex === index
+                                                ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-800'
+                                                : 'hover:bg-slate-50 dark:hover:bg-slate-800/50 border-slate-100 dark:border-slate-800'
+                                                }`}
+                                        >
+                                            {/* Thumbnail */}
+                                            <div className="w-16 h-10 rounded-lg bg-slate-800 overflow-hidden shrink-0 relative">
+                                                {video.imageUrl ? (
+                                                    <img src={video.imageUrl} alt={video.title} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center">
+                                                        <i className={`fas fa-play text-xs ${activeVideoIndex === index ? 'text-indigo-400' : 'text-white/30'}`}></i>
+                                                    </div>
+                                                )}
+                                                {activeVideoIndex === index && (
+                                                    <div className="absolute inset-0 bg-indigo-600/20 flex items-center justify-center">
+                                                        <i className="fas fa-volume-up text-white text-xs animate-pulse"></i>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            {/* Info */}
+                                            <div className="min-w-0 flex-1">
+                                                <p className={`text-xs font-semibold truncate ${activeVideoIndex === index ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-700 dark:text-slate-300'}`}>
+                                                    {video.title || `Vídeo ${index + 1}`}
+                                                </p>
+                                                {activeVideoIndex === index && (
+                                                    <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider">Reproduzindo</span>
+                                                )}
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
-                    )}
+                    </div>
+                )}
+
+                {/* Cinema Mode: Vídeo fullwidth */}
+                {(lesson.videoUrl || (lesson.videoUrls && lesson.videoUrls.length > 0)) && isCinemaMode && (
+                    <div className="w-full space-y-3">
+                        <VideoPlayer
+                            ref={activeVideoRef}
+                            lesson={lesson}
+                            videoUrl={currentVideoUrl}
+                            onProgress={handleProgressUpdateInternal}
+                            onPlay={() => {
+                                pauseAudio();
+                                onTrackAction?.(`Reproduziu vídeo: ${currentVideoUrl || lesson.title}`);
+                            }}
+                        />
+                        <div className="flex justify-end">
+                            <motion.button
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => {
+                                    toggleCinemaMode();
+                                    onTrackAction?.('Desativou Modo Cinema');
+                                }}
+                                className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors flex items-center gap-2 text-xs font-medium"
+                                title="Sair do Modo Cinema"
+                            >
+                                <i className="fas fa-compress text-xs"></i>
+                                <span className="hidden sm:inline">Sair do Cinema</span>
+                            </motion.button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Coluna Central: Conteúdo da Aula (65% desktop, 100% mobile) */}
+                <div className={`flex-1 min-w-0 ${isCinemaMode ? 'hidden' : ''}`}>
 
                     {/* Conteúdo da Matéria (Texto Rico OU Blocos de Áudio) */}
                     <div className={`rounded-3xl border shadow-sm transition-colors flex flex-col h-[calc(100vh-140px)] ${contentTheme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-white border-slate-200'}`}>
@@ -1012,48 +1091,83 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                             />
                         </div>
                     </div>
-                </motion.div>
+                </div>
 
-                {/* Coluna Direita: Sidebar (Materials/Notes/Quiz) - Hidden on Mobile and in Cinema Mode */}
-                <motion.div
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.3, duration: 0.5 }}
-                    className={`lg:col-span-3 ${isCinemaMode ? 'hidden' : 'hidden lg:block'}`}
-                >
-                    <div className="sticky top-4 space-y-4 h-[calc(100vh-2rem)] flex flex-col pr-2">
-                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-1 flex shrink-0">
-                            <motion.button
-                                whileTap={{ scale: 0.95 }}
-                                onClick={() => {
-                                    setSidebarTab('materials');
-                                    onTrackAction?.('Acessou os Materiais da aula');
-                                }}
-                                className={`flex-1 px-3 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition ${sidebarTab === 'materials'
-                                    ? 'bg-indigo-600 text-white'
-                                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/40'
-                                    }`}
+                {/* Floating Mini Audio Player (when panel closed + audio playing) */}
+                {!isMaterialsPanelOpen && isAudioActive && (
+                    <button
+                        onClick={() => {
+                            setSidebarTab('materials');
+                            setIsMaterialsPanelOpen(true);
+                        }}
+                        className="hidden lg:flex fixed right-4 bottom-6 z-[55] items-center gap-3 px-4 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-2xl shadow-indigo-500/30 transition-all hover:scale-105 animate-in slide-in-from-right duration-300"
+                        title="Abrir player de áudio"
+                    >
+                        <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                            <i className="fas fa-music text-sm animate-pulse"></i>
+                        </div>
+                        <div className="text-left">
+                            <p className="text-[10px] font-bold uppercase tracking-wider opacity-70">Reproduzindo</p>
+                            <p className="text-xs font-bold truncate max-w-[150px]">{audioTitle || 'Áudio'}</p>
+                        </div>
+                    </button>
+                )}
+
+                {/* Overlay: Painel Materiais/Notas/Quiz (Desktop Only) - Always mounted for audio persistence */}
+                <>
+                    {/* Backdrop */}
+                    {isMaterialsPanelOpen && (
+                        <div
+                            className="hidden lg:block fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] animate-in fade-in duration-200"
+                            onClick={() => setIsMaterialsPanelOpen(false)}
+                        />
+                    )}
+                    {/* Panel - always mounted but visually hidden when closed */}
+                    <div
+                        className={`hidden fixed right-0 top-0 bottom-0 w-[380px] z-[65] flex-col bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl transition-transform duration-300 ${isMaterialsPanelOpen ? 'lg:flex translate-x-0' : 'lg:flex lg:translate-x-full lg:pointer-events-none lg:invisible'}`}
+                    >
+                        {/* Header */}
+                        <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-800 shrink-0">
+                            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-1 flex flex-1">
+                                <motion.button
+                                    whileTap={{ scale: 0.95 }}
+                                    onClick={() => {
+                                        setSidebarTab('materials');
+                                        onTrackAction?.('Acessou os Materiais da aula');
+                                    }}
+                                    className={`flex-1 px-3 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition ${sidebarTab === 'materials'
+                                        ? 'bg-indigo-600 text-white'
+                                        : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/40'
+                                        }`}
+                                >
+                                    Materiais
+                                </motion.button>
+                                <motion.button
+                                    whileTap={{ scale: 0.95 }}
+                                    onClick={() => {
+                                        setSidebarTab('notes');
+                                        onTrackAction?.('Acessou Minhas Notas');
+                                    }}
+                                    className={`flex-1 px-3 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition ${sidebarTab === 'notes'
+                                        ? 'bg-indigo-600 text-white'
+                                        : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/40'
+                                        }`}
+                                >
+                                    Minhas Notas
+                                </motion.button>
+                            </div>
+                            <button
+                                onClick={() => setIsMaterialsPanelOpen(false)}
+                                className="ml-3 w-9 h-9 flex items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors"
                             >
-                                Materiais
-                            </motion.button>
-                            <motion.button
-                                whileTap={{ scale: 0.95 }}
-                                onClick={() => {
-                                    setSidebarTab('notes');
-                                    onTrackAction?.('Acessou Minhas Notas');
-                                }}
-                                className={`flex-1 px-3 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition ${sidebarTab === 'notes'
-                                    ? 'bg-indigo-600 text-white'
-                                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/40'
-                                    }`}
-                            >
-                                Minhas Notas
-                            </motion.button>
+                                <i className="fas fa-times text-sm"></i>
+                            </button>
                         </div>
 
-                        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin flex flex-col gap-4">
+                        {/* Content */}
+                        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin p-4 flex flex-col gap-4">
                             {sidebarTab === 'materials' ? (
-                                <LessonMaterialsSidebar lesson={lesson} onTrackAction={onTrackAction} />
+                                <LessonMaterialsSidebar lesson={lesson} onTrackAction={onTrackAction} onAudioStateChange={handleAudioStateChange} />
                             ) : (
                                 <NotesPanelPrototype
                                     userId={user.id}
@@ -1063,16 +1177,11 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                     externalDraft={noteDraftWithRange}
                                 />
                             )}
-
-                            {/* Quiz Section inside the scrollable area or at bottom */}
                             {renderQuizStatusCard()}
                         </div>
                     </div>
-                </motion.div>
+                </>
             </div>
-
-
-            {/* Conteúdo da Matéria (Texto Rico OU Blocos de Áudio) */}
 
 
             {/* Mobile Footer Navigation */}

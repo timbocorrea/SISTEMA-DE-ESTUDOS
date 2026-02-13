@@ -30,9 +30,10 @@ interface MaterialItem {
 type Props = {
   lesson: Lesson;
   onTrackAction?: (action: string) => void;
+  onAudioStateChange?: (isPlaying: boolean, title?: string) => void;
 };
 
-const LessonMaterialsSidebar: React.FC<Props> = ({ lesson, onTrackAction }) => {
+const LessonMaterialsSidebar: React.FC<Props> = ({ lesson, onTrackAction, onAudioStateChange }) => {
   const resources = lesson.resources;
   const hasMaterials = Boolean(lesson.imageUrl || lesson.audioUrl || resources.length > 0);
 
@@ -129,6 +130,11 @@ const LessonMaterialsSidebar: React.FC<Props> = ({ lesson, onTrackAction }) => {
   // State to track active audio player (Drawer style)
   const [currentAudio, setCurrentAudio] = useState<MaterialItem | null>(null);
   const [isMinimized, setIsMinimized] = useState(false);
+
+  // Notify parent when audio state changes
+  useEffect(() => {
+    onAudioStateChange?.(!!currentAudio, currentAudio?.title);
+  }, [currentAudio, onAudioStateChange]);
 
   // Helper function to convert Dropbox URLs to direct links
   const convertDropboxUrl = (url: string): string => {
