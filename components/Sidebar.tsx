@@ -52,7 +52,8 @@ const LessonItem = memo<{
       <Link
         to={`/admin/lesson/${lesson.id}/edit`}
         onClick={(e) => e.stopPropagation()}
-        className={`w-full text-left px-3 py-2 rounded-lg transition-colors duration-100 text-sm font-medium tracking-tight truncate block ${isActive
+        data-sidebar-casing="normal"
+        className={`w-full text-left px-3 py-2 rounded-lg transition-colors duration-100 text-sm font-medium normal-case tracking-tight whitespace-normal break-words block ${isActive
           ? 'bg-emerald-500/10 text-emerald-400 font-bold shadow-sm border border-emerald-500/20'
           : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
           }`}
@@ -66,7 +67,8 @@ const LessonItem = memo<{
   return (
     <button
       onClick={handleClick}
-      className={`w-full text-left px-3 py-2 rounded-lg transition-colors duration-100 text-sm font-medium tracking-tight truncate ${isActive
+      data-sidebar-casing="normal"
+      className={`w-full text-left px-3 py-2 rounded-lg transition-colors duration-100 text-sm font-medium normal-case tracking-tight whitespace-normal break-words ${isActive
         ? 'bg-emerald-500/10 text-emerald-400 font-bold shadow-sm border border-emerald-500/20'
         : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
         }`}
@@ -107,7 +109,8 @@ const ModuleItem = memo<{
         to={isAdminMode ? "/admin/content" : "/courses"}
         state={isAdminMode ? { courseId, moduleId: module.id } : undefined}
         onClick={handleClick}
-        className={`w-full text-left px-3 py-2 rounded-lg transition-colors duration-100 text-sm font-bold tracking-tight truncate block ${isOpen
+        data-sidebar-casing="normal"
+        className={`w-full text-left px-3 py-2 rounded-lg transition-colors duration-100 text-sm font-bold normal-case tracking-tight whitespace-normal break-words block ${isOpen
           ? 'bg-cyan-500/10 text-cyan-400'
           : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
           }`}
@@ -180,7 +183,8 @@ const CourseItem = memo<{
         to={isAdminMode ? "/admin/content" : "/courses"}
         state={isAdminMode ? { courseId: course.id } : undefined}
         onClick={handleClick}
-        className={`w-full text-left px-3 py-2 rounded-lg transition-colors duration-150 text-sm font-black uppercase tracking-widest truncate block ${isOpen
+        data-sidebar-casing="normal"
+        className={`w-full text-left px-3 py-2 rounded-lg transition-colors duration-150 text-sm font-bold normal-case tracking-tight whitespace-normal break-words block ${isOpen
           ? 'bg-amber-500/10 text-amber-500'
           : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
           }`}

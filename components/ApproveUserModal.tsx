@@ -86,26 +86,26 @@ const ApproveUserModal: React.FC<ApproveUserModalProps> = ({ user, adminId, admi
 
     return (
         <div
-            className="fixed inset-0 z-50 flex items-end md:items-center justify-center md:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+            className="fixed inset-0 z-50 flex items-end md:items-center justify-center md:p-4 bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
             role="dialog"
             aria-modal="true"
             aria-labelledby="approve-modal-title"
         >
-            <div className="bg-[#0a0e14]/95 backdrop-blur-xl w-full max-w-2xl shadow-2xl overflow-hidden border border-white/10 max-h-[90vh] flex flex-col rounded-t-3xl md:rounded-3xl">
+            <div className="bg-white dark:bg-slate-900 w-full max-w-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 max-h-[90vh] flex flex-col rounded-t-3xl md:rounded-3xl">
                 {/* Drag Handle - Mobile Only */}
                 <div className="md:hidden flex justify-center py-3">
                     <div className="w-12 h-1.5 bg-white/20 rounded-full" />
                 </div>
 
                 {/* Header */}
-                <div className="px-6 pb-4 md:p-6 border-b border-white/5 flex justify-between items-center bg-gradient-to-r from-emerald-500/10 to-teal-500/10 relative overflow-hidden">
-                    <div className="absolute inset-0 bg-emerald-500/5"></div>
+                <div className="px-6 pb-4 md:p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-gradient-to-r from-emerald-500/5 to-teal-500/5 relative overflow-hidden">
+                    <div className="absolute inset-0 bg-emerald-500/5 dark:bg-emerald-500/10"></div>
                     <div className="relative z-10">
-                        <h3 className="text-xl font-black text-white flex items-center gap-2">
-                            <i className="fas fa-user-check text-emerald-400"></i>
+                        <h3 className="text-xl font-black text-slate-800 dark:text-white flex items-center gap-2">
+                            <i className="fas fa-user-check text-emerald-600 dark:text-emerald-400"></i>
                             Aprovar Usuário
                         </h3>
-                        <p className="text-xs text-slate-400 mt-1">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                             Selecione os cursos e envie as instruções de acesso.
                         </p>
                     </div>
@@ -118,14 +118,14 @@ const ApproveUserModal: React.FC<ApproveUserModalProps> = ({ user, adminId, admi
                 </div>
 
                 {/* User Info */}
-                <div className="px-6 py-4 bg-white/5 border-b border-white/5">
+                <div className="px-6 py-4 bg-slate-50 dark:bg-white/5 border-b border-slate-100 dark:border-white/5">
                     <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+                        <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30 flex items-center justify-center shadow-sm">
                             <i className="fas fa-user text-xl"></i>
                         </div>
                         <div>
-                            <p className="font-bold text-white">{user.name || 'Sem nome'}</p>
-                            <p className="text-xs text-slate-400">{user.email}</p>
+                            <p className="font-bold text-slate-800 dark:text-white">{user.name || 'Sem nome'}</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">{user.email}</p>
                         </div>
                     </div>
                 </div>
@@ -141,14 +141,14 @@ const ApproveUserModal: React.FC<ApproveUserModalProps> = ({ user, adminId, admi
 
                     {/* Email Instructions */}
                     <div>
-                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
+                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">
                             Instruções por Email (Opcional)
                         </label>
                         <textarea
                             value={instructions}
                             onChange={(e) => setInstructions(e.target.value)}
                             placeholder="Digite aqui as instruções que serão enviadas para o aluno..."
-                            className="w-full h-24 p-3 bg-black/40 border border-white/10 rounded-xl text-sm text-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 resize-none placeholder:text-slate-600 transition-all"
+                            className="w-full h-24 p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 resize-none placeholder:text-slate-400 dark:placeholder:text-slate-600 transition-all"
                         />
                         <p className="text-[10px] text-slate-500 mt-1">
                             Este texto será inserido no corpo do email que será aberto no seu cliente padrão.
@@ -157,7 +157,7 @@ const ApproveUserModal: React.FC<ApproveUserModalProps> = ({ user, adminId, admi
 
                     {/* Courses List */}
                     <div>
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">
+                        <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">
                             Atribuir Cursos ({selectedCourseIds.length} selecionados)
                         </p>
 
@@ -177,13 +177,13 @@ const ApproveUserModal: React.FC<ApproveUserModalProps> = ({ user, adminId, admi
                                     <label
                                         key={course.id}
                                         className={`flex items-center gap-3 p-4 min-h-[52px] rounded-xl border cursor-pointer transition-all active:scale-[0.98] ${selectedCourseIds.includes(course.id)
-                                            ? 'border-emerald-500/50 bg-emerald-500/10 shadow-[0_0_10px_rgba(16,185,129,0.15)]'
-                                            : 'border-white/5 bg-black/20 hover:bg-white/5 hover:border-emerald-500/30'
+                                            ? 'border-emerald-500/50 bg-emerald-50 dark:bg-emerald-500/10 shadow-sm'
+                                            : 'border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-black/20 hover:bg-slate-100 dark:hover:bg-white/5 hover:border-emerald-500/30'
                                             }`}
                                     >
                                         <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-colors shrink-0 ${selectedCourseIds.includes(course.id)
-                                            ? 'bg-emerald-500 border-emerald-500 text-white shadow-[0_0_8px_rgba(16,185,129,0.5)]'
-                                            : 'border-white/20 bg-black/40'
+                                            ? 'bg-emerald-600 dark:bg-emerald-500 border-emerald-600 dark:border-emerald-500 text-white'
+                                            : 'border-slate-300 dark:border-white/20 bg-white dark:bg-black/40'
                                             }`}>
                                             {selectedCourseIds.includes(course.id) && <i className="fas fa-check text-xs"></i>}
                                         </div>
@@ -194,7 +194,7 @@ const ApproveUserModal: React.FC<ApproveUserModalProps> = ({ user, adminId, admi
                                             className="hidden"
                                         />
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-bold text-white truncate">
+                                            <p className="text-sm font-bold text-slate-800 dark:text-white truncate">
                                                 {course.title}
                                             </p>
                                         </div>
@@ -206,13 +206,13 @@ const ApproveUserModal: React.FC<ApproveUserModalProps> = ({ user, adminId, admi
                 </div>
 
                 {/* Footer - Actions */}
-                <div className="p-6 border-t border-white/5 bg-white/5">
+                <div className="p-6 border-t border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-white/5">
                     <div className="flex gap-3">
                         <button
                             type="button"
                             onClick={onClose}
                             disabled={submitting}
-                            className="flex-1 py-3 rounded-xl border border-white/10 text-slate-400 font-bold text-sm hover:bg-white/5 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 font-bold text-sm hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Cancelar
                         </button>
@@ -232,7 +232,7 @@ const ApproveUserModal: React.FC<ApproveUserModalProps> = ({ user, adminId, admi
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 };
 

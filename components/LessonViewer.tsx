@@ -1,8 +1,8 @@
 // Fixed syntax
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ShimmerButton } from './ui/shimmer-button';
 import { Course, Lesson, User, UserProgress } from '../domain/entities';
-import VideoPlayer from './VideoPlayer';
+import VideoPlayer, { VideoPlayerRef } from './VideoPlayer';
 import LessonMaterialsSidebar from './LessonMaterialsSidebar';
 import BuddyContextModal from './BuddyContextModal';
 // import GeminiBuddy from './GeminiBuddy'; // Removed: Uses global now
@@ -28,6 +28,9 @@ interface LessonViewerProps {
     user: User;
     onLessonSelect: (lesson: Lesson) => void;
     onProgressUpdate: (watchedSeconds: number, lastBlockId?: string) => Promise<void>;
+    onBlockRead?: (blockId: string) => void;
+    onVideoWatched?: (videoUrl: string) => void;
+    onAudioListened?: (blockId: string) => void;
     onBackToLessons: () => void;
     onBackToModules: () => void;
     sidebarTab: 'materials' | 'notes';
@@ -42,6 +45,9 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     user,
     onLessonSelect,
     onProgressUpdate,
+    onBlockRead,
+    onVideoWatched,
+    onAudioListened,
     onBackToLessons,
     onBackToModules,
     sidebarTab,
@@ -71,8 +77,10 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     // Local state (kept here as they're specific to this component instance)
     const [lastAccessedId, setLastAccessedId] = useState<string | null>(null);
     const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState<boolean>(false);
+    const [isSpeedMenuOpen, setIsSpeedMenuOpen] = useState<boolean>(false);
     const blockRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
     const optionsMenuRef = useRef<HTMLDivElement | null>(null);
+    const speedMenuRef = useRef<HTMLDivElement | null>(null);
 
     // Image Viewer Modal State
     const [showImageViewerModal, setShowImageViewerModal] = useState(false);
@@ -85,8 +93,10 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
     // Notes Panel Trigger (to pass text)
     const [noteDraft, setNoteDraft] = useState<string>('');
+    const [noteDraftWithRange, setNoteDraftWithRange] = useState<{ text: string, range: Range } | null>(null);
 
     // Video switcher state
+    const activeVideoRef = useRef<VideoPlayerRef>(null);
     const [activeVideoIndex, setActiveVideoIndex] = useState<number>(0);
 
     // Quiz State - Managed by custom hook
@@ -142,11 +152,11 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     // Handle Resources Display
 
     /**
-     * Intercepta a atualização de progresso para verificar se precisa abrir o quiz
+     * Intercepta a atualizacao de progresso para verificar se precisa abrir o quiz
      */
-    const handleProgressUpdateInternal = async (watchedSeconds: number, lastBlockId?: string) => {
-        const duration = lesson.durationSeconds || 1;
-        const progressPercent = (watchedSeconds / duration) * 100;
+    const handleProgressUpdateInternal = useCallback(async (watchedSeconds: number, lastBlockId?: string) => {
+        // Check combined progress from the lesson entity
+        const progressPercent = lesson.calculateProgressPercentage();
         const isCompletingNow = progressPercent >= 90;
 
         if (isCompletingNow && quiz && !lesson.quizPassed) {
@@ -158,19 +168,81 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
         } else {
             await onProgressUpdate(watchedSeconds, lastBlockId);
         }
-    };
+    }, [lesson, quiz, showQuizModal, quizResult, onProgressUpdate]);
+
+    // --- IntersectionObserver for Text Reading Detection ---
+    useEffect(() => {
+        if (!lesson.contentBlocks || lesson.contentBlocks.length === 0) return;
+        if (!onBlockRead) return;
+
+        const blockTimers = new Map<string, NodeJS.Timeout>();
+        const alreadyRead = new Set(lesson.textBlocksRead);
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                entries.forEach((entry) => {
+                    const blockId = (entry.target as HTMLElement).dataset.blockId;
+                    if (!blockId || alreadyRead.has(blockId)) return;
+
+                    if (entry.isIntersecting) {
+                        // Block is >50% visible — start 3-second timer
+                        if (!blockTimers.has(blockId)) {
+                            const timer = setTimeout(() => {
+                                alreadyRead.add(blockId);
+                                onBlockRead(blockId);
+                                blockTimers.delete(blockId);
+                            }, 3000);
+                            blockTimers.set(blockId, timer);
+                        }
+                    } else {
+                        // Block scrolled out — cancel timer
+                        const timer = blockTimers.get(blockId);
+                        if (timer) {
+                            clearTimeout(timer);
+                            blockTimers.delete(blockId);
+                        }
+                    }
+                });
+            },
+            { threshold: 0.5 }
+        );
+
+        // Observe all block elements after a small delay for refs to be populated
+        const observeTimer = setTimeout(() => {
+            const refs = blockRefs.current;
+            Object.values(refs).forEach((el) => {
+                if (el) observer.observe(el);
+            });
+        }, 500);
+
+        return () => {
+            clearTimeout(observeTimer);
+            observer.disconnect();
+            blockTimers.forEach((timer) => clearTimeout(timer));
+            blockTimers.clear();
+        };
+    }, [lesson.id, lesson.contentBlocks.length, onBlockRead]);
 
     const {
         isPlaying,
         progress,
         playBlock,
         toggleAudio,
+        pauseAudio,
         seek
     } = useAudioPlayer({
         lesson,
         onTrackAction,
-        onProgressUpdate: handleProgressUpdateInternal
+        onProgressUpdate: handleProgressUpdateInternal,
+        onAudioListened,
+        onPlay: () => {
+            activeVideoRef.current?.pause();
+        }
     });
+
+    const handleBlockClick = useCallback((_blockId: string, index: number) => {
+        playBlock(index);
+    }, [playBlock]);
 
     const lessonProgress = userProgress.find(p => p.lessonId === lesson.id);
 
@@ -250,18 +322,41 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                 const dbNotes = await LessonNotesRepository.loadNotes(user.id, lesson.id);
                 if (!isMounted) return;
 
-                const formattedHighlights = dbNotes
-                    .filter(note => note.has_highlight && note.highlighted_text)
-                    .map(note => ({
-                        id: note.id,
-                        text: note.highlighted_text!,
-                        color: note.highlight_color as 'yellow' | 'green' | 'blue' | 'pink',
-                        onClick: () => {
-                            setFocusedNoteId(note.id);
-                            setSidebarTab('notes');
-                            handleOpenDrawer('notes');
-                        }
-                    }));
+                const formattedHighlights: any[] = [];
+
+                dbNotes.forEach(note => {
+                    // Add primary highlight
+                    if (note.has_highlight && note.highlighted_text) {
+                        formattedHighlights.push({
+                            id: note.id,
+                            text: note.highlighted_text,
+                            color: note.highlight_color as 'yellow' | 'green' | 'blue' | 'pink',
+                            onClick: () => {
+                                setFocusedNoteId(note.id);
+                                setSidebarTab('notes');
+                                handleOpenDrawer('notes');
+                            }
+                        });
+                    }
+
+                    // Add extra highlights (from unifications)
+                    if (note.extra_highlights && Array.isArray(note.extra_highlights)) {
+                        note.extra_highlights.forEach((extra: any) => {
+                            if (extra.text) {
+                                formattedHighlights.push({
+                                    id: note.id, // Linked to the same note ID
+                                    text: extra.text,
+                                    color: extra.color || 'yellow',
+                                    onClick: () => {
+                                        setFocusedNoteId(note.id);
+                                        setSidebarTab('notes');
+                                        handleOpenDrawer('notes');
+                                    }
+                                });
+                            }
+                        });
+                    }
+                });
 
                 setHighlights(formattedHighlights);
             } catch (err) {
@@ -274,15 +369,58 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
         return () => { isMounted = false; };
     }, [lesson.id, user.id]);
 
+    const handleNotesChange = (updatedNotesData: any[]) => {
+        const formattedHighlights: any[] = [];
+
+        updatedNotesData.forEach(note => {
+            // Add primary highlight
+            if (note.hasHighlight && note.highlightedText) {
+                formattedHighlights.push({
+                    id: note.id,
+                    text: note.highlightedText,
+                    color: note.highlightColor as 'yellow' | 'green' | 'blue' | 'pink',
+                    onClick: () => {
+                        setFocusedNoteId(note.id);
+                        setSidebarTab('notes');
+                        handleOpenDrawer('notes');
+                    }
+                });
+            }
+
+            // Add extra highlights
+            if (note.extraHighlights && Array.isArray(note.extraHighlights)) {
+                note.extraHighlights.forEach((extra: any) => {
+                    if (extra.text) {
+                        formattedHighlights.push({
+                            id: note.id,
+                            text: extra.text,
+                            color: extra.color || 'yellow',
+                            onClick: () => {
+                                setFocusedNoteId(note.id);
+                                setSidebarTab('notes');
+                                handleOpenDrawer('notes');
+                            }
+                        });
+                    }
+                });
+            }
+        });
+
+        setHighlights(formattedHighlights);
+    };
+
     // Fechar menu de opções ao clicar fora
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (optionsMenuRef.current && !optionsMenuRef.current.contains(event.target as Node)) {
                 setIsOptionsMenuOpen(false);
             }
+            if (speedMenuRef.current && !speedMenuRef.current.contains(event.target as Node)) {
+                setIsSpeedMenuOpen(false);
+            }
         };
 
-        if (isOptionsMenuOpen) {
+        if (isOptionsMenuOpen || isSpeedMenuOpen) {
             document.addEventListener('mousedown', handleClickOutside);
         } else {
             document.removeEventListener('mousedown', handleClickOutside);
@@ -291,7 +429,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
         };
-    }, [isOptionsMenuOpen]);
+    }, [isOptionsMenuOpen, isSpeedMenuOpen]);
 
     // Setup global function for opening image modal
     useEffect(() => {
@@ -308,51 +446,55 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
 
 
-    // Helper to render Quiz Status Card (Reused for Desktop and Mobile)
     const renderQuizStatusCard = () => {
         if (!quiz) return null;
 
-        const quizAvailable = quiz.isManuallyReleased || lesson.calculateProgressPercentage() >= 90;
+        const quizAvailable = quiz.isManuallyReleased || lesson.isCompleted || lesson.calculateProgressPercentage() >= 90;
 
         return (
-            <div className={`rounded-2xl border overflow-hidden transition-all ${quizAvailable
-                ? 'bg-gradient-to-br from-emerald-900/40 via-teal-900/30 to-green-900/40 border-emerald-500/30 shadow-lg shadow-emerald-500/10'
-                : 'bg-slate-900 border-slate-700'
+
+            <div className={`rounded-3xl border overflow-hidden transition-all duration-300 shadow-sm ${quizAvailable
+                ? 'bg-gradient-to-br from-emerald-50/50 via-teal-50/30 to-green-50/50 dark:from-emerald-900/40 dark:via-teal-900/30 dark:to-green-900/40 border-emerald-500/20 dark:border-emerald-500/30 shadow-emerald-500/5'
+                : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700'
                 }`}>
-                <div className={`p-4 border-b flex items-center gap-3 ${quizAvailable
-                    ? 'bg-emerald-800/30 border-emerald-700/30'
-                    : 'bg-slate-800 border-slate-700'
+                {/* Header Section */}
+                <div className={`p-4 border-b flex items-center gap-4 ${quizAvailable
+                    ? 'bg-emerald-500/5 dark:bg-emerald-800/30 border-emerald-500/10 dark:border-emerald-700/30'
+                    : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700'
                     }`}>
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${quizAvailable
-                        ? 'bg-emerald-500/20 text-emerald-400'
-                        : 'bg-slate-700 text-slate-500'
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110 ${quizAvailable
+                        ? 'bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+                        : 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500'
                         }`}>
                         <i className={`fas ${quizAvailable ? 'fa-graduation-cap' : 'fa-lock'} text-xl`}></i>
                     </div>
                     <div className="flex-1">
-                        <h3 className="text-sm font-bold text-slate-100">Quiz da Aula</h3>
-                        <p className="text-[10px] text-emerald-300 font-bold uppercase tracking-widest">
-                            {quizAvailable ? 'Disponível' : 'Bloqueado'}
-                        </p>
+                        <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 tracking-tight">Quiz da Aula</h3>
+                        <div className="flex items-center gap-2 mt-1">
+                            <span className={`flex h-2 w-2 rounded-full ${quizAvailable ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`}></span>
+                            <p className={`text-[10px] font-black uppercase tracking-widest ${quizAvailable ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'}`}>
+                                {quizAvailable ? 'Disponível' : 'Bloqueado'}
+                            </p>
+                        </div>
                     </div>
                 </div>
 
-                <div className="p-4 space-y-3">
+                <div className="p-5 space-y-4">
                     {/* Dual-Mode Buttons */}
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-4">
                         {/* Practice Mode Button */}
                         <button
                             onClick={() => setShowPracticeConfigModal(true)}
-                            className="rounded-xl p-4 transition-all bg-gradient-to-br from-blue-600/20 to-indigo-600/20 border-2 border-blue-500/30 hover:border-blue-400/50 hover:from-blue-600/30 hover:to-indigo-600/30"
+                            className="group relative rounded-2xl p-4 transition-all duration-300 bg-white dark:bg-blue-600/10 border-2 border-blue-500/20 dark:border-blue-500/30 hover:border-blue-500/50 hover:bg-blue-50 dark:hover:bg-blue-600/20 shadow-sm hover:shadow-md"
                             title="Modo Prática - Sem XP"
                         >
-                            <div className="flex flex-col items-center gap-2">
-                                <div className="w-10 h-10 rounded-lg bg-blue-500/20 border border-blue-400/30 flex items-center justify-center">
-                                    <i className="fas fa-dumbbell text-lg text-blue-400"></i>
+                            <div className="flex flex-col items-center gap-3">
+                                <div className="w-12 h-12 rounded-xl bg-blue-500/10 dark:bg-blue-500/20 border border-blue-400/20 dark:border-blue-400/30 flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
+                                    <i className="fas fa-dumbbell text-xl text-blue-600 dark:text-blue-400"></i>
                                 </div>
                                 <div className="text-center">
-                                    <p className="font-bold text-sm text-slate-100">Prática</p>
-                                    <p className="text-[9px] text-blue-300 font-semibold uppercase tracking-wider">Sem XP</p>
+                                    <p className="font-black text-sm text-slate-800 dark:text-slate-100 mb-0.5">Prática</p>
+                                    <p className="text-[9px] text-blue-600 dark:text-blue-300 font-black uppercase tracking-widest opacity-80">Sem XP</p>
                                 </div>
                             </div>
                         </button>
@@ -361,22 +503,22 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                         <button
                             onClick={quizAvailable ? handleStartQuiz : undefined}
                             disabled={!quizAvailable}
-                            className={`rounded-xl p-4 transition-all ${quizAvailable
-                                ? 'bg-gradient-to-br from-emerald-600/30 to-teal-600/30 border-2 border-emerald-500/40 hover:border-emerald-400/60 hover:from-emerald-600/40 hover:to-teal-600/40 cursor-pointer'
-                                : 'bg-slate-800/50 border-2 border-slate-700/50 cursor-not-allowed opacity-60'
+                            className={`group relative rounded-2xl p-4 transition-all duration-300 ${quizAvailable
+                                ? 'bg-white dark:bg-emerald-600/10 border-2 border-emerald-500/20 dark:border-emerald-500/40 hover:border-emerald-500/50 hover:bg-emerald-50 dark:hover:bg-emerald-600/20 shadow-sm hover:shadow-md cursor-pointer'
+                                : 'bg-slate-100 dark:bg-slate-800/50 border-2 border-slate-200 dark:border-slate-700/50 cursor-not-allowed grayscale'
                                 }`}
                             title={quizAvailable ? "Modo Avaliativo - Ganhe XP" : "Complete 90% da aula para desbloquear"}
                         >
-                            <div className="flex flex-col items-center gap-2">
-                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${quizAvailable
-                                    ? 'bg-emerald-500/20 border border-emerald-400/30'
-                                    : 'bg-slate-700/50 border border-slate-600'
+                            <div className="flex flex-col items-center gap-3">
+                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-transform duration-300 ${quizAvailable
+                                    ? 'bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-400/20 dark:border-emerald-400/30 group-hover:scale-110'
+                                    : 'bg-slate-200 dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600'
                                     }`}>
-                                    <i className={`fas ${quizAvailable ? 'fa-trophy' : 'fa-lock'} text-lg ${quizAvailable ? 'text-emerald-400' : 'text-slate-500'}`}></i>
+                                    <i className={`fas ${quizAvailable ? 'fa-trophy' : 'fa-lock'} text-xl ${quizAvailable ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'}`}></i>
                                 </div>
                                 <div className="text-center">
-                                    <p className={`font-bold text-sm ${quizAvailable ? 'text-slate-100' : 'text-slate-400'}`}>Avaliativo</p>
-                                    <p className={`text-[9px] font-semibold uppercase tracking-wider ${quizAvailable ? 'text-emerald-300' : 'text-slate-500'}`}>
+                                    <p className={`font-black text-sm mb-0.5 ${quizAvailable ? 'text-slate-800 dark:text-slate-100' : 'text-slate-400 dark:text-slate-500'}`}>Avaliativo</p>
+                                    <p className={`text-[9px] font-black uppercase tracking-widest opacity-80 ${quizAvailable ? 'text-emerald-600 dark:text-emerald-300' : 'text-slate-400 dark:text-slate-500'}`}>
                                         {quizAvailable ? 'Ganhe XP' : 'Bloqueado'}
                                     </p>
                                 </div>
@@ -385,34 +527,42 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                     </div>
 
                     {/* Quiz Info */}
-                    <div className="p-3 bg-slate-800/30 rounded-xl border border-slate-700/50">
-                        <div className="flex items-center justify-between text-xs mb-1">
-                            <span className="text-slate-400 font-semibold">{quiz.title}</span>
-                            <span className="text-slate-300 font-bold">{quiz.questions.length || quiz.questionsCount || 0} questões</span>
+                    <div className="p-4 bg-slate-100/50 dark:bg-slate-800/30 rounded-2xl border border-slate-200/60 dark:border-slate-700/50 flex items-center justify-between">
+                        <div className="min-w-0 flex-1 pr-3">
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest mb-1">Título do Questionário</p>
+                            <span className="text-sm font-bold text-slate-800 dark:text-slate-200 block truncate">{quiz.title}</span>
                         </div>
-                        {quizAvailable && (
-                            <p className="text-[10px] text-slate-500">Nota de aprovação: {quiz.passingScore}%</p>
-                        )}
+                        <div className="text-right flex-shrink-0 border-l border-slate-200 dark:border-slate-700 pl-4">
+                            <p className="text-xl font-black text-indigo-600 dark:text-indigo-400 leading-none">{quiz.questions.length || quiz.questionsCount || 0}</p>
+                            <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-tighter mt-1">Questões</p>
+                        </div>
                     </div>
 
+                    {quizAvailable && (
+                        <div className="flex items-center gap-2 px-1">
+                            <i className="fas fa-circle-check text-emerald-500 text-[10px]"></i>
+                            <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Nota mínima para aprovação: <span className="text-indigo-600 dark:text-indigo-400">{quiz.passingScore}%</span></p>
+                        </div>
+                    )}
+
                     {!quizAvailable && (
-                        <div className="mt-4 p-3 bg-slate-800/50 rounded-xl border border-slate-700">
-                            <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
-                                <span className="font-bold uppercase tracking-wider">Progresso</span>
-                                <span className="font-bold text-slate-300">
+                        <div className="mt-4 p-4 bg-indigo-50/50 dark:bg-slate-800/50 rounded-2xl border border-indigo-100/50 dark:border-slate-700">
+                            <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-3">
+                                <span>Progresso Requerido</span>
+                                <span className="text-indigo-600 dark:text-indigo-300">
                                     {lesson.calculateProgressPercentage()}% / 90%
                                 </span>
                             </div>
-                            <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+                            <div className="w-full h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden shadow-inner p-0.5">
                                 <div
-                                    className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-300"
+                                    className="h-full bg-gradient-to-r from-indigo-500 to-emerald-500 rounded-full transition-all duration-700 shadow-sm"
                                     style={{ width: `${Math.min(lesson.calculateProgressPercentage(), 100)}%` }}
                                 ></div>
                             </div>
-                            <p className="text-[10px] text-slate-500 mt-2 text-center">
+                            <p className="text-[10px] text-slate-500 dark:text-slate-500 mt-3 text-center font-medium italic">
                                 {90 - lesson.calculateProgressPercentage() > 0
-                                    ? `Faltam ${(90 - lesson.calculateProgressPercentage()).toFixed(0)}% para desbloquear`
-                                    : 'Quiz liberado!'}
+                                    ? `Assista mais ${(90 - lesson.calculateProgressPercentage()).toFixed(0)}% do conteúdo para liberar o teste.`
+                                    : 'Recarregue a página para liberar o quiz!'}
                             </p>
                         </div>
                     )}
@@ -514,10 +664,14 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                             {/* Player */}
                             <div className="w-full">
                                 <VideoPlayer
+                                    ref={activeVideoRef}
                                     lesson={lesson}
                                     videoUrl={currentVideoUrl}
                                     onProgress={handleProgressUpdateInternal}
-                                    onPlay={() => onTrackAction?.(`Reproduziu vídeo: ${currentVideoUrl || lesson.title}`)}
+                                    onPlay={() => {
+                                        pauseAudio();
+                                        onTrackAction?.(`Reproduziu vídeo: ${currentVideoUrl || lesson.title}`);
+                                    }}
                                 />
                             </div>
 
@@ -642,6 +796,55 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                     <span className="hidden sm:inline">{contentTheme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}</span>
                                 </button>
 
+                                {/* Speed Control Standalone */}
+                                <div className="relative" ref={speedMenuRef}>
+                                    <motion.button
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={() => setIsSpeedMenuOpen(!isSpeedMenuOpen)}
+                                        className={`h-9 px-2 sm:px-3 rounded-lg font-semibold transition-all active:scale-95 flex items-center justify-center gap-1.5 border transition-all duration-300 text-[10px] uppercase tracking-wider shadow-sm hover:shadow-md ${isSpeedMenuOpen
+                                            ? 'bg-indigo-600 border-indigo-500 text-white'
+                                            : (contentTheme === 'dark'
+                                                ? 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
+                                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50')
+                                            }`}
+                                    >
+                                        <i className={`fas fa-tachometer-alt text-[10px] ${isSpeedMenuOpen ? 'text-white' : (contentTheme === 'dark' ? 'text-indigo-400' : 'text-indigo-600')}`}></i>
+                                        <span className="font-bold">{playbackSpeed === 1.0 ? '1x' : `${playbackSpeed}x`}</span>
+                                    </motion.button>
+
+                                    {/* Speed Dropdown Menu */}
+                                    {isSpeedMenuOpen && (
+                                        <div className={`absolute right-0 mt-3 w-40 rounded-2xl border shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 ${contentTheme === 'dark'
+                                            ? 'bg-slate-900 border-slate-800'
+                                            : 'bg-white border-slate-100'
+                                            }`}>
+                                            <div className="p-2 space-y-1">
+                                                <p className={`px-2 py-1 text-[9px] font-black uppercase tracking-widest ${contentTheme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>Velocidade</p>
+                                                <div className="grid grid-cols-2 gap-1">
+                                                    {[0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.5].map(speed => (
+                                                        <button
+                                                            key={speed}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setPlaybackSpeed(speed);
+                                                                setIsSpeedMenuOpen(false);
+                                                            }}
+                                                            className={`py-2 text-[10px] font-bold rounded-lg transition-all ${playbackSpeed === speed
+                                                                ? 'bg-indigo-600 text-white shadow-sm'
+                                                                : (contentTheme === 'dark'
+                                                                    ? 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'
+                                                                    : 'bg-slate-50 text-slate-500 hover:bg-indigo-50 hover:text-indigo-600 border border-slate-100')
+                                                                }`}
+                                                        >
+                                                            {speed === 1.0 ? '1x' : `${speed}x`}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
                                 <div className="relative" ref={optionsMenuRef}>
                                     <motion.button
                                         whileTap={{ scale: 0.95 }}
@@ -666,27 +869,6 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                             <div className="p-3 space-y-2">
                                                 <p className={`px-3 py-2 text-[10px] font-black uppercase tracking-widest ${contentTheme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>Ajustes do Leitor</p>
 
-                                                {/* Velocidade */}
-                                                <div className={`flex flex-col gap-2 p-3 rounded-xl ${contentTheme === 'dark' ? 'bg-slate-800/50' : 'bg-slate-50'}`}>
-                                                    <div className="flex items-center gap-2">
-                                                        <i className={`fas fa-tachometer-alt text-xs ${contentTheme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'}`}></i>
-                                                        <span className={`text-[11px] font-bold uppercase tracking-wider ${contentTheme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>Velocidade</span>
-                                                    </div>
-                                                    <div className="grid grid-cols-4 gap-1">
-                                                        {[0.5, 1.0, 1.5, 2.0].map(speed => (
-                                                            <button
-                                                                key={speed}
-                                                                onClick={() => setPlaybackSpeed(speed)}
-                                                                className={`py-1 text-[10px] font-bold rounded-lg transition-all ${playbackSpeed === speed
-                                                                    ? 'bg-indigo-600 text-white'
-                                                                    : (contentTheme === 'dark' ? 'bg-slate-700 text-slate-400 hover:bg-slate-600' : 'bg-white text-slate-500 hover:bg-indigo-50 border border-slate-100')
-                                                                    }`}
-                                                            >
-                                                                {speed === 1.0 ? '1x' : `${speed}x`}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                </div>
 
                                                 {/* Tamanho da Fonte */}
                                                 <div className={`flex flex-col gap-2 p-3 rounded-xl ${contentTheme === 'dark' ? 'bg-slate-800/50' : 'bg-slate-50'}`}>
@@ -746,9 +928,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                             <ContentReader
                                 lesson={lesson}
                                 highlights={highlights}
-                                onBlockClick={(blockId, index) => {
-                                    playBlock(index);
-                                }}
+                                onBlockClick={handleBlockClick}
                                 onTrackAction={onTrackAction}
                                 currentProgress={progress}
                                 blockRefs={blockRefs}
@@ -779,14 +959,19 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
                                     <button
                                         onClick={() => {
-                                            // Copia para clipboard e abre notas
-                                            navigator.clipboard.writeText(contextMenu.text);
-                                            setNoteDraft(contextMenu.text); // Passa para o NotesPanel via prop se implementado, ou apenas abre
+                                            // Captura selecao e passa para o NotesPanel
+                                            const selection = window.getSelection();
+                                            if (selection && selection.rangeCount > 0) {
+                                                const range = selection.getRangeAt(0).cloneRange();
+                                                setNoteDraftWithRange({ text: contextMenu.text, range });
+                                            } else {
+                                                setNoteDraft(contextMenu.text);
+                                            }
+
                                             setSidebarTab('notes');
                                             handleOpenDrawer('notes');
                                             setContextMenu(null);
-                                            toast.success('Texto copiado! Cole na sua nota.');
-                                            onTrackAction?.('Usou Menu Contexto: Adicionar Nota');
+                                            onTrackAction?.('Usou Menu Contexto: Criar Nota com Seleção');
                                         }}
                                         className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-3 text-sm text-slate-700 dark:text-slate-200 transition-colors"
                                     >
@@ -836,8 +1021,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                     transition={{ delay: 0.3, duration: 0.5 }}
                     className={`lg:col-span-3 ${isCinemaMode ? 'hidden' : 'hidden lg:block'}`}
                 >
-                    <div className="sticky top-4 space-y-6 max-h-[calc(100vh_-_6rem)] overflow-y-auto pr-2 scrollbar-thin">
-                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-1 flex">
+                    <div className="sticky top-4 space-y-4 h-[calc(100vh-2rem)] flex flex-col pr-2">
+                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-1 flex shrink-0">
                             <motion.button
                                 whileTap={{ scale: 0.95 }}
                                 onClick={() => {
@@ -866,18 +1051,22 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                             </motion.button>
                         </div>
 
-                        {sidebarTab === 'materials' ? (
-                            <LessonMaterialsSidebar lesson={lesson} onTrackAction={onTrackAction} />
-                        ) : (
-                            <NotesPanelPrototype
-                                userId={user.id}
-                                lessonId={lesson.id}
-                                refreshTrigger={activeBlockId}
-                            />
-                        )}
+                        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin flex flex-col gap-4">
+                            {sidebarTab === 'materials' ? (
+                                <LessonMaterialsSidebar lesson={lesson} onTrackAction={onTrackAction} />
+                            ) : (
+                                <NotesPanelPrototype
+                                    userId={user.id}
+                                    lessonId={lesson.id}
+                                    refreshTrigger={activeBlockId}
+                                    onNotesChange={handleNotesChange}
+                                    externalDraft={noteDraftWithRange}
+                                />
+                            )}
 
-                        {/* Seção de Quiz */}
-                        {renderQuizStatusCard()}
+                            {/* Quiz Section inside the scrollable area or at bottom */}
+                            {renderQuizStatusCard()}
+                        </div>
                     </div>
                 </motion.div>
             </div>
@@ -961,6 +1150,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                         refreshTrigger={activeBlockId}
                                         onNoteSelect={handleCloseDrawer}
                                         focusedNoteId={focusedNoteId}
+                                        onNotesChange={handleNotesChange}
+                                        externalDraft={noteDraftWithRange}
                                     />
                                 )}
 

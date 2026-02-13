@@ -20,6 +20,9 @@ const LessonLoader: React.FC<LessonLoaderProps> = ({ user, onTrackAction }) => {
         activeLesson,
         selectLesson,
         updateProgress,
+        markBlockAsRead,
+        markVideoWatched,
+        markAudioListened,
         isLoadingCourses
     } = useCourse();
 
@@ -68,7 +71,10 @@ const LessonLoader: React.FC<LessonLoaderProps> = ({ user, onTrackAction }) => {
             lesson={activeLesson}
             user={user}
             onLessonSelect={(l) => navigate(`/course/${activeCourse.id}/lesson/${l.id}`)}
-            onProgressUpdate={async (secs, blockId) => await updateProgress(secs)}
+            onProgressUpdate={async (secs, blockId) => await updateProgress(secs, blockId)}
+            onBlockRead={markBlockAsRead}
+            onVideoWatched={markVideoWatched}
+            onAudioListened={markAudioListened}
             onBackToLessons={() => navigate(`/course/${activeCourse.id}`)}
             onBackToModules={() => navigate(`/course/${activeCourse.id}`)}
             sidebarTab={sidebarTab}

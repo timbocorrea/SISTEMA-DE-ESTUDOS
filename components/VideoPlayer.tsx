@@ -1,22 +1,43 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Lesson } from '../domain/entities';
 import { activityMonitor } from '../services/ActivityMonitor';
 
 interface VideoPlayerProps {
   lesson: Lesson;
-  videoUrl?: string; // Allow parent to override which video to display
+  videoUrl?: string;
   onProgress: (watchedSeconds: number) => void;
   onPlay?: () => void;
+  onVideoWatched?: (videoUrl: string) => void;
 }
 
-const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, videoUrl, onProgress, onPlay }) => {
+export interface VideoPlayerRef {
+  pause: () => void;
+}
+
+const VideoPlayer = React.forwardRef<VideoPlayerRef, VideoPlayerProps>(({ lesson, videoUrl, onProgress, onPlay, onVideoWatched }, ref) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const ytPlayerRef = useRef<any>(null);
+  const ytIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const iframeRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
+  const [videoWatchedReported, setVideoWatchedReported] = useState(false);
   const duration = lesson.durationSeconds || 1;
   const showManualComplete = Boolean((import.meta as any)?.env?.DEV);
 
-  const currentVideoUrl = videoUrl || lesson.videoUrl; // Use provided videoUrl or fallback to lesson.videoUrl
+  const currentVideoUrl = videoUrl || lesson.videoUrl;
+
+  React.useImperativeHandle(ref, () => ({
+    pause: () => {
+      if (ytPlayerRef.current?.pauseVideo) {
+        ytPlayerRef.current.pauseVideo();
+      } else if (videoRef.current) {
+        videoRef.current.pause();
+      }
+      setIsPlaying(false);
+      activityMonitor.setMediaPlaying(false);
+    }
+  }));
 
   useEffect(() => {
     if (videoRef.current) {
@@ -28,7 +49,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, videoUrl, onProgress,
     if (videoRef.current) {
       const current = Math.floor(videoRef.current.currentTime);
       setCurrentTime(current);
-      // Throttle progress updates to parent to every 5 seconds to avoid excessive state updates
       if (current % 5 === 0 && current !== 0) {
         onProgress(current);
       }
@@ -36,27 +56,34 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, videoUrl, onProgress,
   };
 
   const handleEnded = () => {
-    // Se o vídeo terminar, marcamos como visto todo o tempo
     onProgress(duration);
     setCurrentTime(duration);
     setIsPlaying(false);
     activityMonitor.setMediaPlaying(false);
+    if (onVideoWatched && currentVideoUrl && !videoWatchedReported) {
+      setVideoWatchedReported(true);
+      onVideoWatched(currentVideoUrl);
+    }
   };
 
   useEffect(() => {
     return () => {
-      activityMonitor.setMediaPlaying(false); // Cleanup on unmount
+      activityMonitor.setMediaPlaying(false);
+      if (ytIntervalRef.current) clearInterval(ytIntervalRef.current);
     };
   }, []);
 
   const markAsCompleted = () => {
-    // Botão manual para vídeos demo que não avançam; força progresso total
     if (videoRef.current) {
       videoRef.current.pause();
     }
     onProgress(duration);
     setCurrentTime(duration);
     setIsPlaying(false);
+    if (onVideoWatched && currentVideoUrl && !videoWatchedReported) {
+      setVideoWatchedReported(true);
+      onVideoWatched(currentVideoUrl);
+    }
   };
 
   const togglePlay = () => {
@@ -74,12 +101,111 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, videoUrl, onProgress,
 
   const isYoutube = currentVideoUrl?.includes('youtube.com') || currentVideoUrl?.includes('youtu.be');
 
-  const getYoutubeEmbedUrl = (url: string) => {
-    // Extrair ID do YouTube
+  const getYoutubeVideoId = (url: string): string => {
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
     const match = url.match(regExp);
-    return (match && match[2].length === 11) ? `https://www.youtube.com/embed/${match[2]}` : '';
+    return (match && match[2].length === 11) ? match[2] : '';
   };
+
+  // YouTube IFrame API Integration
+  const initYouTubePlayer = useCallback(() => {
+    if (!currentVideoUrl || !isYoutube || !iframeRef.current) return;
+
+    const videoId = getYoutubeVideoId(currentVideoUrl);
+    if (!videoId) return;
+
+    // Load the API script if not already loaded
+    if (!(window as any).YT) {
+      const tag = document.createElement('script');
+      tag.src = 'https://www.youtube.com/iframe_api';
+      document.head.appendChild(tag);
+
+      (window as any).onYouTubeIframeAPIReady = () => {
+        createPlayer(videoId);
+      };
+    } else {
+      createPlayer(videoId);
+    }
+  }, [currentVideoUrl, isYoutube]);
+
+  const createPlayer = (videoId: string) => {
+    if (ytPlayerRef.current) {
+      ytPlayerRef.current.destroy();
+    }
+
+    ytPlayerRef.current = new (window as any).YT.Player(iframeRef.current, {
+      videoId,
+      playerVars: {
+        autoplay: 0,
+        modestbranding: 1,
+        rel: 0
+      },
+      events: {
+        onStateChange: (event: any) => {
+          const YT = (window as any).YT;
+          if (event.data === YT.PlayerState.PLAYING) {
+            setIsPlaying(true);
+            activityMonitor.setMediaPlaying(true);
+            onPlay?.();
+
+            // Track progress via polling
+            if (ytIntervalRef.current) clearInterval(ytIntervalRef.current);
+            ytIntervalRef.current = setInterval(() => {
+              if (ytPlayerRef.current?.getCurrentTime && ytPlayerRef.current?.getDuration) {
+                const ct = Math.floor(ytPlayerRef.current.getCurrentTime());
+                const dur = Math.floor(ytPlayerRef.current.getDuration());
+                setCurrentTime(ct);
+                if (ct % 5 === 0 && ct !== 0) {
+                  onProgress(ct);
+                }
+                // Mark as watched at 80%
+                if (!videoWatchedReported && dur > 0 && ct / dur >= 0.8) {
+                  setVideoWatchedReported(true);
+                  if (onVideoWatched && currentVideoUrl) {
+                    onVideoWatched(currentVideoUrl);
+                  }
+                }
+              }
+            }, 1000);
+          } else if (event.data === YT.PlayerState.PAUSED) {
+            setIsPlaying(false);
+            activityMonitor.setMediaPlaying(false);
+            if (ytIntervalRef.current) clearInterval(ytIntervalRef.current);
+          } else if (event.data === YT.PlayerState.ENDED) {
+            setIsPlaying(false);
+            activityMonitor.setMediaPlaying(false);
+            if (ytIntervalRef.current) clearInterval(ytIntervalRef.current);
+            if (ytPlayerRef.current?.getDuration) {
+              const dur = Math.floor(ytPlayerRef.current.getDuration());
+              onProgress(dur);
+              setCurrentTime(dur);
+            }
+            if (onVideoWatched && currentVideoUrl && !videoWatchedReported) {
+              setVideoWatchedReported(true);
+              onVideoWatched(currentVideoUrl);
+            }
+          }
+        }
+      }
+    });
+  };
+
+  useEffect(() => {
+    if (isYoutube) {
+      initYouTubePlayer();
+    }
+    return () => {
+      if (ytPlayerRef.current) {
+        try { ytPlayerRef.current.destroy(); } catch { }
+      }
+      if (ytIntervalRef.current) clearInterval(ytIntervalRef.current);
+    };
+  }, [currentVideoUrl, isYoutube, initYouTubePlayer]);
+
+  // Reset watched state when video URL changes
+  useEffect(() => {
+    setVideoWatchedReported(false);
+  }, [currentVideoUrl]);
 
   const progressPercent = Math.min(100, (currentTime / duration) * 100);
 
@@ -107,14 +233,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, videoUrl, onProgress,
   return (
     <div className="relative w-full bg-black rounded-xl overflow-hidden shadow-2xl group border border-slate-700">
       {isYoutube ? (
-        <iframe
-          className="w-full h-auto aspect-video pointer-events-auto"
-          src={getYoutubeEmbedUrl(currentVideoUrl)}
-          title={lesson.title}
-          frameBorder="0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          allowFullScreen
-        ></iframe>
+        <div
+          ref={iframeRef}
+          className="w-full aspect-video"
+        />
       ) : (
         <video
           ref={videoRef}
@@ -184,6 +306,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, videoUrl, onProgress,
       )}
     </div>
   );
-};
+});
 
 export default VideoPlayer;

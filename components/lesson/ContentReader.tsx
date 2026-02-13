@@ -20,7 +20,7 @@ interface ContentReaderProps {
     onSeek?: (percentage: number) => void;
 }
 
-const ContentReader: React.FC<ContentReaderProps> = ({
+const ContentReader: React.FC<ContentReaderProps> = React.memo(({
     lesson,
     highlights,
     onBlockClick,
@@ -29,7 +29,7 @@ const ContentReader: React.FC<ContentReaderProps> = ({
     blockRefs,
     onSeek
 }) => {
-    const { activeBlockId, fontSize, contentTheme } = useLessonStore();
+    const { activeBlockId, fontSize, contentTheme, audioEnabled } = useLessonStore();
     const contentRef = useRef<HTMLDivElement>(null);
 
     // Scroll to active block logic moved to parent (LessonViewer) to avoid conflicts
@@ -63,13 +63,21 @@ const ContentReader: React.FC<ContentReaderProps> = ({
         sortedHighlights.forEach(highlight => {
             if (!highlight.text || highlight.text.trim() === '') return;
 
-            // Escape special regex characters
-            const escapedText = highlight.text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            // Create a fuzzy pattern that allows optional HTML tags between characters
+            // This enables matching text segments like "habilidades essenciais" even if 
+            // the source HTML is "habilidades <strong>essenciais</strong>"
+            const charPatterns = highlight.text.split('').map(char => {
+                const escaped = char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                // If it's a space, allow multiple spaces or tags
+                if (char === ' ') return '(?:\\s+|<[^>]+>)*';
+                return escaped;
+            });
 
-            // Regex to match text NOT inside HTML tags (lookahead check)
-            // Matches the text only if it's NOT followed by a closing '>' without a preceding '<'
-            // This is a robust way to match content text vs tag attributes/names
-            const regex = new RegExp(`(${escapedText})(?![^<]*>)`, 'gi');
+            // Join with optional tag pattern to allow tags between any character
+            const fuzzyPattern = charPatterns.join('(?:<[^>]+>)*');
+
+            // Regex to match the fuzzy pattern NOT inside tag attributes (lookahead check)
+            const regex = new RegExp(`(${fuzzyPattern})(?![^<]*>)`, 'gi');
 
             enhancedHtml = enhancedHtml.replace(regex, (match) => {
                 const colorHex = getBackgroundColor(highlight.color);
@@ -103,11 +111,11 @@ const ContentReader: React.FC<ContentReaderProps> = ({
                             marginBottom: `${block.spacing || (window.innerWidth < 640 ? 1.25 : 1.5)}rem`,
                             fontSize: window.innerWidth < 640 ? '1.125rem' : (window.innerWidth < 1024 ? '1rem' : '1rem'), // Responsive base size
                             lineHeight: (block as any).lineHeight ? parseFloat((block as any).lineHeight) : (window.innerWidth < 640 ? 1.6 : 1.8),
-                            padding: (hasAudio || (block as any).featured) ? '1rem' : '0',
-                            borderLeft: hasAudio ? '4px solid #6366f1' : ((block as any).featured ? `4px solid ${(block as any).featuredColor || '#eab308'}` : 'none'),
+                            padding: ((hasAudio && audioEnabled) || (block as any).featured) ? '1rem' : '0',
+                            borderLeft: (hasAudio && audioEnabled) ? '4px solid #6366f1' : ((block as any).featured ? `4px solid ${(block as any).featuredColor || '#eab308'}` : 'none'),
                             backgroundColor: isActive ? (contentTheme === 'dark' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.05)') : ((block as any).featured ? `${(block as any).featuredColor || '#eab308'}15` : 'transparent'),
-                            borderRadius: hasAudio ? '8px' : '0',
-                            cursor: hasAudio ? 'pointer' : 'default',
+                            borderRadius: (hasAudio && audioEnabled) ? '8px' : '0',
+                            cursor: (hasAudio && audioEnabled) ? 'pointer' : 'default',
                             transition: 'all 0.2s ease',
                         }}
                         onClick={(e) => {
@@ -130,14 +138,14 @@ const ContentReader: React.FC<ContentReaderProps> = ({
                             }
 
                             // Normal block click (Audio)
-                            if (hasAudio && onBlockClick) {
+                            if (hasAudio && audioEnabled && onBlockClick) {
                                 e.stopPropagation(); // Prevent parent handlers (like ContextMenu reset)
                                 onBlockClick(block.id, index);
                                 onTrackAction?.(`Clicou no bloco de áudio ${index + 1}`);
                             }
                         }}
                     >
-                        {hasAudio && (
+                        {hasAudio && audioEnabled && (
                             <>
                                 {/* Check if URL is expired temporary Dropbox link */}
                                 {(() => {
@@ -274,6 +282,6 @@ const ContentReader: React.FC<ContentReaderProps> = ({
             {renderContent()}
         </div>
     );
-};
+});
 
 export default ContentReader;

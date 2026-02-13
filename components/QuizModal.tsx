@@ -286,8 +286,8 @@ const QuizModal: React.FC<QuizModalProps> = ({ quiz, isOpen, onClose, onSubmit, 
                 <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl shrink-0">
                     <div className="flex items-center justify-between gap-6 mb-6">
                         <div className="min-w-0">
-                            <h2 className="text-2xl font-black text-slate-900 dark:text-white truncate">{quiz.title}</h2>
-                            <p className="text-sm text-slate-500 truncate">{quiz.description}</p>
+                            <h2 className="text-2xl font-black text-slate-800 dark:text-white truncate">{quiz.title}</h2>
+                            <p className="text-sm text-slate-600 dark:text-slate-400 font-medium truncate">{quiz.description}</p>
                         </div>
 
                         <div className="flex items-center gap-2 p-1.5 bg-slate-100 dark:bg-slate-800 rounded-2xl shrink-0">
@@ -323,9 +323,9 @@ const QuizModal: React.FC<QuizModalProps> = ({ quiz, isOpen, onClose, onSubmit, 
                     </div>
 
                     <div className="space-y-2">
-                        <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-widest text-slate-400">
+                        <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
                             <span>Progresso do Simulado</span>
-                            <span className="text-indigo-500">{Math.round(globalProgress)}%</span>
+                            <span className="text-indigo-600 dark:text-indigo-300">{Math.round(globalProgress)}%</span>
                         </div>
                         <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                             <div

@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { useLessonStore } from '../stores/useLessonStore';
 import { Lesson } from '../domain/entities';
 import { activityMonitor } from '../services/ActivityMonitor';
@@ -7,9 +7,11 @@ interface UseAudioPlayerProps {
     lesson: Lesson;
     onTrackAction?: (action: string) => void;
     onProgressUpdate?: (watchedSeconds: number, lastBlockId?: string) => Promise<void>;
+    onAudioListened?: (blockId: string) => void;
+    onPlay?: () => void;
 }
 
-export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate }: UseAudioPlayerProps) => {
+export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate, onAudioListened, onPlay }: UseAudioPlayerProps) => {
     const {
         activeBlockId,
         setActiveBlockId,
@@ -24,6 +26,12 @@ export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate }: UseA
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const nextAudioRef = useRef<HTMLAudioElement | null>(null); // Prefetch next audio
     const playbackSpeedRef = useRef<number>(playbackSpeed);
+
+    // 📈 Cumulative audio listening time tracking
+    const totalListenedRef = useRef<number>(lesson.watchedSeconds || 0);
+    const blockStartTimeRef = useRef<number>(0); // currentTime when block started
+    const lastReportedRef = useRef<number>(0); // Last reported progress (throttle)
+    const completedBlocksRef = useRef<Set<number>>(new Set());
 
     const audioEnabledRef = useRef(audioEnabled);
 
@@ -72,14 +80,12 @@ export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate }: UseA
             nextAudio.playbackRate = playbackSpeedRef.current;
             nextAudio.load(); // Force browser to start buffering immediately
             nextAudioRef.current = nextAudio;
-
-            console.log(`🔊 Prefetching next audio [${nextIndex}]`);
         }
     };
 
-    const playBlock = (index: number) => {
+    const playBlock = useCallback((index: number) => {
         // Auto-enable audio if manually clicking a block
-        if (!audioEnabled) {
+        if (!audioEnabledRef.current) {
             setAudioEnabled(true);
         }
 
@@ -151,7 +157,9 @@ export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate }: UseA
                 activityMonitor.setMediaPlaying(false);
                 onTrackAction?.(`Pausou o áudio no bloco de texto`);
             } else {
-                audioRef.current.play().catch(e => console.error(e));
+                audioRef.current.play().then(() => {
+                    onPlay?.();
+                }).catch(e => console.error(e));
                 setIsPlaying(true);
                 activityMonitor.setMediaPlaying(true);
                 onTrackAction?.(`Retomou o áudio no bloco de texto`);
@@ -171,10 +179,8 @@ export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate }: UseA
         setAudioProgress(0);
         setIsPlaying(true);
 
-        // Notify progress update (Resume point)
-        if (onProgressUpdate) {
-            onProgressUpdate(lesson.watchedSeconds, block.id);
-        }
+        // Reset block start time for this new block
+        blockStartTimeRef.current = 0;
 
         let audio: HTMLAudioElement;
 
@@ -186,6 +192,7 @@ export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate }: UseA
         } else {
             audio = new Audio(audioUrl);  // Use converted URL
             audio.preload = 'auto';
+            audio.load(); // Force browser to start buffering
         }
 
         audioRef.current = audio;
@@ -193,11 +200,27 @@ export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate }: UseA
         // Apply playback speed
         audio.playbackRate = playbackSpeedRef.current;
 
-        // Update progress and trigger prefetch
+        // Update progress and trigger prefetch + cumulative tracking
         audio.ontimeupdate = () => {
             if (audio.duration) {
                 const progress = (audio.currentTime / audio.duration) * 100;
                 setAudioProgress(progress);
+
+                // 📈 Track cumulative listening time
+                const listenedInBlock = audio.currentTime - blockStartTimeRef.current;
+                if (listenedInBlock > 0) {
+                    const previousBlocks = Array.from(completedBlocksRef.current).reduce((sum, bIdx) => {
+                        return sum; // Already counted in totalListenedRef
+                    }, 0);
+
+                    const currentTotal = totalListenedRef.current + listenedInBlock;
+
+                    // Report progress every 5 seconds to avoid spam
+                    if (onProgressUpdate && currentTotal - lastReportedRef.current >= 5) {
+                        lastReportedRef.current = currentTotal;
+                        onProgressUpdate(Math.round(currentTotal), block.id);
+                    }
+                }
 
                 // Prefetch next audio when current reaches 30% (Fallback if immediate prefetch failed)
                 if (progress >= 30 && !nextAudioRef.current) {
@@ -219,6 +242,23 @@ export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate }: UseA
                 return;
             }
 
+            // 📈 Accumulate completed block duration
+            if (!completedBlocksRef.current.has(index)) {
+                completedBlocksRef.current.add(index);
+                totalListenedRef.current += audio.duration;
+                blockStartTimeRef.current = 0;
+
+                // Report progress for completed block
+                if (onProgressUpdate) {
+                    onProgressUpdate(Math.round(totalListenedRef.current), block.id);
+                }
+
+                // Mark audio block as listened for dynamic progress
+                if (onAudioListened) {
+                    onAudioListened(block.id);
+                }
+            }
+
             setAudioProgress(0);
             // Auto-advance IMMEDIATELY without setting isPlaying to false
             const nextIndex = index + 1;
@@ -227,7 +267,14 @@ export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate }: UseA
                 console.log(`➡️ Auto-advancing to block ${nextIndex}`);
                 playBlock(nextIndex);
             } else {
-                console.log(`⏹️ Playback finished`);
+                console.log(`⏹️ Playback finished - All audio complete!`);
+
+                // 📈 Final progress report: mark lesson duration reached
+                if (onProgressUpdate) {
+                    const finalSeconds = Math.max(totalListenedRef.current, lesson.durationSeconds);
+                    onProgressUpdate(Math.round(finalSeconds), block.id);
+                }
+
                 setIsPlaying(false);
                 activityMonitor.setMediaPlaying(false);
                 setActiveBlockId(null);
@@ -272,29 +319,38 @@ export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate }: UseA
         // Track action
         const blockPreview = block.text.replace(/<[^>]*>/g, '').substring(0, 50);
         onTrackAction?.(`Ativou áudio no bloco: "${blockPreview}..."`);
-    };
+    }, [lesson, activeBlockId, onTrackAction, onProgressUpdate, setAudioEnabled, setActiveBlockId, setIsPlaying, onPlay]);
 
-    const toggleAudio = () => {
-        if (audioRef.current) {
-            if (isPlaying) {
-                audioRef.current.pause();
-                setIsPlaying(false);
-                activityMonitor.setMediaPlaying(false);
-            } else {
-                audioRef.current.play().catch(console.error);
-                setIsPlaying(true);
-                activityMonitor.setMediaPlaying(true);
-            }
+    const pauseAudio = useCallback(() => {
+        if (audioRef.current && !audioRef.current.paused) {
+            audioRef.current.pause();
+            setIsPlaying(false);
+            activityMonitor.setMediaPlaying(false);
         }
-    };
+    }, [setIsPlaying]);
 
-    const seek = (percentage: number) => {
+    const toggleAudio = useCallback(() => {
+        if (!audioRef.current) return;
+
+        if (audioRef.current.paused) {
+            audioRef.current.play();
+            setIsPlaying(true);
+            activityMonitor.setMediaPlaying(true);
+            onPlay?.();
+        } else {
+            audioRef.current.pause();
+            setIsPlaying(false);
+            activityMonitor.setMediaPlaying(false);
+        }
+    }, [setIsPlaying, onPlay]);
+
+    const seek = useCallback((percentage: number) => {
         if (audioRef.current && Number.isFinite(audioRef.current.duration)) {
             const newTime = (audioRef.current.duration * percentage) / 100;
             audioRef.current.currentTime = newTime;
             setAudioProgress(percentage);
         }
-    };
+    }, []);
 
     // Cleanup on unmount
     useEffect(() => {
@@ -316,7 +372,7 @@ export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate }: UseA
         progress: audioProgress,
         playBlock,
         toggleAudio,
-        seek,
-        audioRef // Keep exposing ref just in case
+        pauseAudio,
+        seek
     };
 };

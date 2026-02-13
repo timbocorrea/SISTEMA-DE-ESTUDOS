@@ -20,6 +20,7 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, adminService,
     const [isEditingCourses, setIsEditingCourses] = useState(false);
     const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
     const [saving, setSaving] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
         loadUserCourses();
@@ -99,36 +100,41 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, adminService,
         return null;
     };
 
+    const filteredCourses = allCourses.filter(course =>
+        course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (course.description && course.description.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+
     return (
         <div
-            className="fixed inset-0 z-50 flex items-end md:items-center justify-center md:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+            className="fixed inset-0 z-50 flex items-end md:items-center justify-center md:p-4 bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
             role="dialog"
             aria-modal="true"
             aria-labelledby="user-details-modal-title"
         >
-            <div className="bg-[#0a0e14]/95 backdrop-blur-xl w-full max-w-4xl shadow-2xl overflow-hidden border border-white/10 max-h-[90vh] flex flex-col rounded-t-3xl md:rounded-3xl">
+            <div className="bg-white dark:bg-slate-900 w-full max-w-4xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 max-h-[90vh] flex flex-col rounded-t-3xl md:rounded-3xl">
                 {/* Drag Handle - Mobile Only */}
                 <div className="md:hidden flex justify-center py-3 bg-gradient-to-r from-indigo-500/10 to-cyan-500/10">
                     <div className="w-12 h-1.5 bg-white/20 rounded-full" />
                 </div>
 
                 {/* Header */}
-                <div className="px-6 pb-4 md:p-6 border-b border-white/5 bg-gradient-to-r from-indigo-500/10 to-cyan-500/10 relative overflow-hidden">
+                <div className="px-6 pb-4 md:p-6 border-b border-slate-100 dark:border-white/5 bg-gradient-to-r from-indigo-500/5 to-cyan-500/5 relative overflow-hidden">
                     <div className="absolute inset-0 bg-indigo-500/5"></div>
                     <div className="relative z-10 flex justify-between items-start">
                         <div className="flex items-center gap-4">
-                            <div className="w-16 h-16 rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center text-2xl font-black shadow-[0_0_20px_rgba(99,102,241,0.3)]">
+                            <div className="w-16 h-16 rounded-full bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/30 flex items-center justify-center text-2xl font-black shadow-sm">
                                 {(user.name || user.email).charAt(0).toUpperCase()}
                             </div>
                             <div>
-                                <h3 className="text-2xl font-black text-white">{user.name || 'Sem nome'}</h3>
-                                <p className="text-sm text-slate-400">{user.email}</p>
+                                <h3 className="text-2xl font-black text-slate-800 dark:text-white">{user.name || 'Sem nome'}</h3>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">{user.email}</p>
                                 <div className="mt-2">{getStatusBadge()}</div>
                             </div>
                         </div>
                         <button
                             onClick={onClose}
-                            className="w-11 h-11 rounded-xl bg-white/10 hover:bg-white/20 text-slate-400 hover:text-white flex items-center justify-center transition-colors active:scale-95"
+                            className="w-11 h-11 rounded-xl bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white flex items-center justify-center transition-colors active:scale-95"
                         >
                             <i className="fas fa-times text-lg"></i>
                         </button>
@@ -138,7 +144,7 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, adminService,
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto p-6 space-y-6">
                     {error && (
-                        <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm p-4 rounded-xl flex items-center gap-2 backdrop-blur-md">
+                        <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-sm p-4 rounded-xl flex items-center gap-2">
                             <i className="fas fa-exclamation-circle"></i>
                             <span>{error}</span>
                         </div>
@@ -147,14 +153,14 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, adminService,
                     {/* Grid de Informações */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {/* Nível de Acesso */}
-                        <div className="bg-black/20 backdrop-blur-md p-4 rounded-xl border border-white/5">
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
+                        <div className="bg-slate-50 dark:bg-black/20 p-4 rounded-xl border border-slate-100 dark:border-white/5">
+                            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">
                                 Nível de Acesso
                             </p>
                             <div className="flex items-center gap-2">
                                 <span className={`px-3 py-1 rounded-lg text-sm font-black border ${user.role === 'INSTRUCTOR'
-                                    ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30'
-                                    : 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
+                                    ? 'bg-cyan-50 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-500/30'
+                                    : 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-500/30'
                                     }`}>
                                     {user.role === 'INSTRUCTOR' ? '👨‍🏫 Administrador' : '👨‍🎓 Estudante'}
                                 </span>
@@ -162,48 +168,48 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, adminService,
                         </div>
 
                         {/* XP e Nível */}
-                        <div className="bg-black/20 backdrop-blur-md p-4 rounded-xl border border-white/5">
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
+                        <div className="bg-slate-50 dark:bg-black/20 p-4 rounded-xl border border-slate-100 dark:border-white/5">
+                            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">
                                 Progresso
                             </p>
                             <div className="flex items-center gap-4">
                                 <div>
-                                    <p className="text-2xl font-black text-indigo-400">LVL {user.current_level || 1}</p>
+                                    <p className="text-2xl font-black text-indigo-600 dark:text-indigo-400">LVL {user.current_level || 1}</p>
                                 </div>
                                 <div>
-                                    <p className="text-sm text-slate-300">
-                                        <span className="font-bold text-white">{(user.xp_total || 0).toLocaleString()}</span> XP
+                                    <p className="text-sm text-slate-600 dark:text-slate-300">
+                                        <span className="font-bold text-slate-800 dark:text-white">{(user.xp_total || 0).toLocaleString()}</span> XP
                                     </p>
                                 </div>
                             </div>
                         </div>
 
                         {/* Último Acesso */}
-                        <div className="bg-black/20 backdrop-blur-md p-4 rounded-xl border border-white/5">
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
+                        <div className="bg-slate-50 dark:bg-black/20 p-4 rounded-xl border border-slate-100 dark:border-white/5">
+                            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">
                                 <i className="fas fa-clock mr-1"></i> Último Acesso
                             </p>
-                            <p className="text-sm font-bold text-slate-200">
+                            <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
                                 {formatDate((user as any).updated_at)}
                             </p>
                         </div>
 
                         {/* Data de Aprovação */}
-                        <div className="bg-black/20 backdrop-blur-md p-4 rounded-xl border border-white/5">
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
+                        <div className="bg-slate-50 dark:bg-black/20 p-4 rounded-xl border border-slate-100 dark:border-white/5">
+                            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">
                                 <i className="fas fa-check-circle mr-1"></i> Data de Aprovação
                             </p>
-                            <p className="text-sm font-bold text-slate-200">
+                            <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
                                 {formatDate((user as any).approved_at)}
                             </p>
                         </div>
                     </div>
 
                     {/* Cursos Atribuídos */}
-                    <div className="bg-black/20 backdrop-blur-md border border-white/5 rounded-2xl overflow-hidden">
-                        <div className="p-4 bg-white/5 border-b border-white/5 flex justify-between items-center">
-                            <h4 className="font-black text-white flex items-center gap-2">
-                                <i className="fas fa-graduation-cap text-indigo-400"></i>
+                    <div className="bg-white dark:bg-black/20 border border-slate-200 dark:border-white/5 rounded-2xl overflow-hidden">
+                        <div className="p-4 bg-slate-50 dark:bg-white/5 border-b border-slate-200 dark:border-white/5 flex justify-between items-center">
+                            <h4 className="font-black text-slate-800 dark:text-white flex items-center gap-2">
+                                <i className="fas fa-graduation-cap text-indigo-600 dark:text-indigo-400"></i>
                                 Cursos Atribuídos ({assignedCourses.length})
                             </h4>
                             {!isEditingCourses && (
@@ -226,37 +232,50 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, adminService,
                             ) : isEditingCourses ? (
                                 // Modo de edição
                                 <div className="space-y-3">
-                                    {allCourses.map(course => (
-                                        <label
-                                            key={course.id}
-                                            className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${selectedCourseIds.includes(course.id)
-                                                ? 'border-indigo-500/50 bg-indigo-500/10'
-                                                : 'border-white/5 bg-black/20 hover:bg-white/5 hover:border-indigo-500/30'
-                                                }`}
-                                        >
-                                            <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${selectedCourseIds.includes(course.id)
-                                                ? 'bg-indigo-500 border-indigo-500 text-white'
-                                                : 'border-white/20 bg-black/40'
-                                                }`}>
-                                                {selectedCourseIds.includes(course.id) && <i className="fas fa-check text-xs"></i>}
-                                            </div>
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedCourseIds.includes(course.id)}
-                                                onChange={() => toggleCourse(course.id)}
-                                                className="hidden"
-                                            />
-                                            <div className="flex-1">
-                                                <p className="text-sm font-bold text-white">{course.title}</p>
-                                                {course.description && (
-                                                    <p className="text-xs text-slate-400">{course.description}</p>
+                                    <div className="relative mb-4">
+                                        <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-600"></i>
+                                        <input
+                                            type="text"
+                                            placeholder="Buscar cursos..."
+                                            value={searchTerm}
+                                            onChange={e => setSearchTerm(e.target.value)}
+                                            className="w-full pl-12 pr-4 py-3 rounded-xl bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-600"
+                                        />
+                                    </div>
+                                    {filteredCourses.map(course => {
+                                        const isSelected = selectedCourseIds.includes(course.id);
+                                        return (
+                                            <label
+                                                key={course.id}
+                                                className={`flex items-center gap-3 p-4 min-h-[52px] rounded-xl border cursor-pointer transition-all active:scale-[0.98] ${isSelected
+                                                    ? 'border-indigo-500/50 bg-indigo-50 dark:bg-indigo-500/10 shadow-sm'
+                                                    : 'border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-black/20 hover:bg-slate-100 dark:hover:bg-white/5 hover:border-indigo-500/30'
+                                                    }`}
+                                            >
+                                                <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-colors shrink-0 ${isSelected
+                                                    ? 'bg-indigo-600 dark:bg-indigo-500 border-indigo-600 dark:border-indigo-500 text-white'
+                                                    : 'border-slate-300 dark:border-white/20 bg-white dark:bg-black/40'
+                                                    }`}>
+                                                    {isSelected && <i className="fas fa-check text-xs"></i>}
+                                                </div>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isSelected}
+                                                    onChange={() => toggleCourse(course.id)}
+                                                    className="hidden"
+                                                />
+                                                <div className="flex-1">
+                                                    <p className="text-sm font-bold text-slate-800 dark:text-white">{course.title}</p>
+                                                    {course.description && (
+                                                        <p className="text-xs text-slate-400">{course.description}</p>
+                                                    )}
+                                                </div>
+                                                {isSelected && (
+                                                    <i className="fas fa-check-circle text-indigo-400"></i>
                                                 )}
-                                            </div>
-                                            {selectedCourseIds.includes(course.id) && (
-                                                <i className="fas fa-check-circle text-indigo-400"></i>
-                                            )}
-                                        </label>
-                                    ))}
+                                            </label>
+                                        );
+                                    })}
                                 </div>
                             ) : assignedCourses.length === 0 ? (
                                 <div className="text-center py-8 text-slate-500">
@@ -269,13 +288,13 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, adminService,
                                     {assignedCourses.map(course => (
                                         <div
                                             key={course.id}
-                                            className="flex items-center gap-3 p-3 rounded-lg bg-white/5 border border-white/5"
+                                            className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5"
                                         >
                                             <i className="fas fa-book text-indigo-400"></i>
                                             <div className="flex-1">
-                                                <p className="text-sm font-bold text-white">{course.title}</p>
+                                                <p className="text-sm font-bold text-slate-800 dark:text-white">{course.title}</p>
                                                 {course.description && (
-                                                    <p className="text-xs text-slate-400">{course.description}</p>
+                                                    <p className="text-xs text-slate-500 dark:text-slate-400">{course.description}</p>
                                                 )}
                                             </div>
                                         </div>
@@ -293,7 +312,7 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, adminService,
                                         loadUserCourses();
                                     }}
                                     disabled={saving}
-                                    className="flex-1 py-3 rounded-xl border border-white/10 text-slate-400 font-bold text-sm hover:bg-white/5 hover:text-white transition-colors disabled:opacity-50"
+                                    className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 font-bold text-sm hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-white transition-colors disabled:opacity-50"
                                 >
                                     Cancelar
                                 </button>
@@ -312,9 +331,9 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, adminService,
 
 
                     {/* Histórico de Progressão */}
-                    <div className="bg-black/20 backdrop-blur-md border border-white/5 rounded-2xl overflow-hidden">
-                        <div className="p-4 bg-white/5 border-b border-white/5">
-                            <h4 className="font-black text-white flex items-center gap-2">
+                    <div className="bg-white dark:bg-black/20 border border-slate-200 dark:border-white/5 rounded-2xl overflow-hidden">
+                        <div className="p-4 bg-slate-50 dark:bg-white/5 border-b border-slate-200 dark:border-white/5">
+                            <h4 className="font-black text-slate-800 dark:text-white flex items-center gap-2">
                                 <i className="fas fa-history text-indigo-400"></i>
                                 Histórico de Progressão
                             </h4>
@@ -326,7 +345,7 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, adminService,
                 </div>
 
                 {/* Footer */}
-                <div className="p-4 border-t border-white/5 bg-white/5 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+                <div className="p-4 border-t border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-white/5 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
                     <div className="flex gap-2">
                         {(user as any).approval_status === 'approved' && (
                             <button
@@ -349,7 +368,7 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, adminService,
                     </div>
                     <button
                         onClick={onClose}
-                        className="px-6 py-3 min-h-[44px] rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 font-bold text-sm transition-colors active:scale-95"
+                        className="px-6 py-3 min-h-[44px] rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 font-bold text-sm transition-colors active:scale-95"
                     >
                         Fechar
                     </button>

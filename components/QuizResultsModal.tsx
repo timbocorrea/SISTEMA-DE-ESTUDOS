@@ -134,7 +134,7 @@ const QuizResultsModal: React.FC<QuizResultsModalProps> = ({
                     {/* Stats */}
                     <div className="grid grid-cols-2 gap-3 mb-4">
                         <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 text-center">
-                            <div className="text-xl font-black text-slate-900 dark:text-white">
+                            <div className="text-xl font-black text-slate-800 dark:text-white">
                                 {result.earnedPoints}/{result.totalPoints}
                             </div>
                             <div className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider mt-1">
@@ -143,7 +143,7 @@ const QuizResultsModal: React.FC<QuizResultsModalProps> = ({
                         </div>
 
                         <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 text-center">
-                            <div className="text-xl font-black text-slate-900 dark:text-white">
+                            <div className="text-xl font-black text-slate-800 dark:text-white">
                                 {passingScore}%
                             </div>
                             <div className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider mt-1">

@@ -259,16 +259,16 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
   };
 
   return (
-    <div className="p-8 space-y-8">
+    <div className="min-h-screen bg-transparent p-8 space-y-8 transition-colors duration-300">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-[10px] text-indigo-400 font-bold uppercase tracking-widest mb-2">
-            Administração / <span className="text-white">Controle de Usuários</span>
+            Administração / <span className="text-slate-800 dark:text-white">Controle de Usuários</span>
           </div>
-          <h2 className="text-4xl font-black text-white tracking-tight drop-shadow-lg">
+          <h2 className="text-4xl font-black text-slate-800 dark:text-white tracking-tight">
             Gestão de Usuários
           </h2>
-          <p className="text-slate-400 mt-2 font-medium">
+          <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium">
             Monitore perfis e permissões.
           </p>
         </div>
@@ -280,12 +280,12 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
               value={filter}
               onChange={e => setFilter(e.target.value)}
               placeholder="Buscar por nome ou email…"
-              className="w-full pl-12 pr-4 py-3 bg-black/20 backdrop-blur-sm border border-white/10 rounded-2xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all placeholder:text-slate-600"
+              className="w-full pl-12 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-600"
             />
           </div>
           <button
             onClick={() => navigate('/admin/access')}
-            className="px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 font-bold text-sm transition-all active:scale-95 shadow-sm hover:shadow-indigo-500/10 hover:border-indigo-500/30"
+            className="px-4 py-3 rounded-2xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold text-sm transition-all active:scale-95 shadow-sm hover:shadow-indigo-500/10 hover:border-indigo-500/30"
           >
             <i className="fas fa-lock mr-2"></i> Acesso aos Cursos
           </button>
@@ -299,27 +299,27 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
       </div>
 
       {error && (
-        <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-4 rounded-2xl flex items-center gap-2 backdrop-blur-md">
+        <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-xs p-4 rounded-2xl flex items-center gap-2">
           <i className="fas fa-exclamation-circle"></i>
           <span className="font-bold">Erro:</span> {error}
         </div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-black/20 backdrop-blur-md p-6 rounded-3xl border border-white/5 shadow-lg relative overflow-hidden group hover:border-indigo-500/30 transition-colors">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group hover:border-indigo-500/30 transition-colors">
           <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none group-hover:bg-indigo-500/20 transition-colors"></div>
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 relative z-10">Total</p>
-          <p className="text-4xl font-black text-white relative z-10 drop-shadow-md">{stats.total}</p>
+          <p className="text-4xl font-black text-slate-800 dark:text-white relative z-10">{stats.total}</p>
         </div>
-        <div className="bg-black/20 backdrop-blur-md p-6 rounded-3xl border border-white/5 shadow-lg relative overflow-hidden group hover:border-cyan-500/30 transition-colors">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group hover:border-cyan-500/30 transition-colors">
           <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none group-hover:bg-cyan-500/20 transition-colors"></div>
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 relative z-10">Instrutores</p>
-          <p className="text-4xl font-black text-cyan-400 relative z-10 drop-shadow-md">{stats.instructors}</p>
+          <p className="text-4xl font-black text-cyan-600 dark:text-cyan-400 relative z-10">{stats.instructors}</p>
         </div>
-        <div className="bg-black/20 backdrop-blur-md p-6 rounded-3xl border border-white/5 shadow-lg relative overflow-hidden group hover:border-emerald-500/30 transition-colors">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group hover:border-emerald-500/30 transition-colors">
           <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none group-hover:bg-emerald-500/20 transition-colors"></div>
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 relative z-10">Estudantes</p>
-          <p className="text-4xl font-black text-emerald-400 relative z-10 drop-shadow-md">{stats.students}</p>
+          <p className="text-4xl font-black text-emerald-600 dark:text-emerald-400 relative z-10">{stats.students}</p>
         </div>
       </div>
 
@@ -330,8 +330,8 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
           <button
             onClick={() => setActiveTab('all')}
             className={`px-6 py-3 rounded-xl font-bold text-sm transition-all whitespace-nowrap border ${activeTab === 'all'
-              ? 'bg-indigo-600/20 text-indigo-400 border-indigo-500/50 shadow-[0_0_15px_rgba(99,102,241,0.3)]'
-              : 'bg-black/20 text-slate-400 border-white/5 hover:bg-white/5 hover:text-white'
+              ? 'bg-indigo-50 dark:bg-indigo-600/20 text-indigo-600 dark:text-indigo-400 border-indigo-300 dark:border-indigo-500/50'
+              : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-white'
               }`}
           >
             <i className="fas fa-users mr-2"></i>
@@ -340,8 +340,8 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
           <button
             onClick={() => setActiveTab('pending')}
             className={`px-6 py-3 rounded-xl font-bold text-sm transition-all whitespace-nowrap border ${activeTab === 'pending'
-              ? 'bg-amber-600/20 text-amber-400 border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.3)]'
-              : 'bg-black/20 text-slate-400 border-white/5 hover:bg-white/5 hover:text-white'
+              ? 'bg-amber-50 dark:bg-amber-600/20 text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-500/50'
+              : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-white'
               }`}
           >
             <i className="fas fa-clock mr-2"></i>
@@ -350,8 +350,8 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
           <button
             onClick={() => setActiveTab('approved')}
             className={`px-6 py-3 rounded-xl font-bold text-sm transition-all whitespace-nowrap border ${activeTab === 'approved'
-              ? 'bg-emerald-600/20 text-emerald-400 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.3)]'
-              : 'bg-black/20 text-slate-400 border-white/5 hover:bg-white/5 hover:text-white'
+              ? 'bg-emerald-50 dark:bg-emerald-600/20 text-emerald-600 dark:text-emerald-400 border-emerald-300 dark:border-emerald-500/50'
+              : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-white'
               }`}
           >
             <i className="fas fa-check-circle mr-2"></i>
@@ -360,8 +360,8 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
           <button
             onClick={() => setActiveTab('rejected')}
             className={`px-6 py-3 rounded-xl font-bold text-sm transition-all whitespace-nowrap border ${activeTab === 'rejected'
-              ? 'bg-red-600/20 text-red-400 border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.3)]'
-              : 'bg-black/20 text-slate-400 border-white/5 hover:bg-white/5 hover:text-white'
+              ? 'bg-red-50 dark:bg-red-600/20 text-red-600 dark:text-red-400 border-red-300 dark:border-red-500/50'
+              : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-white'
               }`}
           >
             <i className="fas fa-ban mr-2"></i>
@@ -373,9 +373,9 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
         <div className="flex items-center gap-3">
           <button
             onClick={toggleSelectMode}
-            className={`px-4 py-3 rounded-2xl font-black text-sm shadow-lg transition-all active:scale-95 whitespace-nowrap border ${isSelectMode
-              ? 'bg-amber-500/20 border-amber-500/50 text-amber-500'
-              : 'bg-white/5 border-white/10 hover:bg-white/10 text-slate-300'
+            className={`px-4 py-3 rounded-2xl font-black text-sm shadow-sm transition-all active:scale-95 whitespace-nowrap border ${isSelectMode
+              ? 'bg-amber-50 dark:bg-amber-500/20 border-amber-300 dark:border-amber-500/50 text-amber-600 dark:text-amber-500'
+              : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'
               }`}
           >
             <i className="fas fa-check-square mr-2"></i>
@@ -570,10 +570,10 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
       </div>
 
       {/* Desktop View: Table */}
-      <div className="hidden md:block overflow-hidden rounded-3xl border border-white/5 bg-black/20 backdrop-blur-md shadow-2xl">
+      <div className="hidden md:block overflow-hidden rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-white/5 border-b border-white/5">
+            <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
               {isSelectMode && <th className="p-4 w-12"></th>}
               <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Usuário</th>
               <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Função</th>
@@ -584,7 +584,7 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
               <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-right">Ações</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/5 text-slate-300">
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-600 dark:text-slate-300">
             {loading && (
               <tr>
                 <td colSpan={7} className="p-12 text-center text-slate-500">
@@ -611,8 +611,8 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
                 <tr
                   key={u.id}
                   className={`group transition-all cursor-pointer ${isSelected
-                    ? 'bg-indigo-500/10'
-                    : 'hover:bg-white/5'
+                    ? 'bg-indigo-50 dark:bg-indigo-500/10'
+                    : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
                     }`}
                   onClick={() => {
                     if (isSelectMode) toggleUserSelection(u.id);
@@ -640,7 +640,7 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
                         <i className={`fas ${u.role === 'INSTRUCTOR' ? 'fa-chalkboard-teacher' : 'fa-user-graduate'}`}></i>
                       </div>
                       <div className="min-w-0">
-                        <p className={`font-bold text-sm truncate max-w-[200px] ${isSelected ? 'text-indigo-200' : 'text-slate-200'}`}>{u.name || 'Sem nome'}</p>
+                        <p className={`font-bold text-sm truncate max-w-[200px] ${isSelected ? 'text-indigo-600 dark:text-indigo-200' : 'text-slate-800 dark:text-slate-200'}`}>{u.name || 'Sem nome'}</p>
                         <p className="text-xs text-slate-500 truncate max-w-[200px]">{u.email}</p>
                       </div>
                     </div>
@@ -689,7 +689,7 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
                     </span>
                   </td>
                   <td className="p-4 text-right" onClick={e => e.stopPropagation()}>
-                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center justify-end gap-2 transition-opacity">
                       {activeTab === 'pending' && (
                         <>
                           <button
@@ -739,7 +739,7 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
         </table>
       </div>
 
-      <div className="text-[11px] text-slate-500 dark:text-slate-400">
+      <div className="text-[11px] text-slate-400 dark:text-slate-500">
         Se der erro de permissão, crie policies RLS para INSTRUCTOR ler/atualizar `profiles`.
       </div>
 
@@ -871,10 +871,7 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
                         onClick={() => {
                           if (editingUser) {
                             setEditingUser({
-                              id: editingUser.id,
-                              name: editingUser.name,
-                              email: editingUser.email,
-                              apiKey: editingUser.apiKey,
+                              ...editingUser,
                               role: 'STUDENT'
                             });
                           }
@@ -891,10 +888,7 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
                         onClick={() => {
                           if (editingUser) {
                             setEditingUser({
-                              id: editingUser.id,
-                              name: editingUser.name,
-                              email: editingUser.email,
-                              apiKey: editingUser.apiKey,
+                              ...editingUser,
                               role: 'INSTRUCTOR'
                             });
                           }
@@ -1005,4 +999,4 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
   );
 };
 
-export default UserManagement;
+export default React.memo(UserManagement);

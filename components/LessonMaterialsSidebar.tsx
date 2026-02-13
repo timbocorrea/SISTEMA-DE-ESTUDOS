@@ -406,6 +406,16 @@ const AudioPlayerContent: React.FC<{ item: MaterialItem, onClose: () => void, on
     if (audioRef.current) audioRef.current.currentTime += amount;
   };
 
+  const handleStop = () => {
+    setIsPlaying(false);
+    setProgress(0);
+    if (audioRef.current) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.pause();
+    }
+    if (onTrackAction) onTrackAction(`Parou áudio: ${item.title}`);
+  };
+
   return (
     <div className="h-full flex flex-col bg-gradient-to-b from-slate-900 via-slate-900 to-indigo-950/20">
       {/* Header */}
@@ -471,18 +481,27 @@ const AudioPlayerContent: React.FC<{ item: MaterialItem, onClose: () => void, on
 
         {/* Controls */}
         <div className="flex items-center gap-6">
-          <button onClick={() => skip(-10)} className="text-slate-400 hover:text-white transition-colors transform hover:scale-110 active:scale-95">
+          <button onClick={() => skip(-10)} className="text-slate-400 hover:text-white transition-colors transform hover:scale-110 active:scale-95" title="Retroceder 10s">
             <i className="fas fa-rotate-left text-xl"></i>
           </button>
 
           <button
             onClick={() => setIsPlaying(!isPlaying)}
             className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-slate-900 hover:scale-105 active:scale-95 transition-all shadow-lg hover:shadow-indigo-500/20"
+            title={isPlaying ? "Pausar" : "Reproduzir"}
           >
             <i className={`fas ${isPlaying ? 'fa-pause' : 'fa-play'} text-2xl ml-1`}></i>
           </button>
 
-          <button onClick={() => skip(10)} className="text-slate-400 hover:text-white transition-colors transform hover:scale-110 active:scale-95">
+          <button
+            onClick={handleStop}
+            className="w-12 h-12 bg-slate-800 text-slate-400 rounded-full flex items-center justify-center hover:bg-slate-700 hover:text-white hover:scale-105 active:scale-95 transition-all shadow-md group"
+            title="Parar (Reset)"
+          >
+            <i className="fas fa-stop text-lg group-hover:scale-110 transition-transform"></i>
+          </button>
+
+          <button onClick={() => skip(10)} className="text-slate-400 hover:text-white transition-colors transform hover:scale-110 active:scale-95" title="Avançar 10s">
             <i className="fas fa-rotate-right text-xl"></i>
           </button>
         </div>

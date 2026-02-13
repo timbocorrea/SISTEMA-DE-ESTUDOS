@@ -66,7 +66,9 @@ export class SupabaseCourseRepository implements ICourseRepository {
       position: row.position || 0,
       lastAccessedBlockId: progress?.last_accessed_block_id || null,
       contentBlocks: (row as any).content_blocks || [],
-      isLoaded: !isStructureOnly
+      isLoaded: !isStructureOnly,
+      textBlocksRead: progress?.text_blocks_read || [],
+      audiosListened: progress?.audios_played || []
     };
     return new Lesson(payload);
   }
@@ -548,13 +550,41 @@ export class SupabaseCourseRepository implements ICourseRepository {
 
     if (error) throw new DomainError('Falha ao buscar resumo dos cursos');
 
+    // Fetch lesson progress for this user to merge is_completed
+    const allLessonIds = (data || []).flatMap((c: any) =>
+      (c.modules || []).flatMap((m: any) =>
+        (m.lessons || []).map((l: any) => l.id)
+      )
+    );
+
+    let progressMap = new Map<string, boolean>();
+    if (allLessonIds.length > 0) {
+      const { data: progressData } = await this.client
+        .from('lesson_progress')
+        .select('lesson_id, is_completed')
+        .eq('user_id', userId)
+        .in('lesson_id', allLessonIds);
+
+      if (progressData) {
+        progressData.forEach((p: any) => {
+          progressMap.set(p.lesson_id, p.is_completed || false);
+        });
+      }
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return (data || []).map((row: any) => ({
       id: row.id,
       title: row.title,
       description: row.description,
       imageUrl: row.image_url,
-      modules: row.modules || []
+      modules: (row.modules || []).map((m: any) => ({
+        ...m,
+        lessons: (m.lessons || []).map((l: any) => ({
+          ...l,
+          isCompleted: progressMap.get(l.id) || false
+        }))
+      }))
     }));
   }
 

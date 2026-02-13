@@ -15,9 +15,12 @@ export interface ILessonData {
   position: number;
   lastAccessedBlockId?: string | null;
   contentBlocks?: IContentBlock[];
-  hasQuiz?: boolean; // NOVO: indica se aula tem quiz
-  quizPassed?: boolean; // NOVO: indica se usuário passou no quiz
-  isLoaded?: boolean; // NOVO: indica se o conteúdo da aula foi carregado
+  hasQuiz?: boolean;
+  quizPassed?: boolean;
+  isLoaded?: boolean;
+  textBlocksRead?: string[];   // IDs dos blocos de texto lidos
+  videosWatched?: string[];    // URLs dos vídeos assistidos
+  audiosListened?: string[];   // IDs dos blocos de áudio ouvidos
 }
 
 export interface IContentBlock {
@@ -111,10 +114,15 @@ export class Lesson {
   private _lastAccessedBlockId: string | null;
   private _contentBlocks: IContentBlock[];
 
-  // NOVO: Suporte a Quiz System
+  // Quiz System
   private _hasQuiz: boolean;
   private _quizPassed: boolean;
   private _isLoaded: boolean;
+
+  // Dynamic Progress Tracking
+  private _textBlocksRead: Set<string>;
+  private _videosWatched: Set<string>;
+  private _audiosListened: Set<string>;
 
   constructor(data: ILessonData) {
     this._id = data.id;
@@ -133,7 +141,10 @@ export class Lesson {
     this._contentBlocks = data.contentBlocks ? [...data.contentBlocks] : [];
     this._hasQuiz = data.hasQuiz || false;
     this._quizPassed = data.quizPassed || false;
-    this._isLoaded = data.isLoaded !== undefined ? data.isLoaded : true; // Default true for backward compatibility
+    this._isLoaded = data.isLoaded !== undefined ? data.isLoaded : true;
+    this._textBlocksRead = new Set(data.textBlocksRead || []);
+    this._videosWatched = new Set(data.videosWatched || []);
+    this._audiosListened = new Set(data.audiosListened || []);
   }
 
   get id(): string { return this._id; }
@@ -153,6 +164,9 @@ export class Lesson {
   get hasQuiz(): boolean { return this._hasQuiz; }
   get quizPassed(): boolean { return this._quizPassed; }
   get isLoaded(): boolean { return this._isLoaded; }
+  get textBlocksRead(): string[] { return [...this._textBlocksRead]; }
+  get videosWatched(): string[] { return [...this._videosWatched]; }
+  get audiosListened(): string[] { return [...this._audiosListened]; }
 
   /**
    * Carrega o conteúdo da aula (Lazy Loading)
@@ -179,16 +193,19 @@ export class Lesson {
 
     const wasCompleted = this._isCompleted;
 
-    if (this._durationSeconds <= 0) {
-      this._watchedSeconds = Math.max(0, watched);
-      if (this._watchedSeconds > 0) this._isCompleted = true;
-      return !wasCompleted && this._isCompleted;
+    this._watchedSeconds = Math.max(0, watched);
+
+    // Check time-based progress (legacy/fallback)
+    if (this._durationSeconds > 0) {
+      this._watchedSeconds = Math.min(watched, this._durationSeconds);
+      const timeProgress = (this._watchedSeconds / this._durationSeconds) * 100;
+      if (timeProgress >= 90) this._isCompleted = true;
+    } else if (this._watchedSeconds > 0) {
+      this._isCompleted = true;
     }
 
-    this._watchedSeconds = Math.min(watched, this._durationSeconds);
-    const progressPercentage = (this._watchedSeconds / this._durationSeconds) * 100;
-
-    if (progressPercentage >= 90) {
+    // Check dynamic item-based progress (text + audio + video)
+    if (!this._isCompleted && this.calculateProgressPercentage() >= 90) {
       this._isCompleted = true;
     }
 
@@ -200,10 +217,50 @@ export class Lesson {
    * @returns Porcentagem de 0 a 100
    */
   public calculateProgressPercentage(): number {
-    if (this._durationSeconds <= 0) {
-      return this._watchedSeconds > 0 ? 100 : 0;
+    if (this._isCompleted) return 100;
+
+    // Dynamic item-based progress model
+    const textBlocks = this._contentBlocks.length;
+    const audioBlocks = this._contentBlocks.filter(b => b.audioUrl).length;
+    const videoCount = this._videoUrls.length + (this._videoUrl ? 1 : 0);
+    const totalItems = textBlocks + audioBlocks + videoCount;
+
+    // Fallback: no content blocks (legacy or video-only lesson)
+    if (totalItems === 0) {
+      if (this._durationSeconds <= 0) {
+        return this._watchedSeconds > 0 ? 100 : 0;
+      }
+      return Math.min(100, Math.round((this._watchedSeconds / this._durationSeconds) * 100));
     }
-    return Math.round((this._watchedSeconds / this._durationSeconds) * 100);
+
+    // Count consumed items
+    const readBlocks = Math.min(this._textBlocksRead.size, textBlocks);
+    const listenedAudios = Math.min(this._audiosListened.size, audioBlocks);
+    const watchedVideos = Math.min(this._videosWatched.size, videoCount);
+    const consumedItems = readBlocks + listenedAudios + watchedVideos;
+
+    return Math.min(100, Math.round((consumedItems / totalItems) * 100));
+  }
+
+  /**
+   * Marca um bloco de texto como lido
+   */
+  public markBlockAsRead(blockId: string): void {
+    this._textBlocksRead.add(blockId);
+  }
+
+  /**
+   * Marca um vídeo como assistido
+   */
+  public markVideoWatched(videoUrl: string): void {
+    this._videosWatched.add(videoUrl);
+  }
+
+  /**
+   * Marca um bloco de áudio como ouvido
+   */
+  public markAudioListened(blockId: string): void {
+    this._audiosListened.add(blockId);
   }
 
   /**
@@ -211,10 +268,33 @@ export class Lesson {
    * Considera se há quiz e se o usuário passou nele (Rich Domain Model + Quiz System)
    * @returns true se aula está concluída E (não tem quiz OU passou no quiz)
    */
-  public isTrulyCompleted(): boolean {
-    if (!this._isCompleted) return false;
-    if (this._hasQuiz && !this._quizPassed) return false;
-    return true;
+  /**
+   * Clona a aula para gatilhar re-render do React (Immutability Pattern)
+   */
+  public clone(): Lesson {
+    const data: ILessonData = {
+      id: this._id,
+      title: this._title,
+      videoUrl: this._videoUrl,
+      videoUrls: [...this._videoUrls],
+      content: this._content,
+      audioUrl: this._audioUrl,
+      imageUrl: this._imageUrl,
+      resources: [...this._resources],
+      durationSeconds: this._durationSeconds,
+      watchedSeconds: this._watchedSeconds,
+      isCompleted: this._isCompleted,
+      position: this._position,
+      lastAccessedBlockId: this._lastAccessedBlockId,
+      contentBlocks: [...this._contentBlocks],
+      hasQuiz: this._hasQuiz,
+      quizPassed: this._quizPassed,
+      isLoaded: this._isLoaded,
+      textBlocksRead: [...this._textBlocksRead],
+      videosWatched: [...this._videosWatched],
+      audiosListened: [...this._audiosListened]
+    };
+    return new Lesson(data);
   }
 }
 

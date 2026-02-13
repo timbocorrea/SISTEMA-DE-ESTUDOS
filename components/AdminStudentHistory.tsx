@@ -30,36 +30,36 @@ export const AdminStudentHistory: React.FC<AdminStudentHistoryProps> = ({ userId
         }
     }, [userId, adminService]);
 
-    if (loading) return <div className="text-gray-400 text-sm">Carregando histórico...</div>;
-    if (error) return <div className="text-red-400 text-sm">{error}</div>;
-    if (history.length === 0) return <div className="text-gray-400 text-sm italic">Nenhum registro encontrado.</div>;
+    if (loading) return <div className="text-slate-400 dark:text-slate-500 text-sm py-4">Carregando histórico...</div>;
+    if (error) return <div className="text-red-500 dark:text-red-400 text-sm py-4">{error}</div>;
+    if (history.length === 0) return <div className="text-slate-400 dark:text-slate-500 text-sm italic py-4">Nenhum registro encontrado.</div>;
 
     return (
         <div className="mt-4">
-            <h3 className="text-md font-semibold text-gray-200 mb-2">Histórico de Progressão</h3>
-            <div className="overflow-x-auto border border-gray-700 rounded-md">
-                <table className="min-w-full divide-y divide-gray-700">
-                    <thead className="bg-gray-800">
+            <h3 className="text-md font-black text-slate-800 dark:text-white mb-3">Histórico de Progressão</h3>
+            <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm">
+                <table className="min-w-full divide-y divide-slate-100 dark:divide-slate-800 text-left">
+                    <thead className="bg-slate-50 dark:bg-slate-800/50">
                         <tr>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Data</th>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Ação</th>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">XP</th>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Descrição</th>
+                            <th className="px-4 py-3 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Data</th>
+                            <th className="px-4 py-3 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Ação</th>
+                            <th className="px-4 py-3 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">XP</th>
+                            <th className="px-4 py-3 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Descrição</th>
                         </tr>
                     </thead>
-                    <tbody className="bg-gray-900 divide-y divide-gray-700">
+                    <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
                         {history.map((log) => (
-                            <tr key={log.id} className="hover:bg-gray-800/50 transition-colors">
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-300">
+                            <tr key={log.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">
                                     {new Date(log.created_at).toLocaleString('pt-BR')}
                                 </td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-cyan-400 font-mono">
+                                <td className="px-4 py-3 whitespace-nowrap text-xs text-indigo-600 dark:text-cyan-400 font-black tracking-widest">
                                     {log.action_type}
                                 </td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-yellow-400 font-bold">
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-emerald-600 dark:text-emerald-400 font-bold">
                                     +{log.amount} XP
                                 </td>
-                                <td className="px-3 py-2 text-sm text-gray-400">
+                                <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400 font-medium max-w-xs truncate" title={log.description}>
                                     {log.description}
                                 </td>
                             </tr>

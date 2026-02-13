@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { serializeRange, deserializeRange, findRangeByText } from '../utils/xpathUtils';
 import { LessonNotesRepository, LessonNote } from '../repositories/LessonNotesRepository';
 import BuddyContextModal from './BuddyContextModal';
+import MergeNotesModal from './MergeNotesModal';
 import { toast } from 'sonner';
 
 interface Note {
@@ -16,6 +17,7 @@ interface Note {
     offsetStart?: number;
     xpathEnd?: string;
     offsetEnd?: number;
+    extraHighlights?: any[];
     createdAt?: string;
 }
 
@@ -25,9 +27,19 @@ interface NotesPanelProps {
     refreshTrigger?: any; // Dispara restauracao quando mudar (ex: activeBlockId)
     onNoteSelect?: () => void;
     focusedNoteId?: string | null;
+    onNotesChange?: (notes: Note[]) => void;
+    externalDraft?: { text: string, range: Range } | null;
 }
 
-const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refreshTrigger, onNoteSelect, focusedNoteId }) => {
+const NotesPanelPrototype: React.FC<NotesPanelProps> = ({
+    userId,
+    lessonId,
+    refreshTrigger,
+    onNoteSelect,
+    focusedNoteId,
+    onNotesChange,
+    externalDraft
+}) => {
     const [notes, setNotes] = useState<Note[]>([]);
     const [loading, setLoading] = useState(true);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -44,6 +56,8 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
     const [activeBuddyNoteId, setActiveBuddyNoteId] = useState<string | null>(null);
     const [buddyNoteContent, setBuddyNoteContent] = useState<string>('');
     const [visibleNotes, setVisibleNotes] = useState<Set<string>>(new Set());
+    const [isMergeModalOpen, setIsMergeModalOpen] = useState(false);
+    const [noteToMergeId, setNoteToMergeId] = useState<string | null>(null);
 
     const toggleNoteVisibility = (noteId: string, e: React.MouseEvent) => {
         e.stopPropagation();
@@ -57,6 +71,24 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
             return next;
         });
     };
+
+    // Handle external draft (from context menu)
+    useEffect(() => {
+        if (externalDraft) {
+            setSavedSelection(externalDraft);
+            setNewNoteContent(externalDraft.text);
+            setShowColorPicker(true);
+            setAppliedHighlightId(null);
+
+            // Scroll notes panel to bottom to show picker
+            setTimeout(() => {
+                const container = document.querySelector('.notes-list-container');
+                if (container) {
+                    container.scrollTop = container.scrollHeight;
+                }
+            }, 100);
+        }
+    }, [externalDraft]);
 
 
 
@@ -87,12 +119,16 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
                     offsetStart: n.offset_start,
                     xpathEnd: n.xpath_end,
                     offsetEnd: n.offset_end,
+                    extraHighlights: n.extra_highlights, // Added extraHighlights mapping
                     createdAt: n.created_at
                 }));
 
                 setNotes(frontendNotes);
                 setLoading(false);
                 restoreDomHighlights(frontendNotes);
+
+                // Notifica pai na carga inicial
+                if (onNotesChange) onNotesChange(frontendNotes);
             } else {
                 // Apenas restaurar destaques no DOM (refresh disparado)
                 restoreDomHighlights(notes);
@@ -100,47 +136,85 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
         };
 
         const restoreDomHighlights = (notesToRestore: Note[]) => {
+            // Helper to apply a single highlight
+            const applyHighlight = (id: string, color: string, xpathStart: string, xpathEnd: string, offsetStart: number, offsetEnd: number) => {
+                try {
+                    const range = deserializeRange({
+                        xpathStart,
+                        offsetStart,
+                        xpathEnd,
+                        offsetEnd
+                    });
+
+                    if (range) {
+                        // Crucial: Check if this specific range is already highlighted to avoid double-wrapping
+                        // We do this by checking if the startContainer is already inside a mark with the same ID
+                        // or if the common ancestor is a mark.
+                        let isAlreadyHighlighted = false;
+                        let parent = range.commonAncestorContainer as HTMLElement;
+                        while (parent && parent.nodeName !== 'BODY') {
+                            if (parent.nodeName === 'MARK' && parent.getAttribute('data-note-id') === id) {
+                                isAlreadyHighlighted = true;
+                                break;
+                            }
+                            parent = parent.parentElement as HTMLElement;
+                        }
+                        if (isAlreadyHighlighted) return;
+
+                        const highlightSpan = document.createElement('mark');
+                        highlightSpan.className = `highlight-${color}`;
+                        highlightSpan.style.backgroundColor =
+                            color === 'yellow' ? '#fef08a' :
+                                color === 'green' ? '#86efac' :
+                                    color === 'blue' ? '#93c5fd' : '#f9a8d4';
+                        highlightSpan.style.padding = '2px 4px';
+                        highlightSpan.style.borderRadius = '4px';
+                        highlightSpan.style.cursor = 'pointer';
+                        highlightSpan.setAttribute('data-note-id', id);
+
+                        const contents = range.extractContents();
+                        highlightSpan.appendChild(contents);
+                        range.insertNode(highlightSpan);
+                        console.log('Destaque restaurado:', id);
+                    }
+                } catch (e) {
+                    // Silencioso
+                }
+            };
+
             // Restaurar destaques no DOM
             // Aguardar um pouco para garantir que o conteudo da aula renderizou
             setTimeout(() => {
                 notesToRestore.forEach(note => {
+                    // 1. Restaurar destaque principal
                     if (note.hasHighlight && note.xpathStart && note.xpathEnd) {
-                        try {
-                            // Verificar se ja existe
-                            const existingMark = document.querySelector(`mark[data-note-id="${note.id}"]`);
-                            if (existingMark) return;
+                        applyHighlight(
+                            note.id,
+                            note.highlightColor || 'yellow',
+                            note.xpathStart,
+                            note.xpathEnd,
+                            note.offsetStart!,
+                            note.offsetEnd!
+                        );
+                    }
 
-                            const range = deserializeRange({
-                                xpathStart: note.xpathStart,
-                                offsetStart: note.offsetStart!,
-                                xpathEnd: note.xpathEnd,
-                                offsetEnd: note.offsetEnd!
-                            });
-
-                            if (range) {
-                                const highlightSpan = document.createElement('mark');
-                                highlightSpan.className = `highlight-${note.highlightColor}`;
-                                highlightSpan.style.backgroundColor =
-                                    note.highlightColor === 'yellow' ? '#fef08a' :
-                                        note.highlightColor === 'green' ? '#86efac' :
-                                            note.highlightColor === 'blue' ? '#93c5fd' : '#f9a8d4';
-                                highlightSpan.style.padding = '2px 4px';
-                                highlightSpan.style.borderRadius = '4px';
-                                highlightSpan.style.cursor = 'pointer';
-                                highlightSpan.setAttribute('data-note-id', note.id);
-
-                                const contents = range.extractContents();
-                                highlightSpan.appendChild(contents);
-                                range.insertNode(highlightSpan);
-                                console.log('Destaque restaurado via XPath:', note.id);
+                    // 2. Restaurar destaques vinculados (extra highlights)
+                    if (note.extraHighlights && Array.isArray(note.extraHighlights)) {
+                        note.extraHighlights.forEach(extra => {
+                            if (extra.xpathStart && extra.xpathEnd) {
+                                applyHighlight(
+                                    note.id,
+                                    extra.color || 'yellow',
+                                    extra.xpathStart,
+                                    extra.xpathEnd,
+                                    extra.offsetStart,
+                                    extra.offsetEnd
+                                );
                             }
-                        } catch (e) {
-                            // Silencioso se falhar, pode ser que o conteudo mudou
-                            // console.warn('Falha ao restaurar destaque', note.id, e);
-                        }
+                        });
                     }
                 });
-            }, 500); // Delay reduzido para 500ms
+            }, 500); // Delay de 500ms
         };
 
         loadNotesAndHighlights();
@@ -170,7 +244,9 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
                         highlight_color: color
                     });
                     // Update local state
-                    setNotes(notes.map(n => n.id === appliedHighlightId ? { ...n, highlightColor: color } : n));
+                    const updatedNotes = notes.map(n => n.id === appliedHighlightId ? { ...n, highlightColor: color } : n);
+                    setNotes(updatedNotes);
+                    if (onNotesChange) onNotesChange(updatedNotes);
                 }
                 setSelectedColor(color);
                 return;
@@ -184,7 +260,7 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
             const newNote: Omit<LessonNote, 'id' | 'created_at' | 'updated_at'> = {
                 user_id: userId,
                 lesson_id: lessonId,
-                content: '',
+                content: newNoteContent,
                 position: position,
                 has_highlight: true,
                 title: 'Destaque',
@@ -231,9 +307,17 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
                     createdAt: savedNote.created_at
                 };
 
-                setNotes([...notes, noteFrontend]);
+                const updatedNotes = [...notes, noteFrontend];
+                setNotes(updatedNotes);
+                if (onNotesChange) onNotesChange(updatedNotes);
+
                 setAppliedHighlightId(savedNote.id);
                 setSelectedColor(color);
+
+                // Clear draft after success
+                setSavedSelection(null);
+                setShowColorPicker(false);
+                setNewNoteContent('');
             }
         } catch (e) {
             console.error('Erro ao aplicar destaque:', e);
@@ -282,7 +366,9 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
                     createdAt: savedNote.created_at
                 };
 
-                setNotes([...notes, noteFrontend]);
+                const updatedNotes = [...notes, noteFrontend];
+                setNotes(updatedNotes);
+                if (onNotesChange) onNotesChange(updatedNotes);
 
                 // Se for destaque, aplicar visualmente no DOM (se ja nao estiver aplicado pelo fluxo de selecao)
                 // NOTA: O fluxo de selecao no botao ja aplica o visual antes de salvar?
@@ -328,14 +414,16 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
             // Remover visualmente primeiro (optimistic update)
             const note = notes.find(n => n.id === noteId);
             if (note?.hasHighlight) {
-                const markElement = document.querySelector(`mark[data-note-id="${noteId}"]`);
-                if (markElement) {
-                    const textNode = document.createTextNode(markElement.textContent || '');
-                    markElement.parentNode?.replaceChild(textNode, markElement);
-                }
+                const markers = document.querySelectorAll(`mark[data-note-id="${noteId}"]`);
+                markers.forEach(mark => {
+                    const textNode = document.createTextNode(mark.textContent || '');
+                    mark.parentNode?.replaceChild(textNode, mark);
+                });
             }
 
-            setNotes(notes.filter(n => n.id !== noteId));
+            const updatedNotes = notes.filter(n => n.id !== noteId);
+            setNotes(updatedNotes);
+            if (onNotesChange) onNotesChange(updatedNotes);
 
             // Remover do banco
             const success = await LessonNotesRepository.deleteNote(noteId);
@@ -361,12 +449,12 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
 
     const handleRemoveHighlight = async (noteId: string) => {
         try {
-            // Remover mark do DOM
-            const markElement = document.querySelector(`mark[data-note-id="${noteId}"]`);
-            if (markElement) {
-                const textNode = document.createTextNode(markElement.textContent || '');
-                markElement.parentNode?.replaceChild(textNode, markElement);
-            }
+            // Remover marks do DOM (pode haver varios se for unificada)
+            const markers = document.querySelectorAll(`mark[data-note-id="${noteId}"]`);
+            markers.forEach(mark => {
+                const textNode = document.createTextNode(mark.textContent || '');
+                mark.parentNode?.replaceChild(textNode, mark);
+            });
 
             // Atualizar estado
             setNotes(notes.map(n =>
@@ -383,6 +471,15 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
                 xpath_start: null as any,
                 xpath_end: null as any
             });
+
+            if (onNotesChange) {
+                const updatedNotes = notes.map(n =>
+                    n.id === noteId
+                        ? { ...n, hasHighlight: false, highlightedText: undefined, highlightColor: undefined }
+                        : n
+                );
+                onNotesChange(updatedNotes);
+            }
 
         } catch (e) {
             console.error('Erro ao remover destaque:', e);
@@ -492,6 +589,96 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
         alert('Resposta adicionada a nota com sucesso!');
     };
 
+    const handleMergeNotes = async (targetNoteId: string) => {
+        if (!noteToMergeId || noteToMergeId === targetNoteId) return;
+
+        const sourceNote = notes.find(n => n.id === noteToMergeId);
+        const targetNote = notes.find(n => n.id === targetNoteId);
+
+        if (!sourceNote || !targetNote) return;
+
+        try {
+            // 1. Prepare highlights to merge
+            const currentHighlights = targetNote.extraHighlights || [];
+            const sourceHighlightMeta = {
+                text: sourceNote.highlightedText,
+                color: sourceNote.highlightColor,
+                xpathStart: sourceNote.xpathStart,
+                xpathEnd: sourceNote.xpathEnd,
+                offsetStart: sourceNote.offsetStart,
+                offsetEnd: sourceNote.offsetEnd
+            };
+
+            // Also include source's own extra highlights if any
+            const newExtraHighlights = [...currentHighlights, sourceHighlightMeta];
+            if (sourceNote.extraHighlights && Array.isArray(sourceNote.extraHighlights)) {
+                newExtraHighlights.push(...sourceNote.extraHighlights);
+            }
+
+            // 1.5 Concatenate content
+            const sourceIndex = notes.findIndex(n => n.id === noteToMergeId) + 1;
+            const separator = '\n\n' + '-'.repeat(30) + '\n' + `Unificado da Nota ${sourceIndex}` + '\n' + '-'.repeat(30) + '\n';
+            const mergedContent = targetNote.content
+                ? `${targetNote.content}${separator}${sourceNote.content || 'Sem conteúdo'}`
+                : sourceNote.content;
+
+            // 2. Update target note in DB
+            const successUpdate = await LessonNotesRepository.updateNote(targetNoteId, {
+                content: mergedContent,
+                extra_highlights: newExtraHighlights
+            });
+            if (!successUpdate) throw new Error('Falha ao atualizar nota de destino');
+
+            // 3. Delete source note from DB
+            const successDelete = await LessonNotesRepository.deleteNote(noteToMergeId);
+            if (!successDelete) throw new Error('Falha ao deletar nota de origem');
+
+            // 4. Update DOM highlights
+            // Change data-note-id of all marks that point to sourceId to targetId
+            const marks = document.querySelectorAll(`mark[data-note-id="${noteToMergeId}"]`);
+            marks.forEach(mark => {
+                mark.setAttribute('data-note-id', targetNoteId);
+            });
+
+            // 5. Update local state
+            const updatedNotes = notes
+                .filter(n => n.id !== noteToMergeId)
+                .map(n => n.id === targetNoteId ? {
+                    ...n,
+                    content: mergedContent,
+                    extraHighlights: newExtraHighlights
+                } : n);
+
+            setNotes(updatedNotes);
+            if (onNotesChange) onNotesChange(updatedNotes);
+
+            toast.success(`Notas unificadas com sucesso na Nota ${notes.findIndex(n => n.id === targetNoteId) + 1}!`);
+        } catch (error) {
+            console.error('Erro ao unificar notas:', error);
+            toast.error('Erro ao unificar notas. Tente novamente.');
+        } finally {
+            setNoteToMergeId(null);
+            setIsMergeModalOpen(false);
+        }
+    };
+
+    const scrollToSpecificHighlight = (highlight: any, noteId: string) => {
+        // Mock a temporary note object to reuse scrollToHighlight logic
+        const tempNote: Note = {
+            id: noteId,
+            hasHighlight: true,
+            highlightedText: highlight.text,
+            highlightColor: highlight.color,
+            xpathStart: highlight.xpathStart,
+            xpathEnd: highlight.xpathEnd,
+            offsetStart: highlight.offsetStart,
+            offsetEnd: highlight.offsetEnd,
+            content: '',
+            position: 0
+        };
+        scrollToHighlight(tempNote);
+    };
+
     const highlightColorClasses = {
         yellow: 'border-yellow-400 bg-yellow-50 dark:bg-yellow-900/10',
         green: 'border-green-400 bg-green-50 dark:bg-green-900/10',
@@ -520,7 +707,7 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
 
     if (loading) {
         return (
-            <div className="h-[600px] flex items-center justify-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">
+            <div className="h-full min-h-[400px] flex items-center justify-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">
                 <div className="text-center text-slate-500">
                     <i className="fas fa-circle-notch fa-spin text-2xl mb-2"></i>
                     <p className="text-sm">Carregando notas...</p>
@@ -530,7 +717,7 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
     }
 
     return (
-        <div className="h-[600px] flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden relative">
+        <div className="flex-1 h-full flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden relative">
             {/* Header */}
             <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 flex-shrink-0">
                 <div className="flex items-center justify-between mb-2">
@@ -581,17 +768,56 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
                             )}
                         </div>
 
-                        {/* Texto destacado */}
+                        {/* Texto destacado principal */}
                         {note.hasHighlight && note.highlightedText && (
-                            <div className={`text-xs italic text-slate-600 dark:text-slate-400 border-l-4 pl-3 py-1 mb-2 ${note.highlightColor === 'yellow' ? 'border-yellow-500' :
-                                note.highlightColor === 'green' ? 'border-green-500' :
-                                    note.highlightColor === 'blue' ? 'border-blue-500' : 'border-pink-500'
-                                }`}>
-                                <i className="fas fa-quote-left text-[8px] mr-1 opacity-50"></i>
-                                {note.highlightedText.length > 80
-                                    ? `${note.highlightedText.substring(0, 80)}...`
-                                    : note.highlightedText}
-                                <i className="fas fa-quote-right text-[8px] ml-1 opacity-50"></i>
+                            <div
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    scrollToHighlight(note);
+                                }}
+                                className={`text-xs italic text-slate-600 dark:text-slate-400 border-l-4 pl-3 py-1 mb-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group ${note.highlightColor === 'yellow' ? 'border-yellow-500' :
+                                    note.highlightColor === 'green' ? 'border-green-500' :
+                                        note.highlightColor === 'blue' ? 'border-blue-500' : 'border-pink-500'
+                                    }`}
+                            >
+                                <div className="flex items-center justify-between">
+                                    <div className="flex-1">
+                                        <i className="fas fa-quote-left text-[8px] mr-1 opacity-50"></i>
+                                        {note.highlightedText.length > 80
+                                            ? `${note.highlightedText.substring(0, 80)}...`
+                                            : note.highlightedText}
+                                        <i className="fas fa-quote-right text-[8px] ml-1 opacity-50"></i>
+                                    </div>
+                                    <i className="fas fa-external-link-alt text-[10px] opacity-0 group-hover:opacity-50 transition-opacity ml-2"></i>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Destaques Vinculados (Multi-Highlight) */}
+                        {note.extraHighlights && note.extraHighlights.length > 0 && (
+                            <div className="mb-3 space-y-2">
+                                <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1 flex items-center gap-1">
+                                    <i className="fas fa-link"></i>
+                                    Destaques Vinculados
+                                </p>
+                                {note.extraHighlights.map((extra, idx) => (
+                                    <div
+                                        key={idx}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            scrollToSpecificHighlight(extra, note.id);
+                                        }}
+                                        className={`text-[11px] italic text-slate-500 dark:text-slate-400 border-l-2 pl-2 py-1 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group flex items-center justify-between ${extra.color === 'yellow' ? 'border-yellow-400/50' :
+                                            extra.color === 'green' ? 'border-green-400/50' :
+                                                extra.color === 'blue' ? 'border-blue-400/50' : 'border-pink-400/50'
+                                            }`}
+                                    >
+                                        <span className="truncate flex-1">
+                                            {extra.text?.length > 60 ? `${extra.text.substring(0, 60)}...` : extra.text}
+                                        </span>
+                                        <i className="fas fa-eye text-[10px] opacity-0 group-hover:opacity-50 transition-opacity"></i>
+                                    </div>
+                                ))}
                             </div>
                         )}
 
@@ -623,6 +849,20 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
                             >
                                 <i className={`fas fa-chevron-${visibleNotes.has(note.id) ? 'up' : 'down'}`}></i>
                                 {visibleNotes.has(note.id) ? 'Ocultar Nota' : 'Ver Nota'}
+                            </button>
+
+                            {/* Unificar Button */}
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setNoteToMergeId(note.id);
+                                    setIsMergeModalOpen(true);
+                                }}
+                                className="text-xs text-slate-500 hover:text-amber-600 dark:text-slate-400 dark:hover:text-amber-400 font-medium flex items-center gap-1 transition-colors"
+                                title="Unificar com outra nota para vincular raciocínio"
+                            >
+                                <i className="fas fa-link"></i>
+                                Unificar
                             </button>
 
                             {editingId === note.id ? (
@@ -777,6 +1017,10 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
                                     text: selectedText,
                                     range: range.cloneRange()
                                 });
+                                // Capture text into textarea automatically
+                                if (!newNoteContent.trim()) {
+                                    setNewNoteContent(selectedText);
+                                }
                                 setShowColorPicker(true);
                             }
                         }}
@@ -804,6 +1048,14 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({ userId, lessonId, refr
                 initialContext={buddyContext}
                 onAddToNote={handleAddToNote}
                 existingNoteContent={buddyNoteContent}
+            />
+
+            <MergeNotesModal
+                isOpen={isMergeModalOpen}
+                onClose={() => setIsMergeModalOpen(false)}
+                currentNoteNumber={notes.findIndex(n => n.id === noteToMergeId) + 1}
+                availableNotes={notes.map((n, idx) => ({ id: n.id, number: idx + 1, text: n.highlightedText }))}
+                onMerge={handleMergeNotes}
             />
         </div>
     );

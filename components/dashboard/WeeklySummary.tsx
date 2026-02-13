@@ -28,7 +28,7 @@ const WeeklySummary: React.FC<WeeklySummaryProps> = ({ xpHistory, courseProgress
 
             {/* Stats Cards - Vertical Stack for Sidebar */}
             <div className="grid grid-cols-1 gap-3">
-                <div className="bg-slate-100 dark:bg-black/20 backdrop-blur-md rounded-2xl p-4 border border-slate-200 dark:border-white/5 shadow-sm hover:bg-slate-200 dark:hover:bg-black/30 transition-colors">
+                <div className="bg-white/90 dark:bg-slate-900/80 shadow-md backdrop-blur-md rounded-2xl p-4 border border-slate-200 dark:border-white/5 hover:bg-white dark:hover:bg-slate-900 transition-colors">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center ring-1 ring-indigo-500/20">
                             <i className="fas fa-fire text-lg drop-shadow-md"></i>
@@ -40,7 +40,7 @@ const WeeklySummary: React.FC<WeeklySummaryProps> = ({ xpHistory, courseProgress
                     </div>
                 </div>
 
-                <div className="bg-black/20 backdrop-blur-md rounded-2xl p-4 border border-white/5 shadow-sm hover:bg-black/30 transition-colors">
+                <div className="bg-white/90 dark:bg-slate-900/80 shadow-md backdrop-blur-md rounded-2xl p-4 border border-slate-200 dark:border-white/5 hover:bg-white dark:hover:bg-slate-900 transition-colors">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center ring-1 ring-emerald-500/20">
                             <i className="fas fa-trophy text-lg drop-shadow-md"></i>
@@ -52,7 +52,7 @@ const WeeklySummary: React.FC<WeeklySummaryProps> = ({ xpHistory, courseProgress
                     </div>
                 </div>
 
-                <div className="bg-black/20 backdrop-blur-md rounded-2xl p-4 border border-white/5 shadow-sm hover:bg-black/30 transition-colors">
+                <div className="bg-white/90 dark:bg-slate-900/80 shadow-md backdrop-blur-md rounded-2xl p-4 border border-slate-200 dark:border-white/5 hover:bg-white dark:hover:bg-slate-900 transition-colors">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-violet-500/10 text-violet-400 flex items-center justify-center ring-1 ring-violet-500/20">
                             <i className="fas fa-chart-line text-lg drop-shadow-md"></i>
@@ -68,7 +68,7 @@ const WeeklySummary: React.FC<WeeklySummaryProps> = ({ xpHistory, courseProgress
             {/* Charts - Vertical Stack */}
             <div className="grid grid-cols-1 gap-4">
                 {/* XP History Chart */}
-                <div className="bg-slate-100 dark:bg-black/20 backdrop-blur-md rounded-2xl p-4 border border-slate-200 dark:border-white/5 shadow-sm">
+                <div className="bg-white/90 dark:bg-slate-900/80 shadow-md backdrop-blur-md rounded-2xl p-4 border border-slate-200 dark:border-white/5">
                     <h3 className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-4 flex items-center justify-between uppercase tracking-wider">
                         <div className="flex items-center gap-2">
                             <i className="fas fa-chart-bar text-indigo-400"></i>
@@ -140,7 +140,7 @@ const WeeklySummary: React.FC<WeeklySummaryProps> = ({ xpHistory, courseProgress
                 </div>
 
                 {/* Course Progress List */}
-                <div className="bg-slate-100 dark:bg-black/20 backdrop-blur-md rounded-2xl p-4 border border-slate-200 dark:border-white/5 shadow-sm">
+                <div className="bg-white/90 dark:bg-slate-900/80 shadow-md backdrop-blur-md rounded-2xl p-4 border border-slate-200 dark:border-white/5">
                     <h3 className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-4 flex items-center gap-2 uppercase tracking-wider">
                         <i className="fas fa-chart-pie text-violet-400"></i>
                         Progresso

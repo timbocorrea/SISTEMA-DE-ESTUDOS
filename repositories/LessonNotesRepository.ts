@@ -14,6 +14,7 @@ export interface LessonNote {
     offset_start?: number;
     xpath_end?: string;
     offset_end?: number;
+    extra_highlights?: any[];
     created_at: string;
     updated_at: string;
 }
@@ -27,7 +28,7 @@ export class LessonNotesRepository {
     static async loadNotes(userId: string, lessonId: string): Promise<LessonNote[]> {
         const { data, error } = await this.client
             .from('lesson_notes')
-            .select('*')
+            .select('*, extra_highlights')
             .eq('user_id', userId)
             .eq('lesson_id', lessonId)
             .order('position', { ascending: true });

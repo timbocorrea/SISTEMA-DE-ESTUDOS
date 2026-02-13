@@ -173,4 +173,18 @@ export class CourseService {
   public async checkEnrollment(userId: string, courseId: string): Promise<boolean> {
     return this.courseRepository.isEnrolled(userId, courseId);
   }
+
+  /**
+   * Marca um bloco de texto como lido pelo aluno
+   */
+  public async markTextBlockAsRead(userId: string, lessonId: string, blockId: string): Promise<void> {
+    return this.courseRepository.markTextBlockAsRead(userId, lessonId, blockId);
+  }
+
+  /**
+   * Busca histórico de XP dos últimos 7 dias
+   */
+  public async getWeeklyXpHistory(userId: string): Promise<{ date: string; xp: number }[]> {
+    return this.courseRepository.getWeeklyXpHistory(userId);
+  }
 }

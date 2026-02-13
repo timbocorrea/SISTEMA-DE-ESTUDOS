@@ -19,7 +19,10 @@ interface CourseContextType {
     selectModule: (moduleId: string) => void;
     selectLesson: (lessonId: string) => void;
 
-    updateProgress: (watchedSeconds: number) => Promise<void>;
+    updateProgress: (watchedSeconds: number, lastBlockId?: string) => Promise<void>;
+    markBlockAsRead: (blockId: string) => void;
+    markVideoWatched: (videoUrl: string) => void;
+    markAudioListened: (blockId: string) => void;
     enrollInCourse: (courseId: string) => Promise<void>;
 
     courseService: CourseService;
@@ -132,22 +135,66 @@ export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
     };
 
-    const updateProgress = async (watchedSeconds: number) => {
+    const updateProgress = async (watchedSeconds: number, lastBlockId?: string) => {
         if (!activeLesson || !activeCourse || !user) return;
-        // Optimistic
-        activeLesson.updateProgress(watchedSeconds);
-        // Server
-        await courseService.updateUserProgress(user, activeLesson, activeCourse, activeLesson.isCompleted);
-        // Force update (context ref ref) - React Query might not refetch immediately.
-        // We might need to manually invalidate or set query data.
-        // queryClient.setQueryData... (need access to client)
+
+        // Optimistic: returns true only when lesson JUST became completed
+        const becameCompleted = activeLesson.updateProgress(watchedSeconds);
+
+        // Trigger React re-render by cloning the modified lesson (Immutability)
+        setActiveLesson(activeLesson.clone());
+
+        // Server update — pass the CORRECT becameCompleted flag
+        await courseService.updateUserProgress(user, activeLesson, activeCourse, becameCompleted, lastBlockId);
+
+        // If it was just completed, refresh course data in cache
+        if (becameCompleted) {
+            queryClient.invalidateQueries({ queryKey: ['course', activeCourse.id, user.id] });
+        }
+    };
+
+    const checkAndTriggerCompletion = async (lesson: Lesson) => {
+        if (!activeCourse || !user) return;
+        const wasCompleted = lesson.isCompleted;
+        // Check if dynamic progress just reached 90%
+        if (!wasCompleted && lesson.calculateProgressPercentage() >= 90) {
+            // This triggers the full completion flow including XP via RPC
+            const becameCompleted = lesson.updateProgress(lesson.watchedSeconds);
+            setActiveLesson(lesson.clone());
+            if (becameCompleted) {
+                await courseService.updateUserProgress(user, lesson, activeCourse, true);
+                queryClient.invalidateQueries({ queryKey: ['course', activeCourse.id, user.id] });
+            }
+        }
+    };
+
+    const markBlockAsRead = (blockId: string) => {
+        if (!activeLesson || !user) return;
+        activeLesson.markBlockAsRead(blockId);
+        setActiveLesson(activeLesson.clone());
+        // Persist (fire-and-forget)
+        courseService.markTextBlockAsRead(user.id, activeLesson.id, blockId).catch(console.error);
+        // Check if this read pushed us to completion
+        checkAndTriggerCompletion(activeLesson);
+    };
+
+    const markVideoWatched = (videoUrl: string) => {
+        if (!activeLesson) return;
+        activeLesson.markVideoWatched(videoUrl);
+        setActiveLesson(activeLesson.clone());
+        checkAndTriggerCompletion(activeLesson);
+    };
+
+    const markAudioListened = (blockId: string) => {
+        if (!activeLesson) return;
+        activeLesson.markAudioListened(blockId);
+        setActiveLesson(activeLesson.clone());
+        checkAndTriggerCompletion(activeLesson);
     };
 
     const enrollInCourse = async (courseId: string) => {
         if (!user) return;
         await courseService.enrollUserInCourse(user.id, courseId);
-        // Invalidate queries
-        // coursesListQuery.refetch();
     };
 
     const value = {
@@ -161,6 +208,9 @@ export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         selectModule,
         selectLesson,
         updateProgress,
+        markBlockAsRead,
+        markVideoWatched,
+        markAudioListened,
         enrollInCourse,
         courseService
     };

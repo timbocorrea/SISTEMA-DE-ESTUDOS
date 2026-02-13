@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Course, User } from '../domain/entities';
 import WeeklySummary from './dashboard/WeeklySummary';
 import DashboardHeader from './dashboard/DashboardHeader';
 import CourseCard from './dashboard/CourseCard';
 import DashboardSkeleton from './skeletons/DashboardSkeleton';
 import { motion } from 'framer-motion';
+import { useCourse } from '../contexts/CourseContext';
 
 interface StudentDashboardProps {
   user: User;
@@ -45,49 +46,40 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     return 'cards';
   });
 
-  // Mock XP History Data (Last 7 days)
-  const xpHistory = React.useMemo(() => {
-    // Deterministic pseudo-random number generator (PRNG)
-    // Ensures the same user gets the same "random" values for the same dates
-    const pseudoRandom = (input: string) => {
-      let h = 0xdeadbeef;
-      for (let i = 0; i < input.length; i++) {
-        h = Math.imul(h ^ input.charCodeAt(i), 2654435761);
-      }
-      return ((h ^ h >>> 16) >>> 0) / 4294967296;
-    };
+  // Real XP History Data (Last 7 days)
+  const { courseService } = useCourse();
+  const [xpHistory, setXpHistory] = useState<any[]>([]);
 
-    const today = new Date();
+  useEffect(() => {
+    if (!user?.id) return;
     const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
-    return Array.from({ length: 7 }).map((_, i) => {
-      const date = new Date(today);
-      date.setDate(date.getDate() - (6 - i));
-      const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD for stability
-      const seed = `${user.id}-${dateStr}`;
-
-      const rng1 = pseudoRandom(seed + '-xp');
-      const rng2 = pseudoRandom(seed + '-min');
-
-      // Stable XP between 50 and 300
-      const baseXP = 50 + Math.floor(rng1 * 250);
-
-      // Rough correlation: 10 XP ~= 2-5 minutes
-      const baseMinutes = Math.floor(baseXP / 10 * (0.8 + rng2 * 0.5));
-
-      const day = date.getDate().toString().padStart(2, '0');
-      const month = (date.getMonth() + 1).toString().padStart(2, '0');
-
-      return {
-        date: `${days[date.getDay()]}`,
-        fullDate: `${days[date.getDay()]} ${day}/${month}`,
-        day: day,
-        month: month,
-        xp: baseXP,
-        minutes: baseMinutes
-      };
-    });
-  }, []); // Static for this session
+    courseService.getWeeklyXpHistory(user.id)
+      .then((data) => {
+        // data is { date: 'DD/MM', xp: number }[] for last 7 days
+        const formatted = data.map((entry) => {
+          const [dd, mm] = entry.date.split('/');
+          // Find day of week from dd/mm
+          const year = new Date().getFullYear();
+          const dateObj = new Date(year, parseInt(mm) - 1, parseInt(dd));
+          const dayName = days[dateObj.getDay()] || '';
+          const minutes = Math.round(entry.xp / 10 * 1.2);
+          return {
+            date: dayName,
+            fullDate: `${dayName} ${dd}/${mm}`,
+            day: dd,
+            month: mm,
+            xp: entry.xp,
+            minutes: minutes
+          };
+        });
+        setXpHistory(formatted);
+      })
+      .catch((err) => {
+        console.error('Failed to load XP history:', err);
+        setXpHistory([]);
+      });
+  }, [user?.id, courseService]);
 
   // Calculate Course Progress for Charts
   const courseProgressData = React.useMemo(() => {

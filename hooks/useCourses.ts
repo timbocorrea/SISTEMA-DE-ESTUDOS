@@ -42,7 +42,7 @@ export const useCoursesList = (service: CourseService, userId: string | undefine
                                 title: l.title || 'Aula sem titulo',
                                 videoUrl: '',
                                 durationSeconds: 0,
-                                isCompleted: false,
+                                isCompleted: l.isCompleted || false,
                                 position: l.position || 0
                             } as any)); // Stub lesson
                         return new Module(m.id, m.title || 'Modulo sem titulo', lessons);
