@@ -66,7 +66,11 @@ const LessonContentEditorWrapper: React.FC<{ adminService: AdminService }> = ({ 
     }
   }, [lessonId, adminService, navigate]);
 
-  if (loading) return <ModernLoader message="Carregando editor..." fullscreen />;
+  if (loading) return (
+    <div className="absolute inset-0 z-50 flex items-center justify-center bg-white dark:bg-[#0a0e14]">
+      <ModernLoader message="Carregando editor..." />
+    </div>
+  );
   if (!lesson) return <div className="p-8 text-slate-500">Aula não encontrada.</div>;
 
   return (
@@ -165,6 +169,7 @@ const App: React.FC = () => {
     if (path.startsWith('/admin/access')) return 'access';
     if (path.startsWith('/admin/questionnaire')) return 'questionnaire';
     if (path.startsWith('/admin/settings')) return 'settings';
+    if (path.match(/\/admin\/lesson\/[^/]+\/edit/)) return 'content'; // Keep 'content' active for editor
     if (path.startsWith('/course/')) return 'lesson';
     if (path.startsWith('/editor/')) return 'content-editor';
     return 'dashboard';
@@ -411,7 +416,7 @@ const App: React.FC = () => {
       <Toaster theme="dark" richColors position="top-right" />
 
       {/* Sidebar - Suspense Wrapper */}
-      <React.Suspense fallback={<div className="w-[432px] h-full bg-slate-900/60 hidden lg:block" />}>
+      <React.Suspense fallback={<div className="w-[360px] h-full bg-slate-900/60 hidden lg:block" />}>
         <Sidebar
           session={session}
           activeView={activeView}
@@ -461,7 +466,7 @@ const App: React.FC = () => {
 
         <main className="flex-1 overflow-y-auto bg-slate-50/50 dark:bg-transparent scroll-smooth relative pt-[73px] lg:pt-0">
           <React.Suspense fallback={
-            <div className="flex h-full items-center justify-center">
+            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-100 dark:bg-[#0a0e14] lg:static lg:bg-transparent lg:z-auto lg:h-full">
               <ModernLoader message="Carregando..." />
             </div>
           }>

@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useCourse } from '../contexts/CourseContext';
 import { getRandomSuggestions, BuddySuggestion } from '../utils/buddySuggestions';
 import { motion, AnimatePresence } from 'framer-motion';
+import MarkdownRenderer from './MarkdownRenderer';
 
 const BuddyFullPage: React.FC = () => {
     const navigate = useNavigate();
@@ -212,7 +213,7 @@ const BuddyFullPage: React.FC = () => {
                                             ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-tr-none border border-slate-200 dark:border-slate-700'
                                             : 'bg-indigo-50 dark:bg-indigo-900/20 text-slate-800 dark:text-slate-100 rounded-tl-none border border-indigo-100 dark:border-indigo-900/30'
                                             }`}>
-                                            {m.text}
+                                            <MarkdownRenderer content={m.text} />
                                             {m.action && (
                                                 <button
                                                     onClick={() => navigate(`/course/${m.action?.courseId}/lesson/${m.action?.lessonId}`)}

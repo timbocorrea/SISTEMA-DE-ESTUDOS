@@ -54,7 +54,7 @@ const LessonItem = memo<{
         to={`/admin/lesson/${lesson.id}/edit`}
         onClick={(e) => e.stopPropagation()}
         data-sidebar-casing="normal"
-        className={`w-full text-left px-3 py-2 rounded-lg transition-colors duration-100 text-sm font-medium normal-case tracking-tight whitespace-normal break-words block ${isActive
+        className={`w-full text-left px-3 py-2 rounded-lg transition-colors duration-100 text-base font-medium normal-case tracking-tight whitespace-normal break-words block ${isActive
           ? 'bg-emerald-500/10 text-emerald-400 font-bold shadow-sm border border-emerald-500/20'
           : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
           }`}
@@ -69,7 +69,7 @@ const LessonItem = memo<{
     <button
       onClick={handleClick}
       data-sidebar-casing="normal"
-      className={`w-full text-left px-3 py-2 rounded-lg transition-colors duration-100 text-sm font-medium normal-case tracking-tight whitespace-normal break-words ${isActive
+      className={`w-full text-left px-3 py-2 rounded-lg transition-colors duration-100 text-base font-medium normal-case tracking-tight whitespace-normal break-words ${isActive
         ? 'bg-emerald-500/10 text-emerald-400 font-bold shadow-sm border border-emerald-500/20'
         : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
         }`}
@@ -107,7 +107,7 @@ const ModuleItem = memo<{
     onViewChange('content');
   }, [module.id, onToggle, onOpenContent, courseId, onViewChange]);
 
-  const itemClasses = `w-full text-left px-3 py-2 rounded-lg transition-colors duration-100 text-sm font-bold normal-case tracking-tight whitespace-normal break-words block ${isOpen
+  const itemClasses = `w-full text-left px-3 py-2 rounded-lg transition-colors duration-100 text-base font-bold normal-case tracking-tight whitespace-normal break-words block ${isOpen
     ? 'bg-cyan-500/10 text-cyan-400'
     : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
     }`;
@@ -200,7 +200,7 @@ const CourseItem = memo<{
     onViewChange('content');
   }, [isOpen, course.id, onToggleCourse, onExpandCourse, onOpenContent, onViewChange]);
 
-  const itemClasses = `w-full text-left px-3 py-2 rounded-lg transition-colors duration-150 text-sm font-bold normal-case tracking-tight whitespace-normal break-words block ${isOpen
+  const itemClasses = `w-full text-left px-3 py-2 rounded-lg transition-colors duration-150 text-base font-bold normal-case tracking-tight whitespace-normal break-words block ${isOpen
     ? 'bg-amber-500/10 text-amber-500'
     : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
     }`;
@@ -333,12 +333,12 @@ const Sidebar: React.FC<SidebarProps> = ({
       }}
       className={`
       ${isMobileOpen ? 'flex fixed h-[100dvh] overflow-y-auto' : 'hidden'} 
-      ${isHiddenOnDesktop ? '' : 'lg:flex lg:relative lg:h-full lg:overflow-hidden lg:z-0'}
+      ${isHiddenOnDesktop ? '' : 'lg:flex lg:relative lg:h-full lg:overflow-hidden lg:z-20'}
       flex-col
       inset-y-0 left-0 
       z-[70] 
-      ${isActuallyCollapsed && !isHiddenOnDesktop ? 'lg:w-20' : 'lg:w-[432px]'} 
-      w-[432px]
+      ${isActuallyCollapsed && !isHiddenOnDesktop ? 'lg:w-20' : 'lg:w-[360px]'} 
+      w-[360px]
       bg-white/90 dark:bg-slate-900/60 backdrop-blur-xl
       border-r border-slate-200 dark:border-white/5 
       p-4 
@@ -363,90 +363,108 @@ const Sidebar: React.FC<SidebarProps> = ({
           onViewChange('courses');
           onCloseMobile?.();
         }}
-        className={`flex items-center gap-3 px-1 mb-8 transition-all ${isActuallyCollapsed ? 'justify-center' : ''} relative cursor-pointer group/header`}
+        className={`flex items-center gap-3 px-1 mb-8 transition-all shrink-0 ${isActuallyCollapsed ? 'justify-center' : ''} relative cursor-pointer group/header`}
       >
         <div className="w-10 h-10 min-w-[40px] bg-gradient-to-br from-indigo-600 to-violet-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-500/20 rotate-3 ring-1 ring-white/10 group-hover/header:rotate-6 transition-transform">
           <i className="fas fa-graduation-cap"></i>
         </div>
         <div className={`overflow-hidden transition-all duration-300 ${isActuallyCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100'}`}>
-          <h1 className="font-black text-slate-800 dark:text-white text-lg leading-tight tracking-tighter uppercase whitespace-nowrap drop-shadow-md">StudySystem</h1>
-          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest whitespace-nowrap">Sistema de Estudos</p>
+          <h1 className="font-black text-slate-800 dark:text-white text-xl leading-tight tracking-tighter uppercase whitespace-nowrap drop-shadow-md">StudySystem</h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest whitespace-nowrap">Sistema de Estudos</p>
         </div>
       </div>
 
-      {/* Collapse Toggle */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          setIsCollapsed(!isCollapsed);
-        }}
-        aria-label={isActuallyCollapsed ? "Expandir Menu" : "Retrair Menu"}
-        className={`
-          hidden lg:flex
-          items-center justify-center
-          w-full mb-4
-          py-2 px-3
-          rounded-xl
-          transition-all duration-300
-          text-slate-600 dark:text-slate-400
-          hover:bg-slate-100 dark:hover:bg-white/5
-          hover:text-indigo-600 dark:hover:text-indigo-400
-          group/toggle
-          ${isActuallyCollapsed ? 'justify-center' : 'justify-between'}
-        `}
-        title={isActuallyCollapsed ? "Expandir Menu" : "Retrair Menu"}
-      >
-        <div className={`flex items-center gap-2 transition-all duration-300 ${isActuallyCollapsed ? 'w-0 opacity-0 overflow-hidden' : 'w-auto opacity-100'}`}>
-          <i className="fas fa-bars text-sm"></i>
-          <span className="text-xs font-bold uppercase tracking-wider whitespace-nowrap">
-            Menu
-          </span>
-        </div>
+      {/* Toggle Button & User Level - Side by Side */}
+      <div className={`flex items-center gap-3 w-full mb-8 shrink-0 ${isActuallyCollapsed ? 'flex-col gap-4' : ''}`}>
 
-        <div className={`
-          flex items-center justify-center
-          w-6 h-6
-          rounded-lg
-          bg-slate-200 dark:bg-slate-800
-          group-hover/toggle:bg-indigo-100 dark:group-hover/toggle:bg-indigo-900/30
-          transition-all duration-300
-          ${isActuallyCollapsed ? 'rotate-180' : ''}
-        `}>
-          <i className={`fas fa-chevron-left text-[10px] transition-transform duration-300 ${isActuallyCollapsed ? 'rotate-180' : ''}`}></i>
-        </div>
-      </button>
+        {/* Collapse Toggle */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsCollapsed(!isCollapsed);
+          }}
+          aria-label={isActuallyCollapsed ? "Expandir Menu" : "Retrair Menu"}
+          className={`
+            hidden lg:flex
+            items-center
+            ${isActuallyCollapsed ? 'w-10 h-10 justify-center p-0' : 'flex-1 justify-between px-3 py-2'}
+            rounded-xl
+            transition-all duration-300
+            text-slate-600 dark:text-slate-400
+            hover:bg-slate-100 dark:hover:bg-white/5
+            hover:text-indigo-600 dark:hover:text-indigo-400
+            group/toggle
+          `}
+          title={isActuallyCollapsed ? "Expandir Menu" : "Retrair Menu"}
+        >
+          {/* Menu Text - Only if expanded */}
+          <div className={`flex items-center gap-2 transition-all duration-300 ${isActuallyCollapsed ? 'w-0 opacity-0 overflow-hidden' : 'w-auto opacity-100'}`}>
+            <i className="fas fa-bars text-sm"></i>
+            <span className="text-xs font-bold uppercase tracking-wider whitespace-nowrap">
+              Menu
+            </span>
+          </div>
 
-      {/* User Status Card */}
-      {isActuallyCollapsed ? (
-        /* Collapsed: Just centered badge, no card wrapper to avoid clipping */
-        <div className="mb-6 flex justify-center shrink-0">
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center font-black text-white text-[11px] border-2 border-white dark:border-slate-700 shadow-md" title={`Nível ${level}`}>
-            {level}
+          <div className={`
+            flex items-center justify-center
+            ${isActuallyCollapsed ? 'w-6 h-6' : 'w-6 h-6'}
+            rounded-lg
+            bg-slate-200 dark:bg-slate-800
+            group-hover/toggle:bg-indigo-100 dark:group-hover/toggle:bg-indigo-900/30
+            transition-all duration-300
+            ${isActuallyCollapsed ? 'rotate-180' : ''}
+          `}>
+            <i className={`fas fa-chevron-left text-[10px] transition-transform duration-300 ${isActuallyCollapsed ? 'rotate-180' : ''}`}></i>
           </div>
-        </div>
-      ) : (
-        /* Expanded: Full card with text and progress bar */
-        <div className="mb-8 shrink-0 bg-slate-100 dark:bg-slate-800/80 backdrop-blur-md rounded-2xl border border-slate-200 dark:border-slate-700/50 p-4">
-          <div className="flex items-center gap-3 mb-3 min-w-0">
-            <div className="shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center font-black text-white text-[12px] border-2 border-slate-900 shadow-lg shadow-orange-500/20">
-              {level}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-black text-slate-700 dark:text-slate-100 leading-none uppercase tracking-tight truncate">Nível {level}</p>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold mt-1 uppercase tracking-tighter truncate">{1000 - xpInLevel} XP para prox.</p>
-            </div>
-          </div>
-          <div className="w-full h-1.5 bg-slate-300 dark:bg-slate-700/60 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-amber-500 to-orange-600 rounded-full shadow-[0_0_10px_rgba(249,115,22,0.3)] transition-all duration-700"
-              style={{ width: `${progressPercent}%` }}
-            ></div>
-          </div>
-        </div>
-      )}
+        </button>
 
-      <nav className={`flex-1 space-y-1 overflow-x-hidden ${isMobileOpen ? 'min-h-min' : 'overflow-y-auto scrollbar-hide'} lg:overflow-y-auto lg:scrollbar-hide`}>
-        {!isActuallyCollapsed && <p className="px-3 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4 opacity-50 whitespace-nowrap">Menu Principal</p>}
+        {/* User Level - Simplified, Clickable, Circular */}
+        <Link
+          to="/achievements"
+          onClick={(e) => {
+            e.stopPropagation();
+            onViewChange('achievements');
+          }}
+          className={`
+            group/level relative flex items-center justify-center shrink-0
+            ${isActuallyCollapsed ? 'w-10 h-10' : 'w-12 h-12 ml-2'}
+            rounded-full transition-transform hover:scale-105 cursor-pointer
+          `}
+          title="Ver Conquistas"
+        >
+          <div className={`absolute inset-0 bg-gradient-to-br from-amber-500 to-orange-600 rounded-full shadow-lg shadow-orange-500/20 ring-4 ring-white dark:ring-slate-900 transition-all duration-300`}></div>
+          <span className="relative z-10 font-black text-white text-base drop-shadow-md">{level}</span>
+
+          {/* XP Ring around the badge */}
+          <svg className="absolute -inset-1.5 w-[calc(100%+0.75rem)] h-[calc(100%+0.75rem)] -rotate-90 pointer-events-none opacity-50">
+            <circle
+              cx="50%"
+              cy="50%"
+              r="46%"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              className="text-slate-200 dark:text-slate-700"
+            />
+            <circle
+              cx="50%"
+              cy="50%"
+              r="46%"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeDasharray="100"
+              strokeDashoffset={100 - progressPercent}
+              pathLength="100"
+              strokeLinecap="round"
+              className="text-amber-500 transition-all duration-1000 ease-out"
+            />
+          </svg>
+        </Link>
+      </div>
+
+      <nav className={`flex-1 min-h-0 space-y-1 overflow-x-hidden ${isMobileOpen ? '' : 'overflow-y-auto scrollbar-hide'} lg:overflow-y-auto lg:scrollbar-hide`}>
+        {!isActuallyCollapsed && <p className="px-3 text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-4 whitespace-nowrap">Menu Principal</p>}
 
         <Link
           to="/"
@@ -454,7 +472,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             e.stopPropagation();
             onViewChange('dashboard');
           }}
-          className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight group relative ${activeView === 'dashboard'
+          className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-base font-bold tracking-tight group relative ${activeView === 'dashboard'
             ? 'bg-indigo-50 dark:bg-white/10 text-indigo-600 dark:text-white shadow-lg shadow-indigo-500/10 dark:shadow-white/5 ring-1 ring-indigo-200 dark:ring-white/10'
             : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
             } ${isActuallyCollapsed ? 'justify-center' : ''}`}
@@ -478,7 +496,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               onViewChange('courses', true);
               if (isActuallyCollapsed) setIsCollapsed(false);
             }}
-            className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight mb-1 group relative overflow-hidden ${activeView === 'courses'
+            className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all text-base font-bold tracking-tight mb-1 group relative overflow-hidden ${activeView === 'courses'
               ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/40 ring-1 ring-indigo-400/50'
               : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
               } ${isActuallyCollapsed ? 'justify-center' : ''}`}
@@ -550,7 +568,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               e.stopPropagation();
               onViewChange(item.id);
             }}
-            className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight group relative ${activeView === item.id
+            className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-base font-bold tracking-tight group relative ${activeView === item.id
               ? 'bg-indigo-50 dark:bg-white/10 text-indigo-600 dark:text-white shadow-lg shadow-indigo-500/10 dark:shadow-white/5 ring-1 ring-indigo-200 dark:ring-white/10'
               : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
               } ${isActuallyCollapsed ? 'justify-center' : ''}`}
@@ -565,10 +583,15 @@ const Sidebar: React.FC<SidebarProps> = ({
           </Link>
         ))}
 
-        {/* Admin Links */}
+        {/* Admin Links - Highlighted Section */}
         {isAdmin && (
-          <>
-            {!isActuallyCollapsed && <p className="px-3 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-8 mb-4 opacity-50 whitespace-nowrap">Administração</p>}
+          <div className={`mt-8 ${!isActuallyCollapsed ? 'bg-slate-100/50 dark:bg-slate-800/20 rounded-2xl p-3 border border-indigo-100 dark:border-indigo-500/10' : ''}`}>
+            {!isActuallyCollapsed && (
+              <div className="flex items-center gap-2 mb-4 px-1">
+                <i className="fas fa-shield-alt text-indigo-600 dark:text-indigo-400 text-xs"></i>
+                <p className="text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest whitespace-nowrap">Administração</p>
+              </div>
+            )}
 
             <div className={`${isActuallyCollapsed ? 'mt-4 border-t border-slate-200 dark:border-slate-800 pt-4' : ''}`}>
               <Link
@@ -579,15 +602,15 @@ const Sidebar: React.FC<SidebarProps> = ({
                   onViewChange('content', true);
                   if (isActuallyCollapsed) setIsCollapsed(false);
                 }}
-                className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight mb-1 group ${activeView === 'content'
-                  ? 'bg-indigo-50 dark:bg-white/10 text-indigo-600 dark:text-white shadow-lg shadow-indigo-500/10 dark:shadow-white/5 ring-1 ring-indigo-200 dark:ring-white/10'
-                  : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
+                className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all text-base font-bold tracking-tight mb-1 group ${activeView === 'content'
+                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30'
+                  : 'text-slate-600 dark:text-slate-500 hover:bg-white dark:hover:bg-white/5 hover:text-indigo-600 dark:hover:text-indigo-400 shadow-sm hover:shadow-md bg-white dark:bg-slate-800/50'
                   } ${isActuallyCollapsed ? 'justify-center' : ''}`}
                 title="Gestão de Conteúdo"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div className={`transition-transform duration-300 ${activeView === 'content' ? 'scale-110' : 'group-hover:scale-110'}`}>
-                    <i className={`fas fa-file-alt w-5 text-center ${activeView === 'content' ? 'text-indigo-400' : ''}`}></i>
+                    <i className={`fas fa-file-alt w-5 text-center ${activeView === 'content' ? 'text-white' : ''}`}></i>
                   </div>
                   <span className={`truncate transition-all duration-300 ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>Gestão de Conteúdo</span>
                 </div>
@@ -599,7 +622,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                       e.stopPropagation();
                       setContentMenuOpen(open => !open);
                     }}
-                    className="relative z-20 p-1 -m-1 rounded-lg hover:bg-indigo-100 dark:hover:bg-white/10 transition-colors"
+                    className={`relative z-20 p-1 -m-1 rounded-lg transition-colors ${activeView === 'content' ? 'hover:bg-indigo-500/50' : 'hover:bg-slate-100 dark:hover:bg-white/10'}`}
                   >
                     <i className={`fas fa-chevron-down text-xs transition-transform ${contentMenuOpen ? 'rotate-180' : ''}`}></i>
                   </button>
@@ -607,7 +630,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               </Link>
 
               {!isActuallyCollapsed && contentMenuOpen && (
-                <div className="ml-7 pl-3 border-l border-slate-200 dark:border-white/10 space-y-1 mb-2">
+                <div className="ml-3 pl-4 border-l-2 border-indigo-200 dark:border-indigo-500/20 space-y-1 mb-3 mt-2">
                   {isLoadingAdminCourses && adminCourses.length === 0 && (
                     <div className="px-3 py-2 text-[11px] text-slate-500/70 italic">Carregando cursos...</div>
                   )}
@@ -643,11 +666,11 @@ const Sidebar: React.FC<SidebarProps> = ({
                   e.stopPropagation();
                   onViewChange('users');
                 }}
-                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight group relative ${activeView === 'users' ? 'bg-indigo-50 dark:bg-white/10 text-indigo-600 dark:text-white shadow-lg shadow-indigo-500/10 dark:shadow-white/5 ring-1 ring-indigo-200 dark:ring-white/10' : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
+                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-base font-bold tracking-tight group relative mb-1 ${activeView === 'users' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-slate-600 dark:text-slate-500 hover:bg-white dark:hover:bg-white/5 hover:text-indigo-600 dark:hover:text-indigo-400 shadow-sm hover:shadow-md bg-white dark:bg-slate-800/50'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
                 title="Controle de Usuários"
               >
                 <div className={`transition-transform duration-300 ${activeView === 'users' ? 'scale-110' : 'group-hover:scale-110'}`}>
-                  <i className={`fas fa-users w-5 text-center ${activeView === 'users' ? 'text-indigo-400' : ''}`}></i>
+                  <i className={`fas fa-users w-5 text-center ${activeView === 'users' ? 'text-white' : ''}`}></i>
                 </div>
                 <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
                   Controle de Usuários
@@ -665,12 +688,12 @@ const Sidebar: React.FC<SidebarProps> = ({
                     }
                     onViewChange('files');
                   }}
-                  className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight mb-1 group ${activeView === 'files' ? 'bg-indigo-50 dark:bg-white/10 text-indigo-600 dark:text-white shadow-lg shadow-indigo-500/10 dark:shadow-white/5 ring-1 ring-indigo-200 dark:ring-white/10' : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
+                  className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all text-base font-bold tracking-tight mb-1 group ${activeView === 'files' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-slate-600 dark:text-slate-500 hover:bg-white dark:hover:bg-white/5 hover:text-indigo-600 dark:hover:text-indigo-400 shadow-sm hover:shadow-md bg-white dark:bg-slate-800/50'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
                   title="Gerenciar Arquivos"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div className={`transition-transform duration-300 ${activeView === 'files' ? 'scale-110' : 'group-hover:scale-110'}`}>
-                      <i className={`fas fa-folder-open w-5 text-center ${activeView === 'files' ? 'text-indigo-400' : ''}`}></i>
+                      <i className={`fas fa-folder-open w-5 text-center ${activeView === 'files' ? 'text-white' : ''}`}></i>
                     </div>
                     <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
                       Arquivos
@@ -680,14 +703,14 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </Link>
 
                 {!isActuallyCollapsed && activeView === 'files' && (
-                  <div className="ml-7 pl-3 border-l border-slate-200 dark:border-white/10 space-y-1 mb-2">
+                  <div className="ml-3 pl-4 border-l-2 border-indigo-200 dark:border-indigo-500/20 space-y-1 mb-3 mt-2">
                     {['audios', 'course-covers', 'images', 'pdfs'].map(folder => (
                       <button
                         key={folder}
                         onClick={() => onNavigateFile?.(folder)}
-                        className="w-full text-left px-3 py-2 rounded-lg transition-all text-sm font-medium text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-indigo-600 dark:hover:text-indigo-400 capitalize"
+                        className="w-full text-left px-3 py-2 rounded-lg transition-all text-base font-medium text-slate-600 dark:text-slate-500 hover:bg-indigo-50 dark:hover:bg-white/5 hover:text-indigo-600 dark:hover:text-indigo-400 capitalize"
                       >
-                        <i className="fas fa-folder mr-2 text-amber-500/80"></i>
+                        <i className="fas fa-folder mr-2 text-indigo-400"></i>
                         {folder}
                       </button>
                     ))}
@@ -703,11 +726,11 @@ const Sidebar: React.FC<SidebarProps> = ({
                     e.stopPropagation();
                     onViewChange('audit');
                   }}
-                  className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight mb-1 group ${activeView === 'audit' ? 'bg-indigo-50 dark:bg-white/10 text-indigo-600 dark:text-white shadow-lg shadow-indigo-500/10 dark:shadow-white/5 ring-1 ring-indigo-200 dark:ring-white/10' : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
+                  className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-base font-bold tracking-tight mb-1 group ${activeView === 'audit' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-slate-600 dark:text-slate-500 hover:bg-white dark:hover:bg-white/5 hover:text-indigo-600 dark:hover:text-indigo-400 shadow-sm hover:shadow-md bg-white dark:bg-slate-800/50'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
                   title="Auditoria"
                 >
                   <div className={`transition-transform duration-300 ${activeView === 'audit' ? 'scale-110' : 'group-hover:scale-110'}`}>
-                    <i className={`fas fa-eye w-5 text-center ${activeView === 'audit' ? 'text-indigo-400' : ''}`}></i>
+                    <i className={`fas fa-eye w-5 text-center ${activeView === 'audit' ? 'text-white' : ''}`}></i>
                   </div>
                   <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
                     Auditoria
@@ -722,11 +745,11 @@ const Sidebar: React.FC<SidebarProps> = ({
                   e.stopPropagation();
                   onViewChange('access');
                 }}
-                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight mb-1 group ${activeView === 'access' ? 'bg-indigo-50 dark:bg-white/10 text-indigo-600 dark:text-white shadow-lg shadow-indigo-500/10 dark:shadow-white/5 ring-1 ring-indigo-200 dark:ring-white/10' : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
+                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-base font-bold tracking-tight mb-1 group ${activeView === 'access' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-slate-600 dark:text-slate-500 hover:bg-white dark:hover:bg-white/5 hover:text-indigo-600 dark:hover:text-indigo-400 shadow-sm hover:shadow-md bg-white dark:bg-slate-800/50'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
                 title="Acesso aos Cursos"
               >
                 <div className={`transition-transform duration-300 ${activeView === 'access' ? 'scale-110' : 'group-hover:scale-110'}`}>
-                  <i className={`fas fa-lock w-5 text-center ${activeView === 'access' ? 'text-indigo-400' : ''}`}></i>
+                  <i className={`fas fa-lock w-5 text-center ${activeView === 'access' ? 'text-white' : ''}`}></i>
                 </div>
                 <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
                   Acesso aos Cursos
@@ -739,11 +762,11 @@ const Sidebar: React.FC<SidebarProps> = ({
                   e.stopPropagation();
                   onViewChange('questionnaire');
                 }}
-                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight mb-1 group ${activeView === 'questionnaire' ? 'bg-indigo-50 dark:bg-white/10 text-indigo-600 dark:text-white shadow-lg shadow-indigo-500/10 dark:shadow-white/5 ring-1 ring-indigo-200 dark:ring-white/10' : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
+                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-base font-bold tracking-tight mb-1 group ${activeView === 'questionnaire' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-slate-600 dark:text-slate-500 hover:bg-white dark:hover:bg-white/5 hover:text-indigo-600 dark:hover:text-indigo-400 shadow-sm hover:shadow-md bg-white dark:bg-slate-800/50'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
                 title="Banco de Questões"
               >
                 <div className={`transition-transform duration-300 ${activeView === 'questionnaire' ? 'scale-110' : 'group-hover:scale-110'}`}>
-                  <i className={`fas fa-clipboard-question w-5 text-center ${activeView === 'questionnaire' ? 'text-indigo-400' : ''}`}></i>
+                  <i className={`fas fa-clipboard-question w-5 text-center ${activeView === 'questionnaire' ? 'text-white' : ''}`}></i>
                 </div>
                 <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
                   Banco de Questões
@@ -756,11 +779,11 @@ const Sidebar: React.FC<SidebarProps> = ({
                   e.stopPropagation();
                   onViewChange('system-health');
                 }}
-                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight mb-1 group ${activeView === 'system-health' ? 'bg-indigo-50 dark:bg-white/10 text-indigo-600 dark:text-white shadow-lg shadow-indigo-500/10 dark:shadow-white/5 ring-1 ring-indigo-200 dark:ring-white/10' : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
+                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-base font-bold tracking-tight mb-1 group ${activeView === 'system-health' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-slate-600 dark:text-slate-500 hover:bg-white dark:hover:bg-white/5 hover:text-indigo-600 dark:hover:text-indigo-400 shadow-sm hover:shadow-md bg-white dark:bg-slate-800/50'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
                 title="Saúde do Sistema"
               >
                 <div className={`transition-transform duration-300 ${activeView === 'system-health' ? 'scale-110' : 'group-hover:scale-110'}`}>
-                  <i className={`fas fa-heartbeat w-5 text-center ${activeView === 'system-health' ? 'text-indigo-400' : ''}`}></i>
+                  <i className={`fas fa-heartbeat w-5 text-center ${activeView === 'system-health' ? 'text-white' : ''}`}></i>
                 </div>
                 <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
                   Saúde do Sistema
@@ -773,11 +796,11 @@ const Sidebar: React.FC<SidebarProps> = ({
                   e.stopPropagation();
                   onViewChange('settings');
                 }}
-                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-sm font-bold tracking-tight mb-1 group ${activeView === 'settings' ? 'bg-indigo-50 dark:bg-white/10 text-indigo-600 dark:text-white shadow-lg shadow-indigo-500/10 dark:shadow-white/5 ring-1 ring-indigo-200 dark:ring-white/10' : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
+                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-base font-bold tracking-tight mb-1 group ${activeView === 'settings' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-slate-600 dark:text-slate-500 hover:bg-white dark:hover:bg-white/5 hover:text-indigo-600 dark:hover:text-indigo-400 shadow-sm hover:shadow-md bg-white dark:bg-slate-800/50'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
                 title="Configuração do Suporte"
               >
                 <div className={`transition-transform duration-300 ${activeView === 'settings' ? 'scale-110' : 'group-hover:scale-110'}`}>
-                  <i className={`fas fa-cogs w-5 text-center ${activeView === 'settings' ? 'text-indigo-400' : ''}`}></i>
+                  <i className={`fas fa-cogs w-5 text-center ${activeView === 'settings' ? 'text-white' : ''}`}></i>
                 </div>
                 <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
                   Configuração do Suporte
@@ -785,11 +808,11 @@ const Sidebar: React.FC<SidebarProps> = ({
               </Link>
 
             </div>
-          </>
+          </div>
         )}
       </nav>
 
-      <div className={`mt-auto pt-6 space-y-2 border-t border-slate-200 dark:border-white/5 transition-all ${isActuallyCollapsed ? 'flex flex-col items-center' : ''}`}>
+      <div className={`mt-auto pt-6 space-y-2 border-t border-slate-200 dark:border-white/5 transition-all shrink-0 ${isActuallyCollapsed ? 'flex flex-col items-center' : ''}`}>
 
         {/* Theme Toggle */}
         <div

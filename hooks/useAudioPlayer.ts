@@ -83,7 +83,7 @@ export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate, onAudi
         }
     };
 
-    const playBlock = useCallback((index: number) => {
+    const playBlock = useCallback((index: number, forcePlay = false) => {
         // Auto-enable audio if manually clicking a block
         if (!audioEnabledRef.current) {
             setAudioEnabled(true);
@@ -149,7 +149,7 @@ export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate, onAudi
         console.log('🎵 Final audio URL:', audioUrl);
 
         // Toggle pause if clicking the active block
-        if (activeBlockId === block.id && audioRef.current) {
+        if (!forcePlay && activeBlockId === block.id && audioRef.current) {
             // Check actual audio state instead of potentially stale React state
             if (!audioRef.current.paused) {
                 audioRef.current.pause();
@@ -265,7 +265,7 @@ export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate, onAudi
             if (nextIndex < blocks.length && blocks[nextIndex].audioUrl && audioEnabledRef.current) {
                 // Immediate transition to next block
                 console.log(`➡️ Auto-advancing to block ${nextIndex}`);
-                playBlock(nextIndex);
+                playBlock(nextIndex, true);
             } else {
                 console.log(`⏹️ Playback finished - All audio complete!`);
 

@@ -5,6 +5,7 @@ import { useBuddyClient } from '../hooks/useBuddyClient';
 import { useAuth } from '../contexts/AuthContext';
 import { useCourse } from '../contexts/CourseContext';
 import { getRandomSuggestions, BuddySuggestion } from '../utils/buddySuggestions';
+import MarkdownRenderer from './MarkdownRenderer';
 
 interface GeminiBuddyProps {
   currentContext?: string; // Conteúdo da aula (opcional)
@@ -200,7 +201,7 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
                   ? 'bg-indigo-600 text-white rounded-tr-none'
                   : 'bg-slate-800 text-slate-200 rounded-tl-none border border-slate-700'
                   }`}>
-                  <div className="whitespace-pre-wrap">{m.text}</div>
+                  <MarkdownRenderer content={m.text} className="text-sm leading-relaxed" />
                   {m.action && (
                     <button
                       onClick={() => onNavigate ? onNavigate(m.action!.courseId, m.action!.lessonId) : navigate(`/course/${m.action!.courseId}/lesson/${m.action!.lessonId}`)}

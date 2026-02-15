@@ -22,6 +22,16 @@ const queryClient = new QueryClient({
   },
 });
 
+// CLEANUP: Force unregister Service Workers to avoid stale cache issues in Dev
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(function (registrations) {
+    for (let registration of registrations) {
+      console.log('🧹 Unregistering stale Service Worker:', registration);
+      registration.unregister();
+    }
+  });
+}
+
 const rootElement = document.getElementById('root');
 if (!rootElement) {
   throw new Error("Could not find root element to mount to");
