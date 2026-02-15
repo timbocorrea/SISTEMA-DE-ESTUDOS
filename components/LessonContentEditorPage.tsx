@@ -12,6 +12,7 @@ import { marked } from 'marked'; // Para conversão de Markdown para HTML
 import { toast } from 'sonner';
 import DropboxAudioBrowser, { DropboxFile } from './DropboxAudioBrowser';
 import { DropboxService } from '../services/dropbox/DropboxService';
+import DropboxFileBrowser from './DropboxFileBrowser';
 import BulkAudioSyncModal from './BulkAudioSyncModal';
 
 const FONT_FAMILIES = [
@@ -754,7 +755,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
     // Metadata State
     const [title, setTitle] = useState(lesson.title);
-    const [videoUrls, setVideoUrls] = useState<{ url: string; title: string; image_url?: string }[]>(() => {
+    const [videoUrls, setVideoUrls] = useState<{ url: string; title: string; image_url?: string; type?: 'video' | 'slides'; slides?: string[]; fileUrl?: string; fileType?: 'pdf' | 'pptx' }[]>(() => {
         // Initialize from video_urls if available, otherwise create from video_url for backward compatibility
         if (lesson.video_urls && lesson.video_urls.length > 0) {
             return lesson.video_urls;
@@ -893,6 +894,10 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
     const initialBlocksRef = useRef(JSON.stringify(blocks));
     const [changedBlocks, setChangedBlocks] = useState<Map<string, { before: Block; after: Block }>>(new Map());
     const [showChangesModal, setShowChangesModal] = useState(false);
+
+    // Dropbox File Browser State
+    const [showDropboxFileBrowser, setShowDropboxFileBrowser] = useState(false);
+    const [dropboxFileBrowserCallback, setDropboxFileBrowserCallback] = useState<((url: string, filename: string) => void) | null>(null);
 
     // Network Connection Monitoring
     const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -4534,11 +4539,19 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                             <label className="block text-xs font-semibold text-slate-500">Lista de Vídeos</label>
                                             <button
                                                 type="button"
-                                                onClick={() => setVideoUrls([...videoUrls, { url: '', title: `Vídeo ${videoUrls.length + 1}`, image_url: '' }])}
+                                                onClick={() => setVideoUrls([...videoUrls, { url: '', title: `Vídeo ${videoUrls.length + 1}`, image_url: '', type: 'video' }])}
                                                 className="px-3 py-1 text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors flex items-center gap-1"
                                             >
                                                 <i className="fas fa-plus"></i>
                                                 Adicionar Vídeo
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setVideoUrls([...videoUrls, { url: '', title: `Slides ${videoUrls.filter(v => v.type === 'slides').length + 1}`, type: 'slides', slides: [] }])}
+                                                className="px-3 py-1 text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition-colors flex items-center gap-1"
+                                            >
+                                                <i className="fas fa-images"></i>
+                                                Adicionar Slides
                                             </button>
                                         </div>
 
@@ -4549,11 +4562,18 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                         ) : (
                                             <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
                                                 {videoUrls.map((video, index) => (
-                                                    <div key={index} className="p-3 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                                                    <div key={index} className={`p-3 rounded-lg border ${video.type === 'slides' ? 'bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}>
                                                         <div className="flex items-start gap-2 mb-2">
                                                             <div className="flex-1 space-y-2">
+                                                                {/* Type badge */}
+                                                                <div className="flex items-center gap-2 mb-1">
+                                                                    <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${video.type === 'slides' ? 'bg-amber-100 dark:bg-amber-800/30 text-amber-700 dark:text-amber-400' : 'bg-indigo-100 dark:bg-indigo-800/30 text-indigo-700 dark:text-indigo-400'}`}>
+                                                                        <i className={`fas ${video.type === 'slides' ? 'fa-images' : 'fa-video'} mr-1`}></i>
+                                                                        {video.type === 'slides' ? 'Slides' : 'Vídeo'}
+                                                                    </span>
+                                                                </div>
                                                                 <div>
-                                                                    <label className="block text-[10px] font-semibold text-slate-500 mb-1">Título do Vídeo</label>
+                                                                    <label className="block text-[10px] font-semibold text-slate-500 mb-1">Título</label>
                                                                     <input
                                                                         type="text"
                                                                         value={video.title}
@@ -4563,37 +4583,340 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                                                             setVideoUrls(updated);
                                                                         }}
                                                                         className="w-full px-2 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded text-xs outline-none focus:ring-2 focus:ring-indigo-500"
-                                                                        placeholder="Ex: Introdução, Parte 1, etc."
+                                                                        placeholder={video.type === 'slides' ? 'Ex: Capítulo 1 - Introdução' : 'Ex: Introdução, Parte 1, etc.'}
                                                                     />
                                                                 </div>
-                                                                <div>
-                                                                    <label className="block text-[10px] font-semibold text-slate-500 mb-1">URL (Youtube/Vimeo)</label>
-                                                                    <input
-                                                                        type="text"
-                                                                        value={video.url}
-                                                                        onChange={e => {
-                                                                            const updated = [...videoUrls];
-                                                                            updated[index].url = e.target.value;
-                                                                            setVideoUrls(updated);
-                                                                        }}
-                                                                        className="w-full px-2 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded text-xs outline-none focus:ring-2 focus:ring-indigo-500"
-                                                                        placeholder="https://..."
-                                                                    />
-                                                                </div>
-                                                                <div>
-                                                                    <label className="block text-[10px] font-semibold text-slate-500 mb-1">URL da Imagem de Capa</label>
-                                                                    <input
-                                                                        type="text"
-                                                                        value={video.image_url || ''}
-                                                                        onChange={e => {
-                                                                            const updated = [...videoUrls];
-                                                                            updated[index].image_url = e.target.value;
-                                                                            setVideoUrls(updated);
-                                                                        }}
-                                                                        className="w-full px-2 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded text-xs outline-none focus:ring-2 focus:ring-indigo-500"
-                                                                        placeholder="https://..."
-                                                                    />
-                                                                </div>
+
+                                                                {/* Video-specific fields */}
+                                                                {video.type !== 'slides' && (
+                                                                    <>
+                                                                        <div>
+                                                                            <label className="block text-[10px] font-semibold text-slate-500 mb-1">URL (Youtube/Vimeo)</label>
+                                                                            <input
+                                                                                type="text"
+                                                                                value={video.url}
+                                                                                onChange={e => {
+                                                                                    const updated = [...videoUrls];
+                                                                                    updated[index].url = e.target.value;
+                                                                                    setVideoUrls(updated);
+                                                                                }}
+                                                                                className="w-full px-2 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded text-xs outline-none focus:ring-2 focus:ring-indigo-500"
+                                                                                placeholder="https://..."
+                                                                            />
+                                                                        </div>
+                                                                        <div>
+                                                                            <label className="block text-[10px] font-semibold text-slate-500 mb-1">URL da Imagem de Capa</label>
+                                                                            <input
+                                                                                type="text"
+                                                                                value={video.image_url || ''}
+                                                                                onChange={e => {
+                                                                                    const updated = [...videoUrls];
+                                                                                    updated[index].image_url = e.target.value;
+                                                                                    setVideoUrls(updated);
+                                                                                }}
+                                                                                className="w-full px-2 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded text-xs outline-none focus:ring-2 focus:ring-indigo-500"
+                                                                                placeholder="https://..."
+                                                                            />
+                                                                        </div>
+                                                                    </>
+                                                                )}
+
+                                                                {/* Slides-specific fields */}
+                                                                {video.type === 'slides' && (
+                                                                    <div className="space-y-3">
+                                                                        {/* File Upload Area */}
+                                                                        <div>
+                                                                            <label className="block text-[10px] font-semibold text-slate-500 mb-1">
+                                                                                <i className="fas fa-file-upload mr-1"></i>
+                                                                                Arquivo de Slides (.pptx ou .pdf)
+                                                                            </label>
+                                                                            {video.fileUrl ? (
+                                                                                <div className={`flex items-center justify-between p-2 rounded-lg border ${video.fileType === 'pdf' ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800' : 'bg-orange-50 dark:bg-orange-900/10 border-orange-200 dark:border-orange-800'}`}>
+                                                                                    <div className="flex items-center gap-2">
+                                                                                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${video.fileType === 'pdf' ? 'bg-red-100 dark:bg-red-800/30' : 'bg-orange-100 dark:bg-orange-800/30'}`}>
+                                                                                            <i className={`fas ${video.fileType === 'pdf' ? 'fa-file-pdf text-red-500' : 'fa-file-powerpoint text-orange-500'} text-xs`}></i>
+                                                                                        </div>
+                                                                                        <div className="min-w-0 flex-1">
+                                                                                            <p className="text-[10px] font-bold text-slate-700 dark:text-slate-200 truncate max-w-[200px]" title={video.fileUrl}>
+                                                                                                {video.fileUrl?.split('/').pop()?.split('?')[0] || video.fileUrl}
+                                                                                            </p>
+                                                                                            <button
+                                                                                                type="button"
+                                                                                                onClick={() => {
+                                                                                                    const updated = [...videoUrls];
+                                                                                                    updated[index].fileType = video.fileType === 'pdf' ? 'pptx' : 'pdf';
+                                                                                                    setVideoUrls(updated);
+                                                                                                }}
+                                                                                                className={`text-[9px] font-black uppercase hover:underline cursor-pointer ${video.fileType === 'pdf' ? 'text-red-500' : 'text-orange-500'}`}
+                                                                                                title="Clique para alternar o tipo"
+                                                                                            >
+                                                                                                {video.fileType?.toUpperCase()} <i className="fas fa-exchange-alt ml-1 opacity-50"></i>
+                                                                                            </button>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() => {
+                                                                                            const updated = [...videoUrls];
+                                                                                            updated[index].fileUrl = undefined;
+                                                                                            updated[index].fileType = undefined;
+                                                                                            setVideoUrls(updated);
+                                                                                        }}
+                                                                                        className="w-6 h-6 flex items-center justify-center bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 rounded transition-colors"
+                                                                                        title="Remover arquivo"
+                                                                                    >
+                                                                                        <i className="fas fa-times text-[8px]"></i>
+                                                                                    </button>
+                                                                                </div>
+                                                                            ) : (
+                                                                                <div className="relative">
+                                                                                    <input
+                                                                                        type="file"
+                                                                                        accept=".pptx,.pdf"
+                                                                                        onChange={async (e) => {
+                                                                                            const file = e.target.files?.[0];
+                                                                                            if (!file) return;
+
+                                                                                            const ext = file.name.split('.').pop()?.toLowerCase();
+                                                                                            if (ext !== 'pptx' && ext !== 'pdf') {
+                                                                                                toast.error('Apenas arquivos .pptx ou .pdf são aceitos.');
+                                                                                                return;
+                                                                                            }
+
+                                                                                            const toastId = toast.loading(`Enviando ${file.name}...`);
+                                                                                            try {
+                                                                                                const supabase = createSupabaseClient();
+                                                                                                const timestamp = Date.now();
+                                                                                                const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+                                                                                                const filePath = `slides/${timestamp}-${safeName}`;
+
+                                                                                                const { data, error } = await supabase.storage
+                                                                                                    .from('lessons')
+                                                                                                    .upload(filePath, file, {
+                                                                                                        cacheControl: '3600',
+                                                                                                        upsert: false
+                                                                                                    });
+
+                                                                                                if (error) throw error;
+
+                                                                                                const { data: urlData } = supabase.storage
+                                                                                                    .from('lessons')
+                                                                                                    .getPublicUrl(filePath);
+
+                                                                                                const updated = [...videoUrls];
+                                                                                                updated[index].fileUrl = urlData.publicUrl;
+                                                                                                updated[index].fileType = ext as 'pdf' | 'pptx';
+                                                                                                setVideoUrls(updated);
+
+                                                                                                toast.success(`Arquivo ${file.name} enviado com sucesso!`, { id: toastId });
+                                                                                            } catch (err: any) {
+                                                                                                console.error('Erro no upload de slides:', err);
+                                                                                                toast.error(`Erro ao enviar: ${err.message}`, { id: toastId });
+                                                                                            }
+
+                                                                                            // Reset input
+                                                                                            e.target.value = '';
+                                                                                        }}
+                                                                                        className="hidden"
+                                                                                        id={`slide-file-upload-${index}`}
+                                                                                    />
+                                                                                    <label
+                                                                                        htmlFor={`slide-file-upload-${index}`}
+                                                                                        className="flex items-center justify-center gap-2 w-full px-3 py-3 bg-amber-50 dark:bg-amber-900/10 border-2 border-dashed border-amber-300 dark:border-amber-700 rounded-lg cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/20 hover:border-amber-400 dark:hover:border-amber-600 transition-colors"
+                                                                                    >
+                                                                                        <i className="fas fa-cloud-upload-alt text-amber-500 text-sm"></i>
+                                                                                        <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400">
+                                                                                            Clique para enviar .pptx ou .pdf
+                                                                                        </span>
+                                                                                    </label>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+
+
+
+                                                                        {/* External URL Option */}
+                                                                        {!video.fileUrl && (
+                                                                            <div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-lg border border-slate-200 dark:border-slate-700">
+                                                                                <label className="block text-[10px] font-semibold text-slate-500 mb-1">
+                                                                                    Ou insira uma URL externa (Dropbox, Drive, etc)
+                                                                                </label>
+                                                                                <div className="flex gap-2">
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() => {
+                                                                                            setDropboxFileBrowserCallback(() => (url: string, filename: string) => {
+                                                                                                // Detect Type (ignoring query params)
+                                                                                                const path = url.split('?')[0].toLowerCase();
+                                                                                                let type: 'pdf' | 'pptx' = 'pdf';
+                                                                                                if (path.endsWith('.pptx')) type = 'pptx';
+                                                                                                else if (path.endsWith('.pdf')) type = 'pdf';
+
+                                                                                                const updated = [...videoUrls];
+                                                                                                updated[index].fileUrl = url;
+                                                                                                updated[index].fileType = type;
+                                                                                                setVideoUrls(updated);
+                                                                                            });
+                                                                                            setShowDropboxFileBrowser(true);
+                                                                                        }}
+                                                                                        className="px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors flex items-center gap-2 border border-blue-200 dark:border-blue-800"
+                                                                                        title="Selecionar arquivo do Dropbox"
+                                                                                    >
+                                                                                        <i className="fab fa-dropbox"></i>
+                                                                                        <span className="text-xs font-bold hidden sm:inline">Dropbox</span>
+                                                                                    </button>
+                                                                                    <input
+                                                                                        type="text"
+                                                                                        placeholder="https://dropbox.com/s/xyz/slide.pdf?dl=0"
+                                                                                        className="flex-1 px-2 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded text-xs outline-none focus:ring-2 focus:ring-indigo-500"
+                                                                                        onKeyDown={(e) => {
+                                                                                            if (e.key === 'Enter') {
+                                                                                                e.preventDefault();
+                                                                                                const input = e.target as HTMLInputElement;
+                                                                                                let url = input.value.trim();
+                                                                                                if (!url) return;
+
+                                                                                                // Dropbox Smart Handling
+                                                                                                if (url.includes('dropbox.com')) {
+                                                                                                    // Replace dl=0 or dl=1 with raw=1
+                                                                                                    if (/[?&]dl=[01]/.test(url)) {
+                                                                                                        url = url.replace(/([?&])dl=[01]/, '$1raw=1');
+                                                                                                    } else if (!url.includes('raw=1')) {
+                                                                                                        // If neither exists, append raw=1
+                                                                                                        url += url.includes('?') ? '&raw=1' : '?raw=1';
+                                                                                                    }
+                                                                                                }
+
+                                                                                                // Detect Type (ignoring query params)
+                                                                                                const path = url.split('?')[0].toLowerCase();
+                                                                                                let type: 'pdf' | 'pptx' = 'pdf';
+                                                                                                if (path.endsWith('.pptx')) type = 'pptx';
+                                                                                                else if (path.endsWith('.pdf')) type = 'pdf';
+
+                                                                                                const updated = [...videoUrls];
+                                                                                                updated[index].fileUrl = url;
+                                                                                                updated[index].fileType = type;
+                                                                                                setVideoUrls(updated);
+                                                                                                input.value = '';
+                                                                                            }
+                                                                                        }}
+                                                                                    />
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={(e) => {
+                                                                                            const input = (e.currentTarget.previousElementSibling as HTMLInputElement);
+                                                                                            let url = input.value.trim();
+                                                                                            if (!url) return;
+
+                                                                                            // Dropbox Smart Handling
+                                                                                            if (url.includes('dropbox.com')) {
+                                                                                                if (url.includes('dl=0')) {
+                                                                                                    url = url.replace('dl=0', 'raw=1');
+                                                                                                } else if (!url.includes('raw=1')) {
+                                                                                                    url += url.includes('?') ? '&raw=1' : '?raw=1';
+                                                                                                }
+                                                                                            }
+
+                                                                                            // Detect Type (ignoring query params)
+                                                                                            const path = url.split('?')[0].toLowerCase();
+                                                                                            let type: 'pdf' | 'pptx' = 'pdf';
+                                                                                            if (path.endsWith('.pptx')) type = 'pptx';
+                                                                                            else if (path.endsWith('.pdf')) type = 'pdf';
+
+                                                                                            const updated = [...videoUrls];
+                                                                                            updated[index].fileUrl = url;
+                                                                                            updated[index].fileType = type;
+                                                                                            setVideoUrls(updated);
+                                                                                            input.value = '';
+                                                                                        }}
+                                                                                        className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded transition-colors"
+                                                                                    >
+                                                                                        OK
+                                                                                    </button>
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
+
+                                                                        {/* Divider between file and individual slides */}
+                                                                        {!video.fileUrl && (
+                                                                            <>
+                                                                                <div className="flex items-center gap-2 text-[9px] text-slate-400 dark:text-slate-500">
+                                                                                    <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700"></div>
+                                                                                    <span className="font-bold uppercase tracking-wider">ou adicione imagens individuais</span>
+                                                                                    <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700"></div>
+                                                                                </div>
+
+                                                                                {/* Individual slide images */}
+                                                                                <div className="space-y-2">
+                                                                                    <div className="flex items-center justify-between">
+                                                                                        <label className="block text-[10px] font-semibold text-slate-500">Imagens dos Slides</label>
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            onClick={() => {
+                                                                                                const updated = [...videoUrls];
+                                                                                                updated[index].slides = [...(updated[index].slides || []), ''];
+                                                                                                setVideoUrls(updated);
+                                                                                            }}
+                                                                                            className="px-2 py-0.5 text-[10px] font-bold bg-amber-500 hover:bg-amber-400 text-white rounded transition-colors flex items-center gap-1"
+                                                                                        >
+                                                                                            <i className="fas fa-plus text-[8px]"></i>
+                                                                                            Slide
+                                                                                        </button>
+                                                                                    </div>
+                                                                                    {(!video.slides || video.slides.length === 0) && (
+                                                                                        <div className="text-[10px] text-amber-600/60 dark:text-amber-400/60 text-center py-3 border border-dashed border-amber-300 dark:border-amber-700 rounded-lg">
+                                                                                            <i className="fas fa-image mb-1 block text-lg opacity-30"></i>
+                                                                                            Clique em "+ Slide" para adicionar imagens.
+                                                                                        </div>
+                                                                                    )}
+                                                                                    {video.slides && video.slides.map((slideUrl, slideIndex) => (
+                                                                                        <div key={slideIndex} className="flex items-center gap-2">
+                                                                                            <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 w-6 text-center shrink-0">
+                                                                                                {slideIndex + 1}
+                                                                                            </span>
+                                                                                            <input
+                                                                                                type="text"
+                                                                                                value={slideUrl}
+                                                                                                onChange={e => {
+                                                                                                    const updated = [...videoUrls];
+                                                                                                    const slidesCopy = [...(updated[index].slides || [])];
+                                                                                                    slidesCopy[slideIndex] = e.target.value;
+                                                                                                    updated[index].slides = slidesCopy;
+                                                                                                    setVideoUrls(updated);
+                                                                                                }}
+                                                                                                className="flex-1 px-2 py-1 bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-700 rounded text-[10px] outline-none focus:ring-2 focus:ring-amber-500"
+                                                                                                placeholder="https://URL-da-imagem-do-slide.png"
+                                                                                            />
+                                                                                            {slideUrl && (
+                                                                                                <img src={slideUrl} alt={`Slide ${slideIndex + 1}`} className="w-8 h-6 object-cover rounded border border-amber-200 dark:border-amber-700 shrink-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                                                                            )}
+                                                                                            <button
+                                                                                                type="button"
+                                                                                                onClick={() => {
+                                                                                                    const updated = [...videoUrls];
+                                                                                                    const slidesCopy = [...(updated[index].slides || [])];
+                                                                                                    slidesCopy.splice(slideIndex, 1);
+                                                                                                    updated[index].slides = slidesCopy;
+                                                                                                    setVideoUrls(updated);
+                                                                                                }}
+                                                                                                className="w-5 h-5 flex items-center justify-center bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 rounded transition-colors shrink-0"
+                                                                                                title="Remover slide"
+                                                                                            >
+                                                                                                <i className="fas fa-times text-[8px]"></i>
+                                                                                            </button>
+                                                                                        </div>
+                                                                                    ))}
+                                                                                    {video.slides && video.slides.length > 0 && (
+                                                                                        <p className="text-[9px] text-amber-600/50 dark:text-amber-400/50">
+                                                                                            <i className="fas fa-info-circle mr-1"></i>
+                                                                                            {video.slides.length} slide{video.slides.length > 1 ? 's' : ''} adicionado{video.slides.length > 1 ? 's' : ''}
+                                                                                        </p>
+                                                                                    )}
+                                                                                </div>
+                                                                            </>
+                                                                        )}
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                             <div className="flex flex-col gap-1">
                                                                 {index > 0 && (
@@ -4631,15 +4954,20 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                                                         setVideoUrls(updated);
                                                                     }}
                                                                     className="w-6 h-6 flex items-center justify-center bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 rounded transition-colors"
-                                                                    title="Remover vídeo"
+                                                                    title="Remover"
                                                                 >
                                                                     <i className="fas fa-trash text-[10px]"></i>
                                                                 </button>
                                                             </div>
                                                         </div>
                                                         <div className="text-[10px] text-slate-500 flex items-center gap-1">
-                                                            <i className="fas fa-info-circle"></i>
-                                                            <span>Vídeo {index + 1} de {videoUrls.length}{index === 0 ? ' (principal)' : ''}</span>
+                                                            <i className={`fas ${video.type === 'slides' ? 'fa-images text-amber-500' : 'fa-info-circle'}`}></i>
+                                                            <span>
+                                                                {video.type === 'slides'
+                                                                    ? `Apresentação ${index + 1} de ${videoUrls.length}`
+                                                                    : `Vídeo ${index + 1} de ${videoUrls.length}${index === 0 ? ' (principal)' : ''}`
+                                                                }
+                                                            </span>
                                                         </div>
                                                     </div>
                                                 ))}
@@ -4689,7 +5017,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </div >
                 )
             }
 
@@ -5989,6 +6317,19 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                         throw error;
                     }
                 }}
+            />
+
+            {/* Dropbox File Browser */}
+            <DropboxFileBrowser
+                isOpen={showDropboxFileBrowser}
+                onClose={() => setShowDropboxFileBrowser(false)}
+                onSelectFile={(url, filename) => {
+                    if (dropboxFileBrowserCallback) {
+                        dropboxFileBrowserCallback(url, filename);
+                    }
+                    setShowDropboxFileBrowser(false);
+                }}
+                allowedExtensions={['pdf', 'pptx']}
             />
 
         </div >

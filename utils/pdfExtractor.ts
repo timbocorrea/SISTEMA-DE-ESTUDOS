@@ -45,7 +45,8 @@ export async function extractTextFromPDF(pdfUrl: string): Promise<string> {
 
         // Configurar worker apontando para CDN
         // Isso evita precisar copiar o worker manualmente para public/
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+        // Usando unpkg para garantir versão correta e suporte a ESM (.mjs)
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
         // Carregar PDF
         const loadingTask = pdfjsLib.getDocument(pdfUrl);

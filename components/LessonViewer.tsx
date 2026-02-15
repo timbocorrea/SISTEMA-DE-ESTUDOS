@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ShimmerButton } from './ui/shimmer-button';
 import { Course, Lesson, User, UserProgress } from '../domain/entities';
 import VideoPlayer, { VideoPlayerRef } from './VideoPlayer';
+import SlideViewer from './SlideViewer';
 import LessonMaterialsSidebar from './LessonMaterialsSidebar';
 import BuddyContextModal from './BuddyContextModal';
 // import GeminiBuddy from './GeminiBuddy'; // Removed: Uses global now
@@ -590,6 +591,10 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
         ? lesson.videoUrls[activeVideoIndex]?.url
         : lesson.videoUrl;
 
+    // Determine if current active item is a slide presentation
+    const activePlaylistItem = (lesson.videoUrls && lesson.videoUrls.length > 0) ? lesson.videoUrls[activeVideoIndex] : null;
+    const isSlideActive = activePlaylistItem?.type === 'slides' && ((activePlaylistItem?.slides && activePlaylistItem.slides.length > 0) || !!activePlaylistItem?.fileUrl);
+
     // Loading State (Partial Content)
     if (lesson.isLoaded === false) {
         return (
@@ -712,18 +717,27 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                 {(lesson.videoUrl || (lesson.videoUrls && lesson.videoUrls.length > 0)) && !isCinemaMode && (
                     <div className="lg:w-[40%] shrink-0 space-y-3">
                         <div className="lg:sticky lg:top-4 space-y-3">
-                            {/* Player */}
+                            {/* Player or SlideViewer */}
                             <div className="w-full">
-                                <VideoPlayer
-                                    ref={activeVideoRef}
-                                    lesson={lesson}
-                                    videoUrl={currentVideoUrl}
-                                    onProgress={handleProgressUpdateInternal}
-                                    onPlay={() => {
-                                        pauseAudio();
-                                        onTrackAction?.(`Reproduziu vídeo: ${currentVideoUrl || lesson.title}`);
-                                    }}
-                                />
+                                {isSlideActive ? (
+                                    <SlideViewer
+                                        title={activePlaylistItem!.title || 'Apresentação'}
+                                        slides={activePlaylistItem!.slides}
+                                        fileUrl={activePlaylistItem!.fileUrl}
+                                        fileType={activePlaylistItem!.fileType}
+                                    />
+                                ) : (
+                                    <VideoPlayer
+                                        ref={activeVideoRef}
+                                        lesson={lesson}
+                                        videoUrl={currentVideoUrl}
+                                        onProgress={handleProgressUpdateInternal}
+                                        onPlay={() => {
+                                            pauseAudio();
+                                            onTrackAction?.(`Reproduziu vídeo: ${currentVideoUrl || lesson.title}`);
+                                        }}
+                                    />
+                                )}
                             </div>
 
                             {/* Cinema Mode Toggle */}
@@ -773,22 +787,27 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                                     <img src={video.imageUrl} alt={video.title} className="w-full h-full object-cover" />
                                                 ) : (
                                                     <div className="w-full h-full flex items-center justify-center">
-                                                        <i className={`fas fa-play text-xs ${activeVideoIndex === index ? 'text-indigo-400' : 'text-white/30'}`}></i>
+                                                        <i className={`fas ${video.type === 'slides' ? 'fa-images text-amber-400' : 'fa-play'} text-xs ${activeVideoIndex === index ? (video.type === 'slides' ? 'text-amber-400' : 'text-indigo-400') : (video.type === 'slides' ? 'text-amber-500/50' : 'text-white/30')}`}></i>
                                                     </div>
                                                 )}
                                                 {activeVideoIndex === index && (
-                                                    <div className="absolute inset-0 bg-indigo-600/20 flex items-center justify-center">
-                                                        <i className="fas fa-volume-up text-white text-xs animate-pulse"></i>
+                                                    <div className={`absolute inset-0 ${video.type === 'slides' ? 'bg-amber-500/20' : 'bg-indigo-600/20'} flex items-center justify-center`}>
+                                                        <i className={`fas ${video.type === 'slides' ? 'fa-images' : 'fa-volume-up'} text-white text-xs animate-pulse`}></i>
                                                     </div>
                                                 )}
                                             </div>
                                             {/* Info */}
                                             <div className="min-w-0 flex-1">
-                                                <p className={`text-xs font-semibold truncate ${activeVideoIndex === index ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-700 dark:text-slate-300'}`}>
-                                                    {video.title || `Vídeo ${index + 1}`}
+                                                <p className={`text-xs font-semibold truncate ${activeVideoIndex === index ? (video.type === 'slides' ? 'text-amber-600 dark:text-amber-400' : 'text-indigo-600 dark:text-indigo-400') : 'text-slate-700 dark:text-slate-300'}`}>
+                                                    {video.title || (video.type === 'slides' ? `Slides ${index + 1}` : `Vídeo ${index + 1}`)}
                                                 </p>
                                                 {activeVideoIndex === index && (
-                                                    <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider">Reproduzindo</span>
+                                                    <span className={`text-[10px] font-bold uppercase tracking-wider ${video.type === 'slides' ? 'text-amber-500' : 'text-indigo-500'}`}>
+                                                        {video.type === 'slides' ? 'Apresentação' : 'Reproduzindo'}
+                                                    </span>
+                                                )}
+                                                {video.type === 'slides' && activeVideoIndex !== index && (
+                                                    <span className="text-[10px] font-bold text-amber-500/60 uppercase tracking-wider">Slides</span>
                                                 )}
                                             </div>
                                         </button>
