@@ -1,5 +1,6 @@
 // Fixed syntax
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { ShimmerButton } from './ui/shimmer-button';
 import { Course, Lesson, User, UserProgress } from '../domain/entities';
 import VideoPlayer, { VideoPlayerRef } from './VideoPlayer';
@@ -999,11 +1000,12 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                             />
 
                             {/* Context Menu Overlay */}
-                            {contextMenu && (
+                            {contextMenu && createPortal(
                                 <div
-                                    className="fixed z-50 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 p-1.5 flex flex-col min-w-[200px] animate-in fade-in zoom-in-95 duration-150"
+                                    className="fixed z-[9999] bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 p-1.5 flex flex-col min-w-[200px] animate-in fade-in zoom-in-95 duration-150"
                                     style={{ top: contextMenu.y, left: contextMenu.x }}
                                     onClick={(e) => e.stopPropagation()}
+                                    onContextMenu={(e) => e.preventDefault()} // Prevent native menu on custom menu
                                 >
                                     <button
                                         onClick={() => {
@@ -1056,7 +1058,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                         <i className="fas fa-copy w-6 text-center"></i>
                                         Copiar Texto
                                     </button>
-                                </div>
+                                </div>,
+                                document.body
                             )}
 
                             {/* Buddy Context Modal */}
