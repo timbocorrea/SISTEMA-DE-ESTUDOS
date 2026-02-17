@@ -17,7 +17,7 @@ serve(async (req: Request) => {
 
     try {
         const body = await req.json();
-        const { messages, apiKey: bodyApiKey } = body;
+        const { messages, apiKey: bodyApiKey, model } = body;
 
         if (!messages || !Array.isArray(messages)) {
             throw new Error('Formato de requisição inválido: "messages" deve ser um array.');
@@ -69,7 +69,7 @@ serve(async (req: Request) => {
 
         // 4. Determine Provider based on Key Prefix (Server-Side Logic)
         let aiProvider = 'google';
-        let aiModel = 'gemini-2.5-flash';
+        let aiModel = model || 'gemini-1.5-flash';
 
         if (resolvedApiKey.startsWith('sk-')) {
             aiProvider = 'openai';
