@@ -74,6 +74,13 @@ body {
   outline-offset: 2px;
 }
 
+/* Responsive iframes */
+.rich-text-editor iframe,
+.content-reader iframe,
+.embed-wrapper iframe {
+  max-width: 100%;
+}
+
 /* ContentEditable placeholder for blocks */
 [contenteditable][data-placeholder]:empty:before {
   content: attr(data-placeholder);

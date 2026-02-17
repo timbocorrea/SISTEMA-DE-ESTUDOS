@@ -1067,6 +1067,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                 isOpen={showBuddyModal}
                                 onClose={() => setShowBuddyModal(false)}
                                 initialContext={buddyContext}
+                                fullLessonContent={lesson.content}
                                 userName={user?.name}
                                 onAddToNote={(text) => {
                                     setNoteDraft(text);

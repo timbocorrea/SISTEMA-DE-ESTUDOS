@@ -7,19 +7,16 @@ interface BuddyContextModalProps {
     userName?: string;
     onAddToNote?: (text: string) => void;
     existingNoteContent?: string;
+    fullLessonContent?: string; // New prop for full context
 }
 
-const BuddyContextModal: React.FC<BuddyContextModalProps> = ({ isOpen, onClose, initialContext, userName, onAddToNote, existingNoteContent }) => {
+const BuddyContextModal: React.FC<BuddyContextModalProps> = ({ isOpen, onClose, initialContext, userName, onAddToNote, existingNoteContent, fullLessonContent }) => {
     const [prompt, setPrompt] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [messages, setMessages] = useState<{ role: 'user' | 'ai', text: string }[]>([]);
     const [activeModel, setActiveModel] = useState<string>('gemini-1.5-flash');
     const [provider, setProvider] = useState<'google' | 'openai' | 'zhipu' | 'groq'>('google');
     const messagesEndRef = useRef<HTMLDivElement>(null);
-
-    // Auto-fill prompt or just set context? 
-    // User wants to ask questions ABOUT the text. so prompt is empty, context is set hiddenly.
-    // We can show the context in the modal context area.
 
     useEffect(() => {
         if (isOpen) {
@@ -28,7 +25,7 @@ const BuddyContextModal: React.FC<BuddyContextModalProps> = ({ isOpen, onClose, 
 
             const buddyRegex = /🤖 \**Buddy:?\**/i;
             if (existingNoteContent && buddyRegex.test(existingNoteContent)) {
-                const parts = existingNoteContent.split(/🤖 Buddy:|🤖 \*\*Buddy:\*\*/); // Handle both old and new formats
+                const parts = existingNoteContent.split(/🤖 Buddy:|🤖 \*\*Buddy:\*\*/);
                 const history: { role: 'user' | 'ai', text: string }[] = [];
 
                 if (parts[0].trim()) {
@@ -74,21 +71,33 @@ const BuddyContextModal: React.FC<BuddyContextModalProps> = ({ isOpen, onClose, 
 
         const systemInstruction = `
       Você é o 'Study Buddy', um assistente inteligente.
-      O usuário selecionou um trecho de texto da aula para tirar dúvidas.
       
-      Texto Selecionado (Contexto):
+      CONTEXTO DA AULA (Visão Geral):
+      """
+      ${fullLessonContent || 'Nenhum conteúdo adicional disponível.'}
+      """
+
+      FOCO DA PERGUNTA (Trecho Selecionado pelo Usuário):
       """
       ${initialContext}
       """
       
-      Responda à dúvida do usuário com base APENAS ou PRINCIPALMENTE nesse texto selecionado.
-      Seja didático e direto.
+      INSTRUÇÕES:
+      1. Responda à dúvida do usuário focando no "Trecho Selecionado".
+      2. Use o "CONTEXTO DA AULA" para enriquecer a resposta, explicar termos não definidos na seleção ou conectar conceitos.
+      3. Se a resposta não estiver no trecho selecionado, busque no contexto da aula.
+      4. Seja didático e direto.
 
       IMPORTANTE: Forneça a resposta em TEXTO PURO (Plain Text).
+      - Mantenha a resposta CURTA e DIRETA. Sem introduções como "Olá".
+      - Responda em no máximo 3 parágrafos curtos.
       - NÃO use formatação Markdown como **negrito**, # cabeçalhos ou blocos de código.
       - Para listas, use apenas hifens (-) ou números simples.
       - O texto será lido em um editor simples, então evite caracteres de formatação.
       - ACESSIBILIDADE: Use aspas duplas ("") em vez de asteriscos para destaque.
+
+      AO FINAL, SUGIRA CONTINUIDADE:
+      "Gostaria de um exemplo prático?" ou uma pergunta relacionada.
     `;
 
         try {
@@ -141,7 +150,7 @@ const BuddyContextModal: React.FC<BuddyContextModalProps> = ({ isOpen, onClose, 
                     }],
                     generationConfig: {
                         temperature: 0.7,
-                        maxOutputTokens: 8192,
+                        maxOutputTokens: 1000,
                     }
                 })
             });

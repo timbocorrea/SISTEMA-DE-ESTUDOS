@@ -574,6 +574,7 @@ const App: React.FC = () => {
         <GeminiBuddy
           userName={user.name}
           systemContext="Você está no StudySystem v2 com Rotas."
+          currentContext={activeLesson?.content || activeLesson?.contentBlocks?.map(b => b.text).join('\n\n') || ''}
         />
       </React.Suspense>
 

@@ -6,6 +6,7 @@ import { SupabaseAuthRepository } from '../repositories/SupabaseAuthRepository';
 import { CourseService } from '../services/CourseService';
 import { SupabaseCourseRepository } from '../repositories/SupabaseCourseRepository';
 import { createSupabaseClient } from '../services/supabaseClient';
+import { useBuddyStore } from '../stores/useBuddyStore';
 
 interface AuthContextType {
     session: IUserSession | null;
@@ -59,6 +60,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, []);
 
     const logout = async () => {
+        if (session?.user?.id) {
+            useBuddyStore.getState().clearUserSession(session.user.id);
+        }
         await authService.logout();
         setSession(null);
         setUser(null);

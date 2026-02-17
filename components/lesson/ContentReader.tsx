@@ -279,8 +279,25 @@ const ContentReader: React.FC<ContentReaderProps> = React.memo(({
             }}>
                 {lesson.title}
             </h2>
+
+
+            {/* Injected Styles for Reponsive Content */}
+            <style>{`
+                .content-reader iframe,
+                .content-reader video,
+                .content-reader embed,
+                .content-reader object {
+                    max-width: 100%;
+                    height: auto !important; /* Override fixed inline heights */
+                    aspect-ratio: 16/9;
+                    border-radius: 0.5rem;
+                    margin: 1rem 0;
+                    display: block;
+                }
+            `}</style>
+
             {renderContent()}
-        </div>
+        </div >
     );
 });
 

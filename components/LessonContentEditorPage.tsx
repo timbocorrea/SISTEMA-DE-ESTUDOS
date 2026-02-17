@@ -82,6 +82,7 @@ const BlockItem = React.memo(({
         setShowImageModal: (show: boolean) => void;
         setShowTableModal: (show: boolean) => void;
         setShowVideoModal: (show: boolean) => void;
+        setShowEmbedModal: (show: boolean) => void;
         insertVideoEmbed: (idx: number) => void;
         openAudioModal: (block: any) => void;
         copyBlockContent: (id: string) => void;
@@ -220,7 +221,8 @@ const BlockItem = React.memo(({
                         </button>
                         <button
                             onClick={() => {
-                                handlers.insertVideoEmbed(index);
+                                handlers.setMediaMenuIndex(index);
+                                handlers.setShowEmbedModal(true);
                                 handlers.setShowMediaMenu(false);
                             }}
                             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 transition-colors"
@@ -711,6 +713,8 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
     const [showImageModal, setShowImageModal] = useState(false);
     const [showTableModal, setShowTableModal] = useState(false);
     const [showVideoModal, setShowVideoModal] = useState(false);
+    const [showEmbedModal, setShowEmbedModal] = useState(false);
+    const [embedCode, setEmbedCode] = useState('');
     const [imageMode, setImageMode] = useState<'upload' | 'url'>('url');
     const [mediaUrl, setMediaUrl] = useState('');
     const [uploadingMedia, setUploadingMedia] = useState(false);
@@ -2995,6 +2999,34 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
         setShowMediaMenu(false);
     };
 
+    // Inserir código embed customizado
+    const insertCustomEmbed = (atIndex?: number) => {
+        if (!embedCode) return;
+
+        // Simple wrapper to ensure responsiveness if it's an iframe
+        // We add a generic container that handles overflow
+        const html = `<div class="embed-wrapper" style="width: 100%; overflow: hidden; margin: 20px 0; border-radius: 12px; display: flex; justify-content: center;">${embedCode}</div>`;
+
+        const newBlock = {
+            id: Math.random().toString(36).substring(2) + Date.now().toString(36),
+            text: html,
+            audioUrl: '',
+            spacing: 0
+        };
+
+        if (atIndex !== undefined) {
+            const newBlocks = [...blocks];
+            newBlocks.splice(atIndex, 0, newBlock);
+            setBlocks(newBlocks);
+        } else {
+            setBlocks([...blocks, newBlock]);
+        }
+
+        setShowEmbedModal(false);
+        setEmbedCode('');
+        setShowMediaMenu(false);
+    };
+
     // Inserir citação
     const insertQuote = () => {
         const targetElement = activeEditableElement || editorRef.current;
@@ -3883,6 +3915,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                                     setShowImageModal,
                                                     setShowTableModal,
                                                     setShowVideoModal,
+                                                    setShowEmbedModal,
                                                     insertVideoEmbed,
                                                     openAudioModal,
                                                     copyBlockContent,
@@ -5053,6 +5086,49 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                     className="w-full mt-4 py-3 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white font-semibold rounded-lg transition-colors disabled:cursor-not-allowed"
                                 >
                                     Inserir Vídeo
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
+            {/* Modal: Inserir Código Embed (Customizado) */}
+            {
+                showEmbedModal && (
+                    <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4" onClick={() => setShowEmbedModal(false)}>
+                        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg p-6" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-xl font-bold text-slate-900 dark:text-white">Inserir Código Embed</h3>
+                                <button onClick={() => setShowEmbedModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                                    <i className="fas fa-times text-xl"></i>
+                                </button>
+                            </div>
+
+                            <div>
+                                <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg text-sm flex items-start gap-2">
+                                    <i className="fas fa-info-circle mt-0.5"></i>
+                                    <div>
+                                        <p className="font-bold">Atenção:</p>
+                                        <p>Cole aqui códigos <code>&lt;iframe&gt;</code> do Google Maps, Spotify, Soundcloud, etc.</p>
+                                    </div>
+                                </div>
+
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                    Código HTML / Embed
+                                </label>
+                                <textarea
+                                    value={embedCode}
+                                    onChange={(e) => setEmbedCode(e.target.value)}
+                                    placeholder="<iframe src='...' width='100%' height='400'></iframe>"
+                                    className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono text-xs h-32 resize-none"
+                                />
+                                <button
+                                    onClick={() => insertCustomEmbed(mediaMenuIndex !== null ? mediaMenuIndex : undefined)}
+                                    disabled={!embedCode}
+                                    className="w-full mt-4 py-3 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white font-semibold rounded-lg transition-colors disabled:cursor-not-allowed"
+                                >
+                                    Inserir Código
                                 </button>
                             </div>
                         </div>

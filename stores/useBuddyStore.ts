@@ -31,6 +31,7 @@ interface BuddyState {
     setLoading: (loading: boolean) => void;
     setIsOpen: (isOpen: boolean) => void;
     clearHistory: (userId: string) => void;
+    clearUserSession: (userId: string) => void;
     setWelcomeShown: (userId: string, shown: boolean) => void;
 
     // Thread Actions
@@ -164,7 +165,18 @@ export const useBuddyStore = create<BuddyState>()(
                 return {
                     threadsByUser: { ...state.threadsByUser, [userId]: updatedThreads }
                 };
-            })
+            }),
+
+            clearUserSession: (userId) => set((state) => ({
+                threadsByUser: {
+                    ...state.threadsByUser,
+                    [userId]: []
+                },
+                activeThreadIdByUser: {
+                    ...state.activeThreadIdByUser,
+                    [userId]: null
+                }
+            }))
         }),
         {
             name: 'buddy-store-v3', // Incremented version for major structural change

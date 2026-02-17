@@ -120,19 +120,29 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                             </details>
                         )}
 
-                        <div className="flex gap-2">
+                        <div className="flex flex-col gap-2">
                             <button
-                                onClick={this.resetError}
-                                className="flex-1 px-4 py-2 rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-semibold text-sm transition-colors"
+                                onClick={() => window.location.href = '/'}
+                                className="w-full px-4 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm transition-all shadow-lg shadow-indigo-500/20 active:scale-95 flex items-center justify-center gap-2"
                             >
-                                Tentar Novamente
+                                <i className="fas fa-home"></i>
+                                Ir para o Início
                             </button>
-                            <button
-                                onClick={() => window.location.reload()}
-                                className="flex-1 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition-colors"
-                            >
-                                Recarregar Página
-                            </button>
+
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={this.resetError}
+                                    className="flex-1 px-4 py-2 rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs transition-colors"
+                                >
+                                    Tentar Novamente
+                                </button>
+                                <button
+                                    onClick={() => window.location.reload()}
+                                    className="flex-1 px-4 py-2 rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs transition-colors"
+                                >
+                                    Recarregar
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
