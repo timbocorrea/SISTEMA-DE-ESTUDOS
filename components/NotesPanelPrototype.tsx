@@ -983,7 +983,18 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({
                     <button
                         onClick={() => {
                             if (newNoteContent.trim()) {
-                                handleCreateNote(newNoteContent);
+                                if (savedSelection) {
+                                    handleCreateNote(newNoteContent, {
+                                        text: savedSelection.text,
+                                        range: savedSelection.range,
+                                        color: selectedColor
+                                    });
+                                    // Clear selection state after creating
+                                    setSavedSelection(null);
+                                    setShowColorPicker(false);
+                                } else {
+                                    handleCreateNote(newNoteContent);
+                                }
                                 setNewNoteContent('');
                             }
                         }}

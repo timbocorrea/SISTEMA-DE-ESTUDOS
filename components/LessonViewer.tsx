@@ -8,7 +8,9 @@ import LessonMaterialsSidebar from './LessonMaterialsSidebar';
 import BuddyContextModal from './BuddyContextModal';
 // import GeminiBuddy from './GeminiBuddy'; // Removed: Uses global now
 import NotesPanelPrototype from './NotesPanelPrototype';
+import QuizOptionsModal from './QuizOptionsModal';
 import QuizModal from './QuizModal';
+
 import QuizResultsModal from './QuizResultsModal';
 import { QuizAttemptResult } from '../domain/quiz-entities';
 import { createSupabaseClient } from '../services/supabaseClient';
@@ -40,6 +42,7 @@ interface LessonViewerProps {
     onTrackAction?: (action: string) => void;
     onToggleSidebar?: () => void;
 }
+
 
 const LessonViewer: React.FC<LessonViewerProps> = ({
     course,
@@ -90,7 +93,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     const [viewerImageUrl, setViewerImageUrl] = useState('');
 
     // Context Menu State
-    const [contextMenu, setContextMenu] = useState<{ x: number, y: number, text: string } | null>(null);
+    const [contextMenu, setContextMenu] = useState<{ x: number, y: number, text: string, range?: Range } | null>(null);
     const [showBuddyModal, setShowBuddyModal] = useState(false);
     const [buddyContext, setBuddyContext] = useState('');
 
@@ -100,10 +103,16 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
     // Video switcher state
     const activeVideoRef = useRef<VideoPlayerRef>(null);
+
     const [activeVideoIndex, setActiveVideoIndex] = useState<number>(0);
+
+    const [showQuizOptionsModal, setShowQuizOptionsModal] = useState(false);
 
     // Materials/Notes panel state (overlay on desktop)
     const [isMaterialsPanelOpen, setIsMaterialsPanelOpen] = useState(false);
+
+    // Video Collapse State
+    const [isVideoCollapsed, setIsVideoCollapsed] = useState(false);
 
     // Audio playback state (persists across panel open/close)
     const [isAudioActive, setIsAudioActive] = useState(false);
@@ -348,6 +357,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                             onClick: () => {
                                 setFocusedNoteId(note.id);
                                 setSidebarTab('notes');
+                                setIsMaterialsPanelOpen(true);
                                 handleOpenDrawer('notes');
                             }
                         });
@@ -364,6 +374,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                     onClick: () => {
                                         setFocusedNoteId(note.id);
                                         setSidebarTab('notes');
+                                        setIsMaterialsPanelOpen(true);
                                         handleOpenDrawer('notes');
                                     }
                                 });
@@ -396,6 +407,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                     onClick: () => {
                         setFocusedNoteId(note.id);
                         setSidebarTab('notes');
+                        setIsMaterialsPanelOpen(true);
                         handleOpenDrawer('notes');
                     }
                 });
@@ -412,6 +424,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                             onClick: () => {
                                 setFocusedNoteId(note.id);
                                 setSidebarTab('notes');
+                                setIsMaterialsPanelOpen(true);
                                 handleOpenDrawer('notes');
                             }
                         });
@@ -460,130 +473,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
 
 
-    const renderQuizStatusCard = () => {
-        if (!quiz) return null;
 
-        const quizAvailable = quiz.isManuallyReleased || lesson.isCompleted || lesson.calculateProgressPercentage() >= 90;
-
-        return (
-
-            <div className={`rounded-3xl border overflow-hidden transition-all duration-300 shadow-sm ${quizAvailable
-                ? 'bg-gradient-to-br from-emerald-50/50 via-teal-50/30 to-green-50/50 dark:from-emerald-900/40 dark:via-teal-900/30 dark:to-green-900/40 border-emerald-500/20 dark:border-emerald-500/30 shadow-emerald-500/5'
-                : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700'
-                }`}>
-                {/* Header Section */}
-                <div className={`p-4 border-b flex items-center gap-4 ${quizAvailable
-                    ? 'bg-emerald-500/5 dark:bg-emerald-800/30 border-emerald-500/10 dark:border-emerald-700/30'
-                    : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700'
-                    }`}>
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110 ${quizAvailable
-                        ? 'bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
-                        : 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500'
-                        }`}>
-                        <i className={`fas ${quizAvailable ? 'fa-graduation-cap' : 'fa-lock'} text-xl`}></i>
-                    </div>
-                    <div className="flex-1">
-                        <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 tracking-tight">Quiz da Aula</h3>
-                        <div className="flex items-center gap-2 mt-1">
-                            <span className={`flex h-2 w-2 rounded-full ${quizAvailable ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`}></span>
-                            <p className={`text-[10px] font-black uppercase tracking-widest ${quizAvailable ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'}`}>
-                                {quizAvailable ? 'Disponível' : 'Bloqueado'}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="p-5 space-y-4">
-                    {/* Dual-Mode Buttons */}
-                    <div className="grid grid-cols-2 gap-4">
-                        {/* Practice Mode Button */}
-                        <button
-                            onClick={() => setShowPracticeConfigModal(true)}
-                            className="group relative rounded-2xl p-4 transition-all duration-300 bg-white dark:bg-blue-600/10 border-2 border-blue-500/20 dark:border-blue-500/30 hover:border-blue-500/50 hover:bg-blue-50 dark:hover:bg-blue-600/20 shadow-sm hover:shadow-md"
-                            title="Modo Prática - Sem XP"
-                        >
-                            <div className="flex flex-col items-center gap-3">
-                                <div className="w-12 h-12 rounded-xl bg-blue-500/10 dark:bg-blue-500/20 border border-blue-400/20 dark:border-blue-400/30 flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
-                                    <i className="fas fa-dumbbell text-xl text-blue-600 dark:text-blue-400"></i>
-                                </div>
-                                <div className="text-center">
-                                    <p className="font-black text-sm text-slate-800 dark:text-slate-100 mb-0.5">Prática</p>
-                                    <p className="text-[9px] text-blue-600 dark:text-blue-300 font-black uppercase tracking-widest opacity-80">Sem XP</p>
-                                </div>
-                            </div>
-                        </button>
-
-                        {/* Evaluation Mode Button */}
-                        <button
-                            onClick={quizAvailable ? handleStartQuiz : undefined}
-                            disabled={!quizAvailable}
-                            className={`group relative rounded-2xl p-4 transition-all duration-300 ${quizAvailable
-                                ? 'bg-white dark:bg-emerald-600/10 border-2 border-emerald-500/20 dark:border-emerald-500/40 hover:border-emerald-500/50 hover:bg-emerald-50 dark:hover:bg-emerald-600/20 shadow-sm hover:shadow-md cursor-pointer'
-                                : 'bg-slate-100 dark:bg-slate-800/50 border-2 border-slate-200 dark:border-slate-700/50 cursor-not-allowed grayscale'
-                                }`}
-                            title={quizAvailable ? "Modo Avaliativo - Ganhe XP" : "Complete 90% da aula para desbloquear"}
-                        >
-                            <div className="flex flex-col items-center gap-3">
-                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-transform duration-300 ${quizAvailable
-                                    ? 'bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-400/20 dark:border-emerald-400/30 group-hover:scale-110'
-                                    : 'bg-slate-200 dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600'
-                                    }`}>
-                                    <i className={`fas ${quizAvailable ? 'fa-trophy' : 'fa-lock'} text-xl ${quizAvailable ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'}`}></i>
-                                </div>
-                                <div className="text-center">
-                                    <p className={`font-black text-sm mb-0.5 ${quizAvailable ? 'text-slate-800 dark:text-slate-100' : 'text-slate-400 dark:text-slate-500'}`}>Avaliativo</p>
-                                    <p className={`text-[9px] font-black uppercase tracking-widest opacity-80 ${quizAvailable ? 'text-emerald-600 dark:text-emerald-300' : 'text-slate-400 dark:text-slate-500'}`}>
-                                        {quizAvailable ? 'Ganhe XP' : 'Bloqueado'}
-                                    </p>
-                                </div>
-                            </div>
-                        </button>
-                    </div>
-
-                    {/* Quiz Info */}
-                    <div className="p-4 bg-slate-100/50 dark:bg-slate-800/30 rounded-2xl border border-slate-200/60 dark:border-slate-700/50 flex items-center justify-between">
-                        <div className="min-w-0 flex-1 pr-3">
-                            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest mb-1">Título do Questionário</p>
-                            <span className="text-sm font-bold text-slate-800 dark:text-slate-200 block truncate">{quiz.title}</span>
-                        </div>
-                        <div className="text-right flex-shrink-0 border-l border-slate-200 dark:border-slate-700 pl-4">
-                            <p className="text-xl font-black text-indigo-600 dark:text-indigo-400 leading-none">{quiz.questions.length || quiz.questionsCount || 0}</p>
-                            <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-tighter mt-1">Questões</p>
-                        </div>
-                    </div>
-
-                    {quizAvailable && (
-                        <div className="flex items-center gap-2 px-1">
-                            <i className="fas fa-circle-check text-emerald-500 text-[10px]"></i>
-                            <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Nota mínima para aprovação: <span className="text-indigo-600 dark:text-indigo-400">{quiz.passingScore}%</span></p>
-                        </div>
-                    )}
-
-                    {!quizAvailable && (
-                        <div className="mt-4 p-4 bg-indigo-50/50 dark:bg-slate-800/50 rounded-2xl border border-indigo-100/50 dark:border-slate-700">
-                            <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-3">
-                                <span>Progresso Requerido</span>
-                                <span className="text-indigo-600 dark:text-indigo-300">
-                                    {lesson.calculateProgressPercentage()}% / 90%
-                                </span>
-                            </div>
-                            <div className="w-full h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden shadow-inner p-0.5">
-                                <div
-                                    className="h-full bg-gradient-to-r from-indigo-500 to-emerald-500 rounded-full transition-all duration-700 shadow-sm"
-                                    style={{ width: `${Math.min(lesson.calculateProgressPercentage(), 100)}%` }}
-                                ></div>
-                            </div>
-                            <p className="text-[10px] text-slate-500 dark:text-slate-500 mt-3 text-center font-medium italic">
-                                {90 - lesson.calculateProgressPercentage() > 0
-                                    ? `Assista mais ${(90 - lesson.calculateProgressPercentage()).toFixed(0)}% do conteúdo para liberar o teste.`
-                                    : 'Recarregue a página para liberar o quiz!'}
-                            </p>
-                        </div>
-                    )}
-                </div>
-            </div>
-        );
-    };
 
     // Determine which video URL to use
     const hasMultipleVideos = lesson.videoUrls && lesson.videoUrls.length > 1;
@@ -673,17 +563,31 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                         </div>
 
                         {/* Materials/Notes Button (desktop) */}
-                        <button
-                            onClick={() => {
-                                setIsMaterialsPanelOpen(true);
-                                onTrackAction?.('Abriu Materiais/Notas');
-                            }}
-                            className="hidden lg:flex items-center gap-2 h-9 px-3 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 transition-colors text-xs font-bold border border-indigo-200 dark:border-indigo-800"
-                            title="Materiais e Notas"
-                        >
-                            <i className="fas fa-book-reader text-xs"></i>
-                            <span>Materiais</span>
-                        </button>
+                        <div className="hidden lg:flex items-center gap-2">
+                            <button
+                                onClick={() => {
+                                    setIsMaterialsPanelOpen(true);
+                                    onTrackAction?.('Abriu Materiais/Notas');
+                                }}
+                                className="flex items-center gap-2 h-9 px-3 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 transition-colors text-xs font-bold border border-indigo-200 dark:border-indigo-800"
+                                title="Materiais e Notas"
+                            >
+                                <i className="fas fa-book-reader text-xs"></i>
+                                <span>Materiais</span>
+                            </button>
+
+                            {/* Quiz Button */}
+                            {quiz && (
+                                <button
+                                    onClick={() => setShowQuizOptionsModal(true)}
+                                    className="flex items-center gap-2 h-9 px-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 transition-colors text-xs font-bold border border-emerald-200 dark:border-emerald-800"
+                                    title="Quiz da Aula"
+                                >
+                                    <i className="fas fa-graduation-cap text-xs"></i>
+                                    <span>Quiz</span>
+                                </button>
+                            )}
+                        </div>
 
                         {/* Back Button */}
                         <ShimmerButton
@@ -714,8 +618,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
             <div className={`flex flex-col ${!isCinemaMode && (lesson.videoUrl || (lesson.videoUrls && lesson.videoUrls.length > 0)) ? 'lg:flex-row' : ''} gap-4 relative`}>
 
                 {/* Coluna Esquerda: Vídeo + Playlist (40% desktop, 100% mobile, hidden cinema mode) */}
-                {(lesson.videoUrl || (lesson.videoUrls && lesson.videoUrls.length > 0)) && !isCinemaMode && (
-                    <div className="lg:w-[40%] shrink-0 space-y-3">
+                {(lesson.videoUrl || (lesson.videoUrls && lesson.videoUrls.length > 0)) && !isCinemaMode && !isVideoCollapsed && (
+                    <div className="lg:w-[40%] shrink-0 space-y-3 animate-in fade-in slide-in-from-left duration-500">
                         <div className="lg:sticky lg:top-4 space-y-3">
                             {/* Player or SlideViewer */}
                             <div className="w-full">
@@ -740,8 +644,20 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                 )}
                             </div>
 
-                            {/* Cinema Mode Toggle */}
-                            <div className="flex justify-end">
+                            {/* Cinema Mode Toggle & Collapse Button */}
+                            <div className="flex justify-end gap-2">
+                                <motion.button
+                                    whileTap={{ scale: 0.95 }}
+                                    onClick={() => {
+                                        setIsVideoCollapsed(true);
+                                        onTrackAction?.('Colapsou Vídeo');
+                                    }}
+                                    className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors flex items-center gap-2 text-xs font-medium"
+                                    title="Ocultar Vídeo (Focar no Texto)"
+                                >
+                                    <i className="fas fa-columns text-xs"></i>
+                                    <span className="hidden sm:inline">Focar Texto</span>
+                                </motion.button>
                                 <motion.button
                                     whileTap={{ scale: 0.95 }}
                                     onClick={() => {
@@ -848,8 +764,29 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                     </div>
                 )}
 
+                {/* Collapsed Video Sidebar (Vertical Bar) */}
+                {isVideoCollapsed && !isCinemaMode && (
+                    <div className="hidden lg:flex flex-col gap-4 animate-in fade-in slide-in-from-left duration-300">
+                        <button
+                            onClick={() => setIsVideoCollapsed(false)}
+                            className="w-12 h-full min-h-[500px] rounded-3xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:border-indigo-200 dark:hover:border-indigo-800 transition-all group flex flex-col items-center py-8 gap-4"
+                            title="Mostrar Vídeo"
+                        >
+                            <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <i className="fas fa-chevron-right text-indigo-600 dark:text-indigo-400"></i>
+                            </div>
+                            <div className="flex-1 w-px bg-slate-300 dark:bg-slate-800 group-hover:bg-indigo-200 dark:group-hover:bg-indigo-800 transition-colors"></div>
+                            <span style={{ writingMode: 'vertical-rl', textOrientation: 'upright' }} className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                                Mostrar Vídeo
+                            </span>
+                            <div className="flex-1 w-px bg-slate-300 dark:bg-slate-800 group-hover:bg-indigo-200 dark:group-hover:bg-indigo-800 transition-colors"></div>
+                            <i className="fas fa-video text-slate-400 dark:text-slate-500 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors"></i>
+                        </button>
+                    </div>
+                )}
+
                 {/* Coluna Central: Conteúdo da Aula (65% desktop, 100% mobile) */}
-                <div className={`flex-1 min-w-0 ${isCinemaMode ? 'hidden' : ''}`}>
+                <div className={`flex-1 min-w-0 ${isCinemaMode ? 'hidden' : ''} transition-all duration-500 ease-in-out`}>
 
                     {/* Conteúdo da Matéria (Texto Rico OU Blocos de Áudio) */}
                     <div className={`rounded-3xl border shadow-sm transition-colors flex flex-col h-[calc(100vh-140px)] ${contentTheme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-white border-slate-200'}`}>
@@ -1018,10 +955,38 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                     let x = e.clientX;
                                     let y = e.clientY;
 
-                                    setContextMenu({ x, y, text });
+                                    // Capture range immediately to prevent loss on click
+                                    let range: Range | undefined;
+                                    if (selection && selection.rangeCount > 0) {
+                                        range = selection.getRangeAt(0).cloneRange();
+                                    }
+
+                                    setContextMenu({ x, y, text, range });
                                 }
                             }}
-                            onClick={() => setContextMenu(null)} // Fecha ao clicar fora
+                            onClick={(e) => {
+                                setContextMenu(null);
+
+                                // Check if clicked element is a highlight
+                                const target = e.target as HTMLElement;
+                                const mark = target.closest('mark[data-note-id]');
+
+                                if (mark) {
+                                    const noteId = mark.getAttribute('data-note-id');
+                                    if (noteId) {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+
+                                        // Open Notes Panel
+                                        setSidebarTab('notes');
+                                        setIsMaterialsPanelOpen(true); // Desktop
+                                        handleOpenDrawer('notes');     // Mobile
+
+                                        // Focus Note
+                                        setFocusedNoteId(noteId);
+                                    }
+                                }
+                            }}
                         >
                             <ContentReader
                                 lesson={lesson}
@@ -1057,17 +1022,16 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
                                     <button
                                         onClick={() => {
-                                            // Captura selecao e passa para o NotesPanel
-                                            const selection = window.getSelection();
-                                            if (selection && selection.rangeCount > 0) {
-                                                const range = selection.getRangeAt(0).cloneRange();
-                                                setNoteDraftWithRange({ text: contextMenu.text, range });
+                                            // Use captured range from state instead of trying to get it again
+                                            if (contextMenu.range) {
+                                                setNoteDraftWithRange({ text: contextMenu.text, range: contextMenu.range });
                                             } else {
                                                 setNoteDraft(contextMenu.text);
                                             }
 
                                             setSidebarTab('notes');
-                                            handleOpenDrawer('notes');
+                                            setIsMaterialsPanelOpen(true); // Ensure desktop panel opens
+                                            handleOpenDrawer('notes');     // Ensure mobile drawer opens
                                             setContextMenu(null);
                                             onTrackAction?.('Usou Menu Contexto: Criar Nota com Seleção');
                                         }}
@@ -1196,7 +1160,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                     externalDraft={noteDraftWithRange}
                                 />
                             )}
-                            {renderQuizStatusCard()}
+
                         </div>
                     </div>
                 </>
@@ -1286,7 +1250,20 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                 {activeMobileTab === 'quiz' && (
                                     <div className="space-y-4">
                                         <h3 className="text-lg font-bold text-center text-slate-800 dark:text-white">Quiz da Aula</h3>
-                                        {renderQuizStatusCard()}
+                                        <div className="p-4 flex flex-col items-center justify-center gap-4">
+                                            <p className="text-center text-slate-500 dark:text-slate-400 text-sm">
+                                                Acesse o Quiz da aula para praticar ou ser avaliado.
+                                            </p>
+                                            <button
+                                                onClick={() => {
+                                                    handleCloseDrawer();
+                                                    setShowQuizOptionsModal(true);
+                                                }}
+                                                className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold shadow-lg"
+                                            >
+                                                Abrir Opções do Quiz
+                                            </button>
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -1371,6 +1348,25 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                     </div>
                 </div>
             )}
+
+            {
+                showQuizOptionsModal && quiz && (
+                    <QuizOptionsModal
+                        isOpen={showQuizOptionsModal}
+                        onClose={() => setShowQuizOptionsModal(false)}
+                        quiz={quiz}
+                        lesson={lesson}
+                        onStartEvaluative={() => {
+                            setShowQuizOptionsModal(false);
+                            handleStartQuiz();
+                        }}
+                        onConfigurePractice={() => {
+                            setShowQuizOptionsModal(false);
+                            setShowPracticeConfigModal(true);
+                        }}
+                    />
+                )
+            }
 
             {
                 showQuizModal && quiz && (
