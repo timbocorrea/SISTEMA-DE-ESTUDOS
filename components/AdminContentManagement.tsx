@@ -9,6 +9,7 @@ import ResourceUploadForm from './ResourceUploadForm';
 import CreateCourseModal from './CreateCourseModal';
 import CreateModuleModal from './CreateModuleModal';
 import CreateLessonModal from './CreateLessonModal';
+import MoveLessonModal from './MoveLessonModal';
 
 type Props = {
   adminService: AdminService;
@@ -38,6 +39,7 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
 
   const [activeLesson, setActiveLesson] = useState<LessonRecord | null>(null);
   const [activeLessonId, setActiveLessonId] = useState<string>('');
+  const [movingLesson, setMovingLesson] = useState<LessonRecord | null>(null);
   const [newResourceTitle, setNewResourceTitle] = useState('');
   const [newResourceType, setNewResourceType] = useState<LessonResourceRecord['resource_type']>('PDF');
   const [newResourceUrl, setNewResourceUrl] = useState('');
@@ -199,10 +201,10 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
     }
   };
 
-  const handleCreateCourse = async (title: string, description: string, imageUrl: string) => {
+  const handleCreateCourse = async (title: string, description: string, imageUrl: string, color: string, colorLegend: string) => {
     try {
       setBusy(true);
-      await adminService.createCourse(title.trim(), description.trim() || undefined, imageUrl.trim() || undefined);
+      await adminService.createCourse(title.trim(), description.trim() || undefined, imageUrl.trim() || undefined, color, colorLegend);
       await refreshCourses();
       refreshSystemStats();
     } catch (e) {
@@ -219,7 +221,9 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
       await adminService.updateCourse(editingCourse.id, {
         title: editingCourse.title,
         description: editingCourse.description ?? null,
-        imageUrl: editingCourse.image_url ?? null
+        imageUrl: editingCourse.image_url ?? null,
+        color: editingCourse.color ?? null,
+        colorLegend: editingCourse.color_legend ?? null
       });
       setEditingCourse(null);
       await refreshCourses();
@@ -344,6 +348,27 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
       }
       await refreshLessons(moduleId);
       refreshSystemStats();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleMoveLesson = async (lessonId: string, sourceModuleId: string, targetModuleId: string) => {
+    try {
+      setBusy(true);
+      await adminService.moveLesson(lessonId, targetModuleId);
+      if (activeLessonId === lessonId) {
+        setActiveLessonId('');
+        setActiveLesson(null);
+      }
+      setMovingLesson(null);
+      await Promise.all([
+        refreshLessons(sourceModuleId),
+        refreshLessons(targetModuleId)
+      ]);
+      toast.success('Aula movida com sucesso!');
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -591,6 +616,16 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
                       <p className="text-[10px] text-slate-400 mt-2 truncate">Video: {lesson.video_url || '-'}</p>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
+                      <button
+                        onClick={e => {
+                          e.stopPropagation();
+                          setMovingLesson({ ...lesson });
+                        }}
+                        className="p-2 text-slate-400 hover:text-amber-500 transition-colors"
+                        title="Mover aula para outro módulo"
+                      >
+                        <i className="fas fa-arrow-right-arrow-left"></i>
+                      </button>
                       <button
                         onClick={e => {
                           e.stopPropagation();
@@ -855,10 +890,27 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
                     if (!modules.length) refreshModules(course.id);
                   }}
                 >
-                  <div className="min-w-0">
-                    <p className="text-sm font-black text-slate-800 dark:text-white truncate">{course.title}</p>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3">
+                      {/* Indicador de cor */}
+                      {course.color && (
+                        <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: course.color }} title={course.color_legend || 'Categoria'}></div>
+                      )}
+                      <h3 className="text-sm font-black text-slate-800 dark:text-white truncate">
+                        {course.title}
+                      </h3>
+                      {/* Badge de Legenda */}
+                      {course.color_legend && (
+                        <span
+                          className="px-2 py-0.5 rounded-full text-[10px] font-bold text-white shadow-sm"
+                          style={{ backgroundColor: course.color || '#6366f1' }}
+                        >
+                          {course.color_legend}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1 truncate">
-                      {course.description || 'Sem descricao'}
+                      {course.description || 'SEM DESCRICAO'}
                     </p>
                     <p className="text-[10px] text-slate-400 mt-2">ID: {course.id}</p>
                   </div>
@@ -1001,6 +1053,30 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
                     placeholder="Descricao"
                     className="w-full bg-slate-50 dark:bg-[#0a0e14] border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-slate-700 dark:text-slate-200 text-sm outline-none"
                   />
+                  <div className="mt-4 grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Cor</label>
+                      <div className="flex flex-wrap gap-2">
+                        {['#6366f1', '#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6'].map(c => (
+                          <button
+                            key={c}
+                            onClick={() => setEditingCourse({ ...editingCourse, color: c })}
+                            className={`w-6 h-6 rounded-full border-2 transition-all ${editingCourse.color === c ? 'border-slate-800 dark:border-white scale-110' : 'border-transparent hover:scale-105'}`}
+                            style={{ backgroundColor: c }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Legenda</label>
+                      <input
+                        value={editingCourse.color_legend || ''}
+                        onChange={e => setEditingCourse({ ...editingCourse, color_legend: e.target.value })}
+                        className="w-full bg-slate-50 dark:bg-[#0a0e14] border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2 text-slate-700 dark:text-slate-200 text-sm outline-none"
+                        placeholder="Ex: Exatas"
+                      />
+                    </div>
+                  </div>
                 </>
               )}
 
@@ -1120,6 +1196,24 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
         isLoading={busy}
         nextPosition={activeModuleIdForLessonCreation ? (lessonsByModule[activeModuleIdForLessonCreation]?.length || 0) + 1 : 1}
       />
+      {movingLesson && (
+        <MoveLessonModal
+          lesson={movingLesson}
+          currentModuleTitle={
+            Object.values(modulesByCourse).flat().find(m => m.id === movingLesson.module_id)?.title || 'Módulo desconhecido'
+          }
+          availableModules={
+            (() => {
+              const sourceModule = Object.values(modulesByCourse).flat().find(m => m.id === movingLesson.module_id);
+              if (!sourceModule) return [];
+              return modulesByCourse[sourceModule.course_id] || [];
+            })()
+          }
+          busy={busy}
+          onConfirm={(targetModuleId) => handleMoveLesson(movingLesson.id, movingLesson.module_id, targetModuleId)}
+          onClose={() => setMovingLesson(null)}
+        />
+      )}
     </div>
   );
 };

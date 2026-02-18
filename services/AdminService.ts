@@ -34,7 +34,7 @@ export class AdminService {
         return new Module(rm.id, rm.title, lessons);
       });
 
-      return new Course(rc.id, rc.title, rc.description || '', rc.image_url || '', modules);
+      return new Course(rc.id, rc.title, rc.description || '', rc.image_url || '', rc.color || null, rc.color_legend || null, modules);
     });
   }
 
@@ -63,15 +63,15 @@ export class AdminService {
         return new Module(rm.id, rm.title, lessons);
       });
 
-      return new Course(rc.id, rc.title, rc.description || '', rc.image_url || '', modules);
+      return new Course(rc.id, rc.title, rc.description || '', rc.image_url || '', rc.color || null, rc.color_legend || null, modules);
     });
   }
 
-  createCourse(title: string, description?: string, imageUrl?: string): Promise<CourseRecord> {
-    return this.adminRepository.createCourse(title, description, imageUrl);
+  createCourse(title: string, description?: string, imageUrl?: string, color?: string, colorLegend?: string): Promise<CourseRecord> {
+    return this.adminRepository.createCourse(title, description, imageUrl, color, colorLegend);
   }
 
-  updateCourse(id: string, patch: { title?: string; description?: string | null; imageUrl?: string | null }): Promise<CourseRecord> {
+  updateCourse(id: string, patch: { title?: string; description?: string | null; imageUrl?: string | null; color?: string | null; colorLegend?: string | null }): Promise<CourseRecord> {
     return this.adminRepository.updateCourse(id, patch);
   }
 
@@ -137,6 +137,10 @@ export class AdminService {
 
   deleteLesson(id: string): Promise<void> {
     return this.adminRepository.deleteLesson(id);
+  }
+
+  moveLesson(lessonId: string, targetModuleId: string): Promise<LessonRecord> {
+    return this.adminRepository.moveLesson(lessonId, targetModuleId);
   }
 
   listLessonResources(lessonId: string): Promise<LessonResourceRecord[]> {

@@ -489,6 +489,8 @@ export class Course {
     public readonly title: string,
     public readonly description: string,
     public readonly imageUrl: string | null,
+    public readonly color: string | null = null,
+    public readonly colorLegend: string | null = null,
     public readonly modules: Module[]
   ) { }
 

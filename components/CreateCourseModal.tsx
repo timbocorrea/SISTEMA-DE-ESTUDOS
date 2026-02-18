@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 interface CreateCourseModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onConfirm: (title: string, description: string, imageUrl: string) => Promise<void>;
+    onConfirm: (title: string, description: string, imageUrl: string, color: string, colorLegend: string) => Promise<void>;
     isLoading?: boolean;
 }
 
@@ -20,6 +20,19 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
     const [imageUrl, setImageUrl] = useState('');
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [isUploading, setIsUploading] = useState(false);
+    const [selectedColor, setSelectedColor] = useState('#6366f1'); // Default indigo
+    const [colorLegend, setColorLegend] = useState('');
+
+    const COLORS = [
+        { color: '#6366f1', label: 'Indigo' },
+        { color: '#ef4444', label: 'Vermelho' },
+        { color: '#f59e0b', label: 'Laranja' },
+        { color: '#10b981', label: 'Verde' },
+        { color: '#3b82f6', label: 'Azul' },
+        { color: '#8b5cf6', label: 'Roxo' },
+        { color: '#ec4899', label: 'Rosa' },
+        { color: '#14b8a6', label: 'Ciano' },
+    ];
 
     React.useEffect(() => {
         if (isOpen) {
@@ -27,6 +40,8 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
             setDescription('');
             setImageUrl('');
             setSelectedFile(null);
+            setSelectedColor('#6366f1');
+            setColorLegend('');
         }
     }, [isOpen]);
 
@@ -82,7 +97,7 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
 
     const handleSubmit = async () => {
         if (!title.trim()) return;
-        await onConfirm(title, description, imageUrl);
+        await onConfirm(title, description, imageUrl, selectedColor, colorLegend);
         onClose();
     };
 
@@ -180,6 +195,33 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
                                 placeholder="Breve descrição do conteúdo..."
                                 rows={3}
                             />
+                        </div>
+
+                        {/* Cor e Legenda */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Cor de Identificação</label>
+                                <div className="grid grid-cols-4 gap-2">
+                                    {COLORS.map((c) => (
+                                        <button
+                                            key={c.color}
+                                            onClick={() => setSelectedColor(c.color)}
+                                            className={`w-8 h-8 rounded-full border-2 transition-all ${selectedColor === c.color ? 'border-slate-800 dark:border-white scale-110' : 'border-transparent hover:scale-105'}`}
+                                            style={{ backgroundColor: c.color }}
+                                            title={c.label}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Legenda da Categoria</label>
+                                <input
+                                    value={colorLegend}
+                                    onChange={(e) => setColorLegend(e.target.value)}
+                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2 text-slate-800 dark:text-white outline-none focus:border-indigo-500 transition-colors text-sm"
+                                    placeholder="Ex: Exatas"
+                                />
+                            </div>
                         </div>
                     </div>
 

@@ -15,7 +15,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
   async listCourses(): Promise<CourseRecord[]> {
     const { data, error } = await this.client
       .from('courses')
-      .select('id,title,description,image_url,created_at')
+      .select('id,title,description,image_url,color,color_legend,created_at')
       .order('created_at', { ascending: false });
 
     if (error) throw new DomainError(`Falha ao listar cursos: ${error.message}`);
@@ -64,6 +64,8 @@ export class SupabaseAdminRepository implements IAdminRepository {
         title,
         description,
         image_url,
+        color,
+        color_legend,
         created_at,
         modules (
           id,
@@ -98,29 +100,39 @@ export class SupabaseAdminRepository implements IAdminRepository {
     return courses;
   }
 
-  async createCourse(title: string, description?: string, imageUrl?: string): Promise<CourseRecord> {
+  async createCourse(title: string, description?: string, imageUrl?: string, color?: string, colorLegend?: string): Promise<CourseRecord> {
     const { data, error } = await this.client
       .from('courses')
-      .insert({ title, description: description ?? null, image_url: imageUrl ?? null })
-      .select('id,title,description,image_url,created_at')
+      .insert({
+        title,
+        description: description ?? null,
+        image_url: imageUrl ?? null,
+        color: color ?? null,
+        color_legend: colorLegend ?? null
+      })
+      .select('id,title,description,image_url,color,color_legend,created_at')
       .single();
 
     if (error || !data) throw new DomainError(`Falha ao criar curso: ${error?.message || 'dados inválidos'}`);
     return data as CourseRecord;
   }
 
-  async updateCourse(id: string, patch: { title?: string; description?: string | null; imageUrl?: string | null }): Promise<CourseRecord> {
+  async updateCourse(id: string, patch: { title?: string; description?: string | null; imageUrl?: string | null; color?: string | null; colorLegend?: string | null }): Promise<CourseRecord> {
     const updates: any = { ...patch };
     if (patch.imageUrl !== undefined) {
       updates.image_url = patch.imageUrl;
       delete updates.imageUrl;
+    }
+    if (patch.colorLegend !== undefined) {
+      updates.color_legend = patch.colorLegend;
+      delete updates.colorLegend;
     }
 
     const { data, error } = await this.client
       .from('courses')
       .update(updates)
       .eq('id', id)
-      .select('id,title,description,image_url,created_at')
+      .select('id,title,description,image_url,color,color_legend,created_at')
       .single();
 
     if (error || !data) throw new DomainError(`Falha ao atualizar curso: ${error?.message || 'dados inválidos'}`);
@@ -297,6 +309,18 @@ export class SupabaseAdminRepository implements IAdminRepository {
         'Nenhuma aula foi excluída. Verifique se você está logado como INSTRUCTOR e se existe a policy `lessons_delete_instructors` (RLS) na tabela `lessons`.'
       );
     }
+  }
+
+  async moveLesson(lessonId: string, targetModuleId: string): Promise<LessonRecord> {
+    const { data, error } = await this.client
+      .from('lessons')
+      .update({ module_id: targetModuleId })
+      .eq('id', lessonId)
+      .select('id,module_id,title,content,video_url,video_urls,audio_url,image_url,duration_seconds,position,content_blocks,created_at')
+      .single();
+
+    if (error || !data) throw new DomainError(`Falha ao mover aula: ${error?.message || 'dados inválidos'}`);
+    return data as LessonRecord;
   }
 
   async listLessonResources(lessonId: string): Promise<LessonResourceRecord[]> {

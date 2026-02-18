@@ -4,8 +4,8 @@ export interface IAdminRepository {
   listCourses(): Promise<CourseRecord[]>;
   listCoursesWithContent(): Promise<import('../domain/admin').CourseStructure[]>;
   listCoursesOutline(): Promise<import('../domain/admin').CourseOutline[]>;
-  createCourse(title: string, description?: string, imageUrl?: string): Promise<CourseRecord>;
-  updateCourse(id: string, patch: { title?: string; description?: string | null; imageUrl?: string | null }): Promise<CourseRecord>;
+  createCourse(title: string, description?: string, imageUrl?: string, color?: string, colorLegend?: string): Promise<CourseRecord>;
+  updateCourse(id: string, patch: { title?: string; description?: string | null; imageUrl?: string | null; color?: string | null; colorLegend?: string | null }): Promise<CourseRecord>;
   deleteCourse(id: string): Promise<void>;
 
   listModules(courseId: string): Promise<ModuleRecord[]>;
@@ -42,6 +42,7 @@ export interface IAdminRepository {
   ): Promise<LessonRecord>;
   getLesson(id: string): Promise<LessonRecord>;
   deleteLesson(id: string): Promise<void>;
+  moveLesson(lessonId: string, targetModuleId: string): Promise<LessonRecord>;
 
   listLessonResources(lessonId: string): Promise<LessonResourceRecord[]>;
   createLessonResource(
