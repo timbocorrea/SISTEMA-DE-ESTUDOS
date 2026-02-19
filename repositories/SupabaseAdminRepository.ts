@@ -273,15 +273,17 @@ export class SupabaseAdminRepository implements IAdminRepository {
 
     console.log('🗄️ SUPABASE - Enviando para DB:', JSON.stringify(updates, null, 2));
 
+    console.log(`🗄️ SUPABASE - Atualizando aula ID: ${id}`);
+
     const { data, error } = await this.client
       .from('lessons')
       .update(updates)
       .eq('id', id)
       .select('id,module_id,title,content,video_url,video_urls,audio_url,image_url,duration_seconds,position,content_blocks,created_at')
-      .single();
+      .maybeSingle();
 
     if (error) {
-      console.error('❌ SUPABASE - ERRO ao atualizar:', error);
+      console.error('❌ SUPABASE - ERRO ao atualizar:', JSON.stringify(error, null, 2));
     }
 
     console.log('🗄️ SUPABASE - Retornado do DB:', JSON.stringify(data, null, 2));

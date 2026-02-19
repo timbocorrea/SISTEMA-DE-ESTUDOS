@@ -1639,7 +1639,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
             console.log('✅ Salvamento concluído com sucesso!');
             toast.success('✅ Aula salva com sucesso!');
         } catch (error) {
-            console.error('❌ Erro ao salvar:', error);
+            console.error('❌ Erro ao salvar:', JSON.stringify(error, null, 2));
             toast.error('❌ Erro ao salvar a aula. Verifique o console para detalhes.');
             // NÃO resetar hasUnsavedChanges aqui - manter o indicador de mudanças pendentes
         } finally {
