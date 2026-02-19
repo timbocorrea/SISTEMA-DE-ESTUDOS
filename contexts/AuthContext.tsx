@@ -32,6 +32,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const refreshSession = async () => {
         try {
+            // Se estivermos no callback do Dropbox, ignoramos a restauração de sessão do Supabase
+            // para evitar conflito de leitura do token no hash da URL.
+            if (window.location.pathname === '/oauth/dropbox') {
+                console.log('Skipping Supabase session restore on Dropbox callback route');
+                setIsLoading(false);
+                return;
+            }
+
             const activeSession = await authService.restoreSession();
             if (activeSession) {
                 setSession(activeSession);

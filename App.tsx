@@ -376,6 +376,15 @@ const App: React.FC = () => {
     );
   }
 
+  // Allow Dropbox Callback to run even without session (bypass Auth Guard)
+  if (location.pathname === '/oauth/dropbox') {
+    return (
+      <React.Suspense fallback={<ModernLoader />}>
+        <DropboxCallbackPage />
+      </React.Suspense>
+    );
+  }
+
   // Auth Screen
   if (!session || !user) {
     return (

@@ -119,6 +119,9 @@ const BulkAudioSyncModal: React.FC<BulkAudioSyncModalProps> = ({
     const handleLogin = async () => {
         try {
             setAuthError(null);
+            // Salva a URL atual para retornar após o login
+            localStorage.setItem('dropbox_return_url', window.location.href);
+
             const authUrl = await DropboxService.getAuthUrl();
             window.location.href = authUrl;
         } catch (error) {
