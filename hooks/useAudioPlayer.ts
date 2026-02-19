@@ -67,7 +67,9 @@ export const useAudioPlayer = ({ lesson, onTrackAction, onProgressUpdate, onAudi
         const blocks = lesson.contentBlocks;
         if (!blocks) return -1;
         for (let i = startIndex + 1; i < blocks.length; i++) {
-            if (blocks[i].audioUrl && typeof blocks[i].audioUrl === 'string' && blocks[i].audioUrl.trim() !== '') {
+            const block = blocks[i];
+            if (!block) continue;
+            if (block.audioUrl && typeof block.audioUrl === 'string' && block.audioUrl.trim() !== '') {
                 return i;
             }
         }
