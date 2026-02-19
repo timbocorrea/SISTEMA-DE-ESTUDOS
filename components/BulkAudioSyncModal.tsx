@@ -82,7 +82,79 @@ const BulkAudioSyncModal: React.FC<BulkAudioSyncModalProps> = ({
         });
     }, [selectedBlocks]);
 
-    // ... (lines 74-192)
+    // List files when path or auth changes
+    useEffect(() => {
+        if (isAuthenticated) {
+            loadFiles(currentPath);
+        }
+    }, [isAuthenticated, currentPath]);
+
+    // Check auth status on mount
+    useEffect(() => {
+        const checkAuth = async () => {
+            const isAuth = await DropboxService.isAuthenticated();
+            setIsAuthenticated(isAuth);
+            if (isAuth) {
+                loadFiles('');
+            }
+        };
+        checkAuth();
+    }, []);
+
+    const loadFiles = async (path: string) => {
+        setLoading(true);
+        try {
+            const result = await DropboxService.listFolder(path);
+            setDropboxFiles(result.entries);
+        } catch (error) {
+            console.error('Error loading files:', error);
+            if (error instanceof Error && error.message === 'Não autenticado') {
+                setIsAuthenticated(false);
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleLogin = async () => {
+        try {
+            setAuthError(null);
+            await DropboxService.authenticate();
+            // Auth check will happen in useEffect or callback
+            const isAuth = await DropboxService.isAuthenticated();
+            setIsAuthenticated(isAuth);
+            if (isAuth) {
+                loadFiles('');
+            }
+        } catch (error) {
+            console.error('Login error:', error);
+            setAuthError('Falha ao conectar com Dropbox. Tente novamente.');
+        }
+    };
+
+    const handleFolderClick = (path: string) => {
+        setCurrentPath(path);
+    };
+
+    const handleFileSelect = (blockId: string, file: DropboxItem) => {
+        console.log(`[SyncModal] Selecting file for block ${blockId}:`, file.path_lower);
+
+        // Ensure we are using path_lower for internal logic, NOT the temporary download URL
+        const selectedPath = file.path_lower || file.id;
+
+        setMappings(prev => {
+            const newMappings = new Map(prev);
+            const mapping = newMappings.get(blockId);
+            if (mapping) {
+                mapping.audioPath = selectedPath;
+                mapping.filename = file.name;
+                mapping.status = 'pending';
+                mapping.error = undefined;
+                mapping.audioUrl = null; // Clear any previous URL until sync
+            }
+            return newMappings;
+        });
+    };
 
     const handleSyncAll = async () => {
         console.log('[SyncModal] handleSyncAll started. Mappings:', Array.from(mappings.entries()));
