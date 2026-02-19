@@ -37,6 +37,7 @@ const BulkAudioSyncModal: React.FC<BulkAudioSyncModalProps> = ({
     const [totalToSync, setTotalToSync] = useState(0);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [authError, setAuthError] = useState<string | null>(null);
+    const [hideSynced, setHideSynced] = useState(true); // Default to hiding synced blocks
     const blockRefs = React.useRef<(HTMLDivElement | null)[]>([]);
 
     // Initialize mappings when blocks change
@@ -264,10 +265,12 @@ const BulkAudioSyncModal: React.FC<BulkAudioSyncModalProps> = ({
         }
     };
 
+    // Calculate counts correctly
     const syncedCount = Array.from(mappings.values()).filter(m => m.status === 'success').length;
+    const pendingSelectionCount = Array.from(mappings.values()).filter(m => !!m.audioPath && m.status !== 'success').length;
+    // Remaining are blocks that involve neither success nor a pending selection
     const totalCount = mappings.size;
-    const blocksWithAudio = Array.from(mappings.values()).filter(m => !!m.audioPath).length;
-    const remainingCount = Math.max(0, totalCount - blocksWithAudio);
+    const remainingCount = Math.max(0, totalCount - syncedCount - pendingSelectionCount);
 
     if (!isOpen) return null;
 
@@ -285,12 +288,25 @@ const BulkAudioSyncModal: React.FC<BulkAudioSyncModalProps> = ({
                                 {remainingCount} {remainingCount === 1 ? 'bloco restante' : 'blocos restantes'} para selecionar
                             </p>
                         </div>
-                        <button
-                            onClick={onClose}
-                            className="w-10 h-10 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center text-slate-400 transition-colors"
-                        >
-                            <i className="fas fa-times"></i>
-                        </button>
+                        <div className="flex items-center gap-4">
+                            {/* Toggle Show/Hide Synced */}
+                            <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-600 dark:text-slate-400 select-none">
+                                <input
+                                    type="checkbox"
+                                    checked={hideSynced}
+                                    onChange={(e) => setHideSynced(e.target.checked)}
+                                    className="rounded border-slate-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                                />
+                                Ocultar já sincronizados
+                            </label>
+
+                            <button
+                                onClick={onClose}
+                                className="w-10 h-10 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center text-slate-400 transition-colors"
+                            >
+                                <i className="fas fa-times"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -350,6 +366,9 @@ const BulkAudioSyncModal: React.FC<BulkAudioSyncModalProps> = ({
                                 {selectedBlocks.map((block, index) => {
                                     const mapping = mappings.get(block.id);
                                     if (!mapping) return null;
+
+                                    // Filter out synced items if toggle is active
+                                    if (hideSynced && mapping.status === 'success') return null;
 
                                     const isSelected = !!mapping.audioPath || mapping.status === 'success';
 
@@ -490,7 +509,7 @@ const BulkAudioSyncModal: React.FC<BulkAudioSyncModalProps> = ({
                     <div className="flex items-center justify-between">
                         <div className="text-sm text-slate-600 dark:text-slate-400">
                             Selecionados: <span className="font-bold text-indigo-600 dark:text-indigo-400">
-                                {Array.from(mappings.values()).filter(m => m.audioPath).length}
+                                {Array.from(mappings.values()).filter(m => !!m.audioPath && m.status !== 'success').length}
                             </span>
                         </div>
                         <div className="flex items-center gap-3">
