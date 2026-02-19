@@ -260,8 +260,9 @@ export class SupabaseCourseRepository implements ICourseRepository {
    */
   async updateLessonProgress(userId: string, lessonId: string, watchedSeconds: number, isCompleted: boolean, lastBlockId?: string): Promise<void> {
     // 1. Tentar usar a RPC segura (Backend Optimization)
-    // Ensure lastBlockId is a valid UUID or null
-    const blockIdParam = (lastBlockId && lastBlockId.trim() !== '') ? lastBlockId : null;
+    // Ensure lastBlockId is a valid UUID or null (block IDs like "block-paste-*" are not UUIDs)
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const blockIdParam = (lastBlockId && UUID_REGEX.test(lastBlockId)) ? lastBlockId : null;
 
     const { error: rpcError } = await this.client.rpc('update_lesson_progress_secure', {
       p_lesson_id: lessonId,
