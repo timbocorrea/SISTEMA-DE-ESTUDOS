@@ -60,7 +60,15 @@ export class DropboxService {
     }
 
     static isAuthenticated(): boolean {
-        return !!this.accessToken;
+        if (this.accessToken) return true;
+
+        // Check localStorage as fallback (e.g., token saved by popup)
+        const storedToken = localStorage.getItem('dropbox_access_token');
+        if (storedToken) {
+            this.setAccessToken(storedToken);
+            return true;
+        }
+        return false;
     }
 
     /**

@@ -117,14 +117,59 @@ const BulkAudioSyncModal: React.FC<BulkAudioSyncModalProps> = ({
         }
     };
 
+    // Listen for Dropbox auth success from popup window
+    useEffect(() => {
+        const handleMessage = (event: MessageEvent) => {
+            if (event.origin !== window.location.origin) return;
+            if (event.data?.type === 'DROPBOX_AUTH_SUCCESS' && event.data?.token) {
+                console.log('[SyncModal] Received Dropbox token from popup');
+                // Initialize the token on the main window's DropboxService instance
+                DropboxService.setAccessToken(event.data.token);
+                setIsAuthenticated(true);
+                loadFiles('');
+            }
+        };
+
+        window.addEventListener('message', handleMessage);
+        return () => window.removeEventListener('message', handleMessage);
+    }, []);
+
     const handleLogin = async () => {
         try {
             setAuthError(null);
-            // Salva a URL atual para retornar após o login
-            localStorage.setItem('dropbox_return_url', window.location.href);
-
             const authUrl = await DropboxService.getAuthUrl();
-            window.location.href = authUrl;
+
+            // Open Dropbox auth in a POPUP instead of redirecting
+            // This prevents Supabase from intercepting the #access_token hash
+            const width = 600;
+            const height = 700;
+            const left = window.screenX + (window.innerWidth - width) / 2;
+            const top = window.screenY + (window.innerHeight - height) / 2;
+
+            const popup = window.open(
+                authUrl,
+                'dropbox-auth',
+                `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes,resizable=yes`
+            );
+
+            if (!popup) {
+                setAuthError('Popup bloqueado pelo navegador. Permita popups para este site.');
+                return;
+            }
+
+            // Monitor popup close (in case user closes it manually)
+            const pollTimer = setInterval(() => {
+                if (popup.closed) {
+                    clearInterval(pollTimer);
+                    // Check if auth was successful (token saved by callback page)
+                    DropboxService.isAuthenticated().then(isAuth => {
+                        if (isAuth) {
+                            setIsAuthenticated(true);
+                            loadFiles('');
+                        }
+                    });
+                }
+            }, 500);
         } catch (error) {
             console.error('Login error:', error);
             setAuthError('Falha ao conectar com Dropbox. Tente novamente.');
