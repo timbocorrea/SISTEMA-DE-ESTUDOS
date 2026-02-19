@@ -10,6 +10,9 @@ export const PresenceCheckModal: React.FC = () => {
             setIsVisible(true);
             setCountdown(60); // 60 seconds to confirm or we could just leave it open
         });
+        return () => {
+            activityMonitor.offPresenceCheckRequest();
+        };
     }, []);
 
     // Optional: Auto-hide or auto-logoff if countdown hits zero?

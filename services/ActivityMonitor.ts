@@ -36,6 +36,10 @@ class ActivityMonitor {
         this.presenceCheckCallback = callback;
     }
 
+    public offPresenceCheckRequest() {
+        this.presenceCheckCallback = null;
+    }
+
     // Called by Tracker to register "Reset Timer" logic
     public onPresenceConfirmed(callback: PresenceCallback) {
         this.confirmPresenceCallback = callback;

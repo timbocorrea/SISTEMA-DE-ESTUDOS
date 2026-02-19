@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { throttle } from '../../utils/performance';
 import { Lesson } from '../../domain/entities';
 import VideoPlayer from '../VideoPlayer';
 import { useLessonStore } from '../../stores/useLessonStore';
@@ -16,9 +17,18 @@ const VideoPlayerWidget: React.FC<VideoPlayerWidgetProps> = ({
 }) => {
     const { setCurrentTime, setIsPlaying } = useLessonStore();
 
+    // Create a throttled version of the update function
+    // We use a ref to keep the same throttled function instance across renders
+    const throttledUpdate = React.useRef(
+        throttle(async (ws: number) => {
+            await onProgressUpdate(ws);
+        }, 10000) // Ensure max 1 update per 10s
+    ).current;
+
     const handleVideoProgress = async (watchedSeconds: number) => {
         setCurrentTime(watchedSeconds);
-        await onProgressUpdate(watchedSeconds);
+        // Call the throttled function for DB updates
+        throttledUpdate(watchedSeconds);
     };
 
     const handleVideoPlay = () => {

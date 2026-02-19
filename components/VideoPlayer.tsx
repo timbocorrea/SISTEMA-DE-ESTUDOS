@@ -49,7 +49,7 @@ const VideoPlayer = React.forwardRef<VideoPlayerRef, VideoPlayerProps>(({ lesson
     if (videoRef.current) {
       const current = Math.floor(videoRef.current.currentTime);
       setCurrentTime(current);
-      if (current % 5 === 0 && current !== 0) {
+      if (current % 10 === 0 && current !== 0) {
         onProgress(current);
       }
     }
@@ -155,7 +155,7 @@ const VideoPlayer = React.forwardRef<VideoPlayerRef, VideoPlayerProps>(({ lesson
                 const ct = Math.floor(ytPlayerRef.current.getCurrentTime());
                 const dur = Math.floor(ytPlayerRef.current.getDuration());
                 setCurrentTime(ct);
-                if (ct % 5 === 0 && ct !== 0) {
+                if (ct % 10 === 0 && ct !== 0) {
                   onProgress(ct);
                 }
                 // Mark as watched at 80%

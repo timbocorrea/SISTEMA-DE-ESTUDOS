@@ -8,6 +8,7 @@ interface SystemHealthProps {
 
 export const SystemHealth: React.FC<SystemHealthProps> = ({ adminService }) => {
     const [stats, setStats] = useState<SystemStats | null>(null);
+    const [usage, setUsage] = useState<{ egress_bytes: number; storage_bytes: number; db_size_bytes: number; is_mock: boolean } | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
@@ -18,8 +19,14 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ adminService }) => {
     const loadStats = async () => {
         try {
             setLoading(true);
-            const data = await adminService.getSystemStats();
+            const [data, usageData] = await Promise.all([
+                adminService.getSystemStats(),
+                adminService.getNetworkUsage()
+            ]);
+            console.log('SystemHealth received system stats:', data); // Debug log
+            console.log('SystemHealth received network usage:', usageData); // Debug log
             setStats(data);
+            setUsage(usageData);
         } catch (err: any) {
             setError(err.message || 'Erro ao carregar estatísticas do sistema');
         } finally {
@@ -27,9 +34,13 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ adminService }) => {
         }
     };
 
-    const formatBytes = (bytes: number) => {
-        if (!bytes) return '0 B';
-        if (typeof bytes === 'string') return bytes; // If it's already formatted strings like '10 MB' (db_size)
+    const formatBytes = (bytes: number | undefined | null) => {
+        if (bytes === undefined || bytes === null || isNaN(bytes) || bytes < 0) return '0 B';
+        if (bytes === 0) return '0 B';
+        // Handle explicit string case if needed, though types say number
+        // @ts-ignore
+        if (typeof bytes === 'string') return bytes;
+
         const k = 1024;
         const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
         const i = Math.floor(Math.log(bytes) / Math.log(k));
@@ -57,7 +68,6 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ adminService }) => {
         const url = import.meta.env.VITE_SUPABASE_URL;
         if (!url) return 'https://supabase.com/dashboard';
         try {
-            // Extract project ref from https://<project-ref>.supabase.co
             const projectRef = url.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1];
             if (projectRef) {
                 return `https://supabase.com/dashboard/project/${projectRef}/settings/billing/usage`;
@@ -105,7 +115,45 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ adminService }) => {
                     <p className="text-xs text-green-600 dark:text-green-400 font-medium flex items-center">
                         <i className="fas fa-check-circle mr-1"></i> Operacional
                     </p>
+                    <p className="text-xs text-green-600 dark:text-green-400 font-medium flex items-center">
+                        <i className="fas fa-check-circle mr-1"></i> Operacional
+                    </p>
                 </div>
+
+                {/* Egress Usage (New) */}
+                <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <i className="fas fa-network-wired text-6xl text-emerald-500"></i>
+                    </div>
+                    <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+                        Saída de Rede (Egress)
+                    </h3>
+                    <div className="text-4xl font-black text-slate-800 dark:text-white mb-1">
+                        {usage?.egress_bytes === -1 ? (
+                            <span className="text-lg text-gray-500">Ver Dashboard</span>
+                        ) : (
+                            formatBytes(usage?.egress_bytes || 0)
+                        )}
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2.5 mt-2 mb-1">
+                        <div
+                            className={`h-2.5 rounded-full ${(usage?.egress_bytes || 0) > 4 * 1024 * 1024 * 1024 ? 'bg-red-500' :
+                                (usage?.egress_bytes || 0) > 2.5 * 1024 * 1024 * 1024 ? 'bg-yellow-500' : 'bg-emerald-500'
+                                }`}
+                            style={{ width: `${Math.min(100, ((usage?.egress_bytes || 0) / (5 * 1024 * 1024 * 1024)) * 100)}%` }}
+                        ></div>
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 flex justify-between">
+                        {usage?.egress_bytes === -1 ? (
+                            <span>Métrica via API indisponível</span>
+                        ) : (
+                            <span>{((usage?.egress_bytes || 0) / (5 * 1024 * 1024 * 1024) * 100).toFixed(1)}% do limite Free (5GB)</span>
+                        )}
+                        {usage?.is_mock && <span className="text-amber-500 font-bold">(Simulado)</span>}
+                    </p>
+                </div >
 
                 {/* Storage Size */}
                 <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group">
@@ -116,7 +164,7 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ adminService }) => {
                         Armazenamento de Arquivos
                     </h3>
                     <p className="text-4xl font-black text-slate-800 dark:text-white mb-1">
-                        {formatBytes(stats?.storage_size_bytes || 0)}
+                        {formatBytes(stats?.storage_size_bytes)}
                     </p>
                     <p className="text-sm text-slate-500 dark:text-slate-500">
                         {stats?.file_count} arquivos totais
@@ -174,7 +222,7 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ adminService }) => {
                         <span className="text-lg font-bold text-slate-800 dark:text-white">{stats?.lesson_count}</span>
                     </div>
                 </div>
-            </div>
+            </div >
 
             <div className="mt-8 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl flex items-start gap-3 text-blue-800 dark:text-blue-300">
                 <i className="fas fa-info-circle mt-1"></i>
@@ -190,6 +238,6 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ adminService }) => {
                     </p>
                 </div>
             </div>
-        </div>
+        </div >
     );
 };

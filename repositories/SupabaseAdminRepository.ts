@@ -842,4 +842,16 @@ export class SupabaseAdminRepository implements IAdminRepository {
 
     if (error) throw new DomainError(`Erro ao atualizar configuração ${key}: ${error.message}`);
   }
+
+  // ============ MONITORING ============
+  async getNetworkUsage(): Promise<{ egress_bytes: number; storage_bytes: number; db_size_bytes: number; is_mock: boolean }> {
+    try {
+      const { data, error } = await this.client.functions.invoke('monitor-usage');
+      if (error) throw error;
+      return data;
+    } catch (err) {
+      console.error('Failed to fetch network usage', err);
+      return { egress_bytes: 0, storage_bytes: 0, db_size_bytes: 0, is_mock: false };
+    }
+  }
 }

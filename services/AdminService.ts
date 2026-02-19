@@ -260,4 +260,8 @@ export class AdminService {
   assignUsersToCourse(courseId: string, userIds: string[], adminId: string): Promise<void> {
     return this.adminRepository.assignUsersToCourse(courseId, userIds, adminId);
   }
+  // ============ MONITORING ============
+  async getNetworkUsage(): Promise<{ egress_bytes: number; storage_bytes: number; db_size_bytes: number; is_mock: boolean }> {
+    return this.adminRepository.getNetworkUsage();
+  }
 }

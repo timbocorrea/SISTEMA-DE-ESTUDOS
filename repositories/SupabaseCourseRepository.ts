@@ -185,10 +185,9 @@ export class SupabaseCourseRepository implements ICourseRepository {
               id,
               title,
               position,
-              duration_seconds,
-              image_url,
-              video_url, 
-              audio_url
+              id,
+              title,
+              position
             )
           )
         `)

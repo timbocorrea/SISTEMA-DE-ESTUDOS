@@ -86,4 +86,7 @@ export interface IAdminRepository {
   // Course Access Control
   getCourseUserAssignments(courseId: string): Promise<string[]>;
   assignUsersToCourse(courseId: string, userIds: string[], adminId: string): Promise<void>;
+
+  // Monitoring
+  getNetworkUsage(): Promise<{ egress_bytes: number; storage_bytes: number; db_size_bytes: number; is_mock: boolean }>;
 }
