@@ -54,16 +54,27 @@ const BulkAudioSyncModal: React.FC<BulkAudioSyncModalProps> = ({
             }
 
             // Add new blocks without overwriting existing ones
-            selectedBlocks.forEach(block => {
+            selectedBlocks.forEach((block, index) => {
                 if (!newMappings.has(block.id)) {
                     const hasAudio = !!block.audioUrl;
+                    console.log(`[SyncModal] Initializing block ${index} (${block.id}): hasAudio=${hasAudio}, url=${block.audioUrl?.substring(0, 50)}...`);
+
                     newMappings.set(block.id, {
                         blockId: block.id,
-                        audioPath: null, // Don't allow URL to act as path. User must select a new file to change.
+                        audioPath: null, // explicit null
                         audioUrl: block.audioUrl || null,
                         filename: hasAudio ? 'Áudio Já Sincronizado' : null,
                         status: hasAudio ? 'success' : 'pending'
                     });
+                } else {
+                    // Log existing mapping to see if it's corrupted
+                    const m = newMappings.get(block.id);
+                    if (m && m.audioPath && m.audioPath.startsWith('http')) {
+                        console.error(`[SyncModal] ⚠️ CORRUPTED MAPPING FOUND during update for ${block.id}:`, m);
+                        // Auto-fix if corrupted
+                        m.audioPath = null;
+                        m.status = m.audioUrl ? 'success' : 'pending';
+                    }
                 }
             });
 
@@ -74,6 +85,8 @@ const BulkAudioSyncModal: React.FC<BulkAudioSyncModalProps> = ({
     // ... (lines 74-192)
 
     const handleSyncAll = async () => {
+        console.log('[SyncModal] handleSyncAll started. Mappings:', Array.from(mappings.entries()));
+
         // Only count pending items that have a path selected
         const toSyncCount = Array.from(mappings.values()).filter(m => m.audioPath && m.status !== 'success').length;
         if (toSyncCount === 0) {
@@ -89,8 +102,19 @@ const BulkAudioSyncModal: React.FC<BulkAudioSyncModalProps> = ({
         let errorCount = 0;
 
         for (const [blockId, mapping] of mappings.entries()) {
+            console.log(`[SyncModal] Processing block ${blockId}:`, mapping);
+
             // Skip if no path selected OR already synced/syncing
-            if (!mapping.audioPath || mapping.status === 'success' || mapping.status === 'syncing') continue;
+            if (!mapping.audioPath || mapping.status === 'success' || mapping.status === 'syncing') {
+                console.log(`[SyncModal] Skipping block ${blockId} (reason: path=${!mapping.audioPath}, status=${mapping.status})`);
+                continue;
+            }
+
+            // Safety check: Is the path a URL?
+            if (mapping.audioPath.startsWith('http')) {
+                console.error(`[SyncModal] ❌ CRITICAL: Attempting to sync URL as path: ${mapping.audioPath}`);
+                continue;
+            }
 
             // Update status to syncing
             setMappings(prev => {
