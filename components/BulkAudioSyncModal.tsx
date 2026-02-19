@@ -59,7 +59,7 @@ const BulkAudioSyncModal: React.FC<BulkAudioSyncModalProps> = ({
                     const hasAudio = !!block.audioUrl;
                     newMappings.set(block.id, {
                         blockId: block.id,
-                        audioPath: hasAudio ? (block.audioUrl || null) : null, // Use URL as path identifier for synced blocks
+                        audioPath: null, // Don't allow URL to act as path. User must select a new file to change.
                         audioUrl: block.audioUrl || null,
                         filename: hasAudio ? 'Áudio Já Sincronizado' : null,
                         status: hasAudio ? 'success' : 'pending'
@@ -71,131 +71,13 @@ const BulkAudioSyncModal: React.FC<BulkAudioSyncModalProps> = ({
         });
     }, [selectedBlocks]);
 
-    // Check authentication and load files
-    useEffect(() => {
-        if (isOpen) {
-            const auth = DropboxService.isAuthenticated();
-            setIsAuthenticated(auth);
-            if (auth) {
-                loadDropboxFiles(currentPath);
-            }
-        }
-    }, [isOpen, currentPath]);
-
-    const handleLogin = async () => {
-        try {
-            setAuthError(null);
-            const authUrl = await DropboxService.getAuthUrl();
-
-            const width = 600;
-            const height = 700;
-            const left = window.screen.width / 2 - width / 2;
-            const top = window.screen.height / 2 - height / 2;
-
-            const popup = window.open(
-                authUrl,
-                'DropboxAuth',
-                `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes`
-            );
-
-            if (!popup) {
-                setAuthError('O bloqueador de popups impediu a abertura da janela de login.');
-                return;
-            }
-
-            const handleMessage = (event: MessageEvent) => {
-                if (event.origin !== window.location.origin) return;
-
-                if (event.data?.type === 'DROPBOX_AUTH_SUCCESS' && event.data?.token) {
-                    const token = event.data.token;
-                    DropboxService.setAccessToken(token);
-                    setIsAuthenticated(true);
-                    loadDropboxFiles('');
-
-                    window.removeEventListener('message', handleMessage);
-                    popup.close();
-                }
-            };
-
-            window.addEventListener('message', handleMessage);
-
-            const checkPopupUrl = setInterval(() => {
-                if (popup.closed) {
-                    clearInterval(checkPopupUrl);
-                    window.removeEventListener('message', handleMessage);
-                }
-            }, 1000);
-
-        } catch (err: any) {
-            console.error('Erro ao iniciar login:', err);
-            setAuthError(err.message || 'Erro ao iniciar conexão com Dropbox');
-        }
-    };
-
-    const loadDropboxFiles = async (path: string) => {
-        setLoading(true);
-        try {
-            const entries = await DropboxService.listFolder(path);
-
-            // Filter only folders and audio files
-            const filtered = entries.filter(item => {
-                if (item.tag === 'folder') return true;
-                const ext = item.name.split('.').pop()?.toLowerCase();
-                return ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac', 'wma', 'aiff', 'alac', 'm4b', 'opus', 'webm', 'mid', 'midi'].includes(ext || '');
-            });
-
-            // Sort: folders first, then files
-            filtered.sort((a, b) => {
-                if (a.tag === b.tag) return a.name.localeCompare(b.name);
-                return a.tag === 'folder' ? -1 : 1;
-            });
-
-            setDropboxFiles(filtered);
-        } catch (error) {
-            console.error('Error loading Dropbox files:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleFileSelect = (blockId: string, file: DropboxItem) => {
-        setMappings(prev => {
-            const newMappings = new Map(prev);
-            const mapping = newMappings.get(blockId);
-            if (mapping) {
-                mapping.audioPath = file.path_lower || file.id;
-                mapping.filename = file.name;
-                mapping.status = 'pending';
-            }
-            return newMappings;
-        });
-
-        // Auto-scroll to next block
-        const currentIndex = selectedBlocks.findIndex(b => b.id === blockId);
-        if (currentIndex !== -1 && currentIndex + 1 < selectedBlocks.length) {
-            setTimeout(() => {
-                blockRefs.current[currentIndex + 1]?.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'center'
-                });
-            }, 300); // Small delay to allow visual update of current block
-        }
-    };
-
-    const handleFolderClick = (path: string) => {
-        setCurrentPath(path);
-    };
-
-    const handleBackClick = () => {
-        if (!currentPath) return;
-        const parentPath = currentPath.substring(0, currentPath.lastIndexOf('/'));
-        setCurrentPath(parentPath);
-    };
+    // ... (lines 74-192)
 
     const handleSyncAll = async () => {
-        const toSyncCount = Array.from(mappings.values()).filter(m => m.audioPath).length;
+        // Only count pending items that have a path selected
+        const toSyncCount = Array.from(mappings.values()).filter(m => m.audioPath && m.status !== 'success').length;
         if (toSyncCount === 0) {
-            toast.error("Nenhum áudio selecionado para sincronizar.");
+            toast.error("Nenhum áudio novo selecionado para sincronizar.");
             return;
         }
 
@@ -207,7 +89,8 @@ const BulkAudioSyncModal: React.FC<BulkAudioSyncModalProps> = ({
         let errorCount = 0;
 
         for (const [blockId, mapping] of mappings.entries()) {
-            if (!mapping.audioPath) continue;
+            // Skip if no path selected OR already synced/syncing
+            if (!mapping.audioPath || mapping.status === 'success' || mapping.status === 'syncing') continue;
 
             // Update status to syncing
             setMappings(prev => {
@@ -374,7 +257,7 @@ const BulkAudioSyncModal: React.FC<BulkAudioSyncModalProps> = ({
                                     const mapping = mappings.get(block.id);
                                     if (!mapping) return null;
 
-                                    const isSelected = !!mapping.audioPath;
+                                    const isSelected = !!mapping.audioPath || mapping.status === 'success';
 
                                     // Filter files that are already selected in OTHER blocks
                                     const otherSelectedPaths = new Set(
