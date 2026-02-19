@@ -46,6 +46,7 @@ import { AdminService } from './services/AdminService';
 import LessonLoader from './components/LessonLoader';
 import ForcePasswordChangeModal from './components/ForcePasswordChangeModal';
 import { useActivityTracker } from './hooks/useActivityTracker';
+import { useIdleTimeout } from './hooks/useIdleTimeout';
 
 const LessonContentEditorWrapper: React.FC<{ adminService: AdminService }> = ({ adminService }) => {
   const { lessonId } = useParams<{ lessonId: string }>();
@@ -140,6 +141,23 @@ const App: React.FC = () => {
   // Network Connection Monitoring
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [showOfflineModal, setShowOfflineModal] = useState(false);
+
+
+
+  // Idle Timeout Implementation
+  const handleIdleTimeout = React.useCallback(async () => {
+    if (user) {
+      console.log('💤 Idle Timeout triggered. Logging out...');
+      toast.warning('Sessão expirada por inatividade.');
+      await logout();
+      navigate('/');
+    }
+  }, [user, logout, navigate]);
+
+  useIdleTimeout({
+    onIdle: handleIdleTimeout,
+    timeout: 10 * 60 * 1000 // 10 minutes
+  });
 
   useEffect(() => {
     if (user?.role === 'INSTRUCTOR') {
