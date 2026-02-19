@@ -84,10 +84,8 @@ serve(async (req: Request) => {
 
         let responseText = '';
 
-        if (aiProvider === 'google') {
-            const systemMsg = messages.find((m: any) => m.role === 'system');
-            const systemText = systemMsg ? (systemMsg.text || systemMsg.content) : '';
-
+        // HELPER FUNCTIONS
+        const callGemini = async (apiKey: string, model: string, messages: any[], systemText: string) => {
             const rawUserContent = messages.filter((m: any) => m.role !== 'system').map((m: any) => {
                 const parts: any[] = [];
                 if (m.text || m.content) parts.push({ text: m.text || m.content });
@@ -108,7 +106,7 @@ serve(async (req: Request) => {
                 };
             });
 
-            // Merge consecutive same roles for Gemini stability
+            // Merge consecutive same roles
             const mergedContent: any[] = [];
             for (const msg of rawUserContent) {
                 if (msg.parts.length === 0) continue;
@@ -119,73 +117,115 @@ serve(async (req: Request) => {
                 }
             }
 
-            // Gemini must start with 'user'
             let finalContent = mergedContent;
-            while (finalContent.length > 0 && finalContent[0].role !== 'user') {
-                finalContent.shift();
-            }
-
+            while (finalContent.length > 0 && finalContent[0].role !== 'user') finalContent.shift();
             if (finalContent.length === 0) throw new Error('Nenhuma mensagem válida encontrada para enviar à IA.');
 
-            // Prepend system instructions to the first message for maximum compatibility with v1
-            if (systemText && finalContent.length > 0 && finalContent[0].role === 'user') {
+            if (systemText && finalContent.length > 0) {
                 finalContent[0].parts.unshift({ text: `[INSTRUCÃO DE SISTEMA]:\n${systemText}\n\n---\n` });
             }
 
             const body: any = {
                 contents: finalContent,
-                generationConfig: {
-                    temperature: 0.7,
-                    maxOutputTokens: 1000,
-                }
+                generationConfig: { temperature: 0.7, maxOutputTokens: 1000 }
             };
 
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/${aiModel}:generateContent?key=${resolvedApiKey}`, {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
             });
 
             const data = await response.json();
-            console.log('Gemini Full Response:', JSON.stringify(data, null, 2));
-
             if (!response.ok) {
-                console.error('Google API Error:', data);
-                throw new Error(data.error?.message || JSON.stringify(data.error) || 'Google API Error');
+                // Return structured error to be caught
+                const errorMsg = data.error?.message || JSON.stringify(data.error);
+                throw { status: response.status, message: errorMsg, provider: 'google' };
             }
 
             const candidate = data.candidates?.[0];
-            if (!candidate) {
-                responseText = `IA_SEM_CANDIDATOS. Debug: ${JSON.stringify(data)}`;
-            } else if (candidate.content?.parts?.[0]?.text) {
-                responseText = candidate.content.parts[0].text;
-            } else {
-                responseText = `IA_SEM_TEXTO. Debug: ${JSON.stringify(data)}`;
-            }
+            if (!candidate) return "IA_SEM_CANDIDATOS";
+            return candidate.content?.parts?.[0]?.text || "IA_SEM_TEXTO";
+        };
 
-        } else if (aiProvider === 'openai') {
-            const apiKey = resolvedApiKey;
-            if (!apiKey) throw new Error('OPENAI_API_KEY not set');
+        const callOpenAICompatible = async (apiKey: string, model: string, messages: any[], systemText: string, baseUrl: string) => {
+            const finalMessages = [
+                ...(systemText ? [{ role: 'system', content: systemText }] : []),
+                ...messages.filter((m: any) => m.role !== 'system').map((m: any) => ({
+                    role: m.role === 'ai' || m.role === 'model' ? 'assistant' : 'user',
+                    content: m.text || m.content // TODO: Handle images for OpenAI/Groq if needed
+                }))
+            ];
 
-            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            const response = await fetch(`${baseUrl}/chat/completions`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${apiKey}`
                 },
                 body: JSON.stringify({
-                    model: aiModel,
-                    messages: messages.map((m: any) => ({
-                        role: m.role === 'ai' ? 'assistant' : m.role,
-                        content: m.text || m.content
-                    }))
+                    model: model,
+                    messages: finalMessages,
+                    temperature: 0.7,
+                    max_tokens: 1000
                 })
             });
+
             const data = await response.json();
-            if (!response.ok) throw new Error(data.error?.message || 'OpenAI API Error');
-            responseText = data.choices[0]?.message?.content || "No response.";
+            if (!response.ok) {
+                throw { status: response.status, message: data.error?.message || 'API Error', provider: 'openai/groq' };
+            }
+            return data.choices?.[0]?.message?.content || "No response.";
+        };
+
+        // MAIN EXECUTION WITH FAILOVER
+        try {
+            const systemMsg = messages.find((m: any) => m.role === 'system');
+            const systemText = systemMsg ? (systemMsg.text || systemMsg.content) : '';
+
+            if (aiProvider === 'google') {
+                responseText = await callGemini(resolvedApiKey, aiModel, messages, systemText);
+            } else if (aiProvider === 'openai') {
+                responseText = await callOpenAICompatible(resolvedApiKey, aiModel, messages, systemText, 'https://api.openai.com/v1');
+            } else if (aiProvider === 'groq') {
+                responseText = await callOpenAICompatible(resolvedApiKey, aiModel, messages, systemText, 'https://api.groq.com/openai/v1');
+            } else if (aiProvider === 'anthropic') {
+                throw new Error("Anthropic not yet implemented in this refactor.");
+            }
+
+        } catch (primaryError: any) {
+            console.error(`Primary Provider (${aiProvider}) failed:`, primaryError);
+
+            // Failover Logic: Only if primary was Google and error is retryable (429, 503)
+            // @ts-ignore
+            const groqKey = Deno.env.get('GROQ_API_KEY');
+            const isRetryable = primaryError.status === 429 || primaryError.status === 503 || (primaryError.message && primaryError.message.includes('Quota exceeded'));
+
+            if (aiProvider === 'google' && isRetryable && groqKey) {
+                console.log('🔄 Initiating Failover to Llama 3 via Groq...');
+                try {
+                    const systemMsg = messages.find((m: any) => m.role === 'system');
+                    const systemText = systemMsg ? (systemMsg.text || systemMsg.content) : '';
+
+                    // Fallback to Groq
+                    responseText = await callOpenAICompatible(
+                        groqKey,
+                        'llama-3.3-70b-versatile',
+                        messages,
+                        `${systemText}\n[AVISO: Esta resposta foi gerada pelo modelo Llama 3 (Backup) pois o serviço principal está instável.]`,
+                        'https://api.groq.com/openai/v1'
+                    );
+
+                    // Append notice to response if needed, or rely on system prompt injection
+                } catch (fallbackError: any) {
+                    console.error('Fallback Provider (Groq) also failed:', fallbackError);
+                    throw new Error(`Ambos os serviços falharam. Erro original: ${primaryError.message}`);
+                }
+            } else {
+                // Re-throw if not retryable or no fallback key
+                throw new Error(primaryError.message || JSON.stringify(primaryError));
+            }
         }
-        // Add other providers (Groq, Zhipu) as needed...
 
         return new Response(JSON.stringify({ response: responseText }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },

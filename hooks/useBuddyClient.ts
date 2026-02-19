@@ -34,9 +34,18 @@ export const useBuddyClient = ({ userId, systemContext = '', currentContext = ''
         }
         setLoading(true);
 
+        const MAX_CONTEXT_LENGTH = 15000;
+        const MAX_HISTORY_MESSAGES = 10;
+
+        const truncatedContext = currentContext && currentContext.length > MAX_CONTEXT_LENGTH
+            ? currentContext.substring(0, MAX_CONTEXT_LENGTH) + "\n...[conteúdo truncado]..."
+            : currentContext;
+
+        const recentHistory = history.slice(-MAX_HISTORY_MESSAGES);
+
         const fullContext = `
       Contexto do Sistema: ${systemContext}
-      ${currentContext ? `Conteúdo da Aula Atual: ${currentContext}` : ''}
+      ${truncatedContext ? `Conteúdo da Aula Atual: ${truncatedContext}` : ''}
     `;
 
         const systemInstruction = `
@@ -67,9 +76,10 @@ export const useBuddyClient = ({ userId, systemContext = '', currentContext = ''
                 body: {
                     messages: [
                         { role: 'system', text: `${systemInstruction}\nContexto: ${fullContext}` },
-                        ...history.map(m => ({ role: m.role, text: m.text, image: (m as any).image })),
+                        ...recentHistory.map(m => ({ role: m.role, text: m.text, image: (m as any).image })),
                         { role: 'user', text: text || 'Analise a imagem.', image: image }
-                    ]
+                    ],
+                    model: 'gemini-1.5-flash' // Force efficient model
                 }
             });
 
@@ -110,11 +120,20 @@ export const useBuddyClient = ({ userId, systemContext = '', currentContext = ''
 
             let errorMessage = error.message || "Erro desconhecido ao falar com a IA.";
 
+            const isQuotaError = errorMessage.includes('Quota exceeded') || errorMessage.includes('429') || errorMessage.includes('Too Many Requests');
+
             if (userId) {
-                addMessage(userId, {
-                    role: 'ai',
-                    text: `❌ **O Buddy encontrou um problema:**\n${errorMessage}\n\n*Dica: Verifique se sua chave de API está configurada no Perfil.*`
-                }, threadTitle);
+                if (isQuotaError) {
+                    addMessage(userId, {
+                        role: 'ai',
+                        text: `⏳ **Limite de uso atingido**\n\nO plano gratuito da IA excedeu a cota momentânea. Por favor, aguarde cerca de 1 minuto antes de tentar novamente.\n\n*Dica: Perguntas mais curtas consomem menos cota.*`
+                    }, threadTitle);
+                } else {
+                    addMessage(userId, {
+                        role: 'ai',
+                        text: `❌ **O Buddy encontrou um problema:**\n${errorMessage}\n\n*Dica: Verifique se sua chave de API está configurada no Perfil.*`
+                    }, threadTitle);
+                }
             }
         } finally {
             setLoading(false);
