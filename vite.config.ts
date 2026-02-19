@@ -33,19 +33,9 @@ export default defineConfig(({ mode }) => {
           categories: ['education', 'productivity'],
           icons: [
             {
-              src: 'pwa-64x64.png',
-              sizes: '64x64',
-              type: 'image/png'
-            },
-            {
-              src: 'pwa-192x192.png',
-              sizes: '192x192',
-              type: 'image/png'
-            },
-            {
-              src: 'pwa-512x512.png',
-              sizes: '512x512',
-              type: 'image/png',
+              src: 'pwa-icon.svg',
+              sizes: '64x64 192x192 512x512',
+              type: 'image/svg+xml',
               purpose: 'any maskable'
             }
           ],
@@ -55,11 +45,14 @@ export default defineConfig(({ mode }) => {
               short_name: 'Dashboard',
               description: 'Ir para o Dashboard',
               url: '/dashboard',
-              icons: [{ src: 'pwa-192x192.png', sizes: '192x192' }]
+              icons: [{ src: 'pwa-icon.svg', sizes: '192x192', type: 'image/svg+xml' }]
             }
           ]
         },
         workbox: {
+          cleanupOutdatedCaches: true,
+          clientsClaim: true,
+          skipWaiting: true,
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
           runtimeCaching: [
             {

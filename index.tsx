@@ -22,7 +22,23 @@ const queryClient = new QueryClient({
   },
 });
 
+// Global Error Handler for Chunk Loading (Fixes "Failed to fetch dynamically imported module")
+window.addEventListener('error', (event) => {
+  const isChunkError =
+    /Loading chunk [\d]+ failed/.test(event.message) ||
+    /Loading CSS chunk [\d]+ failed/.test(event.message) ||
+    /Failed to fetch dynamically imported module/.test(event.message);
+
+  if (isChunkError) {
+    console.error('🕸️ Chunk load error detected. Force reloading...', event);
+    event.preventDefault();
+    window.location.reload();
+  }
+});
+
 // CLEANUP: Force unregister Service Workers to avoid stale cache issues in Dev
+// NOTE: Commented out to allow VitePWA to manage the Service Worker correctly
+/*
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations().then(function (registrations) {
     for (let registration of registrations) {
@@ -31,6 +47,7 @@ if ('serviceWorker' in navigator) {
     }
   });
 }
+*/
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
