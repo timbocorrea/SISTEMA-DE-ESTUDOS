@@ -28,7 +28,7 @@ describe('CourseService.updateUserProgress', () => {
       isCompleted: false,
       position: 0
     });
-    const course = new Course('c1', 'Curso', 'Desc', null, [new Module('m1', 'Módulo', [lesson])]);
+    const course = new Course('c1', 'Curso', 'Desc', null, null, null, [new Module('m1', 'Módulo', [lesson])]);
 
     const unlocked = await service.updateUserProgress(user, lesson, course, false);
 
@@ -52,7 +52,7 @@ describe('CourseService.updateUserProgress', () => {
       position: 0
     });
     const module = new Module('m1', 'Módulo', [lesson]);
-    const course = new Course('c1', 'Curso', 'Desc', null, [module]);
+    const course = new Course('c1', 'Curso', 'Desc', null, null, null, [module]);
 
     const becameCompleted = lesson.updateProgress(90);
     expect(becameCompleted).toBe(true);

@@ -53,6 +53,8 @@ export const useCoursesList = (service: CourseService, userId: string | undefine
                     s.title,
                     s.description,
                     s.imageUrl,
+                    null, // color
+                    null, // colorLegend
                     modules
                 );
             });

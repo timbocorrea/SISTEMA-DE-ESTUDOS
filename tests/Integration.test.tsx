@@ -17,7 +17,7 @@ const queryClient = new QueryClient({
 });
 
 // Setup mock data
-const mockCourse = new Course('c1', 'Test Course', 'Description', null, []);
+const mockCourse = new Course('c1', 'Test Course', 'Description', null, null, null, []);
 // Mock User with necessary methods to avoid class instance issues in test env
 const mockUser = {
     id: 'u1',

@@ -154,7 +154,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
         .sort((a: any, b: any) => (a.position || 0) - (b.position || 0))
         .map((m: any) => this.mapModule(m, progressMap));
 
-      return new Course(courseData.id, courseData.title, courseData.description, courseData.image_url || null, modules);
+      return new Course(courseData.id, courseData.title, courseData.description, courseData.image_url || null, null, null, modules);
     } catch (err) {
       if (err instanceof NotFoundError) throw err;
       throw new DomainError(`Erro ao carregar curso: ${(err as Error).message}`);
@@ -202,7 +202,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
         .sort((a: any, b: any) => (a.position || 0) - (b.position || 0))
         .map((m: any) => this.mapModule(m, progressMap, true));
 
-      return new Course(courseData.id, courseData.title, courseData.description, courseData.image_url || null, modules);
+      return new Course(courseData.id, courseData.title, courseData.description, courseData.image_url || null, null, null, modules);
     } catch (err) {
       if (err instanceof NotFoundError) throw err;
       throw new DomainError(`Erro ao carregar estrutura do curso: ${(err as Error).message}`);

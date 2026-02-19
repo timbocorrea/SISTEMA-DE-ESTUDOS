@@ -123,6 +123,8 @@ export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                         activeCourse.title,
                         activeCourse.description,
                         activeCourse.imageUrl,
+                        activeCourse.color,
+                        activeCourse.colorLegend,
                         newModules
                     );
 
