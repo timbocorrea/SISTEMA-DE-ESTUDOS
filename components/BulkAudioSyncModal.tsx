@@ -105,7 +105,7 @@ const BulkAudioSyncModal: React.FC<BulkAudioSyncModalProps> = ({
         setLoading(true);
         try {
             const result = await DropboxService.listFolder(path);
-            setDropboxFiles(result.entries);
+            setDropboxFiles(result);
         } catch (error) {
             console.error('Error loading files:', error);
             if (error instanceof Error && error.message === 'Não autenticado') {
@@ -119,13 +119,8 @@ const BulkAudioSyncModal: React.FC<BulkAudioSyncModalProps> = ({
     const handleLogin = async () => {
         try {
             setAuthError(null);
-            await DropboxService.authenticate();
-            // Auth check will happen in useEffect or callback
-            const isAuth = await DropboxService.isAuthenticated();
-            setIsAuthenticated(isAuth);
-            if (isAuth) {
-                loadFiles('');
-            }
+            const authUrl = await DropboxService.getAuthUrl();
+            window.location.href = authUrl;
         } catch (error) {
             console.error('Login error:', error);
             setAuthError('Falha ao conectar com Dropbox. Tente novamente.');
