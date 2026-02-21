@@ -79,6 +79,7 @@ const BlockItem = React.memo(({
         setMediaMenuIndex: (idx: number | null) => void;
         setShowMediaMenu: (show: boolean) => void;
         addBlockAtPosition: (idx: number) => void;
+        addTextAnswerBlockAtPosition: (idx: number) => void;
         setShowImageModal: (show: boolean) => void;
         setShowTableModal: (show: boolean) => void;
         setShowVideoModal: (show: boolean) => void;
@@ -98,6 +99,7 @@ const BlockItem = React.memo(({
         activeFormats: string[];
         toggleBlockFeatured: (id: string) => void;
         setBlockFeaturedColor: (id: string, color: string) => void;
+        handlePaste: (e: React.ClipboardEvent, blockId: string) => void;
     }
 }) => {
     const text = block.text || '';
@@ -182,6 +184,15 @@ const BlockItem = React.memo(({
                     >
                         <i className="fas fa-file-alt text-xs"></i>
                     </button>
+
+                    {/* Add Text Answer Block Button */}
+                    <button
+                        onClick={() => handlers.addTextAnswerBlockAtPosition(index)}
+                        className="w-8 h-8 rounded-full bg-white dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 text-slate-400 dark:text-slate-500 hover:border-amber-500 hover:text-amber-600 hover:scale-110 shadow-lg transition-all duration-200"
+                        title="Inserir Caixa de Resposta"
+                    >
+                        <i className="fas fa-pen-to-square text-xs"></i>
+                    </button>
                 </div>
 
                 {isMediaMenuOpen && (
@@ -237,7 +248,13 @@ const BlockItem = React.memo(({
             <div
                 data-block-id={block.id}
                 data-instance="editor"
-                onClick={() => !isSelectionMode && handlers.setExpandedBlockId(isExpanded ? null : block.id)}
+                onClick={(e) => {
+                    if (isSelectionMode) return;
+                    // Se clicou em mídia, não alterna a expansão do bloco (permite que o handleMediaClick do document funcione)
+                    const target = e.target as HTMLElement;
+                    if (target.tagName === 'IMG' || target.closest('.video-wrapper')) return;
+                    handlers.setExpandedBlockId(isExpanded ? null : block.id);
+                }}
                 className={`group relative bg-white dark:bg-slate-900/50 rounded-2xl border transition-all duration-300 ${isExpanded
                     ? 'border-indigo-500/50 shadow-xl shadow-indigo-500/10 ring-1 ring-indigo-500/20'
                     : isSelected
@@ -283,7 +300,12 @@ const BlockItem = React.memo(({
                             <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[10px] font-black text-slate-400">
                                 {index + 1}
                             </div>
-                            <div>
+                            <div className="flex items-center gap-1.5">
+                                {(block as any).type === 'text_answer' && (
+                                    <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
+                                        📝 Resposta
+                                    </span>
+                                )}
                                 <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full ${block.audioUrl
                                     ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'
                                     : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
@@ -581,9 +603,16 @@ const BlockItem = React.memo(({
                         className={`relative pt-2 transition-all duration-300 ${block.featured ? 'pl-4 rounded-r-lg py-4 shadow-sm' : ''}`}
                         style={block.featured ? {
                             borderLeft: `4px solid ${block.featuredColor || '#eab308'}`,
-                            backgroundColor: `${block.featuredColor || '#eab308'}15` // 15 = ~8% opacity hex
-                        } : {}}
-                        onClick={(e) => e.stopPropagation()}
+                            backgroundColor: `${block.featuredColor || '#eab308'}15`, // 15 = ~8% opacity hex
+                            display: 'flow-root'
+                        } : { display: 'flow-root' }}
+                        onClick={(e) => {
+                            // Permitir que o clique em mídia chegue ao document para a toolbar
+                            const target = e.target as HTMLElement;
+                            if (target.tagName !== 'IMG' && !target.closest('.video-wrapper')) {
+                                e.stopPropagation();
+                            }
+                        }}
                     >
 
 
@@ -591,6 +620,7 @@ const BlockItem = React.memo(({
                             text={text}
                             onUpdate={(newText) => handlers.updateBlock(block.id, { text: newText })}
                             onFocus={(element) => handlers.setActiveEditableElement(element)}
+                            onPaste={(e) => handlers.handlePaste(e, block.id)}
                             blockId={block.id}
                         />
 
@@ -614,7 +644,13 @@ const BlockItem = React.memo(({
 });
 
 // Componente para gerenciar edição de bloco individual
-const EditableBlock: React.FC<{ text: string; onUpdate: (newText: string) => void; onFocus?: (element: HTMLDivElement) => void; blockId?: string }> = ({ text, onUpdate, onFocus, blockId }) => {
+const EditableBlock: React.FC<{
+    text: string;
+    onUpdate: (newText: string) => void;
+    onFocus?: (element: HTMLDivElement) => void;
+    onPaste?: (e: React.ClipboardEvent) => void;
+    blockId?: string
+}> = ({ text, onUpdate, onFocus, onPaste, blockId }) => {
     const divRef = useRef<HTMLDivElement>(null);
     const isUpdatingRef = useRef(false);
     const initialTextRef = useRef(text); // Guarda o texto inicial
@@ -663,6 +699,7 @@ const EditableBlock: React.FC<{ text: string; onUpdate: (newText: string) => voi
             suppressContentEditableWarning
             onInput={handleInput}
             onFocus={() => divRef.current && onFocus?.(divRef.current)}
+            onPaste={onPaste}
             className="editor-content w-full bg-transparent border-none focus:ring-0 focus:outline-none p-0 text-slate-700 dark:text-slate-200 placeholder:text-slate-400 min-h-[60px] leading-relaxed text-sm font-medium"
             data-placeholder="Digite o conteúdo deste parágrafo..."
             data-block-id={blockId}
@@ -674,6 +711,7 @@ const EditableBlock: React.FC<{ text: string; onUpdate: (newText: string) => voi
 // Interface para os blocos de conteúdo
 interface Block {
     id: string;
+    type?: 'text' | 'text_answer';
     text: string;
     audioUrl?: string;
     spacing?: number;
@@ -1406,9 +1444,9 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
             } finally {
                 setIsAutoSaving(false);
             }
-        }, 5 * 60 * 1000); // 5 minutos em milissegundos
+        }, 1 * 60 * 1000); // 1 minuto em milissegundos
 
-        console.log('🔄 Auto-save ativado: salvamento a cada 5 minutos');
+        console.log('🔄 Auto-save ativado: salvamento a cada 1 minuto');
 
         // Cleanup: limpar intervalo ao desmontar componente
         return () => {
@@ -1423,60 +1461,158 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
         if (selectedMedia.tagName === 'IMG') {
             selectedMedia.style.maxWidth = size;
-            selectedMedia.style.width = size === '100%' ? '100%' : 'auto';
+            selectedMedia.style.width = size;
+            selectedMedia.style.height = 'auto';
         } else if (selectedMedia.classList.contains('video-wrapper')) {
             selectedMedia.style.maxWidth = size;
         }
 
         setMediaSize(size);
-
-        // Forçar atualização visual imediata
-        selectedMedia.style.display = 'none';
-        void selectedMedia.offsetHeight; // Trigger reflow
-        selectedMedia.style.display = '';
     };
 
-    // Função para alinhar mídia
-    const alignMedia = (alignment: 'left' | 'center' | 'right') => {
+    // Função para alinhar mídia (inclui float para texto ao redor e inline para lado a lado)
+    const alignMedia = (alignment: 'left' | 'center' | 'right' | 'wrap-left' | 'wrap-right' | 'inline') => {
         if (!selectedMedia) return;
 
-        // Resetar estilos
+        // Resetar TODOS os estilos de posicionamento
         selectedMedia.style.marginLeft = '';
         selectedMedia.style.marginRight = '';
+        selectedMedia.style.float = 'none';
         selectedMedia.style.display = 'block';
+        selectedMedia.style.verticalAlign = '';
+        selectedMedia.style.margin = '';
 
-        if (alignment === 'left') {
-            selectedMedia.style.marginLeft = '0';
-            selectedMedia.style.marginRight = 'auto';
-        } else if (alignment === 'center') {
-            selectedMedia.style.marginLeft = 'auto';
-            selectedMedia.style.marginRight = 'auto';
-        } else if (alignment === 'right') {
-            selectedMedia.style.marginLeft = 'auto';
-            selectedMedia.style.marginRight = '0';
+        // Add max-width restraint on wrap so text can flow near it
+        const hasMaxWidth = !!selectedMedia.style.maxWidth && selectedMedia.style.maxWidth !== '100%' && selectedMedia.style.maxWidth !== 'auto';
+        if ((alignment === 'wrap-left' || alignment === 'wrap-right') && !hasMaxWidth) {
+            selectedMedia.style.maxWidth = '50%';
+            selectedMedia.style.width = '50%';
+            setMediaSize('50%');
+        }
+
+        switch (alignment) {
+            case 'left':
+                selectedMedia.style.marginLeft = '0';
+                selectedMedia.style.marginRight = 'auto';
+                break;
+            case 'center':
+                selectedMedia.style.marginLeft = 'auto';
+                selectedMedia.style.marginRight = 'auto';
+                break;
+            case 'right':
+                selectedMedia.style.marginLeft = 'auto';
+                selectedMedia.style.marginRight = '0';
+                break;
+            case 'wrap-left':
+                selectedMedia.style.float = 'left';
+                selectedMedia.style.margin = '0 1.25rem 0.5rem 0';
+                selectedMedia.style.display = 'inline';
+                selectedMedia.style.clear = 'none';
+                break;
+            case 'wrap-right':
+                selectedMedia.style.float = 'right';
+                selectedMedia.style.margin = '0 0 0.5rem 1.25rem';
+                selectedMedia.style.display = 'inline';
+                selectedMedia.style.clear = 'none';
+                break;
+            case 'inline':
+                selectedMedia.style.display = 'inline-block';
+                selectedMedia.style.verticalAlign = 'top';
+                selectedMedia.style.margin = '0 8px 8px 0';
+                selectedMedia.style.float = 'none';
+                break;
+        }
+
+        // Se o usuário escolheu "Contornar" (float), o elemento precisa estar ANTES do texto no HTML para o contorno funcionar
+        if (alignment === 'wrap-left' || alignment === 'wrap-right') {
+            const editableParent = selectedMedia.closest('[contenteditable="true"]');
+            if (editableParent) {
+                editableParent.prepend(selectedMedia);
+            }
         }
     };
 
-    // Função para aplicar mudanças e atualizar o bloco
+    // Função para aplicar mudanças e atualizar o bloco definitivamente (salvar no BD/Prévia)
     const applyMediaChanges = () => {
         if (!selectedMedia) return;
 
-        // Encontrar o contenteditable pai que contém a mídia
-        let editableParent = selectedMedia.closest('[contenteditable="true"]');
-        if (!editableParent) return;
+        const editableParent = selectedMedia.closest('[contenteditable="true"]');
+        if (editableParent) {
+            const blockId = editableParent.getAttribute('data-block-id');
+            if (blockId) {
+                updateBlock(blockId, { text: editableParent.innerHTML });
+            }
+        }
 
-        // Pegar o block-id do elemento editável
-        const blockId = editableParent.getAttribute('data-block-id');
-        if (!blockId) return;
-
-        // Pegar o HTML atualizado
-        const updatedHTML = editableParent.innerHTML;
-
-        // Atualizar o bloco usando o ID correto
-        updateBlock(blockId, { text: updatedHTML });
-
-        // Desselecionar
         setSelectedMedia(null);
+    };
+
+    // Função para deletar a mídia selecionada
+    const deleteMedia = () => {
+        if (!selectedMedia) return;
+        let editableParent = selectedMedia.closest('[contenteditable="true"]');
+        selectedMedia.remove();
+        if (editableParent) {
+            const blockId = editableParent.getAttribute('data-block-id');
+            if (blockId) {
+                updateBlock(blockId, { text: editableParent.innerHTML });
+            }
+        }
+        setSelectedMedia(null);
+    };
+
+    // Função para lidar com o evento de colar em blocos editáveis
+    const handlePaste = async (e: React.ClipboardEvent, blockId: string) => {
+        const items = e.clipboardData.items;
+        let hasImage = false;
+
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+                const file = items[i].getAsFile();
+                if (file) {
+                    e.preventDefault();
+                    hasImage = true;
+
+                    toast.loading('📤 Fazendo upload da imagem colada...', { id: 'paste-upload' });
+
+                    const url = await handleImageUpload(file);
+
+                    if (url) {
+                        toast.success('✅ Imagem carregada e inserida!', { id: 'paste-upload' });
+
+                        // Inserir a imagem na posição atual do cursor se possível
+                        const imgHtml = `<img src="${url}" style="max-width: 100%; height: auto; margin: 10px 0; border-radius: 8px; display: block;" alt="Imagem colada" />`;
+
+                        if (activeEditableElement) {
+                            activeEditableElement.focus();
+                            document.execCommand('insertHTML', false, imgHtml);
+
+                            // Forçar atualização do bloco
+                            const newHtml = activeEditableElement.innerHTML;
+                            updateBlock(blockId, { text: newHtml });
+                        } else {
+                            // Se não houver elemento ativo, insere como novo bloco após o atual
+                            const currentIdx = blocks.findIndex(b => b.id === blockId);
+                            insertImage(url, currentIdx + 1);
+                        }
+                    } else {
+                        toast.error('❌ Erro ao fazer upload da imagem colada.', { id: 'paste-upload' });
+                    }
+                }
+            }
+        }
+
+        // Se for texto/HTML normal e não houver imagem, o navegador lida automaticamente
+        // mas precisamos garantir a atualização do bloco depois
+        if (!hasImage) {
+            // Pequeno delay para esperar o navegador processar o paste
+            setTimeout(() => {
+                if (activeEditableElement) {
+                    const newHtml = activeEditableElement.innerHTML;
+                    updateBlock(blockId, { text: newHtml });
+                }
+            }, 50);
+        }
     };
 
 
@@ -1490,15 +1626,11 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
         return () => document.removeEventListener('selectionchange', handleSelectionChange);
     }, [content]);
 
-    // Handle clicks to select images or clear selection
+    // Handle clicks to select elements or clear selection
     const handleEditorClick = (e: React.MouseEvent) => {
         const target = e.target as HTMLElement;
 
-        // Image Selection
-        if (target.tagName === 'IMG') {
-            setSelectedElement(target);
-            return;
-        }
+        // Image Selection has been migrated to handleMediaClick / selectedMedia
 
         // Video Selection (Handle Overlay, Wrapper Config, or Generic Wrapper)
         const isVideoOverlay = target.classList.contains('video-overlay');
@@ -1506,15 +1638,11 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
         const hasIframeChild = target.tagName === 'DIV' && target.querySelector('iframe');
 
         if (isVideoOverlay && target.parentElement) {
-            setSelectedElement(target.parentElement);
+            setSelectedMedia(target.parentElement);
         } else if (isVideoWrapper || hasIframeChild) {
-            setSelectedElement(target);
-        } else {
-            // Only deselect if we clicked something that ISN'T the currently selected element
-            // This prevents deselecting when clicking controls inside (though controls are usually outside editor)
-            // But we need to allow clicking elsewhere to deselect.
-            setSelectedElement(null);
+            setSelectedMedia(target);
         }
+        // Note: deselection is handled by the document click handler in handleMediaClick
     };
 
     const handleSelectionChange = useCallback(() => {
@@ -1895,17 +2023,25 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
         selectedElement.style.float = '';
         selectedElement.style.clear = '';
 
+        // Constrain width when floating to guarantee room for text to wrap beside it
+        if (!selectedElement.style.width || selectedElement.style.width === 'auto') {
+            if (align === 'left' || align === 'right') {
+                selectedElement.style.maxWidth = '50%';
+            } else {
+                selectedElement.style.maxWidth = '100%';
+            }
+        }
+
         if (align === 'center') {
             selectedElement.style.display = 'block';
-            selectedElement.style.margin = '0 auto';
+            selectedElement.style.margin = '10px auto';
+            selectedElement.style.float = 'none';
         } else if (align === 'left') {
             selectedElement.style.float = 'left';
-            selectedElement.style.marginRight = '1rem';
-            selectedElement.style.marginBottom = '0.5rem';
+            selectedElement.style.margin = '0 1.25rem 0.5rem 0';
         } else if (align === 'right') {
             selectedElement.style.float = 'right';
-            selectedElement.style.marginLeft = '1rem';
-            selectedElement.style.marginBottom = '0.5rem';
+            selectedElement.style.margin = '0 0 0.5rem 1.25rem';
         }
 
         handleInput();
@@ -2558,6 +2694,25 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
             return newBlocks;
         });
         setExpandedBlockId(newBlock.id);
+    }, []);
+
+    // Adicionar bloco de resposta do aluno em posição específica
+    const addTextAnswerBlockAtPosition = React.useCallback((position: number) => {
+        const newBlock: Block = {
+            id: `block-${Date.now()}-${Math.random()}`,
+            type: 'text_answer',
+            text: '<p><em>📝 Caixa de Resposta do Aluno — Este bloco aparecerá como campo de texto editável para o aluno.</em></p>',
+            audioUrl: '',
+            spacing: 8
+        };
+
+        setBlocks(prev => {
+            const newBlocks = [...prev];
+            newBlocks.splice(position, 0, newBlock);
+            return newBlocks;
+        });
+        setExpandedBlockId(newBlock.id);
+        toast.success('📝 Caixa de Resposta inserida!');
     }, []);
 
     const moveBlock = React.useCallback((index: number, direction: 'up' | 'down') => {
@@ -3229,47 +3384,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                 </div>
 
 
-                {/* Element Resize Toolbar */}
-                {selectedElement && (
-                    <div className="absolute top-[120px] left-1/2 transform -translate-x-1/2 bg-slate-800 text-white p-2 rounded-lg shadow-xl flex items-center gap-2 z-50 animate-in fade-in slide-in-from-top-4">
-                        <span className="text-xs font-bold text-slate-300 mr-2">Tamanho:</span>
-                        {[25, 50, 75, 100].map(size => (
-                            <button
-                                key={size}
-                                onClick={() => resizeElement(`${size}%`)}
-                                className="px-2 py-1 bg-slate-700 hover:bg-slate-600 rounded text-xs transition-colors"
-                            >
-                                {size}%
-                            </button>
-                        ))}
-                        <button
-                            onClick={() => resizeElement('auto')}
-                            className="px-2 py-1 bg-slate-700 hover:bg-slate-600 rounded text-xs transition-colors"
-                        >
-                            Auto
-                        </button>
-                        <div className="w-px h-4 bg-slate-600 mx-1"></div>
-                        <div className="flex items-center gap-1">
-                            <button onClick={() => alignElement('left')} className="w-6 h-6 rounded hover:bg-slate-600 flex items-center justify-center" title="Alinhar à Esquerda">
-                                <i className="fas fa-align-left text-xs"></i>
-                            </button>
-                            <button onClick={() => alignElement('center')} className="w-6 h-6 rounded hover:bg-slate-600 flex items-center justify-center" title="Centralizar">
-                                <i className="fas fa-align-center text-xs"></i>
-                            </button>
-                            <button onClick={() => alignElement('right')} className="w-6 h-6 rounded hover:bg-slate-600 flex items-center justify-center" title="Alinhar à Direita">
-                                <i className="fas fa-align-right text-xs"></i>
-                            </button>
-                        </div>
-                        <div className="w-px h-4 bg-slate-600 mx-1"></div>
-                        <button
-                            onClick={() => setSelectedElement(null)}
-                            className="w-6 h-6 flex items-center justify-center bg-red-500/20 hover:bg-red-500/40 text-red-300 rounded-full transition-colors"
-                            title="Fechar"
-                        >
-                            <i className="fas fa-times text-xs"></i>
-                        </button>
-                    </div>
-                )}
+                {/* Element Resize Toolbar removed — now handled by selectedMedia toolbar below */}
             </div>
 
             {/* Área do editor - TWO COLUMN LAYOUT */}
@@ -3358,6 +3473,12 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                             ? 'bg-white border-slate-200'
                             : 'bg-slate-900 border-slate-800'
                             }`}>
+                            {/* Float containment for images with wrapping */}
+                            <style>{`
+                                .editor-content {
+                                    overflow: hidden;
+                                }
+                            `}</style>
                             {blocks.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center h-full text-center py-20">
                                     <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-6 ${previewTheme === 'light' ? 'bg-slate-100' : 'bg-slate-800'
@@ -3912,6 +4033,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                                     setMediaMenuIndex,
                                                     setShowMediaMenu,
                                                     addBlockAtPosition,
+                                                    addTextAnswerBlockAtPosition,
                                                     setShowImageModal,
                                                     setShowTableModal,
                                                     setShowVideoModal,
@@ -3930,7 +4052,8 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                                     currentFontSize,
                                                     activeFormats,
                                                     toggleBlockFeatured,
-                                                    setBlockFeaturedColor
+                                                    setBlockFeaturedColor,
+                                                    handlePaste
                                                 }}
                                             />
                                         );
@@ -5141,58 +5264,79 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                 selectedMedia && (
                     <div
                         className="media-toolbar fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 p-3 animate-in fade-in slide-in-from-bottom-4 duration-200"
-                        style={{ maxWidth: '90vw' }}
+                        style={{ maxWidth: '95vw' }}
                     >
-                        <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 px-2">Tamanho:</span>
+                        {/* Row 1: Tamanho */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 px-2">📐 Tamanho:</span>
+
+                            <button
+                                onClick={() => resizeMedia('25%')}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${mediaSize === '25%'
+                                    ? 'bg-indigo-600 text-white'
+                                    : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-slate-600'
+                                    }`}
+                            >25%</button>
 
                             <button
                                 onClick={() => resizeMedia('33%')}
-                                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-colors ${mediaSize === '33%'
+                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${mediaSize === '33%'
                                     ? 'bg-indigo-600 text-white'
                                     : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-slate-600'
                                     }`}
-                            >
-                                Pequeno
-                            </button>
+                            >33%</button>
 
                             <button
                                 onClick={() => resizeMedia('50%')}
-                                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-colors ${mediaSize === '50%'
+                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${mediaSize === '50%'
                                     ? 'bg-indigo-600 text-white'
                                     : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-slate-600'
                                     }`}
-                            >
-                                Médio
-                            </button>
+                            >50%</button>
 
                             <button
                                 onClick={() => resizeMedia('75%')}
-                                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-colors ${mediaSize === '75%'
+                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${mediaSize === '75%'
                                     ? 'bg-indigo-600 text-white'
                                     : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-slate-600'
                                     }`}
-                            >
-                                Grande
-                            </button>
+                            >75%</button>
 
                             <button
                                 onClick={() => resizeMedia('100%')}
-                                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-colors ${mediaSize === '100%'
+                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${mediaSize === '100%'
                                     ? 'bg-indigo-600 text-white'
                                     : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-slate-600'
                                     }`}
-                            >
-                                Original
-                            </button>
+                            >100%</button>
 
-                            <div className="w-px h-6 bg-slate-200 dark:bg-slate-600 mx-2"></div>
+                            <div className="w-px h-6 bg-slate-200 dark:bg-slate-600 mx-1"></div>
 
-                            <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 px-2">Alinhamento:</span>
+                            {/* Custom size input */}
+                            <div className="flex items-center gap-1">
+                                <input
+                                    type="number"
+                                    min="10"
+                                    max="100"
+                                    step="5"
+                                    value={parseInt(mediaSize) || 100}
+                                    onChange={(e) => {
+                                        const val = Math.max(10, Math.min(100, parseInt(e.target.value) || 100));
+                                        resizeMedia(`${val}%`);
+                                    }}
+                                    className="w-14 px-2 py-1.5 rounded-lg text-xs font-semibold text-center bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 outline-none focus:border-indigo-500"
+                                />
+                                <span className="text-xs text-slate-500">%</span>
+                            </div>
+                        </div>
+
+                        {/* Row 2: Alinhamento + Texto ao redor + Ações */}
+                        <div className="flex items-center gap-2 mt-2 flex-wrap">
+                            <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 px-2">📍 Posição:</span>
 
                             <button
                                 onClick={() => alignMedia('left')}
-                                className="px-3 py-2 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-slate-600 transition-colors"
+                                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-slate-600 transition-colors"
                                 title="Alinhar à esquerda"
                             >
                                 <i className="fas fa-align-left"></i>
@@ -5200,7 +5344,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
                             <button
                                 onClick={() => alignMedia('center')}
-                                className="px-3 py-2 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-slate-600 transition-colors"
+                                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-slate-600 transition-colors"
                                 title="Centralizar"
                             >
                                 <i className="fas fa-align-center"></i>
@@ -5208,28 +5352,64 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
                             <button
                                 onClick={() => alignMedia('right')}
-                                className="px-3 py-2 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-slate-600 transition-colors"
+                                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-slate-600 transition-colors"
                                 title="Alinhar à direita"
                             >
                                 <i className="fas fa-align-right"></i>
                             </button>
 
-                            <div className="w-px h-6 bg-slate-200 dark:bg-slate-600 mx-2"></div>
+                            <div className="w-px h-6 bg-slate-200 dark:bg-slate-600 mx-1"></div>
+
+                            <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 px-1">📝 Texto ao Redor:</span>
+
+                            <button
+                                onClick={() => alignMedia('wrap-left')}
+                                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50 border border-amber-200 dark:border-amber-800 transition-colors"
+                                title="Imagem à esquerda, texto contorna pela direita"
+                            >
+                                <i className="fas fa-indent mr-1"></i>Contornar (Esquerda)
+                            </button>
+
+                            <button
+                                onClick={() => alignMedia('wrap-right')}
+                                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50 border border-amber-200 dark:border-amber-800 transition-colors"
+                                title="Imagem à direita, texto contorna pela esquerda"
+                            >
+                                Contornar (Direita) <i className="fas fa-outdent ml-1"></i>
+                            </button>
+
+                            <div className="w-px h-6 bg-slate-200 dark:bg-slate-600 mx-1"></div>
+
+                            <button
+                                onClick={() => alignMedia('inline')}
+                                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-800 transition-colors"
+                                title="Permite várias imagens na mesma linha"
+                            >
+                                <i className="fas fa-columns mr-1"></i>Lado a Lado (Inline)
+                            </button>
+
+                            <div className="w-px h-6 bg-slate-200 dark:bg-slate-600 mx-1"></div>
 
                             <button
                                 onClick={applyMediaChanges}
-                                className="px-4 py-2 rounded-lg text-xs font-bold bg-green-600 hover:bg-green-500 text-white transition-colors shadow-lg"
-                                title="Aplicar mudanças na prévia"
+                                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-green-600 hover:bg-green-500 text-white transition-colors shadow-lg"
+                                title="Aplicar e Fechar"
                             >
-                                <i className="fas fa-check mr-2"></i>
-                                Aplicar
+                                <i className="fas fa-check"></i>
                             </button>
 
-                            <div className="w-px h-6 bg-slate-200 dark:bg-slate-600 mx-2"></div>
+                            <button
+                                onClick={deleteMedia}
+                                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+                                title="Excluir Mídia"
+                            >
+                                <i className="fas fa-trash-alt"></i>
+                            </button>
 
                             <button
                                 onClick={() => setSelectedMedia(null)}
-                                className="px-3 py-2 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 transition-colors"
+                                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                                title="Fechar Menu"
                             >
                                 <i className="fas fa-times"></i>
                             </button>

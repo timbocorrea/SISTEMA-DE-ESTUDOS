@@ -23,6 +23,7 @@ import ContentReader from './lesson/ContentReader';
 import { useAudioPlayer } from '../hooks/useAudioPlayer';
 import { useLessonQuiz } from '../hooks/useLessonQuiz';
 import { useLessonNavigation } from '../hooks/useLessonNavigation';
+import { useStudentAnswers } from '../hooks/useStudentAnswers';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
@@ -263,6 +264,9 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
             activeVideoRef.current?.pause();
         }
     });
+
+    // Student text answer blocks
+    const studentAnswerData = useStudentAnswers({ userId: user.id, lessonId: lesson.id });
 
     const handleBlockClick = useCallback((_blockId: string, index: number) => {
         playBlock(index);
@@ -997,6 +1001,16 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                 currentProgress={progress}
                                 blockRefs={blockRefs}
                                 onSeek={seek}
+                                studentAnswers={studentAnswerData.answers}
+                                onSaveAnswer={async (blockId, answerText) => {
+                                    const success = await studentAnswerData.saveAnswer(blockId, answerText);
+                                    if (success) {
+                                        toast.success('Resposta salva com sucesso!');
+                                    } else {
+                                        toast.error('Erro ao salvar resposta.');
+                                    }
+                                }}
+                                savingBlockIds={studentAnswerData.savingBlocks}
                             />
 
                             {/* Context Menu Overlay */}

@@ -79,7 +79,7 @@ export const useBuddyClient = ({ userId, systemContext = '', currentContext = ''
                         ...recentHistory.map(m => ({ role: m.role, text: m.text, image: (m as any).image })),
                         { role: 'user', text: text || 'Analise a imagem.', image: image }
                     ],
-                    model: 'gemini-1.5-flash' // Force efficient model
+                    model: 'gemini-1.5-flash-latest' // Force efficient model
                 }
             });
 

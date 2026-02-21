@@ -13,7 +13,7 @@ interface MagicCardProps {
   gradientTo?: string
 }
 
-export function MagicCard({
+const MagicCardComponent = ({
   children,
   className,
   gradientSize = 200,
@@ -21,9 +21,10 @@ export function MagicCard({
   gradientOpacity = 0.8,
   gradientFrom = "#9E7AFF",
   gradientTo = "#FE8BBB",
-}: MagicCardProps) {
+}: MagicCardProps) => {
   const mouseX = useMotionValue(-gradientSize)
   const mouseY = useMotionValue(-gradientSize)
+
   const reset = useCallback(() => {
     mouseX.set(-gradientSize)
     mouseY.set(-gradientSize)
@@ -99,3 +100,5 @@ export function MagicCard({
     </div>
   )
 }
+
+export const MagicCard = React.memo(MagicCardComponent);

@@ -1278,4 +1278,34 @@ export class SupabaseCourseRepository implements ICourseRepository {
 
     return summary;
   }
+
+  // ===== STUDENT ANSWERS (Text Answer Blocks) =====
+
+  async getStudentAnswers(userId: string, lessonId: string): Promise<{ blockId: string; answerText: string }[]> {
+    const { data, error } = await this.client
+      .from('student_answers')
+      .select('block_id, answer_text')
+      .eq('user_id', userId)
+      .eq('lesson_id', lessonId);
+
+    if (error) throw new DomainError(`Erro ao buscar respostas: ${error.message}`);
+    return (data || []).map((row: any) => ({
+      blockId: row.block_id,
+      answerText: row.answer_text
+    }));
+  }
+
+  async saveStudentAnswer(userId: string, lessonId: string, blockId: string, answerText: string): Promise<void> {
+    const { error } = await this.client
+      .from('student_answers')
+      .upsert({
+        user_id: userId,
+        lesson_id: lessonId,
+        block_id: blockId,
+        answer_text: answerText,
+        updated_at: new Date().toISOString()
+      });
+
+    if (error) throw new DomainError(`Erro ao salvar resposta: ${error.message}`);
+  }
 }

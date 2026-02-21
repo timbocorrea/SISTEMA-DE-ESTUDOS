@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuthService } from '../services/AuthService';
@@ -26,16 +26,13 @@ const AuthForm: React.FC<AuthFormProps> = ({ authService, onSuccess }) => {
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     formState: { errors },
     reset
   } = useForm<SignupFormData>({
     resolver: zodResolver(isLogin ? loginSchema : signupSchema) as any,
     mode: 'onBlur' // Valida quando perde o foco
   });
-
-  const passwordValue = watch('password');
-  const confirmPasswordValue = watch('confirmPassword');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -181,38 +178,14 @@ const AuthForm: React.FC<AuthFormProps> = ({ authService, onSuccess }) => {
               )}
             </div>
 
-            <div>
-              <label htmlFor="password" className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">
-                Senha
-              </label>
-              <div className="relative">
-                <input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  {...register('password')}
-                  className={`w-full bg-slate-950/50 border ${errors.password
-                    ? 'border-red-500'
-                    : !isLogin && passwordValue && confirmPasswordValue && passwordValue === confirmPasswordValue
-                      ? 'border-emerald-500/80 shadow-[0_0_15px_-3px_rgba(16,185,129,0.3)]'
-                      : 'border-slate-700/50'
-                    } rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium pr-10`}
-                  placeholder="••••••••"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
-                >
-                  <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-                </button>
-              </div>
-              {errors.password && (
-                <p className="text-red-400 text-[10px] mt-1.5 flex items-center gap-1.5 font-medium ml-1">
-                  <i className="fas fa-exclamation-circle"></i>
-                  {errors.password.message as string}
-                </p>
-              )}
-            </div>
+            <PasswordField
+              register={register}
+              error={errors.password}
+              showPassword={showPassword}
+              setShowPassword={setShowPassword}
+              isLogin={isLogin}
+              control={control}
+            />
 
             <AnimatePresence mode="wait">
               {!isLogin && (
@@ -222,61 +195,13 @@ const AuthForm: React.FC<AuthFormProps> = ({ authService, onSuccess }) => {
                   exit={{ opacity: 0, height: 0 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <label htmlFor="confirmPassword" className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1 mt-3">
-                    Confirmar Senha
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="confirmPassword"
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      {...register('confirmPassword')}
-                      className={`w-full bg-slate-950/50 border ${errors.confirmPassword
-                        ? 'border-red-500'
-                        : passwordValue && confirmPasswordValue && passwordValue === confirmPasswordValue
-                          ? 'border-emerald-500/80 shadow-[0_0_15px_-3px_rgba(16,185,129,0.3)]'
-                          : 'border-slate-700/50'
-                        } rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium pr-10`}
-                      placeholder="••••••••"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
-                    >
-                      <i className={`fas ${showConfirmPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-                    </button>
-                  </div>
-                  {errors.confirmPassword && (
-                    <p className="text-red-400 text-[10px] mt-1.5 flex items-center gap-1.5 font-medium ml-1">
-                      <i className="fas fa-exclamation-circle"></i>
-                      {errors.confirmPassword.message as string}
-                    </p>
-                  )}
-                  {passwordValue && confirmPasswordValue && passwordValue === confirmPasswordValue && !errors.confirmPassword && (
-                    <motion.p
-                      initial={{ opacity: 0, y: -5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="text-emerald-400 text-[10px] mt-1.5 flex items-center gap-1.5 font-medium ml-1"
-                    >
-                      <i className="fas fa-check-circle"></i>
-                      Senhas conferem!
-                    </motion.p>
-                  )}
-
-                  <div className="mt-4 flex items-center gap-2 relative z-10">
-                    <div className="relative flex items-center">
-                      <input
-                        type="checkbox"
-                        id="isMinor"
-                        {...register('isMinor')}
-                        className="peer h-4 w-4 cursor-pointer appearance-none rounded border border-slate-600 bg-slate-900/50 checked:border-emerald-500 checked:bg-emerald-500 transition-all hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                      />
-                      <i className="fas fa-check absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[10px] text-white opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none"></i>
-                    </div>
-                    <label htmlFor="isMinor" className="text-xs text-slate-400 select-none cursor-pointer hover:text-slate-300 transition-colors">
-                      Sou menor de 18 anos (Requer supervisão)
-                    </label>
-                  </div>
+                  <ConfirmPasswordField
+                    register={register}
+                    error={errors.confirmPassword}
+                    showConfirmPassword={showConfirmPassword}
+                    setShowConfirmPassword={setShowConfirmPassword}
+                    control={control}
+                  />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -373,6 +298,115 @@ const AuthForm: React.FC<AuthFormProps> = ({ authService, onSuccess }) => {
         adminService={new AdminService(new SupabaseAdminRepository())}
       />
     </div>
+  );
+};
+
+
+// Optimized Sub-components to prevent root re-renders on every keystroke
+const PasswordField = ({ register, error, showPassword, setShowPassword, isLogin, control }: any) => {
+  const passwordValue = useWatch({ control, name: 'password' });
+  const confirmPasswordValue = useWatch({ control, name: 'confirmPassword' });
+  const passwordsMatch = passwordValue && confirmPasswordValue && passwordValue === confirmPasswordValue;
+
+  return (
+    <div>
+      <label htmlFor="password" className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">
+        Senha
+      </label>
+      <div className="relative">
+        <input
+          id="password"
+          type={showPassword ? 'text' : 'password'}
+          {...register('password')}
+          className={`w-full bg-slate-950/50 border ${error
+            ? 'border-red-500'
+            : !isLogin && passwordsMatch
+              ? 'border-emerald-500/80 shadow-[0_0_15px_-3px_rgba(16,185,129,0.3)]'
+              : 'border-slate-700/50'
+            } rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium pr-10`}
+          placeholder="••••••••"
+        />
+        <button
+          type="button"
+          onClick={() => setShowPassword(!showPassword)}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+        >
+          <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+        </button>
+      </div>
+      {error && (
+        <p className="text-red-400 text-[10px] mt-1.5 flex items-center gap-1.5 font-medium ml-1">
+          <i className="fas fa-exclamation-circle"></i>
+          {error.message}
+        </p>
+      )}
+    </div>
+  );
+};
+
+const ConfirmPasswordField = ({ register, error, showConfirmPassword, setShowConfirmPassword, control }: any) => {
+  const passwordValue = useWatch({ control, name: 'password' });
+  const confirmPasswordValue = useWatch({ control, name: 'confirmPassword' });
+  const passwordsMatch = passwordValue && confirmPasswordValue && passwordValue === confirmPasswordValue;
+
+  return (
+    <>
+      <label htmlFor="confirmPassword" className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1 mt-3">
+        Confirmar Senha
+      </label>
+      <div className="relative">
+        <input
+          id="confirmPassword"
+          type={showConfirmPassword ? 'text' : 'password'}
+          {...register('confirmPassword')}
+          className={`w-full bg-slate-950/50 border ${error
+            ? 'border-red-500'
+            : passwordsMatch
+              ? 'border-emerald-500/80 shadow-[0_0_15px_-3px_rgba(16,185,129,0.3)]'
+              : 'border-slate-700/50'
+            } rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium pr-10`}
+          placeholder="••••••••"
+        />
+        <button
+          type="button"
+          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+        >
+          <i className={`fas ${showConfirmPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+        </button>
+      </div>
+      {error && (
+        <p className="text-red-400 text-[10px] mt-1.5 flex items-center gap-1.5 font-medium ml-1">
+          <i className="fas fa-exclamation-circle"></i>
+          {error.message}
+        </p>
+      )}
+      {passwordsMatch && !error && (
+        <motion.p
+          initial={{ opacity: 0, y: -5 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-emerald-400 text-[10px] mt-1.5 flex items-center gap-1.5 font-medium ml-1"
+        >
+          <i className="fas fa-check-circle"></i>
+          Senhas conferem!
+        </motion.p>
+      )}
+
+      <div className="mt-4 flex items-center gap-2 relative z-10">
+        <div className="relative flex items-center">
+          <input
+            type="checkbox"
+            id="isMinor"
+            {...register('isMinor')}
+            className="peer h-4 w-4 cursor-pointer appearance-none rounded border border-slate-600 bg-slate-900/50 checked:border-emerald-500 checked:bg-emerald-500 transition-all hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+          />
+          <i className="fas fa-check absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[10px] text-white opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none"></i>
+        </div>
+        <label htmlFor="isMinor" className="text-xs text-slate-400 select-none cursor-pointer hover:text-slate-300 transition-colors">
+          Sou menor de 18 anos (Requer supervisão)
+        </label>
+      </div>
+    </>
   );
 };
 

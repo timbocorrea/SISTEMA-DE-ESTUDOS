@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 import { Lesson } from '../../domain/entities';
 import { useLessonStore } from '../../stores/useLessonStore';
@@ -18,6 +18,10 @@ interface ContentReaderProps {
     currentProgress?: number; // 0 to 100
     blockRefs?: React.MutableRefObject<{ [key: string]: HTMLDivElement | null }>;
     onSeek?: (percentage: number) => void;
+    // Text Answer Block props
+    studentAnswers?: Map<string, string>;
+    onSaveAnswer?: (blockId: string, answerText: string) => Promise<void>;
+    savingBlockIds?: Set<string>;
 }
 
 const ContentReader: React.FC<ContentReaderProps> = React.memo(({
@@ -27,10 +31,16 @@ const ContentReader: React.FC<ContentReaderProps> = React.memo(({
     onTrackAction,
     currentProgress = 0,
     blockRefs,
-    onSeek
+    onSeek,
+    studentAnswers,
+    onSaveAnswer,
+    savingBlockIds
 }) => {
     const { activeBlockId, fontSize, contentTheme, audioEnabled } = useLessonStore();
     const contentRef = useRef<HTMLDivElement>(null);
+    // Local state for text answer blocks being edited
+    const [editingBlocks, setEditingBlocks] = useState<Set<string>>(new Set());
+    const [localAnswers, setLocalAnswers] = useState<Map<string, string>>(new Map());
 
     // Scroll to active block logic moved to parent (LessonViewer) to avoid conflicts
     useEffect(() => {
@@ -93,7 +103,195 @@ const ContentReader: React.FC<ContentReaderProps> = React.memo(({
             return lesson.contentBlocks.map((block, index) => {
                 const hasAudio = !!block.audioUrl;
                 const isActive = activeBlockId === block.id;
+                const isTextAnswer = (block as any).type === 'text_answer';
 
+                // --- Text Answer Block Rendering ---
+                if (isTextAnswer) {
+                    const savedAnswer = studentAnswers?.get(block.id) || '';
+                    const localAnswer = localAnswers.get(block.id);
+                    const isEditing = editingBlocks.has(block.id);
+                    const isSaving = savingBlockIds?.has(block.id) || false;
+                    const displayAnswer = localAnswer !== undefined ? localAnswer : savedAnswer;
+                    const hasSavedAnswer = savedAnswer.length > 0;
+
+                    return (
+                        <div
+                            key={block.id}
+                            ref={(el) => {
+                                if (blockRefs) blockRefs.current[block.id] = el;
+                            }}
+                            data-block-id={block.id}
+                            className="content-block"
+                            style={{
+                                marginBottom: `${block.spacing || 1.5}rem`,
+                                padding: '1.25rem',
+                                borderLeft: '4px solid #f59e0b',
+                                backgroundColor: contentTheme === 'dark' ? 'rgba(245, 158, 11, 0.08)' : 'rgba(245, 158, 11, 0.05)',
+                                borderRadius: '12px',
+                                transition: 'all 0.2s ease',
+                            }}
+                        >
+                            {/* Header */}
+                            <div style={{
+                                display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px',
+                                fontSize: '13px', fontWeight: 700,
+                                color: contentTheme === 'dark' ? '#fbbf24' : '#b45309'
+                            }}>
+                                <i className="fas fa-pen-to-square"></i>
+                                <span>Sua Resposta</span>
+                            </div>
+
+                            {/* Textarea or Saved Answer */}
+                            {(!hasSavedAnswer || isEditing) ? (
+                                <>
+                                    <textarea
+                                        value={displayAnswer}
+                                        onChange={(e) => {
+                                            const newMap = new Map(localAnswers);
+                                            newMap.set(block.id, e.target.value);
+                                            setLocalAnswers(newMap);
+                                        }}
+                                        placeholder="Escreva sua resposta aqui..."
+                                        rows={5}
+                                        style={{
+                                            width: '100%',
+                                            padding: '12px 16px',
+                                            borderRadius: '10px',
+                                            border: `1px solid ${contentTheme === 'dark' ? '#475569' : '#cbd5e1'}`,
+                                            backgroundColor: contentTheme === 'dark' ? '#1e293b' : '#f8fafc',
+                                            color: contentTheme === 'dark' ? '#e2e8f0' : '#1e293b',
+                                            fontSize: '14px',
+                                            lineHeight: '1.7',
+                                            resize: 'vertical',
+                                            outline: 'none',
+                                            fontFamily: 'inherit',
+                                            transition: 'border-color 0.2s',
+                                        }}
+                                        onFocus={(e) => e.target.style.borderColor = '#f59e0b'}
+                                        onBlur={(e) => e.target.style.borderColor = contentTheme === 'dark' ? '#475569' : '#cbd5e1'}
+                                    />
+                                    <div style={{ display: 'flex', gap: '8px', marginTop: '10px', justifyContent: 'flex-end' }}>
+                                        {/* Limpar button */}
+                                        {displayAnswer.trim().length > 0 && (
+                                            <button
+                                                disabled={isSaving}
+                                                onClick={async () => {
+                                                    // Clear the local text
+                                                    const newMap = new Map(localAnswers);
+                                                    newMap.set(block.id, '');
+                                                    setLocalAnswers(newMap);
+                                                    // If there was a saved answer, save empty to DB
+                                                    if (hasSavedAnswer && onSaveAnswer) {
+                                                        await onSaveAnswer(block.id, '');
+                                                        // Exit editing mode
+                                                        const newEditing = new Set(editingBlocks);
+                                                        newEditing.delete(block.id);
+                                                        setEditingBlocks(newEditing);
+                                                    }
+                                                    onTrackAction?.('Limpou caixa de resposta');
+                                                }}
+                                                style={{
+                                                    padding: '8px 20px', borderRadius: '8px',
+                                                    fontSize: '12px', fontWeight: 700,
+                                                    border: `1px solid ${contentTheme === 'dark' ? '#ef444480' : '#fca5a580'}`,
+                                                    backgroundColor: 'transparent',
+                                                    color: contentTheme === 'dark' ? '#f87171' : '#dc2626',
+                                                    cursor: isSaving ? 'not-allowed' : 'pointer',
+                                                    marginRight: 'auto',
+                                                }}
+                                            >
+                                                <i className="fas fa-eraser" style={{ marginRight: '5px' }}></i>
+                                                Limpar
+                                            </button>
+                                        )}
+                                        {isEditing && (
+                                            <button
+                                                onClick={() => {
+                                                    const newEditing = new Set(editingBlocks);
+                                                    newEditing.delete(block.id);
+                                                    setEditingBlocks(newEditing);
+                                                    // Reset local to saved
+                                                    const newMap = new Map(localAnswers);
+                                                    newMap.delete(block.id);
+                                                    setLocalAnswers(newMap);
+                                                }}
+                                                style={{
+                                                    padding: '8px 20px', borderRadius: '8px',
+                                                    fontSize: '12px', fontWeight: 700,
+                                                    border: `1px solid ${contentTheme === 'dark' ? '#475569' : '#cbd5e1'}`,
+                                                    backgroundColor: 'transparent',
+                                                    color: contentTheme === 'dark' ? '#94a3b8' : '#64748b',
+                                                    cursor: 'pointer',
+                                                }}
+                                            >Cancelar</button>
+                                        )}
+                                        <button
+                                            disabled={isSaving || !displayAnswer.trim()}
+                                            onClick={async () => {
+                                                if (onSaveAnswer && displayAnswer.trim()) {
+                                                    await onSaveAnswer(block.id, displayAnswer.trim());
+                                                    const newEditing = new Set(editingBlocks);
+                                                    newEditing.delete(block.id);
+                                                    setEditingBlocks(newEditing);
+                                                    onTrackAction?.('Salvou resposta de texto');
+                                                }
+                                            }}
+                                            style={{
+                                                padding: '8px 24px', borderRadius: '8px',
+                                                fontSize: '12px', fontWeight: 700,
+                                                backgroundColor: isSaving ? '#9ca3af' : '#f59e0b',
+                                                color: '#fff', border: 'none',
+                                                cursor: isSaving || !displayAnswer.trim() ? 'not-allowed' : 'pointer',
+                                                opacity: isSaving || !displayAnswer.trim() ? 0.6 : 1,
+                                                transition: 'all 0.2s',
+                                            }}
+                                        >{isSaving ? 'Salvando...' : 'Salvar'}</button>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    {/* Read-only saved answer */}
+                                    <div style={{
+                                        padding: '12px 16px',
+                                        borderRadius: '10px',
+                                        backgroundColor: contentTheme === 'dark' ? '#1e293b' : '#f8fafc',
+                                        border: `1px solid ${contentTheme === 'dark' ? '#334155' : '#e2e8f0'}`,
+                                        color: contentTheme === 'dark' ? '#e2e8f0' : '#334155',
+                                        fontSize: '14px',
+                                        lineHeight: '1.7',
+                                        whiteSpace: 'pre-wrap',
+                                    }}>{savedAnswer}</div>
+                                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
+                                        <button
+                                            onClick={() => {
+                                                const newEditing = new Set(editingBlocks);
+                                                newEditing.add(block.id);
+                                                setEditingBlocks(newEditing);
+                                                // Pre-populate local with saved
+                                                const newMap = new Map(localAnswers);
+                                                newMap.set(block.id, savedAnswer);
+                                                setLocalAnswers(newMap);
+                                            }}
+                                            style={{
+                                                padding: '8px 20px', borderRadius: '8px',
+                                                fontSize: '12px', fontWeight: 700,
+                                                border: `1px solid ${contentTheme === 'dark' ? '#475569' : '#cbd5e1'}`,
+                                                backgroundColor: 'transparent',
+                                                color: contentTheme === 'dark' ? '#fbbf24' : '#b45309',
+                                                cursor: 'pointer',
+                                            }}
+                                        >
+                                            <i className="fas fa-edit" style={{ marginRight: '6px' }}></i>
+                                            Editar Resposta
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    );
+                }
+
+                // --- Standard Block Rendering ---
                 // Apply highlights to the block text
                 const htmlWithHighlights = applyHighlights(block.text, highlights);
 
@@ -117,6 +315,7 @@ const ContentReader: React.FC<ContentReaderProps> = React.memo(({
                             borderRadius: (hasAudio && audioEnabled) ? '8px' : '0',
                             cursor: (hasAudio && audioEnabled) ? 'pointer' : 'default',
                             transition: 'all 0.2s ease',
+                            display: 'flow-root'
                         }}
                         onClick={(e) => {
                             // Check if user is selecting text - Ignore click if there is a selection
@@ -198,7 +397,7 @@ const ContentReader: React.FC<ContentReaderProps> = React.memo(({
                         )}
                         <div
                             dangerouslySetInnerHTML={{ __html: htmlWithHighlights }}
-                            style={{ display: 'inline' }}
+                            style={{ display: 'block' }}
                         />
 
                         {/* Audio Progress Bar for Active Block */}
@@ -281,18 +480,29 @@ const ContentReader: React.FC<ContentReaderProps> = React.memo(({
             </h2>
 
 
-            {/* Injected Styles for Reponsive Content */}
+            {/* Injected Styles for Responsive Content */}
             <style>{`
                 .content-reader iframe,
                 .content-reader video,
                 .content-reader embed,
                 .content-reader object {
                     max-width: 100%;
-                    height: auto !important; /* Override fixed inline heights */
+                    height: auto !important;
                     aspect-ratio: 16/9;
                     border-radius: 0.5rem;
                     margin: 1rem 0;
                     display: block;
+                }
+
+                /* Float containment: ensure content blocks properly contain floated images */
+                .content-reader .content-block {
+                    overflow: hidden;
+                }
+
+                /* The inner div that holds dangerouslySetInnerHTML must also establish
+                   a block formatting context so floats work inside it */
+                .content-reader .content-block > div {
+                    display: flow-root;
                 }
             `}</style>
 

@@ -69,7 +69,7 @@ serve(async (req: Request) => {
 
         // 4. Determine Provider based on Key Prefix (Server-Side Logic)
         let aiProvider = 'google';
-        let aiModel = model || 'gemini-1.5-flash';
+        let aiModel = model || 'gemini-1.5-flash-latest';
 
         if (resolvedApiKey.startsWith('sk-')) {
             aiProvider = 'openai';
@@ -130,7 +130,7 @@ serve(async (req: Request) => {
                 generationConfig: { temperature: 0.7, maxOutputTokens: 1000 }
             };
 
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`, {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
@@ -196,12 +196,14 @@ serve(async (req: Request) => {
         } catch (primaryError: any) {
             console.error(`Primary Provider (${aiProvider}) failed:`, primaryError);
 
-            // Failover Logic: Only if primary was Google and error is retryable (429, 503)
+            // Failover Logic: If primary was Google and we have a Groq key, try Llama 3
             // @ts-ignore
             const groqKey = Deno.env.get('GROQ_API_KEY');
-            const isRetryable = primaryError.status === 429 || primaryError.status === 503 || (primaryError.message && primaryError.message.includes('Quota exceeded'));
 
-            if (aiProvider === 'google' && isRetryable && groqKey) {
+            // Allow failover on ANY error from Gemini, not just 429/503
+            const shouldFailover = aiProvider === 'google' && groqKey;
+
+            if (shouldFailover) {
                 console.log('🔄 Initiating Failover to Llama 3 via Groq...');
                 try {
                     const systemMsg = messages.find((m: any) => m.role === 'system');
@@ -219,9 +221,10 @@ serve(async (req: Request) => {
                     // Append notice to response if needed, or rely on system prompt injection
                 } catch (fallbackError: any) {
                     console.error('Fallback Provider (Groq) also failed:', fallbackError);
-                    throw new Error(`Ambos os serviços falharam. Erro original: ${primaryError.message}`);
+                    throw new Error(`Ambos os serviços falharam.\nErro original: ${primaryError.message}\nErro backup: ${fallbackError.message || JSON.stringify(fallbackError)}`);
                 }
             } else {
+                console.log(`Failover skipped. Should we failover? ${shouldFailover}. Provider is ${aiProvider}. GROQ Key exists? ${!!groqKey}`);
                 // Re-throw if not retryable or no fallback key
                 throw new Error(primaryError.message || JSON.stringify(primaryError));
             }

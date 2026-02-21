@@ -154,9 +154,15 @@ const App: React.FC = () => {
     }
   }, [user, logout, navigate]);
 
+  // Determine timeout duration based on current path
+  const isEditorPage = location.pathname.match(/\/admin\/lesson\/[^/]+\/edit/);
+  const timeoutDuration = isEditorPage
+    ? 60 * 60 * 1000 // 60 minutes for editor
+    : 10 * 60 * 1000; // 10 minutes for other pages
+
   useIdleTimeout({
     onIdle: handleIdleTimeout,
-    timeout: 10 * 60 * 1000 // 10 minutes
+    timeout: timeoutDuration
   });
 
   useEffect(() => {

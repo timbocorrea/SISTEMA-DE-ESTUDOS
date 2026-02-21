@@ -25,6 +25,7 @@ export interface ILessonData {
 
 export interface IContentBlock {
   id: string;
+  type?: 'text' | 'text_answer';
   text: string;
   audioUrl?: string;
   spacing?: number;
