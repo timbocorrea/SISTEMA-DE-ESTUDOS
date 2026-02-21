@@ -504,6 +504,18 @@ const ContentReader: React.FC<ContentReaderProps> = React.memo(({
                 .content-reader .content-block > div {
                     display: flow-root;
                 }
+
+                /* Responsive logic for images: Drop float and expand to full width on mobile */
+                @media (max-width: 768px) {
+                    .content-reader img {
+                        float: none !important;
+                        width: 100% !important;
+                        max-width: 100% !important;
+                        height: auto !important;
+                        margin: 1.5rem auto !important;
+                        display: block !important;
+                    }
+                }
             `}</style>
 
             {renderContent()}

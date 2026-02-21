@@ -6,14 +6,20 @@
 
 html {
   font-size: 90%;
-  /* Proporção para mobile - 90% */
+  /* Mobile default - 90% */
 }
 
-@media (min-width: 1024px) {
+/* Tablets / Small desktops (768px - 1365px) */
+@media (min-width: 768px) and (max-width: 1365px) {
   html {
-    /* Escala proporcional: 90% do tamanho original */
-    /* Clamp garante mínimo de 11px e máximo de 20px */
-    font-size: clamp(11px, 0.85vw, 20px);
+    font-size: 85%;
+  }
+}
+
+/* Desktop >= 1366px */
+@media (min-width: 1366px) {
+  html {
+    font-size: 85%;
   }
 }
 
@@ -362,5 +368,22 @@ body {
     100% {
       transform: translateZ(0) rotate(360deg);
     }
+  }
+}
+
+/* Responsive Images for Lesson Content (Mobile Fixes) */
+@media (max-width: 768px) {
+
+  /* Ensure images within the editor preview or content reader drop customized floats and widths */
+  .prose img,
+  .editor-content img,
+  .content-reader img,
+  .content-block img {
+    float: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    margin: 1.5rem auto !important;
+    display: block !important;
   }
 }

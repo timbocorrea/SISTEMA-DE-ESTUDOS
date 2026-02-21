@@ -492,7 +492,14 @@ export class Course {
     public readonly imageUrl: string | null,
     public readonly color: string | null = null,
     public readonly colorLegend: string | null = null,
-    public readonly modules: Module[]
+    public readonly modules: Module[],
+    public readonly language: string | null = null,
+    public readonly estimatedHours: number | null = null,
+    public readonly level: string | null = null,
+    public readonly teachingType: string | null = null,
+    public readonly startDate: Date | null = null,
+    public readonly endDate: Date | null = null,
+    public readonly instructorName: string | null = null
   ) { }
 
   public isFullyCompleted(): boolean {

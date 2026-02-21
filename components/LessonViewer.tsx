@@ -808,6 +808,19 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                 </div>
                             </div>
                             <div className="flex items-center gap-2 md:gap-4">
+                                {/* Botão Mostrar Vídeo (Mobile) */}
+                                {isVideoCollapsed && !isCinemaMode && (
+                                    <button
+                                        onClick={() => setIsVideoCollapsed(false)}
+                                        className={`lg:hidden h-9 px-2 sm:px-3 rounded-lg font-semibold transition-all active:scale-95 flex items-center gap-1.5 text-[10px] uppercase shadow-sm border ${contentTheme === 'dark' ? 'bg-indigo-500/20 border-indigo-500 text-indigo-400' : 'bg-indigo-600 border-indigo-500 text-white'
+                                            }`}
+                                        title="Mostrar Vídeo"
+                                    >
+                                        <i className="fas fa-video text-[10px]"></i>
+                                        <span className="hidden sm:inline">Vídeo</span>
+                                    </button>
+                                )}
+
                                 {/* Leitura por Áudio */}
                                 {lesson.contentBlocks && lesson.contentBlocks.length > 0 && (
                                     <button

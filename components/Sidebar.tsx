@@ -1,11 +1,10 @@
-import React, { useEffect, useState, useCallback, memo } from 'react';
+import React, { useEffect, useState, useCallback, memo, useRef } from 'react';
 import { IUserSession } from '../domain/auth';
 import { Course, User } from '../domain/entities';
 import { SupportDialog } from './SupportDialog';
 import { AdminService } from '../services/AdminService';
 import { SupabaseAdminRepository } from '../repositories/SupabaseAdminRepository';
 import { Link } from 'react-router-dom';
-import { AnimatedThemeToggler } from './ui/animated-theme-toggler';
 import { useTheme } from '../contexts/ThemeContext';
 
 interface SidebarProps {
@@ -30,16 +29,17 @@ interface SidebarProps {
   isHiddenOnDesktop?: boolean;
 }
 
-// Memoized Lesson Item Component for instant rendering
+// Memoized LessonItem Component for instant rendering
 const LessonItem = memo<{
   lesson: any;
   isActive: boolean;
   isAdminMode: boolean;
   courseId: string;
   moduleId: string;
+  courseColor?: string | null;
   onSelect?: (courseId: string, moduleId: string, lessonId: string) => void;
   onCloseMobile?: () => void;
-}>(({ lesson, isActive, isAdminMode, courseId, moduleId, onSelect, onCloseMobile }) => {
+}>(({ lesson, isActive, isAdminMode, courseId, moduleId, courseColor, onSelect, onCloseMobile }) => {
   const handleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isAdminMode && onSelect) {
@@ -48,19 +48,27 @@ const LessonItem = memo<{
     }
   }, [isAdminMode, onSelect, courseId, moduleId, lesson.id, onCloseMobile]);
 
+  const isCompleted = lesson.isCompleted || false;
+  const baseColor = courseColor || '#10b981'; // emerald-500 default
+
   if (isAdminMode) {
     return (
       <Link
         to={`/admin/lesson/${lesson.id}/edit`}
         onClick={(e) => e.stopPropagation()}
         data-sidebar-casing="normal"
-        className={`w-full text-left px-3 py-2 rounded-lg transition-colors duration-100 text-base font-medium normal-case tracking-tight whitespace-normal break-words block ${isActive
-          ? 'bg-emerald-500/10 text-emerald-400 font-bold shadow-sm border border-emerald-500/20'
-          : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
+        className={`w-full text-left px-3 py-2.5 rounded-lg transition-colors duration-100 text-[13px] font-medium tracking-wide whitespace-normal break-words block relative z-10 ${isActive
+          ? 'font-black shadow-sm'
+          : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-200'
           }`}
+        style={isActive ? { backgroundColor: `${baseColor}1a`, color: baseColor, boxShadow: `0 0 0 1px ${baseColor}33` } : {}}
       >
-        {isActive && <i className="fas fa-pencil-alt mr-2 text-emerald-400"></i>}
-        {lesson.title}
+        <div className="flex items-start gap-3">
+          <div className="w-5 shrink-0 flex justify-center">
+            <i className="fas fa-pencil-alt mt-1" style={isActive ? { color: baseColor } : { color: '#94a3b8' }}></i>
+          </div>
+          <span className="flex-1">{lesson.title}</span>
+        </div>
       </Link>
     );
   }
@@ -69,13 +77,31 @@ const LessonItem = memo<{
     <button
       onClick={handleClick}
       data-sidebar-casing="normal"
-      className={`w-full text-left px-3 py-2 rounded-lg transition-colors duration-100 text-base font-medium normal-case tracking-tight whitespace-normal break-words ${isActive
-        ? 'bg-emerald-500/10 text-emerald-400 font-bold shadow-sm border border-emerald-500/20'
-        : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
-        }`}
+      className={`relative z-10 w-full text-left px-3 py-3 rounded-lg transition-all duration-200 text-[13px] font-medium tracking-wide whitespace-normal break-words flex items-start gap-3 group ${!isActive ? 'hover:bg-slate-50 dark:hover:bg-slate-800/40' : ''}`}
+      style={isActive ? { backgroundColor: `${baseColor}1a` } : {}}
     >
-      {isActive && <i className="fas fa-play-circle mr-2 text-emerald-400"></i>}
-      {lesson.title}
+      <div className="relative flex flex-col items-center mt-0.5 shrink-0 w-5">
+        {isCompleted ? (
+          <div className="w-5 h-5 rounded-full flex items-center justify-center text-white shadow-sm ring-4 ring-white dark:ring-slate-900 z-10 transition-transform group-hover:scale-110" style={{ backgroundColor: baseColor }}>
+            <i className="fas fa-check text-[10px]"></i>
+          </div>
+        ) : (
+          <div
+            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center bg-white dark:bg-slate-900 ring-4 ring-white dark:ring-slate-900 z-10 transition-all ${isActive ? '' : 'border-slate-300 dark:border-slate-600 text-slate-400 group-hover:border-slate-400'}`}
+            style={isActive ? { borderColor: baseColor, color: baseColor } : {}}
+          >
+            <i className={`fas fa-chevron-right text-[8px] ml-0.5 ${isActive ? 'translate-x-0.5 transition-transform' : ''}`}></i>
+          </div>
+        )}
+      </div>
+      <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
+        <span
+          className={`block transition-colors duration-200 ${isActive ? 'font-bold' : isCompleted ? 'text-slate-600 dark:text-slate-300' : 'text-slate-600 dark:text-slate-400'}`}
+          style={isActive ? { color: baseColor } : {}}
+        >
+          {lesson.title}
+        </span>
+      </div>
     </button>
   );
 });
@@ -86,14 +112,20 @@ const ModuleItem = memo<{
   isOpen: boolean;
   isAdminMode: boolean;
   courseId: string;
+  courseColor?: string | null;
   activeLessonId?: string;
   onToggle: (moduleId: string) => void;
   onOpenContent?: (courseId: string, moduleId?: string) => void;
   onViewChange: (view: string) => void;
   onSelectLesson?: (courseId: string, moduleId: string, lessonId: string) => void;
   onCloseMobile?: () => void;
-}>(({ module, isOpen, isAdminMode, courseId, activeLessonId, onToggle, onOpenContent, onViewChange, onSelectLesson, onCloseMobile }) => {
+}>(({ module, isOpen, isAdminMode, courseId, courseColor, activeLessonId, onToggle, onOpenContent, onViewChange, onSelectLesson, onCloseMobile }) => {
   const lessons = module.lessons || [];
+
+  const completedLessons = lessons.filter((l: any) => l.isCompleted).length;
+  const progressPercent = lessons.length > 0 ? Math.round((completedLessons / lessons.length) * 100) : 0;
+
+  const baseColor = courseColor || '#10b981'; // emerald-500
 
   const handleToggle = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -107,52 +139,89 @@ const ModuleItem = memo<{
     onViewChange('content');
   }, [module.id, onToggle, onOpenContent, courseId, onViewChange]);
 
-  const itemClasses = `w-full text-left px-3 py-2 rounded-lg transition-colors duration-100 text-base font-bold normal-case tracking-tight whitespace-normal break-words block ${isOpen
-    ? 'bg-cyan-500/10 text-cyan-400'
-    : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
-    }`;
-
   return (
-    <div className="space-y-1">
+    <div
+      className={`space-y-0 rounded-xl overflow-hidden shadow-sm border transition-colors duration-200 ${isOpen ? 'dark:bg-slate-900/60' : 'dark:bg-slate-800/40'}`}
+      style={{
+        backgroundColor: `${baseColor}${isOpen ? '1A' : '10'}`,
+        borderColor: `${baseColor}${isOpen ? '33' : '20'}`
+      }}
+    >
       {isAdminMode ? (
         <Link
           to="/admin/content"
           state={{ courseId, moduleId: module.id }}
           onClick={handleAdminClick}
           data-sidebar-casing="normal"
-          className={itemClasses}
+          className="w-full text-left px-3 py-3 flex items-start gap-3 group"
         >
-          {module.title}
+          <div className="w-5 shrink-0 flex justify-center">
+            {/* Adicionando um ícone na área de adm para manter o fluxo? Não, pode ficar vazio mas alinhado */}
+            <i className="fas fa-folder text-slate-400 mt-1 dark:text-slate-500"></i>
+          </div>
+          <div className="flex-1 min-w-0 pr-2">
+            <h3 className={`text-[13px] font-medium tracking-wide truncate transition-colors ${isOpen ? '' : 'text-slate-700 dark:text-slate-300'}`} style={isOpen ? { color: baseColor } : {}}>{module.title}</h3>
+          </div>
+          <div
+            className={`w-7 h-7 shrink-0 rounded flex items-center justify-center transition-colors ${isOpen ? 'text-white shadow-md' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 group-hover:bg-slate-300 dark:group-hover:bg-slate-600'}`}
+            style={isOpen ? { backgroundColor: baseColor } : {}}
+          >
+            <i className={`fas fa-chevron-down text-[10px] transition-transform ${isOpen ? 'rotate-180' : ''}`}></i>
+          </div>
         </Link>
       ) : (
         <button
           onClick={handleToggle}
           data-sidebar-casing="normal"
-          className={itemClasses}
+          className="w-full text-left px-3 py-4 flex items-start gap-3 group relative overflow-hidden"
         >
-          {module.title}
+          <div className="w-5 shrink-0"></div> {/* Espaçador para alinhar com o menu principal */}
+          <div className="flex-1 min-w-0 pr-2">
+            <h3 className={`text-[13px] font-medium tracking-wide transition-colors leading-snug drop-shadow-sm ${isOpen ? '' : 'text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white'}`} style={isOpen ? { color: baseColor } : {}}>{module.title}</h3>
+
+            <div className="flex items-center gap-3 mt-2.5">
+              <div className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden shrink-0 relative">
+                <div className="absolute inset-y-0 left-0 rounded-full transition-all duration-500 ease-out" style={{ width: `${progressPercent}%`, backgroundColor: baseColor }}></div>
+              </div>
+              <span className="text-[10px] font-black tracking-widest" style={{ color: baseColor }}>{progressPercent}%</span>
+            </div>
+          </div>
+          <div
+            className={`w-8 h-8 shrink-0 rounded-md flex items-center justify-center transition-all ${isOpen ? 'text-white shadow-md' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 group-hover:bg-slate-300 dark:group-hover:bg-slate-600'}`}
+            style={isOpen ? { backgroundColor: baseColor } : {}}
+          >
+            <i className={`fas fa-chevron-down text-[12px] transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}></i>
+          </div>
         </button>
       )}
 
+      {/* Expandable Contents */}
       {isOpen && lessons.length > 0 && (
-        <div className="ml-3 pl-3 border-l border-white/10 space-y-1">
-          {lessons.map((lesson: any) => (
-            <LessonItem
-              key={lesson.id}
-              lesson={lesson}
-              isActive={activeLessonId === lesson.id}
-              isAdminMode={isAdminMode}
-              courseId={courseId}
-              moduleId={module.id}
-              onSelect={onSelectLesson}
-              onCloseMobile={onCloseMobile}
-            />
-          ))}
+        <div className="bg-white/50 dark:bg-slate-900/50 pt-2 pb-3 border-t border-slate-100 dark:border-white/5">
+          {/* Wrapper to add the connecting vertical line effect */}
+          <div className="relative isolate space-y-1">
+            {/* Dotted Line - Aligned slightly left of the icons w-5 center (left-3 = 12px, half of w-5 = 10px = 22px!) */}
+            <div className="absolute top-[28px] bottom-[28px] left-[22px] w-px border-l-[2px] border-dotted border-slate-300 dark:border-slate-600 -z-10"></div>
+
+            {lessons.map((lesson: any) => (
+              <LessonItem
+                key={lesson.id}
+                lesson={lesson}
+                isActive={activeLessonId === lesson.id}
+                isAdminMode={isAdminMode}
+                courseId={courseId}
+                moduleId={module.id}
+                courseColor={courseColor}
+                onSelect={onSelectLesson}
+                onCloseMobile={onCloseMobile}
+              />
+            ))}
+          </div>
         </div>
       )}
 
       {isOpen && lessons.length === 0 && (
-        <div className="px-3 py-2 text-[11px] text-slate-500/50 italic">Sem aulas</div>
+        <div className="px-3 py-4 text-xs text-slate-500/70 italic text-center bg-white/50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-white/5">Nenhuma aula cadastrada.</div>
       )}
     </div>
   );
@@ -174,11 +243,23 @@ const CourseItem = memo<{
   onViewChange: (view: string) => void;
   onSelectLesson?: (courseId: string, moduleId: string, lessonId: string) => void;
   onCloseMobile?: () => void;
-}>(({ course, isOpen, isAdminMode, expandedModuleId, activeLessonId, activeCourse, isLoadingModules = false, onToggleCourse, onToggleModule, onExpandCourse, onOpenContent, onViewChange, onSelectLesson, onCloseMobile }) => {
-  const modules = (activeCourse?.id === course.id && activeCourse.modules?.length)
+  searchQuery?: string;
+}>(({ course, isOpen, isAdminMode, expandedModuleId, activeLessonId, activeCourse, isLoadingModules = false, onToggleCourse, onToggleModule, onExpandCourse, onOpenContent, onViewChange, onSelectLesson, onCloseMobile, searchQuery = '' }) => {
+  const rawModules = (activeCourse?.id === course.id && activeCourse.modules?.length)
     ? activeCourse.modules
     : (course.modules || []);
-  const shouldShowLoading = isOpen && modules.length === 0 && isLoadingModules;
+
+  // Filter modules based on query (by module title or containing a lesson matching the title)
+  const modules = searchQuery.trim() === ''
+    ? rawModules
+    : rawModules.filter((m: any) => {
+      const query = searchQuery.toLowerCase();
+      const moduleMatch = m.title.toLowerCase().includes(query);
+      const lessonMatch = m.lessons?.some((l: any) => l.title.toLowerCase().includes(query));
+      return moduleMatch || lessonMatch;
+    });
+
+  const shouldShowLoading = isOpen && rawModules.length === 0 && isLoadingModules;
 
   const handleToggle = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -200,13 +281,15 @@ const CourseItem = memo<{
     onViewChange('content');
   }, [isOpen, course.id, onToggleCourse, onExpandCourse, onOpenContent, onViewChange]);
 
-  const itemClasses = `w-full text-left px-3 py-2 rounded-lg transition-colors duration-150 text-base font-bold normal-case tracking-tight whitespace-normal break-words block ${isOpen
-    ? 'bg-amber-500/10 text-amber-500'
+  const baseColor = course.color || '#10b981';
+
+  const itemClasses = `w-full text-left px-3 py-2 rounded-lg transition-colors duration-150 text-[13px] font-medium tracking-wide whitespace-normal break-words block ${isOpen
+    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
     : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
     }`;
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-2 relative pb-2 border-b border-slate-200/60 dark:border-white/5 last:border-b-0">
       {isAdminMode ? (
         <Link
           to="/admin/content"
@@ -215,7 +298,18 @@ const CourseItem = memo<{
           data-sidebar-casing="normal"
           className={itemClasses}
         >
-          {course.title}
+          <div className="flex items-start gap-3">
+            <div className="w-5 shrink-0 flex justify-center">
+              <i className="fas fa-book text-slate-400 dark:text-slate-500 mt-0.5"></i>
+            </div>
+            <span className="flex-1">{course.title}</span>
+            <div
+              className={`w-7 h-7 shrink-0 rounded flex items-center justify-center transition-colors ${isOpen ? 'text-white shadow-md' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 group-hover:bg-slate-300 dark:group-hover:bg-slate-600'}`}
+              style={isOpen ? { backgroundColor: baseColor } : {}}
+            >
+              <i className={`fas fa-chevron-down text-[10px] transition-transform ${isOpen ? 'rotate-180' : ''}`}></i>
+            </div>
+          </div>
         </Link>
       ) : (
         <button
@@ -223,32 +317,50 @@ const CourseItem = memo<{
           data-sidebar-casing="normal"
           className={itemClasses}
         >
-          {course.title}
+          <div className="flex items-start gap-3">
+            <div className="w-5 shrink-0 flex justify-center">
+              <i className="fas fa-book text-slate-400 dark:text-slate-500 mt-0.5"></i>
+            </div>
+            <span className="flex-1 text-left leading-snug">{course.title}</span>
+            <div
+              className={`w-7 h-7 shrink-0 rounded flex items-center justify-center transition-colors ${isOpen ? 'text-white shadow-md' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 group-hover:bg-slate-300 dark:group-hover:bg-slate-600'}`}
+              style={isOpen ? { backgroundColor: baseColor } : {}}
+            >
+              <i className={`fas fa-chevron-down text-[10px] transition-transform ${isOpen ? 'rotate-180' : ''}`}></i>
+            </div>
+          </div>
         </button>
       )}
 
       {isOpen && (
-        <div className="ml-3 pl-3 border-l border-white/10 space-y-1">
+        <div className="w-full space-y-3 pt-2">
           {shouldShowLoading && (
-            <div className="px-3 py-2 text-[11px] text-slate-500/70 italic">Carregando modulos...</div>
+            <div className="px-3 py-4 text-xs tracking-wider text-center text-emerald-600/70 font-bold uppercase animate-pulse">
+              Carregando Módulos...
+            </div>
           )}
-          {!shouldShowLoading && modules.map((module: any) => (
-            <ModuleItem
-              key={module.id}
-              module={module}
-              isOpen={expandedModuleId === module.id}
-              isAdminMode={isAdminMode}
-              courseId={course.id}
-              activeLessonId={activeLessonId}
-              onToggle={onToggleModule}
-              onOpenContent={onOpenContent}
-              onViewChange={onViewChange}
-              onSelectLesson={onSelectLesson}
-              onCloseMobile={onCloseMobile}
-            />
-          ))}
+
+          <div className="space-y-3 relative">
+            {!shouldShowLoading && modules.map((module: any) => (
+              <ModuleItem
+                key={module.id}
+                module={module}
+                isOpen={expandedModuleId === module.id || (searchQuery.trim() !== '' && modules.length < 5)} // Auto-expand when searching
+                isAdminMode={isAdminMode}
+                courseId={course.id}
+                courseColor={course.color}
+                activeLessonId={activeLessonId}
+                onToggle={onToggleModule}
+                onOpenContent={onOpenContent}
+                onViewChange={onViewChange}
+                onSelectLesson={onSelectLesson}
+                onCloseMobile={onCloseMobile}
+              />
+            ))}
+          </div>
+
           {!shouldShowLoading && modules.length === 0 && (
-            <div className="px-3 py-2 text-[11px] text-slate-500/50 italic">Sem modulos</div>
+            <div className="px-3 py-4 text-[12px] text-center text-slate-500/60 italic font-medium">Nenhum módulo encontrado.</div>
           )}
         </div>
       )}
@@ -279,15 +391,40 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const isAdmin = session.user.role === 'INSTRUCTOR';
 
-  /* Sidebar Expanded by Default */
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isSupportOpen, setIsSupportOpen] = useState(false);
-  const { theme, toggleTheme } = useTheme();
+  type SidebarMode = 'expanded' | 'collapsed' | 'hover';
+  const [sidebarMode, setSidebarMode] = useState<SidebarMode>(() => {
+    const saved = localStorage.getItem('sidebarMode');
+    return (saved as SidebarMode) || 'expanded';
+  });
+  const [isHovered, setIsHovered] = useState(false);
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    localStorage.setItem('sidebarMode', sidebarMode);
+  }, [sidebarMode]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (popoverRef.current && !popoverRef.current.contains(event.target as Node)) {
+        setIsPopoverOpen(false);
+      }
+    };
+    if (isPopoverOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isPopoverOpen]);
+
+  const { theme } = useTheme();
 
   const [contentMenuOpen, setContentMenuOpen] = useState(activeView === 'content');
   const [coursesMenuOpen, setCoursesMenuOpen] = useState(activeView === 'courses');
   const [expandedCourseId, setExpandedCourseId] = useState<string>('');
   const [expandedModuleId, setExpandedModuleId] = useState<string>('');
+
+  // Global search state for courses menu
+  const [globalSearchQuery, setGlobalSearchQuery] = useState('');
 
   const handleToggleCourse = useCallback((courseId: string) => {
     setExpandedCourseId(courseId);
@@ -295,7 +432,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   }, []);
 
   const handleToggleModule = useCallback((moduleId: string) => {
-    setExpandedModuleId(moduleId);
+    setExpandedModuleId(prev => prev === moduleId ? '' : moduleId);
   }, []);
 
   useEffect(() => {
@@ -307,12 +444,28 @@ const Sidebar: React.FC<SidebarProps> = ({
     }
   }, [activeView]);
 
-  const isActuallyCollapsed = isMobileOpen === true ? false : isCollapsed;
+  const isActuallyCollapsed = isMobileOpen === true
+    ? false
+    : (sidebarMode === 'collapsed' || (sidebarMode === 'hover' && !isHovered));
 
   const level = user?.level ?? 1;
   const xp = user?.xp ?? 0;
   const xpInLevel = xp % 1000;
   const progressPercent = (xpInLevel / 1000) * 100;
+
+  // Common filtering logic for global search
+  const query = globalSearchQuery.trim().toLowerCase();
+  const filterCourseObj = (c: Course) => {
+    if (!query) return true;
+    if (c.title.toLowerCase().includes(query)) return true;
+    return c.modules?.some((m: any) =>
+      m.title.toLowerCase().includes(query) ||
+      m.lessons?.some((l: any) => l.title.toLowerCase().includes(query))
+    ) || false;
+  };
+
+  const filteredCourses = courses.filter(filterCourseObj);
+  const filteredAdminCourses = adminCourses.filter(filterCourseObj);
 
   const menuItems = [
     { id: 'achievements', label: 'Conquistas', icon: 'fas fa-trophy' },
@@ -323,14 +476,6 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <aside
-      onClick={(e) => {
-        if (!isMobileOpen && window.innerWidth >= 1024) {
-          const target = e.target as HTMLElement;
-          if (!target.closest('button') && !target.closest('a') && !target.closest('input')) {
-            setIsCollapsed(!isCollapsed);
-          }
-        }
-      }}
       className={`
       ${isMobileOpen ? 'flex fixed h-[100dvh] overflow-y-auto' : 'hidden'} 
       ${isHiddenOnDesktop ? '' : 'lg:flex lg:relative lg:h-full lg:overflow-hidden lg:z-20'}
@@ -357,114 +502,82 @@ const Sidebar: React.FC<SidebarProps> = ({
         <i className="fas fa-times text-xl"></i>
       </button>
 
-      {/* Header */}
-      <div
-        onClick={() => {
-          onViewChange('courses');
-          onCloseMobile?.();
-        }}
-        className={`flex items-center gap-3 px-1 mb-8 transition-all shrink-0 ${isActuallyCollapsed ? 'justify-center' : ''} relative cursor-pointer group/header`}
-      >
-        <div className="w-10 h-10 min-w-[40px] bg-gradient-to-br from-indigo-600 to-teal-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-500/20 rotate-3 ring-1 ring-white/10 group-hover/header:rotate-6 transition-transform">
-          <i className="fas fa-graduation-cap"></i>
-        </div>
-        <div className={`overflow-hidden transition-all duration-300 ${isActuallyCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100'}`}>
-          <h1 className="font-black text-slate-800 dark:text-white text-xl leading-tight tracking-tighter uppercase whitespace-nowrap drop-shadow-md">StudySystem</h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest whitespace-nowrap">Sistema de Estudos</p>
+      {/* Header Container with Divisão */}
+      <div className="px-1 pb-[1.4rem] mb-6 border-b border-slate-200 dark:border-white/10 shrink-0">
+        <div
+          onClick={() => {
+            onViewChange('courses');
+            onCloseMobile?.();
+          }}
+          className={`flex items-center gap-2 transition-all relative cursor-pointer group/header ${isActuallyCollapsed ? 'justify-center' : 'justify-between'}`}
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 min-w-[40px] bg-gradient-to-br from-indigo-600 to-teal-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-500/20 rotate-3 ring-1 ring-white/10 group-hover/header:rotate-6 transition-transform">
+              <i className="fas fa-graduation-cap"></i>
+            </div>
+            <div className={`overflow-hidden transition-all duration-300 ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100 flex-1'}`}>
+              <h1 className="font-black text-slate-800 dark:text-white text-[19px] leading-tight tracking-tighter uppercase whitespace-nowrap drop-shadow-md">StudySystem</h1>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest whitespace-nowrap mt-[-2px]">Sistema de Estudos</p>
+            </div>
+          </div>
+
+          {/* User Level - Moved to Top Right of Header */}
+          <Link
+            to="/achievements"
+            onClick={(e) => {
+              e.stopPropagation();
+              onViewChange('achievements');
+            }}
+            className={`
+              group/level relative flex items-center justify-center shrink-0
+              ${isActuallyCollapsed ? 'hidden' : 'w-9 h-9 ml-1'}
+              rounded-full transition-transform hover:scale-105 cursor-pointer
+            `}
+            title="Ver Conquistas"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-amber-500 to-orange-600 rounded-full shadow-lg shadow-orange-500/20 ring-2 ring-white dark:ring-slate-900 transition-all duration-300"></div>
+            <span className="relative z-10 font-black text-white text-sm drop-shadow-md">{level}</span>
+
+            {/* XP Ring around the badge */}
+            <svg className="absolute -inset-[4px] w-[calc(100%+8px)] h-[calc(100%+8px)] -rotate-90 pointer-events-none opacity-50">
+              <circle cx="50%" cy="50%" r="46%" fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-200 dark:text-slate-700" />
+              <circle cx="50%" cy="50%" r="46%" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="100" strokeDashoffset={100 - progressPercent} pathLength="100" strokeLinecap="round" className="text-amber-500 transition-all duration-1000 ease-out" />
+            </svg>
+          </Link>
         </div>
       </div>
 
-      {/* Toggle Button & User Level - Side by Side */}
-      <div className={`flex items-center gap-3 w-full mb-8 shrink-0 ${isActuallyCollapsed ? 'flex-col gap-4' : ''}`}>
 
-        {/* Collapse Toggle */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setIsCollapsed(!isCollapsed);
-          }}
-          aria-label={isActuallyCollapsed ? "Expandir Menu" : "Retrair Menu"}
-          className={`
-            hidden lg:flex
-            items-center
-            ${isActuallyCollapsed ? 'w-10 h-10 justify-center p-0' : 'flex-1 justify-between px-3 py-2'}
-            rounded-xl
-            transition-all duration-300
-            text-slate-600 dark:text-slate-400
-            hover:bg-slate-100 dark:hover:bg-white/5
-            hover:text-indigo-600 dark:hover:text-indigo-400
-            group/toggle
-          `}
-          title={isActuallyCollapsed ? "Expandir Menu" : "Retrair Menu"}
-        >
-          {/* Menu Text - Only if expanded */}
-          <div className={`flex items-center gap-2 transition-all duration-300 ${isActuallyCollapsed ? 'w-0 opacity-0 overflow-hidden' : 'w-auto opacity-100'}`}>
-            <i className="fas fa-bars text-sm"></i>
-            <span className="text-xs font-bold uppercase tracking-wider whitespace-nowrap">
-              Menu
-            </span>
-          </div>
-
-          <div className={`
-            flex items-center justify-center
-            ${isActuallyCollapsed ? 'w-6 h-6' : 'w-6 h-6'}
-            rounded-lg
-            bg-slate-200 dark:bg-slate-800
-            group-hover/toggle:bg-indigo-100 dark:group-hover/toggle:bg-indigo-900/30
-            transition-all duration-300
-            ${isActuallyCollapsed ? 'rotate-180' : ''}
-          `}>
-            <i className={`fas fa-chevron-left text-[10px] transition-transform duration-300 ${isActuallyCollapsed ? 'rotate-180' : ''}`}></i>
-          </div>
-        </button>
-
-        {/* User Level - Simplified, Clickable, Circular */}
-        <Link
-          to="/achievements"
-          onClick={(e) => {
-            e.stopPropagation();
-            onViewChange('achievements');
-          }}
-          className={`
-            group/level relative flex items-center justify-center shrink-0
-            ${isActuallyCollapsed ? 'w-10 h-10' : 'w-12 h-12 ml-2'}
-            rounded-full transition-transform hover:scale-105 cursor-pointer
-          `}
-          title="Ver Conquistas"
-        >
-          <div className={`absolute inset-0 bg-gradient-to-br from-amber-500 to-orange-600 rounded-full shadow-lg shadow-orange-500/20 ring-4 ring-white dark:ring-slate-900 transition-all duration-300`}></div>
-          <span className="relative z-10 font-black text-white text-base drop-shadow-md">{level}</span>
-
-          {/* XP Ring around the badge */}
-          <svg className="absolute -inset-1.5 w-[calc(100%+0.75rem)] h-[calc(100%+0.75rem)] -rotate-90 pointer-events-none opacity-50">
-            <circle
-              cx="50%"
-              cy="50%"
-              r="46%"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              className="text-slate-200 dark:text-slate-700"
-            />
-            <circle
-              cx="50%"
-              cy="50%"
-              r="46%"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeDasharray="100"
-              strokeDashoffset={100 - progressPercent}
-              pathLength="100"
-              strokeLinecap="round"
-              className="text-amber-500 transition-all duration-1000 ease-out"
-            />
-          </svg>
-        </Link>
-      </div>
 
       <nav className={`flex-1 min-h-0 space-y-1 overflow-x-hidden ${isMobileOpen ? '' : 'overflow-y-auto scrollbar-hide'} lg:overflow-y-auto lg:scrollbar-hide`}>
-        {!isActuallyCollapsed && <p className="px-3 text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-4 whitespace-nowrap">Menu Principal</p>}
+        {/* Global Search Box */}
+        {!isActuallyCollapsed && (
+          <div className="px-3 mb-4">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder={isAdmin && activeView === 'content' ? "Pesquisar (Administração)" : "Pesquisar resumo do curso"}
+                value={globalSearchQuery}
+                onChange={(e) => setGlobalSearchQuery(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+                className="w-full h-9 pl-3 pr-8 rounded-md border border-slate-200 dark:border-white/10 bg-white shadow-sm dark:bg-slate-900/50 text-xs text-slate-700 dark:text-slate-300 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors"
+              />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                <i className="fas fa-search text-[11px]"></i>
+              </div>
+            </div>
+            <div className="border-t border-slate-100 dark:border-white/5 mt-4"></div>
+          </div>
+        )}
+
+        {!isActuallyCollapsed && (
+          <div className="px-3 mb-3">
+            <div className="bg-indigo-50 dark:bg-indigo-500/10 rounded-lg px-3 py-2 flex items-center gap-2 border border-indigo-100 dark:border-indigo-500/20">
+              <i className="fas fa-layer-group text-indigo-500 text-[10px]"></i>
+              <p className="text-[11px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest whitespace-nowrap">Menu Principal</p>
+            </div>
+          </div>
+        )}
 
         <Link
           to="/"
@@ -494,9 +607,9 @@ const Sidebar: React.FC<SidebarProps> = ({
               e.stopPropagation();
               setCoursesMenuOpen(open => !open);
               onViewChange('courses', true);
-              if (isActuallyCollapsed) setIsCollapsed(false);
+              if (sidebarMode === 'collapsed') setSidebarMode('expanded');
             }}
-            className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all text-base font-bold tracking-tight mb-1 group relative overflow-hidden ${activeView === 'courses'
+            className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all text-[13px] font-bold uppercase tracking-tight mb-1 group relative overflow-hidden ${activeView === 'courses'
               ? 'bg-gradient-to-r from-indigo-600 to-teal-600 text-white shadow-lg shadow-indigo-500/40 ring-1 ring-indigo-400/50'
               : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
               } ${isActuallyCollapsed ? 'justify-center' : ''}`}
@@ -529,18 +642,18 @@ const Sidebar: React.FC<SidebarProps> = ({
           </Link>
 
           {!isActuallyCollapsed && coursesMenuOpen && (
-            <div className="ml-7 pl-3 border-l border-slate-200 dark:border-white/10 space-y-1 mb-2">
+            <div className="space-y-1 mb-2">
               {isLoadingCourses && courses.length === 0 && (
                 <div className="px-3 py-2 text-[11px] text-slate-500/70 italic">Carregando cursos...</div>
               )}
-              {!isLoadingCourses && courses.length === 0 && (
+              {!isLoadingCourses && filteredCourses.length === 0 && (
                 <div className="px-3 py-2 text-[11px] text-slate-500/70 italic">Nenhum curso</div>
               )}
-              {courses.map(course => (
+              {filteredCourses.map((course: Course) => (
                 <CourseItem
                   key={course.id}
                   course={course}
-                  isOpen={expandedCourseId === course.id}
+                  isOpen={expandedCourseId === course.id || (query !== '' && filteredCourses.length < 5)}
                   isAdminMode={false}
                   expandedModuleId={expandedModuleId}
                   activeLessonId={activeLessonId}
@@ -553,6 +666,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   onViewChange={onViewChange}
                   onSelectLesson={onSelectLesson}
                   onCloseMobile={onCloseMobile}
+                  searchQuery={globalSearchQuery}
                 />
               ))}
             </div>
@@ -587,9 +701,11 @@ const Sidebar: React.FC<SidebarProps> = ({
         {isAdmin && (
           <div className={`mt-8 ${!isActuallyCollapsed ? 'bg-slate-100/50 dark:bg-slate-800/20 rounded-2xl p-3 border border-indigo-100 dark:border-indigo-500/10' : ''}`}>
             {!isActuallyCollapsed && (
-              <div className="flex items-center gap-2 mb-4 px-1">
-                <i className="fas fa-shield-alt text-indigo-600 dark:text-indigo-400 text-xs"></i>
-                <p className="text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest whitespace-nowrap">Administração</p>
+              <div className="px-1 mb-4">
+                <div className="bg-indigo-50 dark:bg-indigo-500/10 rounded-lg px-3 py-2 flex items-center gap-2 border border-indigo-100 dark:border-indigo-500/20">
+                  <i className="fas fa-shield-alt text-indigo-500 text-[10px]"></i>
+                  <p className="text-[11px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest whitespace-nowrap">Administração</p>
+                </div>
               </div>
             )}
 
@@ -600,7 +716,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   e.stopPropagation();
                   setContentMenuOpen(open => !open);
                   onViewChange('content', true);
-                  if (isActuallyCollapsed) setIsCollapsed(false);
+                  if (sidebarMode === 'collapsed') setSidebarMode('expanded');
                 }}
                 className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all text-base font-bold tracking-tight mb-1 group ${activeView === 'content'
                   ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30'
@@ -630,18 +746,18 @@ const Sidebar: React.FC<SidebarProps> = ({
               </Link>
 
               {!isActuallyCollapsed && contentMenuOpen && (
-                <div className="ml-3 pl-4 border-l-2 border-indigo-200 dark:border-indigo-500/20 space-y-1 mb-3 mt-2">
+                <div className="space-y-1 mb-3 mt-2">
                   {isLoadingAdminCourses && adminCourses.length === 0 && (
                     <div className="px-3 py-2 text-[11px] text-slate-500/70 italic">Carregando cursos...</div>
                   )}
-                  {!isLoadingAdminCourses && adminCourses.length === 0 && (
+                  {!isLoadingAdminCourses && filteredAdminCourses.length === 0 && (
                     <div className="px-3 py-2 text-[11px] text-slate-500">Nenhum curso</div>
                   )}
-                  {adminCourses.map(course => (
+                  {filteredAdminCourses.map((course: Course) => (
                     <CourseItem
                       key={course.id}
                       course={course}
-                      isOpen={expandedCourseId === course.id}
+                      isOpen={expandedCourseId === course.id || (query !== '' && filteredAdminCourses.length < 5)}
                       isAdminMode={true}
                       expandedModuleId={expandedModuleId}
                       activeLessonId={activeLessonId}
@@ -654,6 +770,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                       onViewChange={onViewChange}
                       onSelectLesson={onSelectLesson}
                       onCloseMobile={onCloseMobile}
+                      searchQuery={globalSearchQuery}
                     />
                   ))}
                 </div>
@@ -814,85 +931,75 @@ const Sidebar: React.FC<SidebarProps> = ({
 
       <div className={`mt-auto pt-6 space-y-2 border-t border-slate-200 dark:border-white/5 transition-all shrink-0 ${isActuallyCollapsed ? 'flex flex-col items-center' : ''}`}>
 
-        {/* Theme Toggle */}
-        <div
-          onClick={(e) => e.stopPropagation()}
-          className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl bg-slate-100/80 dark:bg-white/5 border border-slate-200/60 dark:border-white/5 transition-all ${isActuallyCollapsed ? 'justify-center' : 'justify-between'}`}
-        >
-          {!isActuallyCollapsed && (
-            <div className="flex flex-col">
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Tema</span>
-              <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                {theme === 'dark' ? 'Escuro' : 'Claro'}
-              </span>
-            </div>
-          )}
-          <AnimatedThemeToggler
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleTheme();
-            }}
-            className="w-10 h-10 rounded-lg flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors"
-            aria-label="Alternar tema"
-          />
-        </div>
+        {/* Collapse Toggle (Footer) */}
+        {!isMobileOpen && (
+          <div className="relative w-full flex justify-start px-3" ref={popoverRef}>
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsPopoverOpen(!isPopoverOpen);
+              }}
+              aria-label="Controle da Barra Lateral"
+              className={`
+                flex items-center shrink-0
+                w-full h-11 rounded-xl
+                text-slate-500 dark:text-slate-400
+                hover:bg-slate-100 dark:hover:bg-white/5
+                hover:text-slate-800 dark:hover:text-slate-200
+                transition-all group border border-transparent
+                ${isActuallyCollapsed ? 'justify-center' : 'justify-start px-3'}
+                ${isPopoverOpen ? 'bg-slate-200 dark:bg-white/10 text-slate-900 dark:text-white border-slate-300 dark:border-white/20' : ''}
+              `}
+              title="Controle da Barra Lateral"
+            >
+              <div className="group-hover:scale-110 transition-transform duration-300">
+                <i className="fas fa-bars-staggered text-sm"></i>
+              </div>
+            </button>
 
-        {/* Support Button */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setIsSupportOpen(true);
-          }}
-          className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300 transition-all text-sm font-bold group ${isActuallyCollapsed ? 'justify-center' : ''}`}
-          title="Suporte Técnico"
-        >
-          <div className="group-hover:scale-110 transition-transform duration-300">
-            <i className="fas fa-headset w-5 text-center"></i>
-          </div>
-          <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
-            Suporte
-          </span>
-        </button>
+            {/* Popover */}
+            {isPopoverOpen && (
+              <div className={`absolute bottom-full mb-3 left-3 w-[240px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl p-2.5 z-[100] text-sm transform-gpu transition-all origin-bottom-left`}>
+                <div className="px-2 pt-1 pb-3 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 mb-2">
+                  Comportamento da Barra Lateral
+                </div>
 
+                <button
+                  onClick={(e) => { e.stopPropagation(); setSidebarMode('expanded'); setIsPopoverOpen(false); }}
+                  className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-3 transition-colors ${sidebarMode === 'expanded' ? 'bg-indigo-50/80 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400 font-bold' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 font-medium'}`}
+                >
+                  <div className={`w-4 h-4 rounded-full border flex flex-shrink-0 items-center justify-center ${sidebarMode === 'expanded' ? 'border-indigo-500 dark:border-indigo-400' : 'border-slate-300 dark:border-slate-600'}`}>
+                    {sidebarMode === 'expanded' && <div className="w-2 h-2 rounded-full bg-indigo-500 dark:bg-indigo-400"></div>}
+                  </div>
+                  Sempre Aberta
+                </button>
 
-        {/* Network Status Indicator */}
-        {!isOnline && (
-          <div className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl bg-red-900/20 border border-red-500/30 text-sm font-bold ${isActuallyCollapsed ? 'justify-center' : ''}`}>
-            <div className="relative flex items-center justify-center w-5">
-              <span className="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-red-500 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-red-600"></span>
-            </div>
-            <span className={`transition-all duration-300 text-red-400 uppercase tracking-wider ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
-              Sem Conexão
-            </span>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setSidebarMode('collapsed'); setIsPopoverOpen(false); }}
+                  className={`w-full mt-1 text-left px-3 py-2.5 rounded-lg flex items-center gap-3 transition-colors ${sidebarMode === 'collapsed' ? 'bg-indigo-50/80 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400 font-bold' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 font-medium'}`}
+                >
+                  <div className={`w-4 h-4 rounded-full border flex flex-shrink-0 items-center justify-center ${sidebarMode === 'collapsed' ? 'border-indigo-500 dark:border-indigo-400' : 'border-slate-300 dark:border-slate-600'}`}>
+                    {sidebarMode === 'collapsed' && <div className="w-2 h-2 rounded-full bg-indigo-500 dark:bg-indigo-400"></div>}
+                  </div>
+                  Sempre Fechada
+                </button>
+
+                <button
+                  onClick={(e) => { e.stopPropagation(); setSidebarMode('hover'); setIsPopoverOpen(false); }}
+                  className={`w-full mt-1 text-left px-3 py-2.5 rounded-lg flex items-center gap-3 transition-colors ${sidebarMode === 'hover' ? 'bg-indigo-50/80 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400 font-bold' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 font-medium'}`}
+                >
+                  <div className={`w-4 h-4 rounded-full border flex flex-shrink-0 items-center justify-center ${sidebarMode === 'hover' ? 'border-indigo-500 dark:border-indigo-400' : 'border-slate-300 dark:border-slate-600'}`}>
+                    {sidebarMode === 'hover' && <div className="w-2 h-2 rounded-full bg-indigo-500 dark:bg-indigo-400"></div>}
+                  </div>
+                  Abrir ao passar o mouse
+                </button>
+              </div>
+            )}
           </div>
         )}
-
-        {/* Logout Button */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onLogout();
-          }}
-          aria-label="Encerrar Sessão"
-          className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-red-400 hover:bg-red-500/10 transition-all text-sm font-bold group relative ${isActuallyCollapsed ? 'justify-center' : ''} hover:shadow-lg hover:shadow-red-500/10`}
-          title="Encerrar Sessão"
-        >
-          <div className="group-hover:scale-110 transition-transform duration-300">
-            <i className="fas fa-sign-out-alt w-5 text-center"></i>
-          </div>
-          <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
-            Encerrar
-          </span>
-        </button>
       </div>
 
-      <SupportDialog
-        isOpen={isSupportOpen}
-        onClose={() => setIsSupportOpen(false)}
-        adminService={session.user.role === 'INSTRUCTOR' ? new AdminService(new SupabaseAdminRepository()) : undefined}
-      />
     </aside >
   );
 };
