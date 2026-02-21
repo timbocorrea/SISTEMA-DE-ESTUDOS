@@ -371,7 +371,7 @@ const QuestionBankEditor: React.FC<QuestionBankEditorProps> = ({ existingQuestio
         <div className="fixed inset-0 z-[400] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
             <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-2xl my-8 overflow-hidden">
                 {/* Header */}
-                <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-indigo-600 to-purple-600">
+                <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-indigo-600 to-cyan-600">
                     <div className="flex items-center justify-between">
                         <h2 className="text-xl font-black text-white flex items-center gap-3">
                             <i className="fas fa-edit"></i>
@@ -592,7 +592,7 @@ const QuestionBankEditor: React.FC<QuestionBankEditorProps> = ({ existingQuestio
                 <div className="fixed inset-0 z-[500] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
                     <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in duration-300">
                         {/* Preview Header */}
-                        <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-purple-600 to-indigo-600">
+                        <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-cyan-600 to-indigo-600">
                             <h3 className="text-xl font-black text-white flex items-center gap-3">
                                 <i className="fas fa-eye text-lg"></i>
                                 Revisão de Importação: {pendingQuestions.length} questões

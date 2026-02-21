@@ -450,7 +450,7 @@ const AudioPlayerContent: React.FC<{ item: MaterialItem, onClose: () => void, on
       <div className="flex-1 flex flex-col items-center justify-center p-6 space-y-8">
 
         {/* "Album Art" Placeholder */}
-        <div className="w-48 h-48 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-2xl flex items-center justify-center relative group">
+        <div className="w-48 h-48 rounded-2xl bg-gradient-to-br from-indigo-500 to-cyan-600 shadow-2xl flex items-center justify-center relative group">
           <div className="absolute inset-0 bg-black/20 rounded-2xl"></div>
           <i className="fas fa-music text-6xl text-white/90 drop-shadow-lg"></i>
           {/* Pulse Effect */}

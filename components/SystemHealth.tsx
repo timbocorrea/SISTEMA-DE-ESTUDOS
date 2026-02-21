@@ -174,7 +174,7 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ adminService }) => {
                 {/* Users Count */}
                 <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group">
                     <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <i className="fas fa-users text-6xl text-purple-500"></i>
+                        <i className="fas fa-users text-6xl text-cyan-500"></i>
                     </div>
                     <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
                         Usuários Totais
@@ -182,7 +182,7 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ adminService }) => {
                     <p className="text-4xl font-black text-slate-800 dark:text-white mb-1">
                         {stats?.user_count}
                     </p>
-                    <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">
+                    <p className="text-xs text-cyan-600 dark:text-cyan-400 font-medium">
                         Alunos e Instrutores
                     </p>
                 </div>

@@ -504,7 +504,7 @@ const QuizEditor: React.FC<QuizEditorProps> = ({ lessonId, existingQuiz, onSave,
             <div className="bg-slate-900/95 backdrop-blur-md w-full max-w-6xl h-[85vh] rounded-[2rem] shadow-2xl flex flex-col overflow-hidden border border-white/10 ring-1 ring-white/5 animate-in zoom-in-95 duration-300 relative">
 
                 {/* Decorative Elements */}
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 opacity-50"></div>
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-cyan-500 to-pink-500 opacity-50"></div>
                 <div className="absolute -top-24 -right-24 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
                 {/* Header: Clean & Integrated */}
@@ -634,7 +634,7 @@ const QuizEditor: React.FC<QuizEditorProps> = ({ lessonId, existingQuiz, onSave,
                                     <button
                                         onClick={handleGenerateAi}
                                         disabled={isGenerating.active}
-                                        className="w-full py-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 text-[10px] font-black uppercase tracking-widest hover:bg-purple-500/20 transition-all active:scale-95 flex items-center justify-center gap-2"
+                                        className="w-full py-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-[10px] font-black uppercase tracking-widest hover:bg-cyan-500/20 transition-all active:scale-95 flex items-center justify-center gap-2"
                                     >
                                         <i className={`fas ${isGenerating.active ? 'fa-spinner fa-spin' : 'fa-magic'}`}></i>
                                         {isGenerating.active ? 'IA...' : 'Gerar IA'}
@@ -950,11 +950,11 @@ const QuizEditor: React.FC<QuizEditorProps> = ({ lessonId, existingQuiz, onSave,
                 {
                     pendingQuestions && (
                         <div className="fixed inset-0 z-[500] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-300">
-                            <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-purple-200 dark:border-purple-900/30">
-                                <div className="p-8 bg-purple-600 text-white flex items-center justify-between">
+                            <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-cyan-200 dark:border-cyan-900/30">
+                                <div className="p-8 bg-cyan-600 text-white flex items-center justify-between">
                                     <div>
                                         <h3 className="text-2xl font-black uppercase tracking-tighter">Nova Descoberta IA</h3>
-                                        <p className="text-xs font-bold text-purple-100 uppercase tracking-widest mt-1">Revisão Sugerida ({pendingQuestions?.length || 0} Questões)</p>
+                                        <p className="text-xs font-bold text-cyan-100 uppercase tracking-widest mt-1">Revisão Sugerida ({pendingQuestions?.length || 0} Questões)</p>
                                     </div>
                                     <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
                                         <i className="fas fa-check-double"></i>
@@ -964,7 +964,7 @@ const QuizEditor: React.FC<QuizEditorProps> = ({ lessonId, existingQuiz, onSave,
                                     {(pendingQuestions || []).map((q, i) => (
                                         <div key={i} className="p-6 bg-slate-50 dark:bg-slate-800/40 rounded-3xl border border-slate-200 dark:border-slate-700 space-y-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-6 h-6 rounded bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center font-black text-[10px]"><i className="fas fa-question"></i></div>
+                                                <div className="w-6 h-6 rounded bg-cyan-100 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400 flex items-center justify-center font-black text-[10px]"><i className="fas fa-question"></i></div>
                                                 <p className="font-bold text-sm leading-relaxed text-slate-800 dark:text-slate-100">{q.questionText}</p>
                                             </div>
                                             <div className="grid grid-cols-1 gap-2 pl-9">
@@ -992,7 +992,7 @@ const QuizEditor: React.FC<QuizEditorProps> = ({ lessonId, existingQuiz, onSave,
                                     </button>
                                     <button
                                         onClick={handleAcceptAiQuestions}
-                                        className="flex-2 px-10 py-4 rounded-2xl bg-purple-600 text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-purple-600/20 transition-all active:scale-95"
+                                        className="flex-2 px-10 py-4 rounded-2xl bg-cyan-600 text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-cyan-600/20 transition-all active:scale-95"
                                     >
                                         Importar {pendingQuestions?.length || 0} Questões
                                     </button>

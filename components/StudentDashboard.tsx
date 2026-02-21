@@ -204,7 +204,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                         {course.imageUrl ? (
                           <img src={course.imageUrl} alt="" className="w-full h-full object-cover opacity-90 group-hover:opacity-100" />
                         ) : (
-                          <div className="w-full h-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center text-white/50">
+                          <div className="w-full h-full bg-gradient-to-br from-indigo-500/20 to-cyan-500/20 flex items-center justify-center text-white/50">
                             <i className="fas fa-book-open text-xs"></i>
                           </div>
                         )}

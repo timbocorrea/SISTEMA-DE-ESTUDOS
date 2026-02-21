@@ -40,8 +40,8 @@ export const ErrorFallback: React.FC<ErrorFallbackProps> = ({
             case 'network':
                 return {
                     icon: 'fa-wifi',
-                    iconColor: 'text-purple-600 dark:text-purple-400',
-                    bgColor: 'bg-purple-100 dark:bg-purple-500/10',
+                    iconColor: 'text-cyan-600 dark:text-cyan-400',
+                    bgColor: 'bg-cyan-100 dark:bg-cyan-500/10',
                     title: 'Erro de Conexão',
                     description: 'Não foi possível conectar ao servidor.',
                     suggestion: 'Verifique sua conexão com a internet e tente novamente.'

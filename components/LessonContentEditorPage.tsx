@@ -338,7 +338,7 @@ const BlockItem = React.memo(({
                                     <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-white dark:bg-slate-900 border-l border-t border-slate-200 dark:border-slate-800 rotate-45"></div>
                                     <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider relative z-10">Cor do Destaque</span>
                                     <div className="flex items-center gap-1 relative z-10">
-                                        <div className="relative w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center cursor-pointer hover:scale-110 transition-transform shadow-sm">
+                                        <div className="relative w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 via-cyan-500 to-pink-500 flex items-center justify-center cursor-pointer hover:scale-110 transition-transform shadow-sm">
                                             <i className="fas fa-palette text-white text-[10px]"></i>
                                             <input
                                                 type="color"
@@ -354,7 +354,7 @@ const BlockItem = React.memo(({
                                             { color: '#ef4444', name: 'Vermelho' },
                                             { color: '#3b82f6', name: 'Azul' },
                                             { color: '#22c55e', name: 'Verde' },
-                                            { color: '#a855f7', name: 'Roxo' },
+                                            { color: '#0ea5e9', name: 'Roxo' },
                                         ].map((preset) => (
                                             <button
                                                 key={preset.color}
@@ -3289,7 +3289,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                             {/* Botão único para gestão de Quiz */}
                             <button
                                 onClick={() => setShowQuizManagementModal(true)}
-                                className="h-9 px-3 rounded-lg font-semibold transition-all active:scale-95 flex items-center gap-1.5 text-[10px] uppercase bg-purple-600 text-white border border-transparent hover:bg-purple-700 dark:bg-transparent dark:border-purple-500 dark:text-purple-400 dark:hover:bg-purple-500/20 dark:hover:border-purple-400"
+                                className="h-9 px-3 rounded-lg font-semibold transition-all active:scale-95 flex items-center gap-1.5 text-[10px] uppercase bg-cyan-600 text-white border border-transparent hover:bg-cyan-700 dark:bg-transparent dark:border-cyan-500 dark:text-cyan-400 dark:hover:bg-cyan-500/20 dark:hover:border-cyan-400"
                                 title="Gerenciar quiz desta aula"
                             >
                                 <i className="fas fa-clipboard-question text-[10px]"></i>
@@ -3859,7 +3859,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
                                         <button
                                             onClick={() => setShowBulkAudioSyncModal(true)}
-                                            className="h-9 px-3 rounded-xl font-bold transition-all active:scale-95 flex items-center gap-2 text-[10px] uppercase bg-purple-600 text-white hover:bg-purple-700 shadow-lg shadow-purple-500/20"
+                                            className="h-9 px-3 rounded-xl font-bold transition-all active:scale-95 flex items-center gap-2 text-[10px] uppercase bg-cyan-600 text-white hover:bg-cyan-700 shadow-lg shadow-cyan-500/20"
                                             title="Sincronizar áudios do Dropbox em massa"
                                         >
                                             <i className="fas fa-music text-[10px]"></i>
@@ -4193,7 +4193,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                             <div className="space-y-1">
                                                 <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
                                                     <div
-                                                        className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full transition-all duration-300"
+                                                        className="bg-gradient-to-r from-indigo-500 to-cyan-500 h-full transition-all duration-300"
                                                         style={{ width: `${uploadProgress}%` }}
                                                     ></div>
                                                 </div>
@@ -4375,7 +4375,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                             <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Questionário</label>
                             <button
                                 onClick={() => setShowQuizEditor(true)}
-                                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-lg font-bold transition-colors shadow-lg shadow-purple-600/20"
+                                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-bold transition-colors shadow-lg shadow-cyan-600/20"
                             >
                                 <i className="fas fa-clipboard-list text-lg"></i>
                                 Gerenciar Quiz
@@ -4643,7 +4643,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                                                     <div className="flex items-center gap-3 overflow-hidden">
                                                                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold
                                                                         ${resource.resource_type === 'PDF' ? 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400' :
-                                                                                resource.resource_type === 'AUDIO' ? 'bg-purple-100 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400' :
+                                                                                resource.resource_type === 'AUDIO' ? 'bg-cyan-100 text-cyan-600 dark:bg-cyan-500/20 dark:text-cyan-400' :
                                                                                     resource.resource_type === 'IMAGE' ? 'bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400' :
                                                                                         'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400'}`}>
                                                                             {resource.resource_type === 'PDF' && 'PDF'}
@@ -5490,7 +5490,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
                         <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
                             {/* Header */}
-                            <div className="sticky top-0 bg-gradient-to-r from-purple-600 to-indigo-600 p-6 rounded-t-2xl border-b border-purple-500/20">
+                            <div className="sticky top-0 bg-gradient-to-r from-cyan-600 to-indigo-600 p-6 rounded-t-2xl border-b border-cyan-500/20">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-3">
                                         <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center">
@@ -5498,7 +5498,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                         </div>
                                         <div>
                                             <h2 className="text-xl font-black text-white">Gerenciar Quiz</h2>
-                                            <p className="text-xs text-purple-100">Configure o quiz desta aula</p>
+                                            <p className="text-xs text-cyan-100">Configure o quiz desta aula</p>
                                         </div>
                                     </div>
                                     <button
@@ -5514,11 +5514,11 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                             <div className="p-6 space-y-4">
                                 {/* Opção 1: Criar/Editar Quiz */}
                                 {!loadingQuiz && (
-                                    <div className="bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/10 dark:to-indigo-900/10 border border-purple-200 dark:border-purple-800 rounded-xl p-5 hover:shadow-lg transition-shadow">
+                                    <div className="bg-gradient-to-br from-cyan-50 to-indigo-50 dark:from-cyan-900/10 dark:to-indigo-900/10 border border-cyan-200 dark:border-cyan-800 rounded-xl p-5 hover:shadow-lg transition-shadow">
                                         <div className="flex items-start justify-between gap-4">
                                             <div className="flex-1">
                                                 <div className="flex items-center gap-2 mb-2">
-                                                    <i className={`fas ${existingQuiz ? 'fa-edit' : 'fa-plus-circle'} text-purple-600 dark:text-purple-400`}></i>
+                                                    <i className={`fas ${existingQuiz ? 'fa-edit' : 'fa-plus-circle'} text-cyan-600 dark:text-cyan-400`}></i>
                                                     <h3 className="font-bold text-slate-900 dark:text-white">
                                                         {existingQuiz ? 'Editar Quiz' : 'Criar Novo Quiz'}
                                                     </h3>
@@ -5534,7 +5534,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                                     setShowQuizEditor(true);
                                                     setShowQuizManagementModal(false);
                                                 }}
-                                                className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-semibold text-sm transition-colors flex items-center gap-2 whitespace-nowrap"
+                                                className="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white font-semibold text-sm transition-colors flex items-center gap-2 whitespace-nowrap"
                                             >
                                                 <i className={`fas ${existingQuiz ? 'fa-edit' : 'fa-plus'}`}></i>
                                                 {existingQuiz ? 'Editar' : 'Criar'}
@@ -5843,7 +5843,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                                         setImportMethod('upload');
                                                         setShowImportMethodModal(true);
                                                     }}
-                                                    className="h-12 rounded-xl bg-[#a855f7] text-white text-xs font-black flex items-center justify-center gap-2 hover:bg-[#9333ea] transition-all active:scale-[0.98] shadow-lg shadow-purple-500/20"
+                                                    className="h-12 rounded-xl bg-[#0ea5e9] text-white text-xs font-black flex items-center justify-center gap-2 hover:bg-[#0284c7] transition-all active:scale-[0.98] shadow-lg shadow-cyan-500/20"
                                                 >
                                                     <i className="fab fa-markdown text-sm"></i> .md
                                                 </button>

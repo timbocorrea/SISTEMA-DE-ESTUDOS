@@ -152,7 +152,7 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
         {/* Header */}
         <div className="p-4 bg-slate-800 border-b border-slate-700 flex items-center justify-between shadow-lg">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-inner">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-cyan-600 flex items-center justify-center text-white shadow-inner">
               <i className="fas fa-robot text-lg"></i>
             </div>
             <div>

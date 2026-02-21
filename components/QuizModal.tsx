@@ -351,7 +351,7 @@ const QuizModal: React.FC<QuizModalProps> = ({ quiz, isOpen, onClose, onSubmit, 
                                 <button
                                     onClick={handleSubmit}
                                     disabled={isSubmitting || answeredCount < questionsToUse.length}
-                                    className="px-12 py-4 rounded-3xl font-black bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-2xl shadow-indigo-500/40 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale disabled:scale-100"
+                                    className="px-12 py-4 rounded-3xl font-black bg-gradient-to-r from-indigo-600 to-cyan-600 text-white shadow-2xl shadow-indigo-500/40 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale disabled:scale-100"
                                 >
                                     {isSubmitting ? (
                                         <i className="fas fa-circle-notch animate-spin mr-3"></i>

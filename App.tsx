@@ -442,7 +442,7 @@ const App: React.FC = () => {
       <div className="absolute inset-0 pointer-events-none z-0">
         <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-indigo-500/5 rounded-full blur-[150px] mix-blend-screen animate-pulse-slow"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-emerald-500/5 rounded-full blur-[150px] mix-blend-screen animate-pulse-slow delay-1000"></div>
-        <div className="absolute top-[40%] left-[30%] w-[30%] h-[30%] bg-violet-500/5 rounded-full blur-[120px] mix-blend-screen animate-pulse-slow delay-2000"></div>
+        <div className="absolute top-[40%] left-[30%] w-[30%] h-[30%] bg-teal-500/5 rounded-full blur-[120px] mix-blend-screen animate-pulse-slow delay-2000"></div>
         <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-[0.02]"></div>
       </div>
 

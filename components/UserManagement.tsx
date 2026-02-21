@@ -672,7 +672,7 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
                   </td>
                   <td className="p-4">
                     <span className={`text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-wider border ${(u as any).is_minor
-                      ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+                      ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
                       : 'bg-slate-500/10 text-slate-400 border-slate-500/20'
                       }`}>
                       {(u as any).is_minor ? 'Menor' : 'Adulto'}
@@ -929,7 +929,7 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
                             }
                           }}
                           className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold border transition-all ${editingUser.isMinor
-                            ? 'bg-purple-500/20 border-purple-500/50 text-purple-300 shadow-[0_0_10px_rgba(168,85,247,0.2)]'
+                            ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-300 shadow-[0_0_10px_rgba(168,85,247,0.2)]'
                             : 'bg-black/20 border-white/5 text-slate-500 hover:bg-white/5 hover:text-slate-300'
                             }`}
                         >

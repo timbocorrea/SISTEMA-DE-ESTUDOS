@@ -79,7 +79,7 @@ const CreateLessonModal: React.FC<CreateLessonModalProps> = ({
                                 <input
                                     value={title}
                                     onChange={(e) => setTitle(e.target.value)}
-                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-slate-800 dark:text-white outline-none focus:border-purple-500 transition-colors"
+                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-slate-800 dark:text-white outline-none focus:border-cyan-500 transition-colors"
                                     placeholder="Ex: Introdução ao React"
                                     autoFocus
                                 />
@@ -90,7 +90,7 @@ const CreateLessonModal: React.FC<CreateLessonModalProps> = ({
                                 <input
                                     value={videoUrl}
                                     onChange={(e) => setVideoUrl(e.target.value)}
-                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-slate-800 dark:text-white outline-none focus:border-purple-500 transition-colors"
+                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-slate-800 dark:text-white outline-none focus:border-cyan-500 transition-colors"
                                     placeholder="https://..."
                                 />
                             </div>
@@ -102,7 +102,7 @@ const CreateLessonModal: React.FC<CreateLessonModalProps> = ({
                                     min="0"
                                     value={duration}
                                     onChange={(e) => setDuration(Number(e.target.value))}
-                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-slate-800 dark:text-white outline-none focus:border-purple-500 transition-colors"
+                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-slate-800 dark:text-white outline-none focus:border-cyan-500 transition-colors"
                                 />
                             </div>
 
@@ -111,7 +111,7 @@ const CreateLessonModal: React.FC<CreateLessonModalProps> = ({
                                 <textarea
                                     value={content}
                                     onChange={(e) => setContent(e.target.value)}
-                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-slate-800 dark:text-white outline-none focus:border-purple-500 transition-colors resize-none"
+                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-slate-800 dark:text-white outline-none focus:border-cyan-500 transition-colors resize-none"
                                     placeholder="Texto de apoio ou conteúdo da aula..."
                                     rows={4}
                                 />
@@ -124,7 +124,7 @@ const CreateLessonModal: React.FC<CreateLessonModalProps> = ({
                                     min="1"
                                     value={position}
                                     onChange={(e) => setPosition(Number(e.target.value))}
-                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-slate-800 dark:text-white outline-none focus:border-purple-500 transition-colors"
+                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-slate-800 dark:text-white outline-none focus:border-cyan-500 transition-colors"
                                 />
                             </div>
                         </div>
@@ -140,7 +140,7 @@ const CreateLessonModal: React.FC<CreateLessonModalProps> = ({
                         <button
                             onClick={handleSubmit}
                             disabled={!title.trim() || isLoading}
-                            className="flex-1 px-4 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white font-bold transition-colors flex items-center justify-center gap-2 shadow-lg shadow-purple-600/20"
+                            className="flex-1 px-4 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold transition-colors flex items-center justify-center gap-2 shadow-lg shadow-cyan-600/20"
                         >
                             {isLoading ? <i className="fas fa-circle-notch animate-spin"></i> : <i className="fas fa-check"></i>}
                             Criar Aula

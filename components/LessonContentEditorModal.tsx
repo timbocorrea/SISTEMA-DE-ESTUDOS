@@ -117,7 +117,7 @@ Dica: Use quebras de linha para organizar o texto em parágrafos."
                             </button>
                             <button
                                 onClick={handleSave}
-                                className="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black shadow-lg shadow-indigo-600/20 transition-all active:scale-95 flex items-center gap-2"
+                                className="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-black shadow-lg shadow-indigo-600/20 transition-all active:scale-95 flex items-center gap-2"
                             >
                                 <i className="fas fa-check"></i>
                                 Salvar Conteúdo

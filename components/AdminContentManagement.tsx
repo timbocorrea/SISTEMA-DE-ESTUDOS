@@ -75,7 +75,7 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
       return [
         { label: 'Cursos', value: systemStats.course_count || courses.length, icon: 'fas fa-graduation-cap', color: 'bg-indigo-600/10 text-indigo-500' },
         { label: 'Modulos', value: systemStats.module_count || 0, icon: 'fas fa-layer-group', color: 'bg-cyan-600/10 text-cyan-500' },
-        { label: 'Aulas', value: systemStats.lesson_count || 0, icon: 'fas fa-play-circle', color: 'bg-purple-600/10 text-purple-500' }
+        { label: 'Aulas', value: systemStats.lesson_count || 0, icon: 'fas fa-play-circle', color: 'bg-cyan-600/10 text-cyan-500' }
       ];
     }
 
@@ -85,7 +85,7 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
     return [
       { label: 'Cursos', value: courses.length, icon: 'fas fa-graduation-cap', color: 'bg-indigo-600/10 text-indigo-500' },
       { label: 'Modulos', value: totalModules, icon: 'fas fa-layer-group', color: 'bg-cyan-600/10 text-cyan-500' },
-      { label: 'Aulas', value: totalLessons, icon: 'fas fa-play-circle', color: 'bg-purple-600/10 text-purple-500' }
+      { label: 'Aulas', value: totalLessons, icon: 'fas fa-play-circle', color: 'bg-cyan-600/10 text-cyan-500' }
     ];
   }, [courses.length, modulesByCourse, lessonsByModule, systemStats]);
 
@@ -595,7 +595,7 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
               <button
                 disabled={busy}
                 onClick={() => setActiveModuleIdForLessonCreation(module.id)}
-                className="bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white px-4 py-2 rounded-xl font-black text-xs transition-all active:scale-[0.98] flex items-center gap-2"
+                className="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white px-4 py-2 rounded-xl font-black text-xs transition-all active:scale-[0.98] flex items-center gap-2"
               >
                 <i className="fas fa-plus"></i> Criar aula
               </button>
@@ -631,7 +631,7 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
                           e.stopPropagation();
                           setEditingLesson({ ...lesson });
                         }}
-                        className="p-2 text-slate-400 hover:text-purple-500 transition-colors"
+                        className="p-2 text-slate-400 hover:text-cyan-500 transition-colors"
                         title="Editar aula"
                       >
                         <i className="fas fa-pen"></i>
@@ -673,7 +673,7 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
                       {/* Botão para abrir editor de conteúdo */}
                       <button
                         onClick={() => onOpenContentEditor?.(activeLesson)}
-                        className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white px-6 py-4 rounded-xl font-black text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-3 shadow-lg shadow-indigo-600/20 mb-3"
+                        className="w-full bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white px-6 py-4 rounded-xl font-black text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-3 shadow-lg shadow-indigo-600/20 mb-3"
                       >
                         <i className="fas fa-pen-to-square text-lg"></i>
                         <div className="text-left flex-1">
@@ -1057,7 +1057,7 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
                     <div>
                       <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Cor</label>
                       <div className="flex flex-wrap gap-2">
-                        {['#6366f1', '#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6'].map(c => (
+                        {['#6366f1', '#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#14b8a6', '#ec4899', '#14b8a6'].map(c => (
                           <button
                             key={c}
                             onClick={() => setEditingCourse({ ...editingCourse, color: c })}

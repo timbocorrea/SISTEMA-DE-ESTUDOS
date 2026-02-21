@@ -365,7 +365,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         }}
         className={`flex items-center gap-3 px-1 mb-8 transition-all shrink-0 ${isActuallyCollapsed ? 'justify-center' : ''} relative cursor-pointer group/header`}
       >
-        <div className="w-10 h-10 min-w-[40px] bg-gradient-to-br from-indigo-600 to-violet-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-500/20 rotate-3 ring-1 ring-white/10 group-hover/header:rotate-6 transition-transform">
+        <div className="w-10 h-10 min-w-[40px] bg-gradient-to-br from-indigo-600 to-teal-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-500/20 rotate-3 ring-1 ring-white/10 group-hover/header:rotate-6 transition-transform">
           <i className="fas fa-graduation-cap"></i>
         </div>
         <div className={`overflow-hidden transition-all duration-300 ${isActuallyCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100'}`}>
@@ -497,7 +497,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               if (isActuallyCollapsed) setIsCollapsed(false);
             }}
             className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all text-base font-bold tracking-tight mb-1 group relative overflow-hidden ${activeView === 'courses'
-              ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/40 ring-1 ring-indigo-400/50'
+              ? 'bg-gradient-to-r from-indigo-600 to-teal-600 text-white shadow-lg shadow-indigo-500/40 ring-1 ring-indigo-400/50'
               : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
               } ${isActuallyCollapsed ? 'justify-center' : ''}`}
             title="Meus Cursos"

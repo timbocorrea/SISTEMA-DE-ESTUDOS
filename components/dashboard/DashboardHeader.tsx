@@ -10,7 +10,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ user }) => {
         <div className="flex items-center justify-between mb-10">
             <div>
                 <h2 className="text-4xl font-black text-slate-800 dark:text-white tracking-tight drop-shadow-lg">
-                    Olá, <span className="bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">{user.name.split(' ')[0]}</span>! 👋
+                    Olá, <span className="bg-gradient-to-r from-indigo-400 to-teal-400 bg-clip-text text-transparent">{user.name.split(' ')[0]}</span>! 👋
                 </h2>
                 <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium">
                     Aqui está o resumo da sua jornada de aprendizado
@@ -33,12 +33,12 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ user }) => {
                 )}
                 <div className="flex items-center">
                     <div className="px-5 py-3 rounded-2xl bg-white dark:bg-black/40 backdrop-blur-md flex items-center gap-4 text-slate-800 dark:text-white shadow-xl shadow-black/10 dark:shadow-black/20 border border-slate-200 dark:border-white/10 relative overflow-hidden group">
-                        <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                        <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-cyan-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                         <div className="flex flex-col items-start relative z-10">
                             <span className="text-[9px] font-black uppercase tracking-[0.2em] text-indigo-400">Nível Atual</span>
                             <span className="text-3xl font-black leading-none bg-gradient-to-br from-white to-slate-400 bg-clip-text text-transparent">{user.level}</span>
                         </div>
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30 ring-2 ring-white/10">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30 ring-2 ring-white/10">
                             <i className="fas fa-trophy text-sm"></i>
                         </div>
                     </div>

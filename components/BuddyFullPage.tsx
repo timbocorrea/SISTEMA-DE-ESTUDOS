@@ -135,7 +135,7 @@ const BuddyFullPage: React.FC = () => {
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4 bg-white dark:bg-[#0a0e14]/50 border-b border-slate-200 dark:border-slate-800 backdrop-blur-xl sticky top-0 z-10">
                     <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-cyan-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
                             <i className="fas fa-robot text-xl"></i>
                         </div>
                         <div>
@@ -205,7 +205,7 @@ const BuddyFullPage: React.FC = () => {
                                     <div className={`flex max-w-[85%] md:max-w-[80%] gap-3 ${m.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
                                         <div className={`w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center shadow-sm text-xs ${m.role === 'user'
                                             ? 'bg-indigo-600 text-white'
-                                            : 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white'
+                                            : 'bg-gradient-to-br from-indigo-500 to-cyan-600 text-white'
                                             }`}>
                                             <i className={`fas ${m.role === 'user' ? 'fa-user' : 'fa-robot'}`}></i>
                                         </div>
@@ -232,7 +232,7 @@ const BuddyFullPage: React.FC = () => {
                         {isLoading && (
                             <div className="flex justify-start">
                                 <div className="flex gap-3">
-                                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-sm">
+                                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-cyan-600 flex items-center justify-center text-white shadow-sm">
                                         <i className="fas fa-robot text-xs"></i>
                                     </div>
                                     <div className="bg-white dark:bg-slate-800 rounded-2xl rounded-tl-none p-4 border border-slate-200 dark:border-slate-700 flex items-center gap-1.5">

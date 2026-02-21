@@ -115,7 +115,7 @@ export const LessonRequirementsEditor: React.FC<Props> = ({
                             <label className="text-xs font-bold text-slate-900 dark:text-white">
                                 📝 Blocos de Texto
                             </label>
-                            <span className="text-lg font-black text-purple-600 dark:text-purple-400">
+                            <span className="text-lg font-black text-cyan-600 dark:text-cyan-400">
                                 {textPercent}%
                             </span>
                         </div>
@@ -126,9 +126,9 @@ export const LessonRequirementsEditor: React.FC<Props> = ({
                             step="5"
                             value={textPercent}
                             onChange={(e) => setTextPercent(Number(e.target.value))}
-                            className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                            className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-600"
                             style={{
-                                background: `linear-gradient(to right, #9333ea 0%, #9333ea ${textPercent}%, #e2e8f0 ${textPercent}%, #e2e8f0 100%)`
+                                background: `linear-gradient(to right, #0284c7 0%, #0284c7 ${textPercent}%, #e2e8f0 ${textPercent}%, #e2e8f0 100%)`
                             }}
                         />
                         <p className="text-[10px] text-slate-600 dark:text-slate-400">
@@ -234,7 +234,7 @@ export const LessonRequirementsEditor: React.FC<Props> = ({
                     </div>
 
                     {/* Preview */}
-                    <div className="p-3 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-lg border border-indigo-200 dark:border-indigo-800">
+                    <div className="p-3 bg-gradient-to-r from-indigo-50 to-cyan-50 dark:from-indigo-900/20 dark:to-cyan-900/20 rounded-lg border border-indigo-200 dark:border-indigo-800">
                         <h4 className="text-xs font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-1.5">
                             <i className="fas fa-eye text-[10px]"></i>
                             Preview para o Aluno

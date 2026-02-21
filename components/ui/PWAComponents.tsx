@@ -51,7 +51,7 @@ export const InstallPrompt: React.FC = () => {
                 exit={{ y: 100, opacity: 0 }}
                 className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:max-w-sm z-50"
             >
-                <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-4 shadow-2xl border border-white/20">
+                <div className="bg-gradient-to-r from-indigo-600 to-cyan-600 rounded-2xl p-4 shadow-2xl border border-white/20">
                     <div className="flex items-start gap-3">
                         <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
                             <i className="fas fa-download text-xl text-white"></i>

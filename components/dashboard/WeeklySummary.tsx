@@ -18,7 +18,7 @@ const WeeklySummary: React.FC<WeeklySummaryProps> = ({ xpHistory, courseProgress
 
     // Chart colors - Neon Palette
     const barColor = '#818cf8'; // indigo-400
-    const progressColors = ['#34d399', '#60a5fa', '#a78bfa', '#fbbf24', '#f87171'];
+    const progressColors = ['#34d399', '#60a5fa', '#2dd4bf', '#fbbf24', '#f87171'];
 
     return (
         <div className="space-y-4">
@@ -54,7 +54,7 @@ const WeeklySummary: React.FC<WeeklySummaryProps> = ({ xpHistory, courseProgress
 
                 <div className="bg-white/90 dark:bg-slate-900/80 shadow-md backdrop-blur-md rounded-2xl p-4 border border-slate-200 dark:border-white/5 hover:bg-white dark:hover:bg-slate-900 transition-colors">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-violet-500/10 text-violet-400 flex items-center justify-center ring-1 ring-violet-500/20">
+                        <div className="w-10 h-10 rounded-xl bg-teal-500/10 text-teal-400 flex items-center justify-center ring-1 ring-teal-500/20">
                             <i className="fas fa-chart-line text-lg drop-shadow-md"></i>
                         </div>
                         <div className="flex-1">
@@ -142,7 +142,7 @@ const WeeklySummary: React.FC<WeeklySummaryProps> = ({ xpHistory, courseProgress
                 {/* Course Progress List */}
                 <div className="bg-white/90 dark:bg-slate-900/80 shadow-md backdrop-blur-md rounded-2xl p-4 border border-slate-200 dark:border-white/5">
                     <h3 className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-4 flex items-center gap-2 uppercase tracking-wider">
-                        <i className="fas fa-chart-pie text-violet-400"></i>
+                        <i className="fas fa-chart-pie text-teal-400"></i>
                         Progresso
                     </h3>
                     {courseProgress.length > 0 ? (

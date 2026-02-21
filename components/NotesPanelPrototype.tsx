@@ -719,7 +719,7 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({
     return (
         <div className="flex-1 h-full flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden relative">
             {/* Header */}
-            <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 flex-shrink-0">
+            <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-r from-indigo-50 to-cyan-50 dark:from-indigo-900/20 dark:to-cyan-900/20 flex-shrink-0">
                 <div className="flex items-center justify-between mb-2">
                     <h3 className="font-black text-lg text-slate-800 dark:text-white flex items-center gap-2">
                         <i className="fas fa-sticky-note text-indigo-600 dark:text-indigo-400"></i>
@@ -904,7 +904,7 @@ const NotesPanelPrototype: React.FC<NotesPanelProps> = ({
                                                 e.stopPropagation();
                                                 handleAskBuddy(note.highlightedText!, note.id);
                                             }}
-                                            className="text-xs text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1 font-bold ml-1 bg-purple-50 dark:bg-purple-900/20 px-2 py-0.5 rounded-full border border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors"
+                                            className="text-xs text-cyan-600 dark:text-cyan-400 hover:underline flex items-center gap-1 font-bold ml-1 bg-cyan-50 dark:bg-cyan-900/20 px-2 py-0.5 rounded-full border border-cyan-200 dark:border-cyan-800 hover:bg-cyan-100 dark:hover:bg-cyan-900/40 transition-colors"
                                             title="Perguntar ao Buddy sobre este trecho"
                                         >
                                             <i className="fas fa-robot text-[10px]"></i>

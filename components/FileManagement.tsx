@@ -219,7 +219,7 @@ const FileManagement: React.FC<FileManagementProps> = ({ path, onPathChange }) =
         const type = getFileType(fileName);
         switch (type) {
             case 'image': return 'fas fa-image text-blue-500';
-            case 'video': return 'fas fa-video text-purple-500';
+            case 'video': return 'fas fa-video text-cyan-500';
             case 'audio': return 'fas fa-music text-green-500';
             case 'document': return 'fas fa-file-alt text-red-500';
             default: return 'fas fa-file text-slate-500';
@@ -316,8 +316,8 @@ const FileManagement: React.FC<FileManagementProps> = ({ path, onPathChange }) =
 
                 <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
-                            <i className="fas fa-video text-purple-600 dark:text-purple-400"></i>
+                        <div className="w-10 h-10 bg-cyan-100 dark:bg-cyan-900/30 rounded-lg flex items-center justify-center">
+                            <i className="fas fa-video text-cyan-600 dark:text-cyan-400"></i>
                         </div>
                         <div>
                             <p className="text-2xl font-bold text-slate-800 dark:text-white">{currentStats.media}</p>

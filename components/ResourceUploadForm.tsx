@@ -279,7 +279,7 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onSubmit, isLoa
             <button
                 onClick={handleSubmit}
                 disabled={isLoading || isUploading || !title.trim() || (uploadMethod === 'file' && !selectedFile) || (uploadMethod === 'url' && !url.trim())}
-                className="w-full bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl font-black text-xs transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                className="w-full bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl font-black text-xs transition-all active:scale-[0.98] flex items-center justify-center gap-2"
             >
                 {isUploading ? (
                     <>

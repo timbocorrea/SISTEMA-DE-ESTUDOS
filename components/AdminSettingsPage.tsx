@@ -103,7 +103,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({ adminServi
                         <label className="block text-sm font-bold text-slate-700 dark:text-slate-300">Mensagem Inicial do WhatsApp</label>
                         <p className="text-xs text-slate-500 dark:text-slate-500 mb-2">Mensagem padrão que aparecerá para o usuário ao abrir o WhatsApp.</p>
                         <div className="flex gap-2">
-                            <div className="w-10 h-10 rounded-lg bg-violet-100 dark:bg-violet-900/20 flex items-center justify-center text-violet-600 flex-shrink-0">
+                            <div className="w-10 h-10 rounded-lg bg-teal-100 dark:bg-teal-900/20 flex items-center justify-center text-teal-600 flex-shrink-0">
                                 <i className="fas fa-comment-dots text-xl"></i>
                             </div>
                             <input

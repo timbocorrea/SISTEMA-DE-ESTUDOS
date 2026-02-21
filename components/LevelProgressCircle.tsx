@@ -26,7 +26,7 @@ const LevelProgressCircle: React.FC<LevelProgressCircleProps> = ({ level, progre
     return (
         <div className="relative flex-shrink-0 hidden md:block">
             {/* Círculo de nível com gradiente */}
-            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-indigo-600 to-violet-500 flex items-center justify-center shadow-xl shadow-indigo-500/30 border-4 border-white dark:border-slate-800">
+            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-indigo-600 to-teal-500 flex items-center justify-center shadow-xl shadow-indigo-500/30 border-4 border-white dark:border-slate-800">
                 <div className="text-center">
                     <span className="block text-3xl font-black text-white leading-none">{level}</span>
                     <span className="text-[10px] font-bold text-indigo-100 uppercase tracking-tighter">Nível</span>

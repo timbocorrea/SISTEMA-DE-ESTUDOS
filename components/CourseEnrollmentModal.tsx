@@ -45,7 +45,7 @@ const CourseEnrollmentModal: React.FC<CourseEnrollmentModalProps> = ({
                     onClick={(e) => e.stopPropagation()}
                 >
                     {/* Header */}
-                    <div className="bg-gradient-to-br from-indigo-600 to-violet-600 p-6 text-white flex-shrink-0 relative overflow-hidden">
+                    <div className="bg-gradient-to-br from-indigo-600 to-teal-600 p-6 text-white flex-shrink-0 relative overflow-hidden">
                         <div className="absolute inset-0 bg-black/10 backdrop-blur-[1px]"></div>
                         <div className="relative z-10">
                             <button

@@ -459,8 +459,8 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
                         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-500/10 flex items-center justify-center flex-shrink-0">
-                                        <i className="fas fa-layer-group text-lg text-purple-600 dark:text-purple-400"></i>
+                                    <div className="w-10 h-10 rounded-xl bg-cyan-100 dark:bg-cyan-500/10 flex items-center justify-center flex-shrink-0">
+                                        <i className="fas fa-layer-group text-lg text-cyan-600 dark:text-cyan-400"></i>
                                     </div>
                                     <p className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Módulos</p>
                                 </div>

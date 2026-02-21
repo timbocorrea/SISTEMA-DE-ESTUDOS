@@ -29,7 +29,7 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
         { color: '#f59e0b', label: 'Laranja' },
         { color: '#10b981', label: 'Verde' },
         { color: '#3b82f6', label: 'Azul' },
-        { color: '#8b5cf6', label: 'Roxo' },
+        { color: '#14b8a6', label: 'Roxo' },
         { color: '#ec4899', label: 'Rosa' },
         { color: '#14b8a6', label: 'Ciano' },
     ];
