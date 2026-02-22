@@ -143,7 +143,6 @@ export const DropboxFileTree: React.FC<DropboxFileTreeProps> = ({ onSelectFolder
                 isFolder={true} // Home acts as a folder
                 isSelected={currentPath === '' || currentPath === '/'}
                 level={0}
-                item={{ id: 'root', name: 'Início', tag: 'folder' } as any} // Mock item for compatibility if needed, but we pass props directly
                 onClick={() => onSelectFolder('')}
                 icon={<i className="fas fa-home text-indigo-500 text-sm"></i>}
             >

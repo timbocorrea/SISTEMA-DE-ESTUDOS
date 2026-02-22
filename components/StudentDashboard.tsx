@@ -202,7 +202,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                         className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-slate-800 relative group-hover:scale-105 transition-transform duration-300"
                       >
                         {course.imageUrl ? (
-                          <img src={course.imageUrl} alt="" className="w-full h-full object-cover opacity-90 group-hover:opacity-100" />
+                          <img src={course.imageUrl} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover opacity-90 group-hover:opacity-100" />
                         ) : (
                           <div className="w-full h-full bg-gradient-to-br from-indigo-500/20 to-cyan-500/20 flex items-center justify-center text-white/50">
                             <i className="fas fa-book-open text-xs"></i>
@@ -271,7 +271,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             }`}
                         >
                           {course.imageUrl ? (
-                            <img src={course.imageUrl} alt="" className="w-full h-full object-cover rounded-2xl" />
+                            <img src={course.imageUrl} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover rounded-2xl" />
                           ) : (<i className="fas fa-book-open"></i>)}
                         </motion.div>
                         {isEnrolled && (

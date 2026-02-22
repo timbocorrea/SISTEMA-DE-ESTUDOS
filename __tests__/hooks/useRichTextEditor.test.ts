@@ -71,7 +71,7 @@ describe('useRichTextEditor', () => {
                 endContainer: document.body,
                 startOffset: 0,
                 endOffset: 0
-            } as Range;
+            } as unknown as Range;
 
             const mockSelection = {
                 rangeCount: 1,

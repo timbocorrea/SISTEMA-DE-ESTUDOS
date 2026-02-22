@@ -140,7 +140,8 @@ export default defineConfig(({ mode }) => {
             'supabase-vendor': ['@supabase/supabase-js'],
             'form-vendor': ['react-hook-form', 'zod', '@hookform/resolvers'],
             'utils-vendor': ['localforage', 'match-sorter', 'sort-by', 'zustand'],
-            'content-vendor': ['mammoth', 'marked', 'react-highlight-words'],
+            'content-vendor': ['marked', 'react-highlight-words'],
+            'mammoth-vendor': ['mammoth'],
             'genai-vendor': ['@google/genai'],
             'dropbox-vendor': ['dropbox', 'react-dropbox-chooser']
           }

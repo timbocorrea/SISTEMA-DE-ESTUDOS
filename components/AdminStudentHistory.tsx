@@ -59,7 +59,7 @@ export const AdminStudentHistory: React.FC<AdminStudentHistoryProps> = ({ userId
                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-emerald-600 dark:text-emerald-400 font-bold">
                                     +{log.amount} XP
                                 </td>
-                                <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400 font-medium max-w-xs truncate" title={log.description}>
+                                <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400 font-medium max-w-xs truncate" title={log.description ?? undefined}>
                                     {log.description}
                                 </td>
                             </tr>

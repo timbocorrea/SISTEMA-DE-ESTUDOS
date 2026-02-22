@@ -816,6 +816,20 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
     const [tempAudioUrl, setTempAudioUrl] = useState('');
     const [audioFilter, setAudioFilter] = useState<'all' | 'with-audio' | 'without-audio'>('all');
 
+    // Stable refs for auto-save (prevents stale closure in setInterval)
+    const blocksRef = useRef(blocks);
+    const titleRef = useRef(title);
+    const videoUrlsRef = useRef(videoUrls);
+    const audioUrlRef = useRef(audioUrl);
+    const durationSecondsRef = useRef(durationSeconds);
+    const imageUrlRef = useRef(imageUrl);
+    useEffect(() => { blocksRef.current = blocks; }, [blocks]);
+    useEffect(() => { titleRef.current = title; }, [title]);
+    useEffect(() => { videoUrlsRef.current = videoUrls; }, [videoUrls]);
+    useEffect(() => { audioUrlRef.current = audioUrl; }, [audioUrl]);
+    useEffect(() => { durationSecondsRef.current = durationSeconds; }, [durationSeconds]);
+    useEffect(() => { imageUrlRef.current = imageUrl; }, [imageUrl]);
+
     // Handler for Dropbox Audio Selection
     const handleDropboxAudioSelected = (url: string, filename: string) => {
         // Se estivermos editando um bloco para áudio, salva automaticamente
@@ -1425,7 +1439,60 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
         return () => document.removeEventListener('click', handleMediaClick);
     }, []);
 
-    // Auto-save a cada 5 minutos
+    const handleSave = useCallback(async () => {
+        setIsSaving(true);
+        try {
+            // Garantir token JWT atualizado antes de salvar
+            const supabase = createSupabaseClient();
+            await supabase.auth.getSession();
+
+            const htmlContent = editorRef.current?.innerHTML || '';
+
+            // Usar refs para garantir dados atuais (evita stale closure no auto-save)
+            const currentBlocks = blocksRef.current;
+            const currentTitle = titleRef.current;
+            const currentVideoUrls = videoUrlsRef.current;
+            const currentAudioUrl = audioUrlRef.current;
+            const currentDurationSeconds = durationSecondsRef.current;
+            const currentImageUrl = imageUrlRef.current;
+
+            // Normalizar blocos: garantir que todos tenham spacing
+            const normalizedBlocks = currentBlocks.map(block => ({
+                ...block,
+                spacing: block.spacing !== undefined ? block.spacing : 0
+            }));
+
+            console.log('🔍 SALVANDO - Total de blocos:', normalizedBlocks.length);
+
+            const metadataToSave = {
+                title: currentTitle,
+                video_url: currentVideoUrls.length > 0 ? currentVideoUrls[0].url : null,
+                video_urls: currentVideoUrls,
+                audio_url: currentAudioUrl,
+                duration_seconds: Number(currentDurationSeconds),
+                image_url: currentImageUrl,
+                content_blocks: normalizedBlocks
+            };
+
+            // Executar o save
+            await onSave(htmlContent, metadataToSave);
+
+            // APENAS reset unsaved changes tracking AFTER successful save
+            initialBlocksRef.current = JSON.stringify(normalizedBlocks);
+            setHasUnsavedChanges(false);
+            setChangedBlocks(new Map());
+
+            console.log('✅ Salvamento concluído com sucesso!');
+            toast.success('✅ Aula salva com sucesso!');
+        } catch (error) {
+            console.error('❌ Erro ao salvar:', JSON.stringify(error, null, 2));
+            toast.error('❌ Erro ao salvar a aula. Verifique o console para detalhes.');
+        } finally {
+            setIsSaving(false);
+        }
+    }, [onSave]);
+
+    // Auto-save a cada 2 minutos (usa handleSave estável via useCallback + refs)
     useEffect(() => {
         const autoSaveInterval = setInterval(async () => {
             console.log('⏱️ Auto-save: Salvando automaticamente...');
@@ -1444,16 +1511,15 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
             } finally {
                 setIsAutoSaving(false);
             }
-        }, 1 * 60 * 1000); // 1 minuto em milissegundos
+        }, 2 * 60 * 1000); // 2 minutos
 
-        console.log('🔄 Auto-save ativado: salvamento a cada 1 minuto');
+        console.log('🔄 Auto-save ativado: salvamento a cada 2 minutos');
 
-        // Cleanup: limpar intervalo ao desmontar componente
         return () => {
             clearInterval(autoSaveInterval);
             console.log('🛑 Auto-save desativado');
         };
-    }, [blocks, title, videoUrls, durationSeconds, imageUrl]); // Dependências para recriar intervalo quando dados mudarem
+    }, [handleSave]); // Estável graças ao useCallback — intervalo criado apenas 1 vez
 
     // Função para redimensionar mídia
     const resizeMedia = (size: string) => {
@@ -1723,57 +1789,6 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
             return () => clearTimeout(timeoutId);
         }
     }, [activeEditableElement, handleSelectionChange]);
-
-    const handleSave = async () => {
-        setIsSaving(true);
-        try {
-            const htmlContent = editorRef.current?.innerHTML || '';
-
-            // Normalizar blocos: garantir que todos tenham spacing
-            const normalizedBlocks = blocks.map(block => ({
-                ...block,
-                spacing: block.spacing !== undefined ? block.spacing : 0 // Padrão: Sem Espaço
-            }));
-
-            // Debug: verificar blocos antes de salvar
-            console.log('🔍 SALVANDO - Total de blocos:', normalizedBlocks.length);
-            console.log('🔍 SALVANDO - Blocos normalizados:', JSON.stringify(normalizedBlocks, null, 2));
-
-            // Debug: verificar videoUrls
-            console.log('🎬 SALVANDO - videoUrls state:', videoUrls);
-            console.log('🎬 SALVANDO - videoUrls length:', videoUrls.length);
-            console.log('🎬 SALVANDO - primeiro vídeo:', videoUrls.length > 0 ? videoUrls[0] : 'NENHUM');
-
-            const metadataToSave = {
-                title,
-                video_url: videoUrls.length > 0 ? videoUrls[0].url : null, // First video for backward compatibility
-                video_urls: videoUrls, // All videos
-                audio_url: audioUrl,
-                duration_seconds: Number(durationSeconds),
-                image_url: imageUrl,
-                content_blocks: normalizedBlocks
-            };
-
-            console.log('📤 SALVANDO - Metadata completa:', JSON.stringify(metadataToSave, null, 2));
-
-            // Executar o save primeiro
-            await onSave(htmlContent, metadataToSave);
-
-            // APENAS reset unsaved changes tracking AFTER successful save
-            initialBlocksRef.current = JSON.stringify(normalizedBlocks);
-            setHasUnsavedChanges(false);
-            setChangedBlocks(new Map());
-
-            console.log('✅ Salvamento concluído com sucesso!');
-            toast.success('✅ Aula salva com sucesso!');
-        } catch (error) {
-            console.error('❌ Erro ao salvar:', JSON.stringify(error, null, 2));
-            toast.error('❌ Erro ao salvar a aula. Verifique o console para detalhes.');
-            // NÃO resetar hasUnsavedChanges aqui - manter o indicador de mudanças pendentes
-        } finally {
-            setIsSaving(false);
-        }
-    };
 
     const handleInput = () => {
         const htmlContent = editorRef.current?.innerHTML || '';

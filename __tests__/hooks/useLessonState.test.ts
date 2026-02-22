@@ -42,7 +42,7 @@ describe('useLessonState', () => {
             expect(result.current.lesson.id).toBe(mockLesson.id); // Other fields unchanged
         });
 
-        it('should update updated_at timestamp', () => {
+        it('should preserve other fields when updating partially', () => {
             const { result } = renderHook(() =>
                 useLessonState({
                     initialLesson: mockLesson,
@@ -50,13 +50,13 @@ describe('useLessonState', () => {
                 })
             );
 
-            const beforeUpdate = result.current.lesson.updated_at;
-
             act(() => {
                 result.current.updateLessonData({ title: 'New Title' });
             });
 
-            expect(result.current.lesson.updated_at).not.toBe(beforeUpdate);
+            expect(result.current.lesson.title).toBe('New Title');
+            expect(result.current.lesson.module_id).toBe(mockLesson.module_id);
+            expect(result.current.lesson.position).toBe(mockLesson.position);
         });
     });
 

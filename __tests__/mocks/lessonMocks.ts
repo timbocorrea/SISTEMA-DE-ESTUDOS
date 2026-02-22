@@ -5,7 +5,6 @@ import { LessonRecord, LessonResourceRecord } from '../../domain/admin';
 export const mockLesson: LessonRecord = {
     id: 'test-lesson-id-123',
     title: 'Test Lesson Title',
-    course_id: 'test-course-id',
     module_id: 'test-module-id',
     position: 1,
     video_url: 'https://example.com/video.mp4',
@@ -41,8 +40,7 @@ export const mockLesson: LessonRecord = {
             spacing: 1
         }
     ],
-    created_at: '2024-01-01T00:00:00Z',
-    updated_at: '2024-01-01T00:00:00Z'
+    created_at: '2024-01-01T00:00:00Z'
 };
 
 // Mock Lesson Resources
@@ -51,18 +49,18 @@ export const mockResources: LessonResourceRecord[] = [
         id: 'resource-1',
         lesson_id: 'test-lesson-id-123',
         title: 'Test PDF',
-        type: 'pdf',
+        resource_type: 'PDF',
         url: 'https://example.com/test.pdf',
-        file_size: 1024000,
+        position: 0,
         created_at: '2024-01-01T00:00:00Z'
     },
     {
         id: 'resource-2',
         lesson_id: 'test-lesson-id-123',
         title: 'Test Document',
-        type: 'document',
+        resource_type: 'FILE',
         url: 'https://example.com/test.docx',
-        file_size: 512000,
+        position: 1,
         created_at: '2024-01-01T00:00:00Z'
     }
 ];

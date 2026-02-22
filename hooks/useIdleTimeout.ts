@@ -3,6 +3,7 @@ import { useEffect, useRef, useCallback } from 'react';
 interface UseIdleTimeoutProps {
     onIdle: () => void;
     timeout?: number; // milliseconds, default 10 minutes
+    onRefreshSession?: () => void; // Called periodically to keep Supabase session alive
 }
 
 /**
@@ -28,10 +29,11 @@ const isMediaPlaying = (): boolean => {
  * Considers audio/video playback as active usage — will NOT
  * trigger idle timeout while media is playing.
  */
-export const useIdleTimeout = ({ onIdle, timeout = 10 * 60 * 1000 }: UseIdleTimeoutProps) => {
-    const timerRef = useRef<NodeJS.Timeout | null>(null);
-    const mediaCheckRef = useRef<NodeJS.Timeout | null>(null);
+export const useIdleTimeout = ({ onIdle, timeout = 10 * 60 * 1000, onRefreshSession }: UseIdleTimeoutProps) => {
+    const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const mediaCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const onIdleRef = useRef(onIdle);
+    const lastRefreshRef = useRef<number>(Date.now());
 
     // Keep callback ref updated to avoid re-binding listeners
     useEffect(() => {
@@ -41,6 +43,15 @@ export const useIdleTimeout = ({ onIdle, timeout = 10 * 60 * 1000 }: UseIdleTime
     const resetTimer = useCallback(() => {
         if (timerRef.current) {
             clearTimeout(timerRef.current);
+        }
+
+        // Refresh Supabase session if last refresh was > 5 minutes ago
+        if (onRefreshSession) {
+            const now = Date.now();
+            if (now - lastRefreshRef.current > 5 * 60 * 1000) {
+                lastRefreshRef.current = now;
+                onRefreshSession();
+            }
         }
 
         timerRef.current = setTimeout(() => {
@@ -53,7 +64,7 @@ export const useIdleTimeout = ({ onIdle, timeout = 10 * 60 * 1000 }: UseIdleTime
             console.log('💤 User is idle. Triggering timeout callback.');
             onIdleRef.current();
         }, timeout);
-    }, [timeout]);
+    }, [timeout, onRefreshSession]);
 
     useEffect(() => {
         // Initial timer start
@@ -72,7 +83,6 @@ export const useIdleTimeout = ({ onIdle, timeout = 10 * 60 * 1000 }: UseIdleTime
         });
 
         // Periodic check: if media is playing, reset the timer proactively
-        // This covers the case where a user starts audio and does nothing else
         mediaCheckRef.current = setInterval(() => {
             if (isMediaPlaying()) {
                 resetTimer();

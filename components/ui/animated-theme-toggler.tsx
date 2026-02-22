@@ -35,7 +35,7 @@ export const AnimatedThemeToggler = ({
   const toggleTheme = useCallback(async (e: React.MouseEvent<HTMLButtonElement>) => {
     if (!buttonRef.current) return;
 
-    // Pre-calculate dimensions
+    // Pre-calculate dimensions for circle animation
     const rect = buttonRef.current.getBoundingClientRect();
     const x = rect.left + rect.width / 2;
     const y = rect.top + rect.height / 2;
@@ -44,22 +44,29 @@ export const AnimatedThemeToggler = ({
       Math.max(y, window.innerHeight - y)
     );
 
-    // Set CSS variables for the native animation
+    // Set CSS variables for the animation
     document.documentElement.style.setProperty('--x', `${x}px`);
     document.documentElement.style.setProperty('--y', `${y}px`);
     document.documentElement.style.setProperty('--max-radius', `${maxRadius}px`);
 
-    // Check if View Transition API is supported
-    if (!(document as any).startViewTransition) {
-      props.onClick?.(e);
-      return;
-    }
-
-    (document as any).startViewTransition(() => {
-      flushSync(() => {
-        props.onClick?.(e);
+    // Use View Transition API if supported (no page reload)
+    if ((document as any).startViewTransition) {
+      const transition = (document as any).startViewTransition(() => {
+        flushSync(() => {
+          props.onClick?.(e);
+        });
       });
-    });
+
+      // Prevent default navigation behavior that can cause reload
+      try {
+        await transition.finished;
+      } catch {
+        // View transition was skipped — that's OK
+      }
+    } else {
+      // Fallback: toggle directly without animation
+      props.onClick?.(e);
+    }
   }, [props.onClick])
 
   return (

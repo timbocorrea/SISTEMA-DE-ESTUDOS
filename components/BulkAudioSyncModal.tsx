@@ -38,7 +38,7 @@ const BulkAudioSyncModal: React.FC<BulkAudioSyncModalProps> = ({
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [authError, setAuthError] = useState<string | null>(null);
     const [hideSynced, setHideSynced] = useState(true); // Default to hiding synced blocks
-    const blockRefs = React.useRef<(HTMLDivElement | null)[]>([]);
+    const blockRefs = React.useRef<Map<string, HTMLDivElement | null>>(new Map());
 
     // Initialize mappings when blocks change
     // Initialize/Update mappings when blocks change
@@ -109,8 +109,16 @@ const BulkAudioSyncModal: React.FC<BulkAudioSyncModalProps> = ({
             setDropboxFiles(result);
         } catch (error) {
             console.error('Error loading files:', error);
-            if (error instanceof Error && error.message === 'Não autenticado') {
+            const msg = error instanceof Error ? error.message : '';
+            // Catch all auth-related errors and reset state to show Connect button
+            if (
+                msg.includes('autenticado') ||
+                msg.includes('expirada') ||
+                msg.includes('Permissões insuficientes') ||
+                msg.includes('401')
+            ) {
                 setIsAuthenticated(false);
+                toast.error('Sessão do Dropbox expirada. Reconecte sua conta.');
             }
         } finally {
             setLoading(false);
@@ -162,12 +170,11 @@ const BulkAudioSyncModal: React.FC<BulkAudioSyncModalProps> = ({
                 if (popup.closed) {
                     clearInterval(pollTimer);
                     // Check if auth was successful (token saved by callback page)
-                    DropboxService.isAuthenticated().then(isAuth => {
-                        if (isAuth) {
-                            setIsAuthenticated(true);
-                            loadFiles('');
-                        }
-                    });
+                    const isAuth = DropboxService.isAuthenticated();
+                    if (isAuth) {
+                        setIsAuthenticated(true);
+                        loadFiles('');
+                    }
                 }
             }, 500);
         } catch (error) {
@@ -198,6 +205,26 @@ const BulkAudioSyncModal: React.FC<BulkAudioSyncModalProps> = ({
             }
             return newMappings;
         });
+
+        // Auto-scroll to next pending block after selecting a file
+        setTimeout(() => {
+            const blockIds = selectedBlocks.map(b => b.id);
+            const currentIdx = blockIds.indexOf(blockId);
+            // Find the next block that is still pending (no audio selected)
+            for (let i = currentIdx + 1; i < blockIds.length; i++) {
+                const nextBlockId = blockIds[i];
+                const nextMapping = mappings.get(nextBlockId);
+                // Skip blocks that are already synced or have audio selected
+                if (nextMapping && nextMapping.status !== 'success' && !nextMapping.audioPath) {
+                    const el = blockRefs.current.get(nextBlockId);
+                    if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        console.log(`[SyncModal] Auto-scrolled to next pending block ${i + 1} (${nextBlockId})`);
+                    }
+                    break;
+                }
+            }
+        }, 150);
     };
 
     const handleSyncAll = async () => {
@@ -239,6 +266,12 @@ const BulkAudioSyncModal: React.FC<BulkAudioSyncModalProps> = ({
                 if (m) m.status = 'syncing';
                 return newMappings;
             });
+
+            // Auto-scroll to block being synced
+            const el = blockRefs.current.get(blockId);
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
 
             try {
                 // Create permanent shared link
@@ -444,7 +477,7 @@ const BulkAudioSyncModal: React.FC<BulkAudioSyncModalProps> = ({
                                     return (
                                         <div
                                             key={block.id}
-                                            ref={(el) => { blockRefs.current[index] = el; }}
+                                            ref={(el) => { blockRefs.current.set(block.id, el); }}
                                             className={`rounded-xl p-4 border transition-all duration-300 ${isSelected
                                                 ? 'bg-green-50/50 dark:bg-green-900/10 border-green-500 dark:border-green-500 ring-1 ring-green-500'
                                                 : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700'

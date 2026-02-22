@@ -476,6 +476,8 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <aside
+      onMouseEnter={() => { if (sidebarMode === 'hover') setIsHovered(true); }}
+      onMouseLeave={() => { if (sidebarMode === 'hover') setIsHovered(false); }}
       className={`
       ${isMobileOpen ? 'flex fixed h-[100dvh] overflow-y-auto' : 'hidden'} 
       ${isHiddenOnDesktop ? '' : 'lg:flex lg:relative lg:h-full lg:overflow-hidden lg:z-20'}

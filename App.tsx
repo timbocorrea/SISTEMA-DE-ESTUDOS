@@ -41,11 +41,9 @@ import { useTheme } from './contexts/ThemeContext';
 import { SupportDialog } from './components/SupportDialog';
 
 
-// Configure QueryClient (same as before)
 
-
-import { SupabaseAdminRepository } from './repositories/SupabaseAdminRepository';
 import { AdminService } from './services/AdminService';
+import { SupabaseAdminRepository } from './repositories/SupabaseAdminRepository';
 import LessonLoader from './components/LessonLoader';
 import ForcePasswordChangeModal from './components/ForcePasswordChangeModal';
 import { useActivityTracker } from './hooks/useActivityTracker';
@@ -107,7 +105,7 @@ const App: React.FC = () => {
 
 
 
-  // Instantiate AdminService (Lazy or Memoized)
+  // Instantiate AdminService (Lazy — only created once)
   const [adminService] = useState(() => new AdminService(new SupabaseAdminRepository()));
 
   // Start Audit Tracker
@@ -149,25 +147,18 @@ const App: React.FC = () => {
 
 
 
-  // Idle Timeout Implementation
+  // Idle Timeout Implementation - Auto-logout disabled as requested
   const handleIdleTimeout = React.useCallback(async () => {
-    if (user) {
-      console.log('💤 Idle Timeout triggered. Logging out...');
-      toast.warning('Sessão expirada por inatividade.');
-      await logout();
-      navigate('/');
-    }
-  }, [user, logout, navigate]);
+    console.log('💤 Timer atingido, mas o auto-logout foi desabilitado.');
+  }, []);
 
-  // Determine timeout duration based on current path
-  const isEditorPage = location.pathname.match(/\/admin\/lesson\/[^/]+\/edit/);
-  const timeoutDuration = isEditorPage
-    ? 60 * 60 * 1000 // 60 minutes for editor
-    : 10 * 60 * 1000; // 10 minutes for other pages
+  // Set timeout to 24 hours just to keep the timer from triggering frequently
+  const timeoutDuration = 24 * 60 * 60 * 1000;
 
   useIdleTimeout({
     onIdle: handleIdleTimeout,
-    timeout: timeoutDuration
+    timeout: timeoutDuration,
+    onRefreshSession: refreshSession
   });
 
   useEffect(() => {
@@ -378,7 +369,7 @@ const App: React.FC = () => {
           <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03]"></div>
         </div>
 
-        <Toaster theme="dark" richColors position="top-right" />
+        <Toaster theme="dark" richColors position="top-center" />
         <div className="relative z-10 flex flex-col items-center gap-4">
           <div className="w-16 h-16 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin"></div>
           <p className="text-slate-500 font-medium text-sm animate-pulse">Carregando StudySystem...</p>
@@ -421,7 +412,7 @@ const App: React.FC = () => {
   if (user.isTempPassword) {
     return (
       <>
-        <Toaster theme="dark" richColors position="top-right" />
+        <Toaster theme="dark" richColors position="top-center" />
         <ForcePasswordChangeModal
           authService={authService}
           onSuccess={async () => {
@@ -476,7 +467,7 @@ const App: React.FC = () => {
         <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-[0.02]"></div>
       </div>
 
-      <Toaster theme="dark" richColors position="top-right" />
+      <Toaster theme="dark" richColors position="top-center" />
 
       {/* Sidebar - Suspense Wrapper */}
       <React.Suspense fallback={<div className="w-[360px] h-full bg-slate-900/60 hidden lg:block" />}>
