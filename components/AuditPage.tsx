@@ -28,10 +28,17 @@ const AuditPage: React.FC = () => {
         let matchesStatus = true;
 
         if (statusFilter !== 'all') {
-            const score = log.activityScore;
-            if (statusFilter === 'productive') matchesStatus = score >= 80;
-            else if (statusFilter === 'regular') matchesStatus = score >= 50 && score < 80;
-            else if (statusFilter === 'idle') matchesStatus = score < 50;
+            const isStudyPage = log.path.startsWith('/course/') || log.path.includes('/lesson/');
+
+            if (!isStudyPage) {
+                // If a specific status filter is active, exclude non-study pages as they have no status
+                matchesStatus = false;
+            } else {
+                const score = log.activityScore;
+                if (statusFilter === 'productive') matchesStatus = score >= 80;
+                else if (statusFilter === 'regular') matchesStatus = score >= 50 && score < 80;
+                else if (statusFilter === 'idle') matchesStatus = score < 50;
+            }
         }
 
         return matchesDate && matchesStatus;
@@ -75,6 +82,10 @@ const AuditPage: React.FC = () => {
         }
 
         return currentTitle;
+    };
+
+    const isProductiveStudyPage = (path: string) => {
+        return path.startsWith('/course/') || path.includes('/lesson/');
     };
 
     const [currentPage, setCurrentPage] = useState(1);
@@ -230,20 +241,30 @@ const AuditPage: React.FC = () => {
                                             {formatDuration(log.durationSeconds)}
                                         </td>
                                         <td className="px-6 py-4 text-center font-mono">
-                                            <span className={getScoreColor(log.activityScore)}>
-                                                {formatDuration(log.activeSeconds)}
-                                            </span>
-                                            <div className="w-16 h-1 bg-slate-200 dark:bg-white/10 rounded-full mx-auto mt-1 overflow-hidden">
-                                                <div
-                                                    className={`h-full ${log.activityScore >= 80 ? 'bg-emerald-400' : log.activityScore >= 50 ? 'bg-amber-400' : 'bg-red-400'}`}
-                                                    style={{ width: `${log.activityScore}%` }}
-                                                ></div>
-                                            </div>
+                                            {isProductiveStudyPage(log.path) ? (
+                                                <>
+                                                    <span className={getScoreColor(log.activityScore)}>
+                                                        {formatDuration(log.activeSeconds)}
+                                                    </span>
+                                                    <div className="w-16 h-1 bg-slate-200 dark:bg-white/10 rounded-full mx-auto mt-1 overflow-hidden">
+                                                        <div
+                                                            className={`h-full ${log.activityScore >= 80 ? 'bg-emerald-400' : log.activityScore >= 50 ? 'bg-amber-400' : 'bg-red-400'}`}
+                                                            style={{ width: `${log.activityScore}%` }}
+                                                        ></div>
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <span className="text-slate-400 dark:text-slate-500 opacity-60">-</span>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 text-center">
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border capitalize ${getScoreBadge(log.activityScore)}`}>
-                                                {log.activityScore >= 80 ? 'Produtivo' : log.activityScore >= 50 ? 'Regular' : 'Ocioso/AFK'}
-                                            </span>
+                                            {isProductiveStudyPage(log.path) ? (
+                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border capitalize ${getScoreBadge(log.activityScore)}`}>
+                                                    {log.activityScore >= 80 ? 'Produtivo' : log.activityScore >= 50 ? 'Regular' : 'Ocioso/AFK'}
+                                                </span>
+                                            ) : (
+                                                <span className="text-xs font-medium text-slate-400 dark:text-slate-500 opacity-60">N/A</span>
+                                            )}
                                         </td>
                                     </tr>
                                 ))

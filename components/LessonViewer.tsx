@@ -115,6 +115,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
     // Video Collapse State
     const [isVideoCollapsed, setIsVideoCollapsed] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(false);
 
     // Audio playback state (persists across panel open/close)
     const [isAudioActive, setIsAudioActive] = useState(false);
@@ -153,6 +154,30 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
         handleCloseDrawer,
         setFocusedNoteId
     } = useLessonNavigation();
+
+    // Fullscreen Management
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            setIsFullscreen(!!document.fullscreenElement);
+        };
+
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => {
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
+        };
+    }, []);
+
+    const toggleFullscreen = () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => {
+                console.error(`Error attempting to enable fullscreen: ${err.message}`);
+            });
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
+        }
+    };
 
     // Monitorar quiz para atualizar estado do objeto Lesson
     useEffect(() => {
@@ -615,6 +640,13 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                             <i className="fas fa-home text-sm"></i>
                             <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-wider">Home</span>
                         </a>
+                        <button
+                            onClick={toggleFullscreen}
+                            className="h-9 w-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-all hover:scale-105 active:scale-95 shrink-0"
+                            title={isFullscreen ? "Sair da Tela Cheia" : "Tela Cheia"}
+                        >
+                            <i className={`fas ${isFullscreen ? 'fa-compress' : 'fa-expand'}`}></i>
+                        </button>
                     </div>
                 </div>
             </div>

@@ -611,15 +611,15 @@ const Sidebar: React.FC<SidebarProps> = ({
               onViewChange('courses', true);
               if (sidebarMode === 'collapsed') setSidebarMode('expanded');
             }}
-            className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all text-[13px] font-bold uppercase tracking-tight mb-1 group relative overflow-hidden ${activeView === 'courses'
+            className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all text-[13px] font-bold uppercase tracking-tight mb-1 group relative overflow-hidden ${(activeView === 'courses' || activeView === 'lesson')
               ? 'bg-gradient-to-r from-indigo-600 to-teal-600 text-white shadow-lg shadow-indigo-500/40 ring-1 ring-indigo-400/50'
               : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
               } ${isActuallyCollapsed ? 'justify-center' : ''}`}
             title="Meus Cursos"
           >
             <div className="flex items-center gap-3 min-w-0 relative z-10">
-              <div className={`transition-transform duration-300 ${activeView === 'courses' ? 'scale-110' : 'group-hover:scale-110'}`}>
-                <i className={`fas fa-graduation-cap w-5 text-center ${activeView === 'courses' ? 'text-white drop-shadow-md' : ''}`}></i>
+              <div className={`transition-transform duration-300 ${(activeView === 'courses' || activeView === 'lesson') ? 'scale-110' : 'group-hover:scale-110'}`}>
+                <i className={`fas fa-graduation-cap w-5 text-center ${(activeView === 'courses' || activeView === 'lesson') ? 'text-white drop-shadow-md' : ''}`}></i>
               </div>
               <span className={`truncate transition-all duration-300 ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>Meus Cursos</span>
             </div>
@@ -638,7 +638,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             )}
 
             {/* Active Glow Effect */}
-            {activeView === 'courses' && (
+            {(activeView === 'courses' || activeView === 'lesson') && (
               <div className="absolute inset-0 bg-white/10 animate-pulse pointer-events-none rounded-xl"></div>
             )}
           </Link>
