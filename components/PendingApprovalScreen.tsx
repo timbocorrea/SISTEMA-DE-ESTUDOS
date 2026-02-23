@@ -1,6 +1,4 @@
 import React from 'react';
-import { motion } from 'framer-motion';
-
 interface PendingApprovalScreenProps {
     userEmail: string;
     onLogout: () => void;
@@ -16,19 +14,15 @@ const PendingApprovalScreen: React.FC<PendingApprovalScreenProps> = ({ userEmail
                 <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03]"></div>
             </div>
 
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, ease: "easeOut" }}
+            <div
                 className="w-full max-w-md relative z-10"
             >
                 <div className="text-center mb-8">
-                    <motion.div
-                        whileHover={{ rotate: 10, scale: 1.1 }}
-                        className="w-20 h-20 bg-gradient-to-tr from-amber-500 to-orange-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-orange-500/20"
+                    <div
+                        className="w-20 h-20 bg-gradient-to-tr from-amber-500 to-orange-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-orange-500/20 hover:scale-110 hover:rotate-12 transition-transform duration-300"
                     >
                         <i className="fas fa-clock text-white text-3xl drop-shadow-md"></i>
-                    </motion.div>
+                    </div>
                     <h1 className="text-3xl font-extrabold text-white tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
                         Aguardando Aprovação
                     </h1>
@@ -81,15 +75,13 @@ const PendingApprovalScreen: React.FC<PendingApprovalScreenProps> = ({ userEmail
                         </div>
 
                         {/* Botão de logout */}
-                        <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
+                        <button
                             onClick={onLogout}
                             className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3.5 rounded-xl shadow-lg border border-slate-700 transition-all flex items-center justify-center gap-2 mt-4 text-sm group"
                         >
                             <i className="fas fa-sign-out-alt group-hover:-translate-x-1 transition-transform"></i>
                             Voltar para o Login
-                        </motion.button>
+                        </button>
                     </div>
                 </div>
 
@@ -97,7 +89,7 @@ const PendingApprovalScreen: React.FC<PendingApprovalScreenProps> = ({ userEmail
                 <p className="text-center mt-8 text-[11px] text-slate-600 font-medium">
                     Precisa de acesso imediato? <span className="text-slate-500 hover:text-slate-400 cursor-pointer transition-colors">Contate o suporte</span>
                 </p>
-            </motion.div>
+            </div>
         </div>
     );
 };

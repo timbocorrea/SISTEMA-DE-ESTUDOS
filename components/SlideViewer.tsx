@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+// Imports removidos de framer-motion para performance
 
 interface SlideViewerProps {
     title: string;
@@ -329,22 +329,15 @@ const SlideViewer: React.FC<SlideViewerProps> = ({ title, slides = [], fileUrl, 
                     </>
                 )}
 
-                {/* Slides (Images) Mode */}
+                {/* Slides (Images) Mode - Transição Sutil */}
                 {!isFileMode && slides.length > 0 && (
-                    <AnimatePresence initial={false} custom={direction} mode="wait">
-                        <motion.img
-                            key={currentIndex}
-                            src={slides[currentIndex]}
-                            alt={`Slide ${currentIndex + 1}`}
-                            custom={direction}
-                            initial={{ x: direction > 0 ? 300 : -300, opacity: 0 }}
-                            animate={{ x: 0, opacity: 1 }}
-                            exit={{ x: direction > 0 ? -300 : 300, opacity: 0 }}
-                            transition={{ x: { type: 'spring', stiffness: 300, damping: 30 }, opacity: { duration: 0.2 } }}
-                            className={`${isFullscreen ? 'max-w-full max-h-full' : 'w-full h-full'} object-contain select-none`}
-                            draggable={false}
-                        />
-                    </AnimatePresence>
+                    <img
+                        key={currentIndex}
+                        src={slides[currentIndex]}
+                        alt={`Slide ${currentIndex + 1}`}
+                        className={`${isFullscreen ? 'max-w-full max-h-full' : 'w-full h-full'} object-contain select-none transition-opacity duration-300`}
+                        draggable={false}
+                    />
                 )}
 
                 {(!isFileMode && slides.length === 0) && (
@@ -385,11 +378,9 @@ const SlideViewer: React.FC<SlideViewerProps> = ({ title, slides = [], fileUrl, 
                     const targetIndex = Math.floor(percent * totalSlides);
                     goToSlide(targetIndex);
                 }}>
-                    <motion.div
-                        className={`h-full rounded-full ${fileType === 'pdf' ? 'bg-gradient-to-r from-red-500 to-rose-500' : 'bg-gradient-to-r from-amber-500 to-orange-500'}`}
-                        initial={false}
-                        animate={{ width: `${((currentIndex + 1) / totalSlides) * 100}%` }}
-                        transition={{ duration: 0.1 }}
+                    <div
+                        className={`h-full rounded-full transition-all duration-300 ${fileType === 'pdf' ? 'bg-gradient-to-r from-red-500 to-rose-500' : 'bg-gradient-to-r from-amber-500 to-orange-500'}`}
+                        style={{ width: `${((currentIndex + 1) / totalSlides) * 100}%` }}
                     />
                 </div>
 

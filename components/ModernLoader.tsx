@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 
 interface ModernLoaderProps {
     message?: string;
@@ -29,17 +28,7 @@ export const ModernLoader: React.FC<ModernLoaderProps> = ({
 
     return (
         <div className={containerClasses}>
-            <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{
-                    opacity: [0.8, 1, 0.8],
-                    scale: [0.95, 1.05, 0.95],
-                }}
-                transition={{
-                    duration: 3,
-                    repeat: Infinity,
-                    ease: "easeInOut"
-                }}
+            <div
                 className={`relative z-10 flex flex-col items-center justify-center`}
             >
                 {/* Glow Effect behind logo */}
@@ -52,16 +41,13 @@ export const ModernLoader: React.FC<ModernLoaderProps> = ({
                 />
 
                 {message && (
-                    <motion.p
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.5 }}
+                    <p
                         className="mt-8 text-xs font-black tracking-[0.2em] text-slate-400 uppercase text-center"
                     >
                         {message}
-                    </motion.p>
+                    </p>
                 )}
-            </motion.div>
+            </div>
         </div>
     );
 };

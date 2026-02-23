@@ -1,5 +1,4 @@
-import React from 'react';
-import { motion, AnimatePresence, PanInfo } from 'framer-motion';
+import React, { useEffect } from 'react';
 
 interface MobileModalProps {
     isOpen: boolean;
@@ -18,8 +17,7 @@ interface MobileModalProps {
  * 
  * Features:
  * - Desktop: Modal centralizado tradicional
- * - Mobile: Bottom Sheet com swipe para fechar
- * - Gesture support via Framer Motion
+ * - Mobile: Bottom Sheet estático com botão de fechar
  * - Acessibilidade com touch targets de 44px+
  */
 const MobileModal: React.FC<MobileModalProps> = ({
@@ -33,43 +31,31 @@ const MobileModal: React.FC<MobileModalProps> = ({
     maxWidth = 'max-w-lg',
     showHandle = true
 }) => {
-    const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-        // Se arrastou mais de 100px para baixo, fecha o modal
-        if (info.offset.y > 100) {
-            onClose();
+    // Native keydown handler to close on Escape
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                onClose();
+            }
+        };
+        if (isOpen) {
+            window.addEventListener('keydown', handleKeyDown);
         }
-    };
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isOpen, onClose]);
 
     return (
-        <AnimatePresence>
+        <>
             {isOpen && (
                 <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center">
                     {/* Backdrop */}
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+                    <div
+                        className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity"
                         onClick={onClose}
                     />
 
                     {/* Modal Content */}
-                    <motion.div
-                        initial={{
-                            opacity: 0,
-                            y: typeof window !== 'undefined' && window.innerWidth < 768 ? '100%' : 20
-                        }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{
-                            opacity: 0,
-                            y: typeof window !== 'undefined' && window.innerWidth < 768 ? '100%' : 20
-                        }}
-                        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                        drag="y"
-                        dragConstraints={{ top: 0, bottom: 0 }}
-                        dragElastic={{ top: 0, bottom: 0.5 }}
-                        onDragEnd={handleDragEnd}
+                    <div
                         className={`
                             relative z-10 w-full bg-[#0a0e14]/95 backdrop-blur-xl border border-white/10 shadow-2xl
                             
@@ -119,10 +105,10 @@ const MobileModal: React.FC<MobileModalProps> = ({
                         <div className="flex-1 overflow-y-auto overscroll-contain">
                             {children}
                         </div>
-                    </motion.div>
+                    </div>
                 </div>
             )}
-        </AnimatePresence>
+        </>
     );
 };
 

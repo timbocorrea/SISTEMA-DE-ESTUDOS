@@ -57,7 +57,7 @@ const CourseCard: React.FC<CourseCardProps> = ({
                     </div>
                 )}
 
-            </motion.div>
+            </div>
 
             {/* Course Content */}
             <div className="p-5 flex flex-col flex-1 relative">

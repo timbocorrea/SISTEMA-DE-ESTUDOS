@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { motion, AnimatePresence } from 'framer-motion';
 import { AuthService } from '../services/AuthService';
 import { loginSchema, signupSchema, type LoginFormData, type SignupFormData } from '../domain/schemas/authSchema';
 import { SupportDialog } from './SupportDialog';
@@ -85,19 +84,15 @@ const AuthForm: React.FC<AuthFormProps> = ({ authService, onSuccess }) => {
         <div className="absolute inset-0 bg-gradient-to-t from-[#050810] via-transparent to-transparent"></div>
       </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
+      <div
         className="w-full max-w-md relative z-10"
       >
         <div className="text-center mb-6">
-          <motion.div
-            whileHover={{ rotate: 10, scale: 1.1 }}
-            className="w-16 h-16 bg-gradient-to-tr from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-2xl shadow-emerald-500/20"
+          <div
+            className="w-16 h-16 bg-gradient-to-tr from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-2xl shadow-emerald-500/20 hover:rotate-[10deg] hover:scale-110 transition-transform duration-300"
           >
             <i className="fas fa-graduation-cap text-white text-2xl drop-shadow-md"></i>
-          </motion.div>
+          </div>
           <h1 className="text-3xl font-extrabold text-white tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
             StudySystem
           </h1>
@@ -123,14 +118,9 @@ const AuthForm: React.FC<AuthFormProps> = ({ authService, onSuccess }) => {
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <AnimatePresence mode="wait">
+            <div>
               {!isLogin && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.3 }}
-                >
+                <div>
                   <label htmlFor="name" className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">
                     Nome Completo
                   </label>
@@ -151,9 +141,9 @@ const AuthForm: React.FC<AuthFormProps> = ({ authService, onSuccess }) => {
                       {errors.name.message as string}
                     </p>
                   )}
-                </motion.div>
+                </div>
               )}
-            </AnimatePresence>
+            </div>
 
             <div>
               <label htmlFor="email" className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">
@@ -187,14 +177,9 @@ const AuthForm: React.FC<AuthFormProps> = ({ authService, onSuccess }) => {
               control={control}
             />
 
-            <AnimatePresence mode="wait">
+            <div>
               {!isLogin && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.3 }}
-                >
+                <div>
                   <ConfirmPasswordField
                     register={register}
                     error={errors.confirmPassword}
@@ -202,24 +187,20 @@ const AuthForm: React.FC<AuthFormProps> = ({ authService, onSuccess }) => {
                     setShowConfirmPassword={setShowConfirmPassword}
                     control={control}
                   />
-                </motion.div>
+                </div>
               )}
-            </AnimatePresence>
+            </div>
 
             {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
+              <div
                 className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-xl flex items-center gap-2"
               >
                 <i className="fas fa-exclamation-circle text-base"></i>
                 {error}
-              </motion.div>
+              </div>
             )}
 
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+            <button
               disabled={loading}
               type="submit"
               className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-3 rounded-xl shadow-xl shadow-emerald-900/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-2 text-sm"
@@ -232,7 +213,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ authService, onSuccess }) => {
               ) : (
                 isLogin ? 'Entrar no Sistema' : 'Criar Conta'
               )}
-            </motion.button>
+            </button>
           </form>
 
           <div className="mt-6">
@@ -290,14 +271,14 @@ const AuthForm: React.FC<AuthFormProps> = ({ authService, onSuccess }) => {
             </div>
           </div>
         </MagicCard>
-      </motion.div>
+      </div>
 
       <SupportDialog
         isOpen={isSupportOpen}
         onClose={() => setIsSupportOpen(false)}
         adminService={new AdminService(new SupabaseAdminRepository())}
       />
-    </div>
+    </div >
   );
 };
 
@@ -382,14 +363,12 @@ const ConfirmPasswordField = ({ register, error, showConfirmPassword, setShowCon
         </p>
       )}
       {passwordsMatch && !error && (
-        <motion.p
-          initial={{ opacity: 0, y: -5 }}
-          animate={{ opacity: 1, y: 0 }}
+        <p
           className="text-emerald-400 text-[10px] mt-1.5 flex items-center gap-1.5 font-medium ml-1"
         >
           <i className="fas fa-check-circle"></i>
           Senhas conferem!
-        </motion.p>
+        </p>
       )}
 
       <div className="mt-4 flex items-center gap-2 relative z-10">

@@ -25,7 +25,6 @@ import { useLessonQuiz } from '../hooks/useLessonQuiz';
 import { useLessonNavigation } from '../hooks/useLessonNavigation';
 import { useStudentAnswers } from '../hooks/useStudentAnswers';
 import { toast } from 'sonner';
-import { toast } from 'sonner';
 
 interface LessonViewerProps {
     course: Course;

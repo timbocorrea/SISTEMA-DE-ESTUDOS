@@ -1,6 +1,4 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-
 interface MergeNotesModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -31,24 +29,18 @@ const MergeNotesModal: React.FC<MergeNotesModalProps> = ({
     };
 
     return (
-        <AnimatePresence>
+        <>
             {isOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                     {/* Backdrop */}
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
+                    <div
                         onClick={onClose}
-                        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+                        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300"
                     />
 
                     {/* Modal Content */}
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                        className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800"
+                    <div
+                        className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 transition-transform duration-300"
                     >
                         <div className="p-6">
                             <div className="flex items-center gap-4 mb-6">
@@ -76,8 +68,8 @@ const MergeNotesModal: React.FC<MergeNotesModalProps> = ({
                                                     setError(null);
                                                 }}
                                                 className={`w-full p-3 rounded-xl border-2 text-left transition-all flex items-center gap-3 ${selectedNoteId === note.id
-                                                        ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20'
-                                                        : 'border-slate-100 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700 bg-white dark:bg-slate-800'
+                                                    ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20'
+                                                    : 'border-slate-100 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700 bg-white dark:bg-slate-800'
                                                     }`}
                                             >
                                                 <span className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs ${selectedNoteId === note.id ? 'bg-indigo-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
@@ -126,10 +118,10 @@ const MergeNotesModal: React.FC<MergeNotesModalProps> = ({
                                 </button>
                             </div>
                         </div>
-                    </motion.div>
+                    </div>
                 </div>
             )}
-        </AnimatePresence>
+        </>
     );
 };
 

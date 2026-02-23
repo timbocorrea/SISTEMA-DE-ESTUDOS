@@ -5,7 +5,7 @@ import { useBuddyClient } from '../hooks/useBuddyClient';
 import { useAuth } from '../contexts/AuthContext';
 import { useCourse } from '../contexts/CourseContext';
 import { getRandomSuggestions, BuddySuggestion } from '../utils/buddySuggestions';
-import { motion, AnimatePresence } from 'framer-motion';
+// Import removed for framer-motion optimization
 import MarkdownRenderer from './MarkdownRenderer';
 
 const BuddyFullPage: React.FC = () => {
@@ -305,14 +305,10 @@ const BuddyFullPage: React.FC = () => {
             </div>
 
             {/* Right History Sidebar */}
-            <AnimatePresence>
+            <>
                 {isHistoryVisible && (
-                    <motion.aside
-                        initial={{ width: 0, opacity: 0 }}
-                        animate={{ width: 320, opacity: 1 }}
-                        exit={{ width: 0, opacity: 0 }}
-                        transition={{ duration: 0.3, ease: "easeInOut" }}
-                        className="bg-white dark:bg-[#0a0e14] hidden xl:flex flex-col border-l border-slate-200 dark:border-slate-800 overflow-hidden shrink-0"
+                    <aside
+                        className="bg-white w-[320px] dark:bg-[#0a0e14] hidden xl:flex flex-col border-l border-slate-200 dark:border-slate-800 shrink-0 transition-all duration-300"
                     >
                         <div className="p-4 border-b border-slate-200 dark:border-slate-800 min-w-[320px]">
                             <div className="flex items-center justify-between mb-2">
@@ -332,13 +328,10 @@ const BuddyFullPage: React.FC = () => {
                                 </button>
                             </div>
 
-                            <AnimatePresence>
+                            <>
                                 {isSearchOpen && (
-                                    <motion.div
-                                        initial={{ height: 0, opacity: 0, marginTop: 0 }}
-                                        animate={{ height: 'auto', opacity: 1, marginTop: 12 }}
-                                        exit={{ height: 0, opacity: 0, marginTop: 0 }}
-                                        className="relative overflow-hidden"
+                                    <div
+                                        className="relative mt-3 transition-all duration-200"
                                     >
                                         <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[10px]"></i>
                                         <input
@@ -349,9 +342,9 @@ const BuddyFullPage: React.FC = () => {
                                             autoFocus
                                             className="w-full bg-slate-100 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl py-2 pl-8 pr-4 text-xs text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                                         />
-                                    </motion.div>
+                                    </div>
                                 )}
-                            </AnimatePresence>
+                            </>
                         </div>
 
                         <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar min-w-[320px]">
@@ -416,9 +409,9 @@ const BuddyFullPage: React.FC = () => {
                                 Suas conversas são criptografadas e salvas localmente para sua privacidade.
                             </p>
                         </div>
-                    </motion.aside>
+                    </aside>
                 )}
-            </AnimatePresence>
+            </>
         </div>
     );
 };
