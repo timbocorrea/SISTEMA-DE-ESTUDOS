@@ -591,21 +591,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                             </span>
                         </div>
 
-                        {/* Materials/Notes Button (desktop) */}
+                        {/* Quiz Button (desktop) */}
                         <div className="hidden lg:flex items-center gap-2">
-                            <button
-                                onClick={() => {
-                                    setIsMaterialsPanelOpen(true);
-                                    onTrackAction?.('Abriu Materiais/Notas');
-                                }}
-                                className="flex items-center gap-2 h-9 px-3 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 transition-colors text-xs font-bold border border-indigo-200 dark:border-indigo-800"
-                                title="Materiais e Notas"
-                            >
-                                <i className="fas fa-book-reader text-xs"></i>
-                                <span>Materiais</span>
-                            </button>
-
-                            {/* Quiz Button */}
                             {quiz && (
                                 <button
                                     onClick={() => setShowQuizOptionsModal(true)}
@@ -711,11 +698,27 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                 <div className="flex items-center gap-2 p-3 border-b border-slate-200 dark:border-slate-800">
                                     <i className="fas fa-film text-indigo-500 text-xs"></i>
                                     <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300">Playlist</h3>
-                                    {lesson.videoUrls && lesson.videoUrls.length > 1 && (
-                                        <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 ml-auto bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
-                                            {activeVideoIndex + 1} / {lesson.videoUrls.length}
-                                        </span>
-                                    )}
+                                    <div className="ml-auto flex items-center gap-2">
+                                        {/* Materials Button */}
+                                        <button
+                                            onClick={() => {
+                                                setIsMaterialsPanelOpen(true);
+                                                onTrackAction?.('Abriu Materiais/Notas');
+                                            }}
+                                            className="flex items-center justify-center gap-1.5 h-6 px-2.5 rounded-md bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 transition-colors text-[10px] font-bold border border-indigo-200 dark:border-indigo-800 uppercase tracking-wider"
+                                            title="Materiais e Notas"
+                                        >
+                                            <i className="fas fa-book-reader"></i>
+                                            <span className="hidden sm:inline">Materiais</span>
+                                        </button>
+
+                                        {/* Video Index Indicator */}
+                                        {lesson.videoUrls && lesson.videoUrls.length > 1 && (
+                                            <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+                                                {activeVideoIndex + 1} / {lesson.videoUrls.length}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <div className="max-h-[300px] overflow-y-auto scrollbar-thin scrollbar-thumb-indigo-200 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent">
@@ -1162,9 +1165,9 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                             onClick={() => setIsMaterialsPanelOpen(false)}
                         />
                     )}
-                    {/* Panel - always mounted but visually hidden when closed */}
+                    {/* Panel - rendered as a Left bottom-up drawer reaching the video base under Desktop Layout  */}
                     <div
-                        className={`hidden fixed right-0 top-0 bottom-0 w-[380px] z-[65] flex-col bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl transition-transform duration-300 ${isMaterialsPanelOpen ? 'lg:flex translate-x-0' : 'lg:flex lg:translate-x-full lg:pointer-events-none lg:invisible'}`}
+                        className={`hidden fixed left-0 bottom-0 top-[40vh] md:top-[50vh] xl:top-[60vh] w-[40%] z-[65] flex-col bg-white dark:bg-slate-900 border-t border-r border-slate-200 dark:border-slate-800 rounded-tr-3xl shadow-[5px_-5px_30px_rgba(0,0,0,0.1)] transition-transform duration-300 ${isMaterialsPanelOpen ? 'lg:flex translate-y-0' : 'lg:flex translate-y-full pointer-events-none invisible'}`}
                     >
                         {/* Header */}
                         <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-800 shrink-0">
@@ -1331,78 +1334,80 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
             <div className="h-20 lg:hidden"></div>
 
             {/* Practice Configuration Modal */}
-            {showPracticeConfigModal && (
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-md w-full border border-slate-200 dark:border-slate-800 animate-in slide-in-from-bottom-4 duration-300">
-                        {/* Header */}
-                        <div className="p-6 border-b border-slate-200 dark:border-slate-800">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
-                                        <i className="fas fa-dumbbell text-2xl text-blue-500"></i>
+            {
+                showPracticeConfigModal && (
+                    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+                        <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-md w-full border border-slate-200 dark:border-slate-800 animate-in slide-in-from-bottom-4 duration-300">
+                            {/* Header */}
+                            <div className="p-6 border-b border-slate-200 dark:border-slate-800">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+                                            <i className="fas fa-dumbbell text-2xl text-blue-500"></i>
+                                        </div>
+                                        <div>
+                                            <h3 className="text-xl font-black text-slate-900 dark:text-white">Modo Prática</h3>
+                                            <p className="text-xs text-slate-500 dark:text-slate-400">Configure seu treino</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <h3 className="text-xl font-black text-slate-900 dark:text-white">Modo Prática</h3>
-                                        <p className="text-xs text-slate-500 dark:text-slate-400">Configure seu treino</p>
+                                    <button
+                                        onClick={() => setShowPracticeConfigModal(false)}
+                                        className="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"
+                                    >
+                                        <i className="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Content */}
+                            <div className="p-6 space-y-6">
+                                {/* Info Alert */}
+                                <div className="p-4 bg-blue-50 dark:bg-blue-500/5 border border-blue-200 dark:border-blue-500/20 rounded-2xl">
+                                    <div className="flex gap-3">
+                                        <i className="fas fa-info-circle text-blue-500 mt-0.5"></i>
+                                        <div className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
+                                            <p className="font-bold">Este modo NÃO concede XP nem afeta seu ranking.</p>
+                                            <p className="text-blue-600 dark:text-blue-400">Use para treinar e testar seus conhecimentos!</p>
+                                        </div>
                                     </div>
                                 </div>
+
+                                {/* Question Quantity Selector */}
+                                <div className="space-y-3">
+                                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300">
+                                        Quantas questões você quer praticar?
+                                    </label>
+                                    <div className="grid grid-cols-3 gap-3">
+                                        {[5, 10, 15, 20, 25, 30].map(count => (
+                                            <button
+                                                key={count}
+                                                onClick={() => setPracticeQuestionCount(count)}
+                                                className={`p-4 rounded-xl font-bold text-sm transition-all ${practiceQuestionCount === count
+                                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 scale-105'
+                                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                                                    }`}
+                                            >
+                                                {count}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Start Button */}
                                 <button
-                                    onClick={() => setShowPracticeConfigModal(false)}
-                                    className="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"
+                                    onClick={handleStartPracticeQuiz}
+                                    className="w-full py-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold shadow-lg shadow-blue-600/20 transition-all active:scale-95"
                                 >
-                                    <i className="fas fa-times"></i>
+                                    <div className="flex items-center justify-center gap-2">
+                                        <i className="fas fa-play"></i>
+                                        <span>Iniciar Prática ({practiceQuestionCount} questões)</span>
+                                    </div>
                                 </button>
                             </div>
                         </div>
-
-                        {/* Content */}
-                        <div className="p-6 space-y-6">
-                            {/* Info Alert */}
-                            <div className="p-4 bg-blue-50 dark:bg-blue-500/5 border border-blue-200 dark:border-blue-500/20 rounded-2xl">
-                                <div className="flex gap-3">
-                                    <i className="fas fa-info-circle text-blue-500 mt-0.5"></i>
-                                    <div className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
-                                        <p className="font-bold">Este modo NÃO concede XP nem afeta seu ranking.</p>
-                                        <p className="text-blue-600 dark:text-blue-400">Use para treinar e testar seus conhecimentos!</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Question Quantity Selector */}
-                            <div className="space-y-3">
-                                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300">
-                                    Quantas questões você quer praticar?
-                                </label>
-                                <div className="grid grid-cols-3 gap-3">
-                                    {[5, 10, 15, 20, 25, 30].map(count => (
-                                        <button
-                                            key={count}
-                                            onClick={() => setPracticeQuestionCount(count)}
-                                            className={`p-4 rounded-xl font-bold text-sm transition-all ${practiceQuestionCount === count
-                                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 scale-105'
-                                                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-                                                }`}
-                                        >
-                                            {count}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Start Button */}
-                            <button
-                                onClick={handleStartPracticeQuiz}
-                                className="w-full py-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold shadow-lg shadow-blue-600/20 transition-all active:scale-95"
-                            >
-                                <div className="flex items-center justify-center gap-2">
-                                    <i className="fas fa-play"></i>
-                                    <span>Iniciar Prática ({practiceQuestionCount} questões)</span>
-                                </div>
-                            </button>
-                        </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {
                 showQuizOptionsModal && quiz && (
@@ -1457,38 +1462,40 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
             }
 
             {/* Image Viewer Modal */}
-            {showImageViewerModal && (
-                <div
-                    className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-in fade-in duration-200"
-                    onClick={() => setShowImageViewerModal(false)}
-                >
-                    <div className="relative max-w-7xl max-h-[90vh] w-full h-full flex items-center justify-center">
-                        {/* Close Button */}
-                        <button
-                            onClick={() => setShowImageViewerModal(false)}
-                            className="absolute top-4 right-4 z-10 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md text-white flex items-center justify-center transition-all hover:scale-110 shadow-2xl border border-white/20"
-                            title="Fechar"
-                        >
-                            <i className="fas fa-times text-xl"></i>
-                        </button>
+            {
+                showImageViewerModal && (
+                    <div
+                        className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-in fade-in duration-200"
+                        onClick={() => setShowImageViewerModal(false)}
+                    >
+                        <div className="relative max-w-7xl max-h-[90vh] w-full h-full flex items-center justify-center">
+                            {/* Close Button */}
+                            <button
+                                onClick={() => setShowImageViewerModal(false)}
+                                className="absolute top-4 right-4 z-10 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md text-white flex items-center justify-center transition-all hover:scale-110 shadow-2xl border border-white/20"
+                                title="Fechar"
+                            >
+                                <i className="fas fa-times text-xl"></i>
+                            </button>
 
-                        {/* Image */}
-                        <img
-                            src={viewerImageUrl}
-                            alt="Visualização"
-                            className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl transition-transform duration-300 hover:scale-105"
-                            onClick={(e) => e.stopPropagation()}
-                        />
+                            {/* Image */}
+                            <img
+                                src={viewerImageUrl}
+                                alt="Visualização"
+                                className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl transition-transform duration-300 hover:scale-105"
+                                onClick={(e) => e.stopPropagation()}
+                            />
 
-                        {/* Image Info */}
-                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-md px-6 py-3 rounded-full border border-white/10">
-                            <p className="text-xs text-white/80 font-medium">
-                                Clique fora da imagem para fechar
-                            </p>
+                            {/* Image Info */}
+                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-md px-6 py-3 rounded-full border border-white/10">
+                                <p className="text-xs text-white/80 font-medium">
+                                    Clique fora da imagem para fechar
+                                </p>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
         </div >
     );
 };
