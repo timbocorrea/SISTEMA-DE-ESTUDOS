@@ -4,7 +4,6 @@ import WeeklySummary from './dashboard/WeeklySummary';
 import DashboardHeader from './dashboard/DashboardHeader';
 import CourseCard from './dashboard/CourseCard';
 import DashboardSkeleton from './skeletons/DashboardSkeleton';
-import { motion } from 'framer-motion';
 import { useCourse } from '../contexts/CourseContext';
 
 interface StudentDashboardProps {
@@ -95,20 +94,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
       });
   }, [courses, enrolledCourseIds]);
 
-  const containerVars = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
-  };
-
-  const itemVars = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0 }
-  };
 
   return (
     <div className="p-4 md:p-8 max-w-[1600px] mx-auto">
@@ -176,11 +161,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
               )}
             </div>
           ) : (
-            <motion.div
+            <div
               className={`gap-6 p-1 overflow-y-auto max-h-[700px] scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600 scrollbar-track-transparent pr-2 ${viewMode === 'list' ? 'flex flex-col' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3'}`} // Modified for scrollable 2-row view
-              variants={containerVars}
-              initial="hidden"
-              animate="show"
             >
               {courses.map(course => {
                 const progress = computeCourseProgress(course);
@@ -189,16 +171,13 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 // RENDERIZAÇÃO: MODO LISTA
                 if (viewMode === 'list') {
                   return (
-                    <motion.div
+                    <div
                       key={course.id}
-                      layoutId={`course-card-${course.id}`} // Manter para Shared Layout
-                      variants={itemVars} // Aplicar variante
-                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                      onMouseEnter={() => import('./CourseLayout')}
                       onClick={() => onCourseClick(course.id)}
                       className="bg-white dark:bg-black/20 backdrop-blur-md rounded-2xl p-4 border border-slate-200 dark:border-white/5 shadow-sm hover:shadow-lg hover:border-indigo-500/30 transition-all group flex items-center gap-6 cursor-pointer relative overflow-hidden"
                     >
-                      <motion.div
-                        layoutId={`course-cover-${course.id}`}
+                      <div
                         className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-slate-800 relative group-hover:scale-105 transition-transform duration-300"
                       >
                         {course.imageUrl ? (
@@ -208,7 +187,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             <i className="fas fa-book-open text-xs"></i>
                           </div>
                         )}
-                      </motion.div>
+                      </div>
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-1">
@@ -248,23 +227,21 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                           <i className={`fas ${showEnrollButton && !isEnrolled ? 'fa-plus' : 'fa-play'}`}></i>
                         </button>
                       </div>
-                    </motion.div>
+                    </div>
                   );
                 }
 
                 // RENDERIZAÇÃO: MODO MINIMALISTA
                 if (viewMode === 'minimal') {
                   return (
-                    <motion.div
+                    <div
                       key={course.id}
-                      layoutId={`course-card-${course.id}`} // Mantém layoutId
-                      variants={itemVars} // Aplicar variante
+                      onMouseEnter={() => import('./CourseLayout')}
                       onClick={() => onCourseClick(course.id)}
                       className="bg-white dark:bg-black/20 backdrop-blur-md rounded-2xl p-6 border border-slate-200 dark:border-white/5 shadow-sm hover:border-indigo-500/30 hover:shadow-2xl hover:shadow-indigo-500/10 cursor-pointer transition-all group flex flex-col h-full relative"
                     >
                       <div className="flex items-start justify-between mb-4">
-                        <motion.div
-                          layoutId={`course-cover-${course.id}`}
+                        <div
                           className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-sm ${isEnrolled
                             ? 'bg-indigo-600 text-white shadow-indigo-500/20'
                             : 'bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-white/5'
@@ -273,7 +250,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                           {course.imageUrl ? (
                             <img src={course.imageUrl} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover rounded-2xl" />
                           ) : (<i className="fas fa-book-open"></i>)}
-                        </motion.div>
+                        </div>
                         {isEnrolled && (
                           <div className="bg-emerald-300/70 text-[#002a15] border border-emerald-400/50 p-2 rounded-xl text-xs shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] backdrop-blur-xl">
                             <i className="fas fa-check-circle"></i>
@@ -294,13 +271,13 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                           <div className="h-full bg-gradient-to-r from-emerald-400 to-teal-400 shadow-[0_0_8px_rgba(52,211,153,0.4)] rounded-full" style={{ width: `${progress.percent}%` }}></div>
                         </div>
                       </div>
-                    </motion.div>
+                    </div>
                   );
                 }
 
                 // RENDERIZAÇÃO: MODO CARDS (DEFAULT)
                 return (
-                  <motion.div key={course.id} variants={itemVars}>
+                  <div key={course.id} onMouseEnter={() => import('./CourseLayout')}>
                     <CourseCard
                       course={course}
                       isEnrolled={isEnrolled}
@@ -309,10 +286,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                       onManage={user.role === 'INSTRUCTOR' ? () => onManageCourse?.(course.id) : undefined}
                       useInteractiveHoverButton={true}
                     />
-                  </motion.div>
+                  </div>
                 );
               })}
-            </motion.div>
+            </div>
           )}
         </div>
       </div>

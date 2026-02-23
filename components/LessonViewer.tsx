@@ -24,7 +24,7 @@ import { useAudioPlayer } from '../hooks/useAudioPlayer';
 import { useLessonQuiz } from '../hooks/useLessonQuiz';
 import { useLessonNavigation } from '../hooks/useLessonNavigation';
 import { useStudentAnswers } from '../hooks/useStudentAnswers';
-import { motion } from 'framer-motion';
+import { toast } from 'sonner';
 import { toast } from 'sonner';
 
 interface LessonViewerProps {
@@ -683,8 +683,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
                             {/* Cinema Mode Toggle & Collapse Button */}
                             <div className="flex justify-end gap-2">
-                                <motion.button
-                                    whileTap={{ scale: 0.95 }}
+                                <button
                                     onClick={() => {
                                         setIsVideoCollapsed(true);
                                         onTrackAction?.('Colapsou Vídeo');
@@ -694,9 +693,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                 >
                                     <i className="fas fa-columns text-xs"></i>
                                     <span className="hidden sm:inline">Focar Texto</span>
-                                </motion.button>
-                                <motion.button
-                                    whileTap={{ scale: 0.95 }}
+                                </button>
+                                <button
                                     onClick={() => {
                                         toggleCinemaMode();
                                         onTrackAction?.(isCinemaMode ? 'Desativou Modo Cinema' : 'Ativou Modo Cinema');
@@ -706,7 +704,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                 >
                                     <i className={`fas ${isCinemaMode ? 'fa-compress' : 'fa-expand'} text-xs`}></i>
                                     <span className="hidden sm:inline">{isCinemaMode ? 'Sair do Cinema' : 'Modo Cinema'}</span>
-                                </motion.button>
+                                </button>
                             </div>
 
                             {/* Playlist Vertical de Vídeos */}
@@ -785,8 +783,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                             }}
                         />
                         <div className="flex justify-end">
-                            <motion.button
-                                whileTap={{ scale: 0.95 }}
+                            <button
                                 onClick={() => {
                                     toggleCinemaMode();
                                     onTrackAction?.('Desativou Modo Cinema');
@@ -796,7 +793,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                             >
                                 <i className="fas fa-compress text-xs"></i>
                                 <span className="hidden sm:inline">Sair do Cinema</span>
-                            </motion.button>
+                            </button>
                         </div>
                     </div>
                 )}
@@ -883,8 +880,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
                                 {/* Speed Control Standalone */}
                                 <div className="relative" ref={speedMenuRef}>
-                                    <motion.button
-                                        whileTap={{ scale: 0.95 }}
+                                    <button
                                         onClick={() => setIsSpeedMenuOpen(!isSpeedMenuOpen)}
                                         className={`h-9 px-2 sm:px-3 rounded-lg font-semibold transition-all active:scale-95 flex items-center justify-center gap-1.5 border transition-all duration-300 text-[10px] uppercase tracking-wider shadow-sm hover:shadow-md ${isSpeedMenuOpen
                                             ? 'bg-indigo-600 border-indigo-500 text-white'
@@ -895,7 +891,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                     >
                                         <i className={`fas fa-tachometer-alt text-[10px] ${isSpeedMenuOpen ? 'text-white' : (contentTheme === 'dark' ? 'text-indigo-400' : 'text-indigo-600')}`}></i>
                                         <span className="font-bold">{playbackSpeed === 1.0 ? '1x' : `${playbackSpeed}x`}</span>
-                                    </motion.button>
+                                    </button>
 
                                     {/* Speed Dropdown Menu */}
                                     {isSpeedMenuOpen && (
@@ -931,8 +927,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                 </div>
 
                                 <div className="relative" ref={optionsMenuRef}>
-                                    <motion.button
-                                        whileTap={{ scale: 0.95 }}
+                                    <button
                                         onClick={() => setIsOptionsMenuOpen(!isOptionsMenuOpen)}
                                         className={`h-9 px-2 sm:px-3 rounded-lg font-semibold transition-all active:scale-95 flex items-center justify-center gap-1.5 border transition-all duration-300 text-[10px] uppercase tracking-wider shadow-sm hover:shadow-md ${isOptionsMenuOpen
                                             ? 'bg-indigo-600 border-indigo-500 text-white'
@@ -943,7 +938,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                     >
                                         <i className={`fas fa-cog text-[10px] transition-transform duration-500 ${isOptionsMenuOpen ? 'rotate-90' : ''}`}></i>
                                         <span className="hidden sm:inline">Opções</span>
-                                    </motion.button>
+                                    </button>
 
                                     {/* Dropdown Menu */}
                                     {isOptionsMenuOpen && (
@@ -1175,8 +1170,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                         {/* Header */}
                         <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-800 shrink-0">
                             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-1 flex flex-1">
-                                <motion.button
-                                    whileTap={{ scale: 0.95 }}
+                                <button
                                     onClick={() => {
                                         setSidebarTab('materials');
                                         onTrackAction?.('Acessou os Materiais da aula');
@@ -1187,9 +1181,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                         }`}
                                 >
                                     Materiais
-                                </motion.button>
-                                <motion.button
-                                    whileTap={{ scale: 0.95 }}
+                                </button>
+                                <button
                                     onClick={() => {
                                         setSidebarTab('notes');
                                         onTrackAction?.('Acessou Minhas Notas');
@@ -1200,7 +1193,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                         }`}
                                 >
                                     Minhas Notas
-                                </motion.button>
+                                </button>
                             </div>
                             <button
                                 onClick={() => setIsMaterialsPanelOpen(false)}

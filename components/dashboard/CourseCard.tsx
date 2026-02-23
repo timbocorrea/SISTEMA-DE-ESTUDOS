@@ -1,6 +1,5 @@
 import React from 'react';
 import { Course } from '../../domain/entities';
-import { motion } from 'framer-motion';
 import { ShinyButton } from '../ui/shiny-button';
 import { InteractiveHoverButton } from '../ui/interactive-hover-button';
 
@@ -27,16 +26,12 @@ const CourseCard: React.FC<CourseCardProps> = ({
     const totalLessons = course.modules?.reduce((sum, mod) => sum + (mod.lessons?.length || 0), 0) || 0;
 
     return (
-        <motion.div
-            layoutId={`course-card-${course.id}`}
+        <div
             className="group bg-white dark:bg-black/40 backdrop-blur-md rounded-2xl border border-slate-200 dark:border-white/5 overflow-hidden transition-all duration-300 cursor-pointer flex flex-col h-full relative ring-1 ring-slate-200 dark:ring-white/5 hover:transform-none lg:hover:-translate-y-1 lg:hover:shadow-[0_0_30px_-5px_rgba(99,102,241,0.6)] lg:hover:border-indigo-500/80 lg:dark:hover:shadow-[0_0_30px_-5px_rgba(99,102,241,0.4)] lg:dark:hover:border-indigo-500/80"
             onClick={onClick}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
         >
             {/* Course Image */}
-            <motion.div
-                layoutId={`course-cover-${course.id}`}
+            <div
                 className="relative h-48 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-900 dark:to-slate-800 overflow-hidden flex-shrink-0"
             >
                 {course.imageUrl ? (
@@ -150,7 +145,7 @@ const CourseCard: React.FC<CourseCardProps> = ({
                     )}
                 </div>
             </div>
-        </motion.div>
+        </div>
     );
 };
 

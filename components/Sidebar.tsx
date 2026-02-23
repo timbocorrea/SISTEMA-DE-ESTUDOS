@@ -583,6 +583,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
         <Link
           to="/"
+          onMouseEnter={() => import('./StudentDashboard')}
           onClick={(e) => {
             e.stopPropagation();
             onViewChange('dashboard');
@@ -612,6 +613,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         <div className={`${isActuallyCollapsed ? 'mt-1 pt-1' : ''}`}>
           <Link
             to="/courses"
+            onMouseEnter={() => import('./StudentDashboard')}
             onClick={(e) => {
               e.stopPropagation();
               setCoursesMenuOpen(open => !open);
