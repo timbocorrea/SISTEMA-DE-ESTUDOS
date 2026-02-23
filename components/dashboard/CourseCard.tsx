@@ -62,27 +62,25 @@ const CourseCard: React.FC<CourseCardProps> = ({
                     </div>
                 )}
 
-                {/* Progress Overlay */}
-                {isEnrolled && progress > 0 && (
-                    <div className="absolute bottom-0 left-0 right-0 bg-black/60 backdrop-blur-md border-t border-white/5">
-                        <div className="px-4 py-2">
-                            <div className="flex items-center justify-between text-[10px] text-slate-300 mb-1 font-medium uppercase tracking-wider">
-                                <span>Progresso</span>
-                                <span className="text-white">{progress}%</span>
-                            </div>
-                            <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
-                                <div
-                                    className="h-full bg-gradient-to-r from-emerald-400 to-teal-400 shadow-[0_0_10px_rgba(52,211,153,0.5)] transition-all duration-500 rounded-full"
-                                    style={{ width: `${progress}%` }}
-                                ></div>
-                            </div>
-                        </div>
-                    </div>
-                )}
             </motion.div>
 
             {/* Course Content */}
             <div className="p-5 flex flex-col flex-1 relative">
+                {/* Progress Bar Moved Here */}
+                {isEnrolled && progress > 0 && (
+                    <div className="mb-4">
+                        <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 mb-1 font-bold uppercase tracking-wider">
+                            <span>Progresso</span>
+                            <span className="text-slate-700 dark:text-slate-300">{progress}%</span>
+                        </div>
+                        <div className="w-full h-1.5 bg-slate-200 dark:bg-white/5 rounded-full overflow-hidden">
+                            <div
+                                className="h-full bg-gradient-to-r from-emerald-400 to-teal-400 shadow-[0_0_10px_rgba(52,211,153,0.4)] transition-all duration-500 rounded-full"
+                                style={{ width: `${progress}%` }}
+                            ></div>
+                        </div>
+                    </div>
+                )}
                 <h3 className="text-lg font-black text-slate-800 dark:text-white mb-2 line-clamp-2 leading-tight group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors drop-shadow-sm">
                     {course.title}
                 </h3>

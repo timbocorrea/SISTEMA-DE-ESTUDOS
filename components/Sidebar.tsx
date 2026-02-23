@@ -587,18 +587,25 @@ const Sidebar: React.FC<SidebarProps> = ({
             e.stopPropagation();
             onViewChange('dashboard');
           }}
-          className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-base font-bold tracking-tight group relative ${activeView === 'dashboard'
-            ? 'bg-indigo-50 dark:bg-white/10 text-indigo-600 dark:text-white shadow-lg shadow-indigo-500/10 dark:shadow-white/5 ring-1 ring-indigo-200 dark:ring-white/10'
+          className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all text-base font-bold tracking-tight group relative ${activeView === 'dashboard'
+            ? 'bg-gradient-to-r from-indigo-600 to-teal-600 text-white shadow-lg shadow-indigo-500/40 ring-1 ring-indigo-400/50'
             : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
             } ${isActuallyCollapsed ? 'justify-center' : ''}`}
           title={isActuallyCollapsed ? "Dashboard" : ''}
         >
-          <div className={`transition-transform duration-300 ${activeView === 'dashboard' ? 'scale-110' : 'group-hover:scale-110'}`}>
-            <i className={`fas fa-th-large w-5 text-center ${activeView === 'dashboard' ? 'text-indigo-400' : ''}`}></i>
+          <div className="flex items-center gap-3 min-w-0 relative z-10">
+            <div className={`transition-transform duration-300 ${activeView === 'dashboard' ? 'scale-110' : 'group-hover:scale-110'}`}>
+              <i className={`fas fa-th-large w-5 text-center ${activeView === 'dashboard' ? 'text-white' : ''}`}></i>
+            </div>
+            <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
+              Dashboard
+            </span>
           </div>
-          <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
-            Dashboard
-          </span>
+
+          {/* Active Glow Effect */}
+          {activeView === 'dashboard' && (
+            <div className="absolute inset-0 bg-white/10 animate-pulse pointer-events-none rounded-xl"></div>
+          )}
         </Link>
 
         {/* Courses Menu */}

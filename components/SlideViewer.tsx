@@ -44,8 +44,23 @@ const SlideViewer: React.FC<SlideViewerProps> = ({ title, slides = [], fileUrl, 
                 // and use .mjs for proper ESM loading which is required by pdfjs-dist v4+
                 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
+                // Handle Dropbox CORS issues by converting www.dropbox.com to dl.dropboxusercontent.com
+                let corsFriendlyUrl = fileUrl;
+                if (fileUrl?.includes('dropbox.com')) {
+                    corsFriendlyUrl = fileUrl
+                        .replace('www.dropbox.com', 'dl.dropboxusercontent.com')
+                        .replace('dropbox.com', 'dl.dropboxusercontent.com')
+                        .replace('&raw=1', '')
+                        .replace('dl=0', '');
+
+                    if (!corsFriendlyUrl.includes('raw=1')) {
+                        // Sometimes helps to ensure raw is properly set or append if not present in dropboxusercontent
+                        // actually dropboxusercontent doesn't need raw=1, it parses directly.
+                    }
+                }
+
                 // Load Document
-                const loadingTask = pdfjsLib.getDocument(fileUrl);
+                const loadingTask = pdfjsLib.getDocument(corsFriendlyUrl);
                 const pdf = await loadingTask.promise;
 
                 if (!isMounted) return;
