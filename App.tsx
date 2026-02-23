@@ -130,7 +130,32 @@ const App: React.FC = () => {
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const { theme, toggleTheme } = useTheme();
+
+  // Fullscreen Management
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(err => {
+        console.error(`Error attempting to enable fullscreen: ${err.message}`);
+      });
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
+  };
 
   // Enrollment Modal State
   const [selectedCourseForEnrollment, setSelectedCourseForEnrollment] = useState<string | null>(null);
@@ -433,6 +458,13 @@ const App: React.FC = () => {
 
   const topbarActions = (
     <div className="flex items-center gap-1">
+      <button
+        onClick={toggleFullscreen}
+        className="w-10 h-10 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg transition-colors"
+        title={isFullscreen ? "Sair da Tela Cheia" : "Tela Cheia"}
+      >
+        <i className={`fas ${isFullscreen ? 'fa-compress' : 'fa-expand'}`}></i>
+      </button>
       <button
         onClick={() => setIsSupportOpen(true)}
         className="w-10 h-10 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg transition-colors"
