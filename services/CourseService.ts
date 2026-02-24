@@ -115,12 +115,9 @@ export class CourseService {
     return unlocked;
   }
 
-  public async fetchAvailableCourses(userId: string): Promise<Course[]> {
-    // Legacy: Keeping for backward compatibility if needed, or switch to summary.
-    // Ideally this should use getCoursesSummary but return type is Course[].
-    // Phase 3 Plan says: "Optimize fetchAvailableCourses to return summary only" or we change usage.
-    // Since we created getCoursesSummary in Repo, let's expose it as such.
-    return this.courseRepository.getAllCourses(userId);
+  public async fetchAvailableCourses(userId: string): Promise<any[]> {
+    // Optimized: Use summary to avoid heavy payloads (no content, no content_blocks)
+    return this.courseRepository.getCoursesSummary(userId);
   }
 
   async getCoursesSummary(userId: string): Promise<{
@@ -138,6 +135,10 @@ export class CourseService {
     return this.courseRepository.getCoursesSummary(userId);
   }
 
+  async getCourseProgressSummary(userId: string) {
+    return this.courseRepository.getCourseProgressSummary(userId);
+  }
+
   async getCourseById(courseId: string, userId?: string): Promise<Course> {
     return this.courseRepository.getCourseById(courseId, userId);
   }
@@ -150,6 +151,7 @@ export class CourseService {
    * Busca apenas cursos inscritos
    */
   public async fetchEnrolledCourses(userId: string): Promise<Course[]> {
+    // This already uses getCourseStructure internally in Repo, which is optimized
     return this.courseRepository.getEnrolledCourses(userId);
   }
 
@@ -186,5 +188,12 @@ export class CourseService {
    */
   public async getWeeklyXpHistory(userId: string): Promise<{ date: string; xp: number }[]> {
     return this.courseRepository.getWeeklyXpHistory(userId);
+  }
+
+  /**
+   * Dashboard stats via optimized RPC
+   */
+  public async getDashboardStats(userId: string) {
+    return this.courseRepository.getDashboardStats(userId);
   }
 }

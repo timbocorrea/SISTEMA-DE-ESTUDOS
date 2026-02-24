@@ -1308,4 +1308,30 @@ export class SupabaseCourseRepository implements ICourseRepository {
 
     if (error) throw new DomainError(`Erro ao salvar resposta: ${error.message}`);
   }
+
+  async getDashboardStats(userId: string): Promise<{
+    completed_lessons: number;
+    average_quiz_score: number;
+    total_study_time_seconds: number;
+    xp_total: number;
+    current_level: number;
+  }> {
+    const { data, error } = await this.client.rpc('get_dashboard_stats', {
+      p_user_id: userId
+    });
+
+    if (error) {
+      console.error('⚠️ [REPOSITORY] RPC get_dashboard_stats failed:', error.message);
+      // Fallback for safety (though migration should be applied)
+      return {
+        completed_lessons: 0,
+        average_quiz_score: 0,
+        total_study_time_seconds: 0,
+        xp_total: 0,
+        current_level: 1
+      };
+    }
+
+    return data;
+  }
 }

@@ -142,4 +142,15 @@ export interface ICourseRepository {
    * @returns Array com courseId, título e porcentagem de conclusão
    */
   getCourseProgressSummary(userId: string): Promise<{ courseId: string; title: string; progress: number }[]>;
+
+  /**
+   * Busca estatísticas agregadas do dashboard (via RPC optimized)
+   */
+  getDashboardStats(userId: string): Promise<{
+    completed_lessons: number;
+    average_quiz_score: number;
+    total_study_time_seconds: number;
+    xp_total: number;
+    current_level: number;
+  }>;
 }

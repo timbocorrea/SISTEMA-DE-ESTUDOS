@@ -85,6 +85,19 @@ export const MiniAudioPlayer: React.FC<MiniAudioPlayerProps> = ({ path, url: dir
         setError('Erro na reprodução');
     };
 
+    // Smart Audit Heartbeat
+    useEffect(() => {
+        let interval: NodeJS.Timeout;
+        if (isPlaying) {
+            interval = setInterval(() => {
+                if ((window as any).__reportMediaHeartbeat) {
+                    (window as any).__reportMediaHeartbeat({ type: 'audio', duration: 30 });
+                }
+            }, 30000);
+        }
+        return () => clearInterval(interval);
+    }, [isPlaying]);
+
     return (
         <div className="flex items-center gap-1">
             <audio

@@ -469,7 +469,6 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const menuItems = [
     { id: 'achievements', label: 'Conquistas', icon: 'fas fa-trophy' },
-    { id: 'history', label: 'Histórico', icon: 'fas fa-history' },
     { id: 'audit', label: 'Auditoria (Pais)', icon: 'fas fa-shield-alt' },
     { id: 'buddy', label: 'Buddy AI', icon: 'fas fa-robot' }
   ];

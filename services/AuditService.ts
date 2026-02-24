@@ -1,27 +1,44 @@
-// removed uuid import
+import { createSupabaseClient } from './supabaseClient';
+import { SupabaseClient } from '@supabase/supabase-js';
+
+export interface InteractionStats {
+    total_time: number;
+    active_time: number;
+    idle_time: number;
+    video_time: number;
+    audio_time: number;
+    scroll_depth: number;
+    mouse_clicks: number;
+    keypresses: number;
+}
+
+export interface AuditEvent {
+    type: string;
+    timestamp: string;
+    description: string;
+    metadata?: any;
+}
 
 export interface AuditLogEntry {
     id: string;
-    timestamp: string; // ISO Date
+    timestamp: string;
     path: string;
     pageTitle: string;
-    durationSeconds: number;
-    activeSeconds: number; // Time actually moving mouse/typing
-    idleSeconds: number; // Time AFK
-    activityScore: number; // 0-100%
-    resourceTitle?: string; // e.g. "Aula 01: Introdução"
+    resourceTitle?: string;
+    total_duration_seconds: number;
+    active_duration_seconds?: number;
+    interaction_stats: InteractionStats;
+    events: AuditEvent[];
     device: string;
-    details: string[];
 }
-
-const STORAGE_KEY = 'study_system_audit_logs';
 
 class AuditService {
     private static instance: AuditService;
-    private logs: AuditLogEntry[] = [];
+    private supabase: SupabaseClient;
+    private cachedLogs: any[] = [];
 
     private constructor() {
-        this.loadLogs();
+        this.supabase = createSupabaseClient();
     }
 
     public static getInstance(): AuditService {
@@ -31,54 +48,114 @@ class AuditService {
         return AuditService.instance;
     }
 
-    private loadLogs() {
+    /**
+     * Sends a batch of events and stats to the server via RPC
+     */
+    public async syncBatch(params: {
+        sessionId: string;
+        path: string;
+        pageTitle: string;
+        resourceTitle?: string;
+        newEvents: AuditEvent[];
+        statsDelta: Partial<InteractionStats>;
+    }) {
         try {
-            const stored = localStorage.getItem(STORAGE_KEY);
-            if (stored) {
-                this.logs = JSON.parse(stored);
+            const { data, error } = await this.supabase.rpc('append_audit_log', {
+                p_session_id: params.sessionId,
+                p_path: params.path,
+                p_page_title: params.pageTitle,
+                p_resource_title: params.resourceTitle || null,
+                p_new_events: params.newEvents,
+                p_stats_delta: params.statsDelta
+            });
+
+            if (error) {
+                console.error('[AuditService] RPC Error:', error);
+                // Fallback to local storage or retry logic could go here
+                return null;
             }
-        } catch (e) {
-            console.error('Failed to load audit logs', e);
-            this.logs = [];
+            return data;
+        } catch (err) {
+            console.error('[AuditService] Sync failed:', err);
+            return null;
         }
     }
 
-    private saveLogs() {
-        try {
-            // Keep only last 1000 logs to prevent overflow
-            if (this.logs.length > 1000) {
-                this.logs = this.logs.slice(0, 1000);
-            }
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(this.logs));
-        } catch (e) {
-            console.error('Failed to save audit logs', e);
+    /**
+     * Compatibility method for summary list.
+     * Selects only basic info, excluding heavy JSONB fields (events, interaction_stats).
+     * Implements mandatory pagination and optional user filtering.
+     */
+    public async getLogs(page = 0, limit = 20, userId?: string): Promise<AuditLogEntry[]> {
+        const from = page * limit;
+        const to = from + limit - 1;
+
+        let query = this.supabase
+            .from('audit_logs')
+            .select('id, created_at, path, page_title, resource_title, total_duration_seconds, active_duration_seconds')
+            .order('created_at', { ascending: false })
+            .range(from, to);
+
+        if (userId) {
+            query = query.eq('user_id', userId);
         }
+
+        const { data, error } = await query;
+
+        if (error) {
+            console.error('[AuditService] Failed to fetch logs:', error);
+            return [];
+        }
+
+        return (data || []).map(row => ({
+            id: row.id,
+            timestamp: row.created_at,
+            path: row.path,
+            pageTitle: row.page_title,
+            resourceTitle: row.resource_title,
+            total_duration_seconds: row.total_duration_seconds,
+            active_duration_seconds: row.active_duration_seconds,
+            interaction_stats: {} as InteractionStats, // Summary doesn't have this
+            events: [], // Summary doesn't have this
+            device: 'Unknown'
+        }));
     }
 
-    public logSession(entry: Omit<AuditLogEntry, 'id' | 'timestamp' | 'device'>) {
-        const fullEntry: AuditLogEntry = {
-            ...entry,
-            id: crypto.randomUUID(),
-            timestamp: new Date().toISOString(),
-            device: this.getDeviceInfo()
+    /**
+     * Fetches details for a specific session (on-demand)
+     */
+    public async getSessionDetail(sessionId: string): Promise<AuditLogEntry | null> {
+        const { data, error } = await this.supabase
+            .from('audit_logs')
+            .select('*')
+            .eq('id', sessionId)
+            .single();
+
+        if (error || !data) {
+            console.error('[AuditService] Failed to fetch sub-session detail:', error);
+            return null;
+        }
+
+        return {
+            id: data.id,
+            timestamp: data.created_at,
+            path: data.path,
+            pageTitle: data.page_title,
+            resourceTitle: data.resource_title,
+            total_duration_seconds: data.total_duration_seconds,
+            interaction_stats: data.interaction_stats,
+            events: data.events,
+            device: 'Unknown'
         };
-
-        // Add to beginning
-        this.logs.unshift(fullEntry);
-        this.saveLogs();
-        return fullEntry;
     }
 
-    public getLogs(): AuditLogEntry[] {
-        return this.logs;
+    // Legacy method - can be kept as a wrapper for syncBatch if needed
+    public async logSession(entry: any) {
+        // This is now handled by hooks using syncBatch for granularity
+        console.warn('[AuditService] logSession is deprecated. Use syncBatch.');
     }
 
-    public clearLogs() {
-        this.logs = [];
-        this.saveLogs();
-    }
-
-    private getDeviceInfo(): string {
+    public getDeviceInfo(): string {
         const ua = navigator.userAgent;
         if (/mobile/i.test(ua)) return 'Mobile';
         if (/tablet/i.test(ua)) return 'Tablet';

@@ -52,6 +52,12 @@ const VideoPlayer = React.forwardRef<VideoPlayerRef, VideoPlayerProps>(({ lesson
       if (current % 10 === 0 && current !== 0) {
         onProgress(current);
       }
+      // Smart Audit Heartbeat (every 30s)
+      if (current > 0 && current % 30 === 0) {
+        if ((window as any).__reportMediaHeartbeat) {
+          (window as any).__reportMediaHeartbeat({ type: 'video', duration: 30 });
+        }
+      }
     }
   };
 
@@ -158,6 +164,14 @@ const VideoPlayer = React.forwardRef<VideoPlayerRef, VideoPlayerProps>(({ lesson
                 if (ct % 10 === 0 && ct !== 0) {
                   onProgress(ct);
                 }
+
+                // Smart Audit Heartbeat (every 30s)
+                if (ct > 0 && ct % 30 === 0) {
+                  if ((window as any).__reportMediaHeartbeat) {
+                    (window as any).__reportMediaHeartbeat({ type: 'video', duration: 30 });
+                  }
+                }
+
                 // Mark as watched at 80%
                 if (!videoWatchedReported && dur > 0 && ct / dur >= 0.8) {
                   setVideoWatchedReported(true);

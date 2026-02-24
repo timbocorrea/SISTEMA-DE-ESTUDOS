@@ -2,26 +2,42 @@ import React, { useEffect, useState } from 'react';
 import { auditService, AuditLogEntry } from '../services/AuditService';
 import { NumberTicker } from './ui/number-ticker';
 import { AnimatedDuration } from './ui/animated-duration';
+import { AuditSessionDetailModal } from './AuditSessionDetailModal';
 
 const AuditPage: React.FC = () => {
     const [logs, setLogs] = useState<AuditLogEntry[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isDetailLoading, setIsDetailLoading] = useState(false);
     const [dateFilter, setDateFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
+    const [selectedLog, setSelectedLog] = useState<AuditLogEntry | null>(null);
 
     useEffect(() => {
-        // Load logs on mount
-        const data = auditService.getLogs();
-        setLogs(data);
-        setIsLoading(false);
+        const fetchLogs = async () => {
+            setIsLoading(true);
+            const data = await auditService.getLogs(0, 50);
+            setLogs(data);
+            setIsLoading(false);
+        };
 
-        // Optional: polling for updates if looking at live activity
-        const interval = setInterval(() => {
-            setLogs([...auditService.getLogs()]);
-        }, 5000);
+        fetchLogs();
+
+        const interval = setInterval(async () => {
+            const data = await auditService.getLogs(0, 50);
+            setLogs(data);
+        }, 60000);
 
         return () => clearInterval(interval);
     }, []);
+
+    const handleRowClick = async (logId: string) => {
+        setIsDetailLoading(true);
+        const fullDetail = await auditService.getSessionDetail(logId);
+        if (fullDetail) {
+            setSelectedLog(fullDetail);
+        }
+        setIsDetailLoading(false);
+    };
 
     const filteredLogs = logs.filter(log => {
         const matchesDate = dateFilter ? log.timestamp.startsWith(dateFilter) : true;
@@ -34,7 +50,9 @@ const AuditPage: React.FC = () => {
                 // If a specific status filter is active, exclude non-study pages as they have no status
                 matchesStatus = false;
             } else {
-                const score = log.activityScore;
+                const score = log.total_duration_seconds > 0
+                    ? Math.round(((log.active_duration_seconds || 0) / log.total_duration_seconds) * 100)
+                    : 0;
                 if (statusFilter === 'productive') matchesStatus = score >= 80;
                 else if (statusFilter === 'regular') matchesStatus = score >= 50 && score < 80;
                 else if (statusFilter === 'idle') matchesStatus = score < 50;
@@ -186,7 +204,7 @@ const AuditPage: React.FC = () => {
                         <div>
                             <p className="text-xs uppercase tracking-widest text-slate-500 font-bold">Tempo Útil (Engajado)</p>
                             <h2 className="text-2xl font-black text-slate-800 dark:text-white">
-                                <AnimatedDuration seconds={filteredLogs.reduce((acc, log) => acc + log.activeSeconds, 0)} />
+                                <AnimatedDuration seconds={filteredLogs.reduce((acc, log) => acc + (log.active_duration_seconds || 0), 0)} />
                             </h2>
                         </div>
                     </div>
@@ -200,7 +218,7 @@ const AuditPage: React.FC = () => {
                         <div>
                             <p className="text-xs uppercase tracking-widest text-slate-500 font-bold">Tempo Ocioso (AFK)</p>
                             <h2 className="text-2xl font-black text-slate-800 dark:text-white">
-                                <AnimatedDuration seconds={filteredLogs.reduce((acc, log) => acc + log.idleSeconds, 0)} />
+                                <AnimatedDuration seconds={filteredLogs.reduce((acc, log) => acc + (log.total_duration_seconds - (log.active_duration_seconds || 0)), 0)} />
                             </h2>
                         </div>
                     </div>
@@ -229,7 +247,11 @@ const AuditPage: React.FC = () => {
                                 </tr>
                             ) : (
                                 currentLogs.map((log) => (
-                                    <tr key={log.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
+                                    <tr
+                                        key={log.id}
+                                        onClick={() => handleRowClick(log.id)}
+                                        className={`hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group cursor-pointer ${isDetailLoading ? 'opacity-50 pointer-events-none' : ''}`}
+                                    >
                                         <td className="px-6 py-4 text-slate-600 dark:text-slate-300 font-mono text-xs whitespace-nowrap">
                                             {new Date(log.timestamp).toLocaleTimeString()}
                                             <span className="opacity-50 ml-2">{new Date(log.timestamp).toLocaleDateString()}</span>
@@ -243,20 +265,29 @@ const AuditPage: React.FC = () => {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-center font-mono text-slate-600 dark:text-slate-400">
-                                            {formatDuration(log.durationSeconds)}
+                                            {formatDuration(log.total_duration_seconds)}
                                         </td>
                                         <td className="px-6 py-4 text-center font-mono">
                                             {isProductiveStudyPage(log.path) ? (
                                                 <>
-                                                    <span className={getScoreColor(log.activityScore)}>
-                                                        {formatDuration(log.activeSeconds)}
-                                                    </span>
-                                                    <div className="w-16 h-1 bg-slate-200 dark:bg-white/10 rounded-full mx-auto mt-1 overflow-hidden">
-                                                        <div
-                                                            className={`h-full ${log.activityScore >= 80 ? 'bg-emerald-400' : log.activityScore >= 50 ? 'bg-amber-400' : 'bg-red-400'}`}
-                                                            style={{ width: `${log.activityScore}%` }}
-                                                        ></div>
-                                                    </div>
+                                                    {(() => {
+                                                        const score = log.total_duration_seconds > 0
+                                                            ? Math.round(((log.active_duration_seconds || 0) / log.total_duration_seconds) * 100)
+                                                            : 0;
+                                                        return (
+                                                            <>
+                                                                <span className={getScoreColor(score)}>
+                                                                    {formatDuration(log.active_duration_seconds || 0)}
+                                                                </span>
+                                                                <div className="w-16 h-1 bg-slate-200 dark:bg-white/10 rounded-full mx-auto mt-1 overflow-hidden">
+                                                                    <div
+                                                                        className={`h-full ${score >= 80 ? 'bg-emerald-400' : score >= 50 ? 'bg-amber-400' : 'bg-red-400'}`}
+                                                                        style={{ width: `${score}%` }}
+                                                                    ></div>
+                                                                </div>
+                                                            </>
+                                                        );
+                                                    })()}
                                                 </>
                                             ) : (
                                                 <span className="text-slate-400 dark:text-slate-500 opacity-60">-</span>
@@ -264,9 +295,16 @@ const AuditPage: React.FC = () => {
                                         </td>
                                         <td className="px-6 py-4 text-center">
                                             {isProductiveStudyPage(log.path) ? (
-                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border capitalize ${getScoreBadge(log.activityScore)}`}>
-                                                    {log.activityScore >= 80 ? 'Produtivo' : log.activityScore >= 50 ? 'Regular' : 'Ocioso/AFK'}
-                                                </span>
+                                                (() => {
+                                                    const score = log.total_duration_seconds > 0
+                                                        ? Math.round(((log.active_duration_seconds || 0) / log.total_duration_seconds) * 100)
+                                                        : 0;
+                                                    return (
+                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border capitalize ${getScoreBadge(score)}`}>
+                                                            {score >= 80 ? 'Produtivo' : score >= 50 ? 'Regular' : 'Ocioso/AFK'}
+                                                        </span>
+                                                    );
+                                                })()
                                             ) : (
                                                 <span className="text-xs font-medium text-slate-400 dark:text-slate-500 opacity-60">N/A</span>
                                             )}
@@ -331,6 +369,14 @@ const AuditPage: React.FC = () => {
                     </div>
                 )}
             </div>
+
+            {/* Modal de Detalhes da Sessão */}
+            {selectedLog && (
+                <AuditSessionDetailModal
+                    log={selectedLog}
+                    onClose={() => setSelectedLog(null)}
+                />
+            )}
         </div>
     );
 };

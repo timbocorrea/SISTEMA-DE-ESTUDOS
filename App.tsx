@@ -25,7 +25,6 @@ const AuditPage = React.lazy(() => import('./components/AuditPage'));
 const CourseEnrollmentModal = React.lazy(() => import('./components/CourseEnrollmentModal'));
 const LessonContentEditorPage = React.lazy(() => import('./components/LessonContentEditorPage'));
 const LessonViewer = React.lazy(() => import('./components/LessonViewer')); // If used? It was imported but not clearly used in Routes view. Ah, not in Routes.
-const HistoryPage = React.lazy(() => import('./components/HistoryPage'));
 // Duplicate PendingApprovalScreen removed
 const SystemHealth = React.lazy(() => import('./components/SystemHealth').then(module => ({ default: module.SystemHealth }))); // Check if named export
 const CourseLayout = React.lazy(() => import('./components/CourseLayout'));
@@ -593,7 +592,6 @@ const App: React.FC = () => {
 
               {/* Feature Routes */}
               <Route path="/achievements" element={<AchievementsPage user={user} course={activeCourse} adminService={adminService} />} />
-              <Route path="/history" element={<HistoryPageWrapper adminService={adminService} userId={user.id} />} />
               <Route path="/buddy" element={<BuddyFullPage />} />
               <Route path="/audit" element={<AuditPage />} />
 
@@ -769,51 +767,6 @@ const App: React.FC = () => {
 
     </div>
   );
-};
-
-// History Wrapper
-const HistoryPageWrapper: React.FC<{ adminService: AdminService; userId: string }> = ({ adminService, userId }) => {
-  const [history, setHistory] = useState<HistoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    adminService.getXpHistory(userId)
-      .then(logs => {
-        const formattedHistory = logs.map(log => {
-          const date = new Date(log.created_at).toLocaleString('pt-BR');
-
-          let text = log.description || 'Atividade registrada';
-          let path: string | undefined = undefined;
-
-          // Try to parse JSON description
-          if (log.description && (log.description.startsWith('{') || log.description.startsWith('['))) {
-            try {
-              const parsed = JSON.parse(log.description);
-              if (parsed.text) text = parsed.text;
-              if (parsed.path) path = parsed.path;
-            } catch (e) {
-              // ignore
-            }
-          }
-
-          return {
-            text,
-            date,
-            points: log.amount,
-            path
-          };
-        });
-        setHistory(formattedHistory);
-      })
-      .catch(err => {
-        console.error("Failed to load history", err);
-      })
-      .finally(() => setLoading(false));
-  }, [adminService, userId]);
-
-  if (loading) return <div className="p-8 text-slate-500 text-center">Carregando histórico...</div>;
-
-  return <HistoryPage history={history} />;
 };
 
 // End of App 

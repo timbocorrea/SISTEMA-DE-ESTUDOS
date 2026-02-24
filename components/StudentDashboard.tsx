@@ -4,6 +4,7 @@ import WeeklySummary from './dashboard/WeeklySummary';
 import DashboardHeader from './dashboard/DashboardHeader';
 import CourseCard from './dashboard/CourseCard';
 import DashboardSkeleton from './skeletons/DashboardSkeleton';
+import RecentActivity from './dashboard/RecentActivity';
 import { useCourse } from '../contexts/CourseContext';
 
 interface StudentDashboardProps {
@@ -81,18 +82,14 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
   }, [user?.id, courseService]);
 
   // Calculate Course Progress for Charts
-  const courseProgressData = React.useMemo(() => {
-    return courses
-      .filter(c => enrolledCourseIds.includes(c.id))
-      .map(c => {
-        const stats = computeCourseProgress(c);
-        return {
-          courseId: c.id,
-          title: c.title,
-          progress: stats.percent
-        };
-      });
-  }, [courses, enrolledCourseIds]);
+  const [courseProgressData, setCourseProgressData] = useState<{ courseId: string; title: string; progress: number }[]>([]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    courseService.getCourseProgressSummary(user.id)
+      .then(setCourseProgressData)
+      .catch(console.error);
+  }, [user?.id, courseService]);
 
 
   return (
@@ -103,13 +100,14 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
       {/* Main Content Grid (2 Columns) */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mt-8">
 
-        {/* LEFT COLUMN: Graphical Data (1/3 width) - Reordered as requested */}
+        {/* LEFT COLUMN: Graphical Data & Recent Activity (1/3 width) - Reordered as requested */}
         <div className="xl:col-span-1">
-          <div className="sticky top-8">
+          <div className="sticky top-8 space-y-6">
             <WeeklySummary
               xpHistory={xpHistory}
               courseProgress={courseProgressData}
             />
+            <RecentActivity user={user} />
           </div>
         </div>
 
@@ -165,7 +163,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
               className={`gap-6 p-1 overflow-y-auto max-h-[700px] scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600 scrollbar-track-transparent pr-2 ${viewMode === 'list' ? 'flex flex-col' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3'}`} // Modified for scrollable 2-row view
             >
               {courses.map(course => {
-                const progress = computeCourseProgress(course);
+                const progressItem = courseProgressData.find(p => p.courseId === course.id);
+                const percent = progressItem?.progress ?? 0;
                 const isEnrolled = enrolledCourseIds.includes(course.id);
 
                 // RENDERIZAÇÃO: MODO LISTA
@@ -202,20 +201,17 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                         </div>
                         <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
                           <span className="flex items-center gap-1.5">
-                            <i className="fas fa-layer-group text-slate-500"></i> {course.modules.length} módulos
-                          </span>
-                          <span className="flex items-center gap-1.5">
-                            <i className="fas fa-tasks text-slate-500"></i> {progress.completed}/{progress.total} aulas
+                            <i className="fas fa-tasks text-slate-500"></i> {isEnrolled ? 'Inscrito' : 'Disponível'}
                           </span>
                         </div>
                       </div>
 
                       <div className="w-32 hidden sm:block">
                         <div className="flex justify-between text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">
-                          <span>{progress.percent}%</span>
+                          <span>{percent}%</span>
                         </div>
                         <div className="w-full h-1.5 bg-slate-200 dark:bg-white/5 rounded-full overflow-hidden">
-                          <div className="h-full bg-gradient-to-r from-emerald-400 to-teal-400 shadow-[0_0_8px_rgba(52,211,153,0.4)] rounded-full" style={{ width: `${progress.percent}%` }}></div>
+                          <div className="h-full bg-gradient-to-r from-emerald-400 to-teal-400 shadow-[0_0_8px_rgba(52,211,153,0.4)] rounded-full" style={{ width: `${percent}%` }}></div>
                         </div>
                       </div>
 
@@ -265,10 +261,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                       <div className="mt-auto space-y-3 pt-4 border-t border-slate-200 dark:border-white/5">
                         <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400">
                           <span>Progresso</span>
-                          <span className="text-slate-800 dark:text-white">{progress.percent}%</span>
+                          <span className="text-slate-800 dark:text-white">{percent}%</span>
                         </div>
                         <div className="w-full h-1.5 bg-slate-200 dark:bg-white/5 rounded-full overflow-hidden">
-                          <div className="h-full bg-gradient-to-r from-emerald-400 to-teal-400 shadow-[0_0_8px_rgba(52,211,153,0.4)] rounded-full" style={{ width: `${progress.percent}%` }}></div>
+                          <div className="h-full bg-gradient-to-r from-emerald-400 to-teal-400 shadow-[0_0_8px_rgba(52,211,153,0.4)] rounded-full" style={{ width: `${percent}%` }}></div>
                         </div>
                       </div>
                     </div>
@@ -281,7 +277,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     <CourseCard
                       course={course}
                       isEnrolled={isEnrolled}
-                      progress={progress.percent}
+                      progress={percent}
                       onClick={() => onCourseClick(course.id)}
                       onManage={user.role === 'INSTRUCTOR' ? () => onManageCourse?.(course.id) : undefined}
                       useInteractiveHoverButton={true}
