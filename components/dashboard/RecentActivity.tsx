@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { createSupabaseClient } from '../../services/supabaseClient';
+import { auditService } from '../../services/AuditService';
 import { User } from '../../domain/entities';
 
 interface RecentActivityProps {
@@ -24,16 +24,8 @@ const RecentActivity: React.FC<RecentActivityProps> = ({ user }) => {
 
             setLoading(true);
             try {
-                const supabase = createSupabaseClient();
-                const { data, error } = await supabase
-                    .from('audit_logs')
-                    .select('id, path, page_title, resource_title, created_at')
-                    .eq('user_id', user.id)
-                    .order('created_at', { ascending: false })
-                    .limit(5);
-
-                if (error) throw error;
-                setActivities(data || []);
+                const data = await auditService.getRecentActivity(user.id);
+                setActivities(data);
             } catch (err) {
                 console.error('Failed to load recent activity', err);
             } finally {

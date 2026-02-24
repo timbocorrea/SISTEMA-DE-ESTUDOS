@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { createSupabaseClient } from '../services/supabaseClient';
 import { toast } from 'sonner';
 
 interface FileInfo {
@@ -31,7 +30,7 @@ const FileManagement: React.FC<FileManagementProps> = ({ path, onPathChange }) =
     const currentPath = path !== undefined ? path : internalPath;
     const setCurrentPath = onPathChange || setInternalPath;
 
-    const supabase = createSupabaseClient();
+    
 
     useEffect(() => {
         loadFiles(currentPath);

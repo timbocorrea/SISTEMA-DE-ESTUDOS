@@ -1,3 +1,4 @@
+import { courseRepository } from '../services/Dependencies';
 import React, { useState } from 'react';
 import { Quiz, QuizQuestion } from '../domain/quiz-entities';
 import { toast } from 'sonner';
@@ -75,11 +76,7 @@ const QuizModal: React.FC<QuizModalProps> = ({ quiz, isOpen, onClose, onSubmit, 
 
         setIsReporting(true);
         try {
-            const { createSupabaseClient } = await import('../services/supabaseClient');
-            const { SupabaseCourseRepository } = await import('../repositories/SupabaseCourseRepository');
-
-            const supabase = createSupabaseClient();
-            const repo = new SupabaseCourseRepository(supabase);
+            const repo = courseRepository;
             const { data: { user } } = await supabase.auth.getUser();
 
             if (!user) throw new Error('Usuário não autenticado');

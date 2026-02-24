@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { auditService, AuditLogEntry } from '../services/AuditService';
-import { NumberTicker } from './ui/number-ticker';
-import { AnimatedDuration } from './ui/animated-duration';
-import { AuditSessionDetailModal } from './AuditSessionDetailModal';
+import { auditService, AuditLogEntry } from '@/services/AuditService';
+import { NumberTicker } from '@/components/ui/number-ticker';
+import { AnimatedDuration } from '@/components/ui/animated-duration';
+import { AuditSessionDetailModal } from '@/components/AuditSessionDetailModal';
 
 const AuditPage: React.FC = () => {
     const [logs, setLogs] = useState<AuditLogEntry[]>([]);

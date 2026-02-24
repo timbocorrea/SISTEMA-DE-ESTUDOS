@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { Lesson } from '../domain/entities';
-import { activityMonitor } from '../services/ActivityMonitor';
+import { Lesson } from '@/domain/entities';
+import { activityMonitor } from '@/services/ActivityMonitor';
 
 interface VideoPlayerProps {
   lesson: Lesson;

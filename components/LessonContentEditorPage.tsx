@@ -1,5 +1,5 @@
+import { courseRepository } from '../services/Dependencies';
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { createSupabaseClient } from '../services/supabaseClient';
 import { LessonRecord, LessonResourceRecord } from '../domain/admin';
 import ResourceUploadForm from './ResourceUploadForm';
 import { SupabaseAdminRepository } from '../repositories/SupabaseAdminRepository';
@@ -7,7 +7,7 @@ import { LessonResource } from '../domain/entities';
 import QuizEditor from './QuizEditor';
 import { LessonRequirementsEditor } from './LessonRequirementsEditor';
 import { Quiz, QuizQuestion, QuizOption } from '../domain/quiz-entities';
-import { SupabaseCourseRepository } from '../repositories/SupabaseCourseRepository'; // Ajuste conforme necessário recuperando do context
+// Ajuste conforme necessário recuperando do context
 import { marked } from 'marked'; // Para conversão de Markdown para HTML
 import { toast } from 'sonner';
 import DropboxAudioBrowser, { DropboxFile } from './DropboxAudioBrowser';
@@ -991,8 +991,8 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
             console.log('🔍 [QUIZ DEBUG] Iniciando busca de quiz para aula:', lesson.id);
 
             try {
-                const supabase = createSupabaseClient();
-                const courseRepo = new SupabaseCourseRepository(supabase);
+                
+                const courseRepo = courseRepository;
 
                 const quiz = await courseRepo.getQuizByLessonId(lesson.id);
 
@@ -1016,8 +1016,8 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
         async function loadRequirements() {
             setLoadingRequirements(true);
             try {
-                const supabase = createSupabaseClient();
-                const courseRepo = new SupabaseCourseRepository(supabase);
+                
+                const courseRepo = courseRepository;
                 const reqs = await courseRepo.getLessonRequirements(lesson.id);
                 setLessonRequirements(reqs);
                 console.log('✅ Requisitos carregados:', reqs);
@@ -1200,8 +1200,8 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
     const handleCreateQuiz = async (quizData: any) => {
         try {
-            const supabase = createSupabaseClient();
-            const courseRepo = new SupabaseCourseRepository(supabase);
+            
+            const courseRepo = courseRepository;
 
             const quiz = new Quiz(
                 existingQuiz?.id || (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2)),
@@ -1257,8 +1257,8 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
         setIsTogglingRelease(true);
         try {
-            const supabase = createSupabaseClient();
-            const courseRepo = new SupabaseCourseRepository(supabase);
+            
+            const courseRepo = courseRepository;
 
             const newReleaseState = !existingQuiz.isManuallyReleased;
             await courseRepo.toggleQuizRelease(existingQuiz.id, newReleaseState);
@@ -1307,8 +1307,8 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
     const handleSaveRequirements = async (requirements: import('../domain/lesson-requirements').LessonProgressRequirements) => {
         try {
-            const supabase = createSupabaseClient();
-            const courseRepo = new SupabaseCourseRepository(supabase);
+            
+            const courseRepo = courseRepository;
 
             await courseRepo.saveLessonRequirements(requirements);
             setLessonRequirements(requirements);
@@ -1443,7 +1443,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
         setIsSaving(true);
         try {
             // Garantir token JWT atualizado antes de salvar
-            const supabase = createSupabaseClient();
+            
             await supabase.auth.getSession();
 
             const htmlContent = editorRef.current?.innerHTML || '';
@@ -2975,7 +2975,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
             setUploadProgress(0);
 
             // Criar client Supabase
-            const supabase = createSupabaseClient();
+            
 
             // Nome único para o arquivo
             const timestamp = Date.now();
@@ -3030,7 +3030,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
     const handleImageUpload = async (file: File) => {
         try {
             setUploadingMedia(true);
-            const supabase = createSupabaseClient();
+            
 
             const timestamp = Date.now();
             const fileExt = file.name.split('.').pop();
@@ -4856,7 +4856,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
                                                                                             const toastId = toast.loading(`Enviando ${file.name}...`);
                                                                                             try {
-                                                                                                const supabase = createSupabaseClient();
+                                                                                                
                                                                                                 const timestamp = Date.now();
                                                                                                 const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
                                                                                                 const filePath = `slides/${timestamp}-${safeName}`;
@@ -5619,7 +5619,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                                 setLoadingRequirements(true);
                                                 setShowQuizManagementModal(false);
                                                 try {
-                                                    const supabase = createSupabaseClient();
+                                                    
                                                     const { data, error } = await supabase
                                                         .from('lesson_progress_requirements')
                                                         .select('*')

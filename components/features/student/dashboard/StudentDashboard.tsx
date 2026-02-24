@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Course, User } from '../domain/entities';
-import WeeklySummary from './dashboard/WeeklySummary';
-import DashboardHeader from './dashboard/DashboardHeader';
-import CourseCard from './dashboard/CourseCard';
-import DashboardSkeleton from './skeletons/DashboardSkeleton';
-import RecentActivity from './dashboard/RecentActivity';
-import { useCourse } from '../contexts/CourseContext';
+import { Course, User } from '@/domain/entities';
+import WeeklySummary from '@/components/dashboard/WeeklySummary';
+import DashboardHeader from '@/components/dashboard/DashboardHeader';
+import CourseCard from '@/components/dashboard/CourseCard';
+import DashboardSkeleton from '@/components/skeletons/DashboardSkeleton';
+import RecentActivity from '@/components/dashboard/RecentActivity';
+import { useCourse } from '@/contexts/CourseContext';
 
 interface StudentDashboardProps {
   user: User;
@@ -172,7 +172,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   return (
                     <div
                       key={course.id}
-                      onMouseEnter={() => import('./CourseLayout')}
+                      onMouseEnter={() => import('@/components/CourseLayout')}
                       onClick={() => onCourseClick(course.id)}
                       className="bg-white dark:bg-black/20 backdrop-blur-md rounded-2xl p-4 border border-slate-200 dark:border-white/5 shadow-sm hover:shadow-lg hover:border-indigo-500/30 transition-all group flex items-center gap-6 cursor-pointer relative overflow-hidden"
                     >
@@ -232,7 +232,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   return (
                     <div
                       key={course.id}
-                      onMouseEnter={() => import('./CourseLayout')}
+                      onMouseEnter={() => import('@/components/CourseLayout')}
                       onClick={() => onCourseClick(course.id)}
                       className="bg-white dark:bg-black/20 backdrop-blur-md rounded-2xl p-6 border border-slate-200 dark:border-white/5 shadow-sm hover:border-indigo-500/30 hover:shadow-2xl hover:shadow-indigo-500/10 cursor-pointer transition-all group flex flex-col h-full relative"
                     >
@@ -273,7 +273,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                 // RENDERIZAÇÃO: MODO CARDS (DEFAULT)
                 return (
-                  <div key={course.id} onMouseEnter={() => import('./CourseLayout')}>
+                  <div key={course.id} onMouseEnter={() => import('@/components/CourseLayout')}>
                     <CourseCard
                       course={course}
                       isEnrolled={isEnrolled}

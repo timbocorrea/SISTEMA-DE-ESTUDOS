@@ -102,8 +102,7 @@ const BuddyContextModal: React.FC<BuddyContextModalProps> = ({ isOpen, onClose, 
 
         try {
             // Use Supabase Edge Function
-            const { createSupabaseClient } = await import('../services/supabaseClient');
-            const supabase = createSupabaseClient();
+            
 
             // Attempt 1: Edge Function
             const { data, error } = await supabase.functions.invoke('ask-ai', {

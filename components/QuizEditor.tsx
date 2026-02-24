@@ -1,3 +1,4 @@
+import { courseRepository, questionBankRepository } from '../services/Dependencies';
 import React, { useState, useRef } from 'react';
 import { Quiz, QuizQuestion, QuizOption } from '../domain/quiz-entities';
 import { LessonResource } from '../domain/entities';
@@ -67,9 +68,7 @@ const QuizEditor: React.FC<QuizEditorProps> = ({ lessonId, existingQuiz, onSave,
         if (!usePool) return;
         setIsLoadingBank(true);
         try {
-            const { createSupabaseClient } = await import('../services/supabaseClient');
-            const { SupabaseQuestionBankRepository } = await import('../repositories/SupabaseQuestionBankRepository');
-            const repo = new SupabaseQuestionBankRepository(createSupabaseClient());
+            const repo = questionBankRepository;
             // Filter by lesson, module or course depending on what's available
             const results = await repo.getQuestions({
                 lessonId: lessonId || undefined,
@@ -97,11 +96,7 @@ const QuizEditor: React.FC<QuizEditorProps> = ({ lessonId, existingQuiz, onSave,
 
         setIsLoadingReports(true);
         try {
-            const { createSupabaseClient } = await import('../services/supabaseClient');
-            const { SupabaseCourseRepository } = await import('../repositories/SupabaseCourseRepository');
-
-            const supabase = createSupabaseClient();
-            const repo = new SupabaseCourseRepository(supabase);
+            const repo = courseRepository;
 
             const fetchedReports = await repo.getQuizReports(existingQuiz.id);
             setReports(fetchedReports);
@@ -243,9 +238,7 @@ const QuizEditor: React.FC<QuizEditorProps> = ({ lessonId, existingQuiz, onSave,
             }
 
             const syncAndAdd = (async () => {
-                const { createSupabaseClient } = await import('../services/supabaseClient');
-                const { SupabaseQuestionBankRepository } = await import('../repositories/SupabaseQuestionBankRepository');
-                const repo = new SupabaseQuestionBankRepository(createSupabaseClient());
+                const repo = questionBankRepository;
 
                 await repo.createQuestions(normalized, {
                     courseId,
@@ -286,9 +279,7 @@ const QuizEditor: React.FC<QuizEditorProps> = ({ lessonId, existingQuiz, onSave,
             const normalized = normalizeQuestions(parsedQuestions);
 
             const syncAndAdd = (async () => {
-                const { createSupabaseClient } = await import('../services/supabaseClient');
-                const { SupabaseQuestionBankRepository } = await import('../repositories/SupabaseQuestionBankRepository');
-                const repo = new SupabaseQuestionBankRepository(createSupabaseClient());
+                const repo = questionBankRepository;
 
                 await repo.createQuestions(normalized, {
                     courseId,
@@ -353,9 +344,7 @@ const QuizEditor: React.FC<QuizEditorProps> = ({ lessonId, existingQuiz, onSave,
         }
 
         const syncPromise = (async () => {
-            const { createSupabaseClient } = await import('../services/supabaseClient');
-            const { SupabaseQuestionBankRepository } = await import('../repositories/SupabaseQuestionBankRepository');
-            const repo = new SupabaseQuestionBankRepository(createSupabaseClient());
+            const repo = questionBankRepository;
 
             await repo.createQuestions(questions as QuizQuestion[], {
                 courseId,
@@ -400,9 +389,7 @@ const QuizEditor: React.FC<QuizEditorProps> = ({ lessonId, existingQuiz, onSave,
 
         const toAdd = [...pendingQuestions];
         const syncPromise = (async () => {
-            const { createSupabaseClient } = await import('../services/supabaseClient');
-            const { SupabaseQuestionBankRepository } = await import('../repositories/SupabaseQuestionBankRepository');
-            const repo = new SupabaseQuestionBankRepository(createSupabaseClient());
+            const repo = questionBankRepository;
 
             await repo.createQuestions(toAdd as QuizQuestion[], {
                 courseId,

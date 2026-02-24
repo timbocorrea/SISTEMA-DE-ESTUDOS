@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCourse } from '../contexts/CourseContext';
-import LessonViewer from './LessonViewer';
+import LessonViewer from '@/components/features/classroom/LessonViewer';
 import LessonSkeleton from './skeletons/LessonSkeleton';
 import { useLessonStore } from '../stores/useLessonStore';
 import { User } from '../domain/entities';

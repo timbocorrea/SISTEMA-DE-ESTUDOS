@@ -122,6 +122,26 @@ class AuditService {
     }
 
     /**
+     * Gets the 5 most recent activities for a given user.
+     * Used by the Student Dashboard RecentActivity widget.
+     */
+    public async getRecentActivity(userId: string) {
+        const { data, error } = await this.supabase
+            .from('audit_logs')
+            .select('id, path, page_title, resource_title, created_at')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+            .limit(5);
+
+        if (error) {
+            console.error('[AuditService] Failed to fetch recent activity:', error);
+            return [];
+        }
+
+        return data || [];
+    }
+
+    /**
      * Fetches details for a specific session (on-demand)
      */
     public async getSessionDetail(sessionId: string): Promise<AuditLogEntry | null> {

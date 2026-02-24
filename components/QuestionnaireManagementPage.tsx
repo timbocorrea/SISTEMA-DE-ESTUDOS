@@ -1,7 +1,6 @@
+import { questionBankRepository } from '../services/Dependencies';
 import React, { useEffect, useState, useMemo } from 'react';
 import { AdminService } from '../services/AdminService';
-import { createSupabaseClient } from '../services/supabaseClient';
-import { SupabaseQuestionBankRepository } from '../repositories/SupabaseQuestionBankRepository';
 import { QuizQuestion, QuestionDifficulty, Quiz, QuizAttemptResult } from '../domain/quiz-entities';
 import QuestionBankEditor from './QuestionBankEditor';
 import QuizModal from './QuizModal';
@@ -62,7 +61,7 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(20);
 
-    const repository = useMemo(() => new SupabaseQuestionBankRepository(createSupabaseClient()), []);
+    const repository = useMemo(() => questionBankRepository, []);
 
     useEffect(() => {
         loadCourses();
@@ -71,7 +70,7 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
     }, []);
 
     const loadSystemStats = async () => {
-        const supabase = createSupabaseClient();
+        
         try {
             const [
                 { count: coursesCount },

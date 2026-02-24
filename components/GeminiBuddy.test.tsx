@@ -2,8 +2,6 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import React from 'react';
 import GeminiBuddy from './GeminiBuddy';
-import { createSupabaseClient } from '../services/supabaseClient';
-
 // Mock Supabase
 vi.mock('../services/supabaseClient', () => ({
     createSupabaseClient: vi.fn(),

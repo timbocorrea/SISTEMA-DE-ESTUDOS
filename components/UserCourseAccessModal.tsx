@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { AdminService } from '../services/AdminService';
 import { CourseRecord, ProfileRecord } from '../domain/admin';
-import { createSupabaseClient } from '../services/supabaseClient';
-
 interface Props {
     user: ProfileRecord;
     adminService: AdminService;

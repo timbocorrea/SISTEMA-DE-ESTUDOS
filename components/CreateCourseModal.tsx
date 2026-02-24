@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { createSupabaseClient } from '../services/supabaseClient';
 import { toast } from 'sonner';
 
 interface CreateCourseModalProps {
@@ -65,7 +64,7 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
         setIsUploading(true);
 
         try {
-            const supabase = createSupabaseClient();
+            
             const fileExt = file.name.split('.').pop();
             const fileName = `course-cover-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
             const filePath = `course-covers/${fileName}`;

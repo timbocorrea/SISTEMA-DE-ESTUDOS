@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { AdminService } from '../services/AdminService';
 
 import { ProfileRecord } from '../domain/admin';
-import { createSupabaseClient } from '../services/supabaseClient';
 import ApproveUserModal from './ApproveUserModal';
 import RejectUserModal from './RejectUserModal';
 import UserDetailsModal from './UserDetailsModal';

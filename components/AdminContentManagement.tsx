@@ -4,7 +4,6 @@ import { AdminService } from '../services/AdminService';
 import { toast } from 'sonner';
 import { CourseRecord, LessonRecord, LessonResourceRecord, ModuleRecord, SystemStats } from '../domain/admin';
 import { fileUploadService } from '../services/FileUploadService';
-import { createSupabaseClient } from '../services/supabaseClient';
 import ResourceUploadForm from './ResourceUploadForm';
 import CreateCourseModal from './CreateCourseModal';
 import CreateModuleModal from './CreateModuleModal';
@@ -174,7 +173,7 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
     setIsUploading(true);
 
     try {
-      const supabase = createSupabaseClient();
+      
       const fileExt = file.name.split('.').pop();
       const fileName = `course-cover-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
       const filePath = `course-covers/${fileName}`;

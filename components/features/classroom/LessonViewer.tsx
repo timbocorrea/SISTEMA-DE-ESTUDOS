@@ -1,29 +1,26 @@
+import { courseRepository } from '@/services/Dependencies';
 // Fixed syntax
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { ShimmerButton } from './ui/shimmer-button';
-import { Course, Lesson, User, UserProgress } from '../domain/entities';
-import VideoPlayer, { VideoPlayerRef } from './VideoPlayer';
-import SlideViewer from './SlideViewer';
-import LessonMaterialsSidebar from './LessonMaterialsSidebar';
-import BuddyContextModal from './BuddyContextModal';
-// import GeminiBuddy from './GeminiBuddy'; // Removed: Uses global now
-import NotesPanelPrototype from './NotesPanelPrototype';
-import QuizOptionsModal from './QuizOptionsModal';
-import QuizModal from './QuizModal';
+import { ShimmerButton } from '@/components/ui/shimmer-button';
+import { Course, Lesson, User, UserProgress } from '@/domain/entities';
+import VideoPlayer, { VideoPlayerRef } from '@/components/features/classroom/components/VideoPlayer';
+import SlideViewer from '@/components/SlideViewer';
+import LessonMaterialsSidebar from '@/components/LessonMaterialsSidebar';
+import BuddyContextModal from '@/components/BuddyContextModal';
+// import GeminiBuddy from '@/components/GeminiBuddy'; // Removed: Uses global now
+import QuizOptionsModal from '@/components/QuizOptionsModal';
+import QuizModal from '@/components/QuizModal';
 
-import QuizResultsModal from './QuizResultsModal';
-import { QuizAttemptResult } from '../domain/quiz-entities';
-import { createSupabaseClient } from '../services/supabaseClient';
-import { SupabaseCourseRepository } from '../repositories/SupabaseCourseRepository';
-
-import { LessonNotesRepository } from '../repositories/LessonNotesRepository';
-import { useLessonStore } from '../stores/useLessonStore';
-import ContentReader from './lesson/ContentReader';
-import { useAudioPlayer } from '../hooks/useAudioPlayer';
-import { useLessonQuiz } from '../hooks/useLessonQuiz';
-import { useLessonNavigation } from '../hooks/useLessonNavigation';
-import { useStudentAnswers } from '../hooks/useStudentAnswers';
+import QuizResultsModal from '@/components/QuizResultsModal';
+import { QuizAttemptResult } from '@/domain/quiz-entities';
+import { LessonNotesRepository } from '@/repositories/LessonNotesRepository';
+import { useLessonStore } from '@/stores/useLessonStore';
+import ContentReader from '@/components/lesson/ContentReader';
+import { useAudioPlayer } from '@/hooks/useAudioPlayer';
+import { useLessonQuiz } from '@/hooks/useLessonQuiz';
+import { useLessonNavigation } from '@/hooks/useLessonNavigation';
+import { useStudentAnswers } from '@/hooks/useStudentAnswers';
 import { toast } from 'sonner';
 
 interface LessonViewerProps {
@@ -185,10 +182,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
             // Verificar se já passou (opcional, já que o hook poderia prover isso)
             const checkCompletion = async () => {
-                const { createSupabaseClient } = await import('../services/supabaseClient');
-                const { SupabaseCourseRepository } = await import('../repositories/SupabaseCourseRepository');
-                const supabase = createSupabaseClient();
-                const courseRepo = new SupabaseCourseRepository(supabase);
+                const courseRepo = courseRepository;
                 const attempt = await courseRepo.getLatestQuizAttempt(user.id, quiz.id);
                 if (attempt?.passed) {
                     lesson.setQuizPassed(true);

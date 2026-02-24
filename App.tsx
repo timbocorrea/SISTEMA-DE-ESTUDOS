@@ -13,18 +13,19 @@ import { HistoryItem } from './components/HistoryPage'; // Type only
 import { ModernLoader } from './components/ModernLoader';
 
 // Lazy Imports
-const StudentDashboard = React.lazy(() => import('./components/StudentDashboard'));
 const AdminContentManagement = React.lazy(() => import('./components/AdminContentManagement'));
+const StudentDashboard = React.lazy(() => import('./components/features/student/dashboard/StudentDashboard'));
 const UserManagement = React.lazy(() => import('./components/UserManagement'));
 const FileManagement = React.lazy(() => import('./components/FileManagement'));
 const AdminSettingsPage = React.lazy(() => import('./components/AdminSettingsPage').then(module => ({ default: module.AdminSettingsPage })));
 const AdminCourseAccessPage = React.lazy(() => import('./components/AdminCourseAccessPage'));
 const AchievementsPage = React.lazy(() => import('./components/AchievementsPage'));
+const AuditPage = React.lazy(() => import('./components/features/admin/audit/AuditPage'));
+const UserDetailsModal = React.lazy(() => import('./components/UserDetailsModal'));
 const BuddyFullPage = React.lazy(() => import('./components/BuddyFullPage'));
-const AuditPage = React.lazy(() => import('./components/AuditPage'));
 const CourseEnrollmentModal = React.lazy(() => import('./components/CourseEnrollmentModal'));
 const LessonContentEditorPage = React.lazy(() => import('./components/LessonContentEditorPage'));
-const LessonViewer = React.lazy(() => import('./components/LessonViewer')); // If used? It was imported but not clearly used in Routes view. Ah, not in Routes.
+const LessonViewer = React.lazy(() => import('./components/features/classroom/LessonViewer'));
 // Duplicate PendingApprovalScreen removed
 const SystemHealth = React.lazy(() => import('./components/SystemHealth').then(module => ({ default: module.SystemHealth }))); // Check if named export
 const CourseLayout = React.lazy(() => import('./components/CourseLayout'));
