@@ -96,8 +96,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     const [buddyContext, setBuddyContext] = useState('');
 
     // Notes Panel Trigger (to pass text)
-    const [noteDraft, setNoteDraft] = useState<string>('');
-    const [noteDraftWithRange, setNoteDraftWithRange] = useState<{ text: string, range: Range } | null>(null);
+    const [noteDraftWithRange, setNoteDraftWithRange] = useState<{ text: string, range?: Range } | null>(null);
 
     // Video switcher state
     const activeVideoRef = useRef<VideoPlayerRef>(null);
@@ -150,6 +149,13 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
         handleCloseDrawer,
         setFocusedNoteId
     } = useLessonNavigation();
+
+    // Supabase Egress Optimizer (Thumbnail Compress)
+    const getOptimizedUrl = (url?: string, width: number = 400) => {
+        if (!url) return '';
+        if (url.includes('supabase.co/storage')) return `${url}?width=${width}&quality=80`;
+        return url;
+    };
 
     // Fullscreen Management
     useEffect(() => {
@@ -494,7 +500,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
         };
     }, []);
 
-
+    // Utility function for image optimization
 
 
 
@@ -731,7 +737,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                             {/* Thumbnail */}
                                             <div className="w-16 h-10 rounded-lg bg-slate-800 overflow-hidden shrink-0 relative">
                                                 {video.imageUrl ? (
-                                                    <img src={video.imageUrl} alt={video.title} className="w-full h-full object-cover" />
+                                                    <img src={getOptimizedUrl(video.imageUrl, 150)} alt={video.title} loading="lazy" className="w-full h-full object-cover" />
                                                 ) : (
                                                     <div className="w-full h-full flex items-center justify-center">
                                                         <i className={`fas ${video.type === 'slides' ? 'fa-images text-amber-400' : 'fa-play'} text-xs ${activeVideoIndex === index ? (video.type === 'slides' ? 'text-amber-400' : 'text-indigo-400') : (video.type === 'slides' ? 'text-amber-500/50' : 'text-white/30')}`}></i>
@@ -1078,7 +1084,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                             if (contextMenu.range) {
                                                 setNoteDraftWithRange({ text: contextMenu.text, range: contextMenu.range });
                                             } else {
-                                                setNoteDraft(contextMenu.text);
+                                                // If no range, create a draft without it
+                                                setNoteDraftWithRange({ text: contextMenu.text, range: undefined });
                                             }
 
                                             setSidebarTab('notes');
@@ -1120,7 +1127,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                 fullLessonContent={lesson.content}
                                 userName={user?.name}
                                 onAddToNote={(text) => {
-                                    setNoteDraft(text);
+                                    setNoteDraftWithRange({ text });
                                     setSidebarTab('notes');
                                     handleOpenDrawer('notes');
                                     setShowBuddyModal(false);
@@ -1204,13 +1211,13 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                             {sidebarTab === 'materials' ? (
                                 <LessonMaterialsSidebar lesson={lesson} onTrackAction={onTrackAction} onAudioStateChange={handleAudioStateChange} />
                             ) : (
-                                <NotesPanelPrototype
-                                    userId={user.id}
-                                    lessonId={lesson.id}
-                                    refreshTrigger={activeBlockId}
-                                    onNotesChange={handleNotesChange}
-                                    externalDraft={noteDraftWithRange}
-                                />
+                                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+                                    <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
+                                        <i className="fas fa-tools text-2xl text-slate-400"></i>
+                                    </div>
+                                    <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">My Notes (Em Construção)</h3>
+                                    <p className="text-slate-500 dark:text-slate-400 text-sm">O sistema avançado de notas está em refatoração para próxima versão.</p>
+                                </div>
                             )}
 
                         </div>
@@ -1288,15 +1295,13 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                 )}
 
                                 {activeMobileTab === 'notes' && (
-                                    <NotesPanelPrototype
-                                        userId={user.id}
-                                        lessonId={lesson.id}
-                                        refreshTrigger={activeBlockId}
-                                        onNoteSelect={handleCloseDrawer}
-                                        focusedNoteId={focusedNoteId}
-                                        onNotesChange={handleNotesChange}
-                                        externalDraft={noteDraftWithRange}
-                                    />
+                                    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+                                        <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
+                                            <i className="fas fa-tools text-2xl text-slate-400"></i>
+                                        </div>
+                                        <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">My Notes (Em Construção)</h3>
+                                        <p className="text-slate-500 dark:text-slate-400 text-sm">O sistema avançado de notas está em refatoração.</p>
+                                    </div>
                                 )}
 
                                 {activeMobileTab === 'quiz' && (
@@ -1474,7 +1479,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
                             {/* Image */}
                             <img
-                                src={viewerImageUrl}
+                                src={getOptimizedUrl(viewerImageUrl, 1200)}
                                 alt="Visualização"
                                 className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl transition-transform duration-300 hover:scale-105"
                                 onClick={(e) => e.stopPropagation()}

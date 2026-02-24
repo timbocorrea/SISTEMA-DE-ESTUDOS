@@ -9,7 +9,8 @@ export interface ICourseRepository {
     lessonId: string,
     watchedSeconds: number,
     isCompleted: boolean,
-    lastBlockId?: string
+    lastBlockId?: string,
+    durationSeconds?: number
   ): Promise<void>;
   updateUserGamification(
     userId: string,

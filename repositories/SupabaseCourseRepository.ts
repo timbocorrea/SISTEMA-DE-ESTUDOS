@@ -258,7 +258,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
   /**
    * Salva o progresso técnico da aula.
    */
-  async updateLessonProgress(userId: string, lessonId: string, watchedSeconds: number, isCompleted: boolean, lastBlockId?: string): Promise<void> {
+  async updateLessonProgress(userId: string, lessonId: string, watchedSeconds: number, isCompleted: boolean, lastBlockId?: string, durationSeconds?: number): Promise<void> {
     // 1. Tentar usar a RPC segura (Backend Optimization)
     // Ensure lastBlockId is a valid UUID or null (block IDs like "block-paste-*" are not UUIDs)
     const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -278,16 +278,9 @@ export class SupabaseCourseRepository implements ICourseRepository {
     console.warn('⚠️ [REPOSITORY] RPC update_lesson_progress_secure falhou (provavelmente não existe). Usando fallback local.', rpcError.message);
 
     // 2. Fallback: Lógica antiga (Client-side calculation)
-    // Buscar duração da aula para calcular video_progress
-    const { data: lessonData } = await this.client
-      .from('lessons')
-      .select('duration_seconds')
-      .eq('id', lessonId)
-      .single();
-
-    const durationSeconds = lessonData?.duration_seconds || 0;
-    const videoProgress = durationSeconds > 0
-      ? Math.min(100, (watchedSeconds / durationSeconds) * 100)
+    const duration = durationSeconds ?? 0;
+    const videoProgress = duration > 0
+      ? Math.min(100, (watchedSeconds / duration) * 100)
       : (watchedSeconds > 0 ? 100 : 0);
 
     const { error } = await this.client
@@ -348,14 +341,14 @@ export class SupabaseCourseRepository implements ICourseRepository {
     // 2. Fetch Achievements Separately
     const { data: achievementsData } = await this.client
       .from('user_achievements')
-      .select('achievement_id, date_earned')
+      .select('achievement_id, date_earned, achievement:achievements(title, description, icon)')
       .eq('user_id', userId);
 
     const achievements = (achievementsData || []).map((row: any) => ({
       id: row.achievement_id,
-      title: "Conquista Desbloqueada",
-      description: "Você desbloqueou uma nova conquista!",
-      icon: "fas fa-trophy",
+      title: row.achievement?.title || "Conquista Desbloqueada",
+      description: row.achievement?.description || "Você desbloqueou uma nova conquista!",
+      icon: row.achievement?.icon || "fas fa-trophy",
       dateEarned: new Date(row.date_earned)
     }));
 
@@ -588,27 +581,57 @@ export class SupabaseCourseRepository implements ICourseRepository {
     }));
   }
 
+  private async getCoursesStructureBulk(ids: string[], userId?: string): Promise<Course[]> {
+    if (!ids || ids.length === 0) return [];
+    const progressMap = await this.getProgressByUser(userId);
+
+    const { data: coursesData, error } = await this.client
+      .from('courses')
+      .select(`
+        id,
+        title,
+        description,
+        image_url,
+        modules:modules (
+          id,
+          title,
+          position,
+          lessons:lessons (
+            id,
+            title,
+            position
+          )
+        )
+      `)
+      .in('id', ids);
+
+    if (error) throw new DomainError(`Erro ao carregar cursos em massa: ${error.message}`);
+
+    return (coursesData || []).map((row: any) => ({
+      ...row,
+      modules: (row.modules || []).map((m: any) => ({
+        ...m,
+        lessons: (m.lessons || []).map((l: any) => ({
+          ...l,
+          isCompleted: progressMap.get(l.id)?.is_completed || false
+        }))
+      }))
+    })) as Course[];
+  }
+
   async getAllCourses(userId?: string): Promise<Course[]> {
     if (!userId) {
       // Sem userId, retorna todos (público)
       const { data, error } = await this.client.from('courses').select('id');
       if (error) throw new DomainError('Falha ao buscar cursos');
       const ids = (data || []).map((c: any) => c.id);
-      const results = await Promise.allSettled(ids.map(id => this.getCourseStructure(id)));
-      return results
-        .filter(r => r.status === 'fulfilled')
-        .map(r => (r as any).value as Course);
+      return this.getCoursesStructureBulk(ids);
     }
-    // ... existing implementation
+
     const assignedIds = await this.getUserAssignedCourseIds(userId);
     if (assignedIds.length === 0) return [];
 
-    const results = await Promise.allSettled(
-      assignedIds.map(id => this.getCourseStructure(id, userId))
-    );
-    return results
-      .filter(r => r.status === 'fulfilled')
-      .map(r => (r as any).value as Course);
+    return this.getCoursesStructureBulk(assignedIds, userId);
   }
 
   /**
@@ -639,14 +662,8 @@ export class SupabaseCourseRepository implements ICourseRepository {
 
     if (validCourseIds.length === 0) return [];
 
-    // Buscar cursos completos usando getCourseStructure
-    const results = await Promise.allSettled(
-      validCourseIds.map(id => this.getCourseStructure(id, userId))
-    );
-
-    return results
-      .filter(r => r.status === 'fulfilled')
-      .map(r => (r as any).value as Course);
+    // Otimizado: 1 único request .in() em vez de N requests
+    return this.getCoursesStructureBulk(validCourseIds, userId);
   }
 
   /**

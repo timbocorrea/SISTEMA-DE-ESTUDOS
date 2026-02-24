@@ -36,7 +36,8 @@ export class CourseService {
       lesson.id,
       lesson.watchedSeconds,
       lesson.isCompleted,
-      lastBlockId
+      lastBlockId,
+      lesson.durationSeconds
     );
 
     // If lesson didn't just become complete, no rewards to process.
@@ -113,11 +114,6 @@ export class CourseService {
       if (ach) unlocked.push(ach);
     } while (ach);
     return unlocked;
-  }
-
-  public async fetchAvailableCourses(userId: string): Promise<any[]> {
-    // Optimized: Use summary to avoid heavy payloads (no content, no content_blocks)
-    return this.courseRepository.getCoursesSummary(userId);
   }
 
   async getCoursesSummary(userId: string): Promise<{
