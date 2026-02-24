@@ -25,9 +25,19 @@ type DetailedProgressSeen = {
   material: Set<string>;
 };
 
+type DashboardStats = {
+  completed_lessons: number;
+  average_quiz_score: number;
+  total_study_time_seconds: number;
+  xp_total: number;
+  current_level: number;
+};
+
 export class SupabaseCourseRepository implements ICourseRepository {
   private client: SupabaseClient;
   private detailedProgressSeenByLesson = new Map<string, DetailedProgressSeen>();
+  private readonly dashboardStatsCacheTtlMs = 10000;
+  private dashboardStatsCacheByUser = new Map<string, { data: DashboardStats; expiresAt: number }>();
 
   /**
    * Construtor com Injeção de Dependência (DIP - Dependency Inversion Principle)
@@ -53,6 +63,30 @@ export class SupabaseCourseRepository implements ICourseRepository {
       }
     }
     return seen;
+  }
+
+  private getCachedDashboardStats(userId: string): DashboardStats | null {
+    const cached = this.dashboardStatsCacheByUser.get(userId);
+    if (!cached) return null;
+    if (Date.now() >= cached.expiresAt) {
+      this.dashboardStatsCacheByUser.delete(userId);
+      return null;
+    }
+    return cached.data;
+  }
+
+  private setDashboardStatsCache(userId: string, data: DashboardStats): void {
+    this.dashboardStatsCacheByUser.set(userId, {
+      data,
+      expiresAt: Date.now() + this.dashboardStatsCacheTtlMs
+    });
+    if (this.dashboardStatsCacheByUser.size > 2000) {
+      this.dashboardStatsCacheByUser.clear();
+    }
+  }
+
+  private invalidateDashboardStatsCache(userId: string): void {
+    this.dashboardStatsCacheByUser.delete(userId);
   }
 
   private async getProgressByUser(
@@ -334,6 +368,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
     });
 
     if (!rpcError) {
+      this.invalidateDashboardStatsCache(userId);
       return; // Sucesso via RPC
     }
 
@@ -361,6 +396,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
       );
 
     if (error) throw new DomainError(`Falha ao persistir progresso (fallback): ${error.message}`);
+    this.invalidateDashboardStatsCache(userId);
   }
 
   async getUserProgress(userId: string): Promise<UserProgress[]> {
@@ -394,7 +430,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
     // 1. Fetch Profile
     const { data: profile, error } = await this.client
       .from('profiles')
-      .select('id, name, email, role, xp_total, current_level, gemini_api_key, approval_status, last_access_at, is_temp_password')
+      .select('id, name, email, role, xp_total, current_level, approval_status, last_access_at, is_temp_password, is_minor')
       .eq('id', userId)
       .single();
 
@@ -421,14 +457,14 @@ export class SupabaseCourseRepository implements ICourseRepository {
       profile.role || 'STUDENT',
       profile.xp_total || 0,
       achievements,
-      profile.gemini_api_key || null,
+      null,
       profile.approval_status || 'approved',
       profile.last_access_at ? new Date(profile.last_access_at) : null,
       profile.is_temp_password || false,
       null, // approvedAt
       null, // approvedBy
       null, // rejectionReason
-      false // isMinor - hardcoded to false until migration is created
+      profile.is_minor ?? false
     );
   }
 
@@ -499,6 +535,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
       return { success: false, newXp: 0, levelUp: false, newLevel: 0 };
     }
 
+    this.invalidateDashboardStatsCache(userId);
     return {
       success: data.success,
       newXp: data.new_xp,
@@ -1421,6 +1458,9 @@ export class SupabaseCourseRepository implements ICourseRepository {
     xp_total: number;
     current_level: number;
   }> {
+    const cached = this.getCachedDashboardStats(userId);
+    if (cached) return cached;
+
     const { data, error } = await this.client.rpc('get_dashboard_stats', {
       p_user_id: userId
     });
@@ -1428,15 +1468,18 @@ export class SupabaseCourseRepository implements ICourseRepository {
     if (error) {
       console.error('⚠️ [REPOSITORY] RPC get_dashboard_stats failed:', error.message);
       // Fallback for safety (though migration should be applied)
-      return {
+      const fallback: DashboardStats = {
         completed_lessons: 0,
         average_quiz_score: 0,
         total_study_time_seconds: 0,
         xp_total: 0,
         current_level: 1
       };
+      this.setDashboardStatsCache(userId, fallback);
+      return fallback;
     }
 
-    return data;
+    this.setDashboardStatsCache(userId, data as DashboardStats);
+    return data as DashboardStats;
   }
 }

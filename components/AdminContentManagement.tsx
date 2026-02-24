@@ -115,7 +115,7 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
 
   const refreshLessons = async (moduleId: string) => {
     setError('');
-    const list = await adminService.listLessons(moduleId);
+    const list = await adminService.listLessons(moduleId, { summary: true });
     setLessonsByModule(prev => ({ ...prev, [moduleId]: list }));
   };
 
@@ -123,6 +123,37 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
     setError('');
     const list = await adminService.listLessonResources(lessonId);
     setLessonResources(prev => ({ ...prev, [lessonId]: list }));
+  };
+
+  const upsertLessonInCache = (lesson: LessonRecord) => {
+    setLessonsByModule(prev => {
+      const moduleLessons = prev[lesson.module_id];
+      if (!moduleLessons || moduleLessons.length === 0) return prev;
+
+      return {
+        ...prev,
+        [lesson.module_id]: moduleLessons.map(existing =>
+          existing.id === lesson.id ? lesson : existing
+        )
+      };
+    });
+  };
+
+  const ensureLessonDetails = async (lesson: LessonRecord): Promise<LessonRecord> => {
+    const isSummaryOnly =
+      lesson.content === null &&
+      lesson.video_url === null &&
+      lesson.video_urls === null &&
+      lesson.audio_url === null &&
+      lesson.image_url === null &&
+      lesson.duration_seconds === null &&
+      lesson.content_blocks === null;
+
+    if (!isSummaryOnly) return lesson;
+
+    const fullLesson = await adminService.getLesson(lesson.id);
+    upsertLessonInCache(fullLesson);
+    return fullLesson;
   };
 
   useEffect(() => {
@@ -494,7 +525,15 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
   const openLessonDetail = async (lesson: LessonRecord) => {
     setActiveLessonId(lesson.id);
     setActiveLesson({ ...lesson });
-    await refreshLessonResources(lesson.id);
+    try {
+      const [detailedLesson] = await Promise.all([
+        ensureLessonDetails(lesson),
+        refreshLessonResources(lesson.id)
+      ]);
+      setActiveLesson({ ...detailedLesson });
+    } catch (e) {
+      setError((e as Error).message);
+    }
   };
 
   // Funções para alternar modos de visualização
@@ -627,9 +666,17 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
                         <i className="fas fa-arrow-right-arrow-left"></i>
                       </button>
                       <button
-                        onClick={e => {
+                        onClick={async e => {
                           e.stopPropagation();
-                          setEditingLesson({ ...lesson });
+                          try {
+                            setBusy(true);
+                            const detailedLesson = await ensureLessonDetails(lesson);
+                            setEditingLesson({ ...detailedLesson });
+                          } catch (err) {
+                            setError((err as Error).message);
+                          } finally {
+                            setBusy(false);
+                          }
                         }}
                         className="p-2 text-slate-400 hover:text-cyan-500 transition-colors"
                         title="Editar aula"

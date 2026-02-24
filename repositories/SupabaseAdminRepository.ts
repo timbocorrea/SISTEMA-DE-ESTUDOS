@@ -7,9 +7,31 @@ import { createSupabaseClient } from '../services/supabaseClient';
 
 export class SupabaseAdminRepository implements IAdminRepository {
   private client: SupabaseClient;
+  private readonly systemStatsCacheTtlMs = 15000;
+  private systemStatsCache: { data: any; expiresAt: number } | null = null;
 
   constructor(client?: SupabaseClient) {
     this.client = client ?? createSupabaseClient();
+  }
+
+  private invalidateSystemStatsCache(): void {
+    this.systemStatsCache = null;
+  }
+
+  private getCachedSystemStats(): any | null {
+    if (!this.systemStatsCache) return null;
+    if (Date.now() >= this.systemStatsCache.expiresAt) {
+      this.systemStatsCache = null;
+      return null;
+    }
+    return this.systemStatsCache.data;
+  }
+
+  private setSystemStatsCache(stats: any): void {
+    this.systemStatsCache = {
+      data: stats,
+      expiresAt: Date.now() + this.systemStatsCacheTtlMs
+    };
   }
 
   async listCourses(): Promise<CourseRecord[]> {
@@ -137,6 +159,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
       .single();
 
     if (error || !data) throw new DomainError(`Falha ao criar curso: ${error?.message || 'dados inválidos'}`);
+    this.invalidateSystemStatsCache();
     return data as CourseRecord;
   }
 
@@ -170,6 +193,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
         'Nenhum curso foi excluído. Verifique se você está logado como INSTRUCTOR e se existe a policy `courses_delete_instructors` (RLS) na tabela `courses`.'
       );
     }
+    this.invalidateSystemStatsCache();
   }
 
   async listModules(courseId: string): Promise<ModuleRecord[]> {
@@ -191,6 +215,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
       .single();
 
     if (error || !data) throw new DomainError(`Falha ao criar módulo: ${error?.message || 'dados inválidos'}`);
+    this.invalidateSystemStatsCache();
     return data as ModuleRecord;
   }
 
@@ -225,6 +250,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
         'Nenhum módulo foi excluído. Verifique se você está logado como INSTRUCTOR e se existe a policy `modules_delete_instructors` (RLS) na tabela `modules`.'
       );
     }
+    this.invalidateSystemStatsCache();
   }
 
   async listLessons(moduleId: string, options?: { summary?: boolean }): Promise<LessonRecord[]> {
@@ -287,6 +313,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
       .single();
 
     if (error || !data) throw new DomainError(`Falha ao criar aula: ${error?.message || 'dados inválidos'}`);
+    this.invalidateSystemStatsCache();
     return data as LessonRecord;
   }
 
@@ -355,6 +382,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
         'Nenhuma aula foi excluída. Verifique se você está logado como INSTRUCTOR e se existe a policy `lessons_delete_instructors` (RLS) na tabela `lessons`.'
       );
     }
+    this.invalidateSystemStatsCache();
   }
 
   async moveLesson(lessonId: string, targetModuleId: string): Promise<LessonRecord> {
@@ -521,6 +549,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
     await this.removeAllUserCourseAssignments(userId);
     const { error } = await this.client.from('profiles').delete().eq('id', userId);
     if (error) throw new DomainError(`Falha ao excluir perfil: ${error.message}`);
+    this.invalidateSystemStatsCache();
   }
 
   async updateProfileRole(profileId: string, role: 'STUDENT' | 'INSTRUCTOR'): Promise<void> {
@@ -585,6 +614,9 @@ export class SupabaseAdminRepository implements IAdminRepository {
   }
 
   async getSystemStats(): Promise<any> {
+    const cached = this.getCachedSystemStats();
+    if (cached) return cached;
+
     const { data, error } = await this.client.rpc('get_db_stats');
 
     // Fallback if RPC fails or not created yet
@@ -592,12 +624,14 @@ export class SupabaseAdminRepository implements IAdminRepository {
       if (error) console.warn("RPC get_db_stats failed, falling back to manual count", error);
 
       // Manual count
-      const { count: courseCount } = await this.client.from('courses').select('id', { count: 'exact', head: true });
-      const { count: moduleCount } = await this.client.from('modules').select('id', { count: 'exact', head: true });
-      const { count: lessonCount } = await this.client.from('lessons').select('id', { count: 'exact', head: true });
-      const { count: userCount } = await this.client.from('profiles').select('id', { count: 'exact', head: true });
+      const [{ count: courseCount }, { count: moduleCount }, { count: lessonCount }, { count: userCount }] = await Promise.all([
+        this.client.from('courses').select('id', { count: 'exact', head: true }),
+        this.client.from('modules').select('id', { count: 'exact', head: true }),
+        this.client.from('lessons').select('id', { count: 'exact', head: true }),
+        this.client.from('profiles').select('id', { count: 'exact', head: true })
+      ]);
 
-      return {
+      const fallback = {
         db_size: 'N/A',
         user_count: userCount || 0,
         course_count: courseCount || 0,
@@ -606,6 +640,8 @@ export class SupabaseAdminRepository implements IAdminRepository {
         file_count: 0,
         storage_size_bytes: 0
       };
+      this.setSystemStatsCache(fallback);
+      return fallback;
     }
 
     // Se o RPC retornou, mas precisamos garantir o module_count se não vier
@@ -614,6 +650,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
       data.module_count = moduleCount || 0;
     }
 
+    this.setSystemStatsCache(data);
     return data;
   }
 
