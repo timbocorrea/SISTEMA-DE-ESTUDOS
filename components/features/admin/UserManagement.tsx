@@ -31,7 +31,6 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
     role: 'STUDENT' | 'INSTRUCTOR';
     apiKey: string;
     apiKeyLoaded: boolean;
-    isMinor: boolean;
   } | null>(null);
   const [managingAccessUser, setManagingAccessUser] = useState<ProfileRecord | null>(null);
   const [resettingUser, setResettingUser] = useState<{ id: string; name: string; email: string } | null>(null);
@@ -118,14 +117,13 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
       email: user.email,
       role: user.role,
       apiKey: '',
-      apiKeyLoaded: false,
-      isMinor: (user as any).is_minor || false
+      apiKeyLoaded: false
     });
 
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('gemini_api_key, is_minor')
+        .select('gemini_api_key')
         .eq('id', user.id)
         .maybeSingle();
 
@@ -136,8 +134,7 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
         return {
           ...prev,
           apiKey: data?.gemini_api_key || '',
-          apiKeyLoaded: true,
-          isMinor: data?.is_minor ?? prev.isMinor
+          apiKeyLoaded: true
         };
       });
     } catch (error) {
@@ -152,9 +149,8 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
 
     try {
       setIsSaving(true);
-      const patch: { role: 'STUDENT' | 'INSTRUCTOR'; isMinor: boolean; geminiApiKey?: string | null } = {
-        role: editingUser.role,
-        isMinor: editingUser.isMinor
+      const patch: { role: 'STUDENT' | 'INSTRUCTOR'; geminiApiKey?: string | null } = {
+        role: editingUser.role
       };
 
       // Only update API key when it was loaded (or manually changed) in this modal.
@@ -616,7 +612,6 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
               <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Usuário</th>
               <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Função</th>
               <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Status</th>
-              <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Classificação</th>
               <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Nível</th>
               <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-wider">XP</th>
               <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-right">Ações</th>
@@ -708,14 +703,7 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
                       </span>
                     )}
                   </td>
-                  <td className="p-4">
-                    <span className={`text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-wider border ${(u as any).is_minor
-                      ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
-                      : 'bg-slate-500/10 text-slate-400 border-slate-500/20'
-                      }`}>
-                      {(u as any).is_minor ? 'Menor' : 'Adulto'}
-                    </span>
-                  </td>
+
                   <td className="p-4">
                     <span className="text-sm font-bold text-slate-400">
                       Level {u.current_level ?? 1}
@@ -940,44 +928,6 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
                       </button>
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
-                        Classificação Etária
-                      </label>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (editingUser) {
-                              setEditingUser({ ...editingUser, isMinor: false });
-                            }
-                          }}
-                          className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold border transition-all ${!editingUser.isMinor
-                            ? 'bg-slate-500/20 border-slate-500/50 text-slate-300 shadow-[0_0_10px_rgba(148,163,184,0.2)]'
-                            : 'bg-black/20 border-white/5 text-slate-500 hover:bg-white/5 hover:text-slate-300'
-                            }`}
-                        >
-                          <i className="fas fa-user mr-2"></i> Adulto
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (editingUser) {
-                              setEditingUser({ ...editingUser, isMinor: true });
-                            }
-                          }}
-                          className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold border transition-all ${editingUser.isMinor
-                            ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-300 shadow-[0_0_10px_rgba(168,85,247,0.2)]'
-                            : 'bg-black/20 border-white/5 text-slate-500 hover:bg-white/5 hover:text-slate-300'
-                            }`}
-                        >
-                          <i className="fas fa-child mr-2"></i> Menor de Idade
-                        </button>
-                      </div>
-                      <p className="mt-2 text-[10px] text-slate-500">
-                        Menores de idade têm acesso à aba de Auditoria para supervisão dos pais.
-                      </p>
-                    </div>
                   </div>
 
                   <div>

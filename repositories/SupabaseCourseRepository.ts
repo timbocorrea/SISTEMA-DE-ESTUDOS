@@ -430,7 +430,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
     // 1. Fetch Profile
     const { data: profile, error } = await this.client
       .from('profiles')
-      .select('id, name, email, role, xp_total, current_level, approval_status, last_access_at, is_temp_password, is_minor')
+      .select('id, name, email, role, xp_total, current_level, approval_status, last_access_at, is_temp_password')
       .eq('id', userId)
       .single();
 
@@ -464,7 +464,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
       null, // approvedAt
       null, // approvedBy
       null, // rejectionReason
-      profile.is_minor ?? false
+      false // no is_minor in db currently
     );
   }
 

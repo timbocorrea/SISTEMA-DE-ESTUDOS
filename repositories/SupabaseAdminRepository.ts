@@ -471,7 +471,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
   async listProfiles(): Promise<ProfileRecord[]> {
     const { data, error } = await this.client
       .from('profiles')
-      .select('id,email,name,role,xp_total,current_level,updated_at,approval_status,approved_at,approved_by,rejection_reason,is_minor')
+      .select('id,email,name,role,xp_total,current_level,updated_at,approval_status,approved_at,approved_by,rejection_reason')
       .order('updated_at', { ascending: false });
 
     if (error) throw new DomainError(`Falha ao listar usuários: ${error.message}`);
@@ -494,7 +494,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
   async fetchPendingUsers(): Promise<ProfileRecord[]> {
     const { data, error } = await this.client
       .from('profiles')
-      .select('id,email,name,role,xp_total,current_level,updated_at,approval_status,approved_at,approved_by,rejection_reason,is_minor')
+      .select('id,email,name,role,xp_total,current_level,updated_at,approval_status,approved_at,approved_by,rejection_reason')
       .eq('approval_status', 'pending');
 
     if (error) throw new DomainError(`Falha ao buscar usuários pendentes: ${error.message}`);
@@ -504,7 +504,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
   async fetchApprovedUsers(): Promise<ProfileRecord[]> {
     const { data, error } = await this.client
       .from('profiles')
-      .select('id,email,name,role,xp_total,current_level,updated_at,approval_status,approved_at,approved_by,rejection_reason,is_minor')
+      .select('id,email,name,role,xp_total,current_level,updated_at,approval_status,approved_at,approved_by,rejection_reason')
       .eq('approval_status', 'approved');
 
     if (error) throw new DomainError(`Falha ao buscar usuários aprovados: ${error.message}`);
@@ -514,7 +514,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
   async fetchRejectedUsers(): Promise<ProfileRecord[]> {
     const { data, error } = await this.client
       .from('profiles')
-      .select('id,email,name,role,xp_total,current_level,updated_at,approval_status,approved_at,approved_by,rejection_reason,is_minor')
+      .select('id,email,name,role,xp_total,current_level,updated_at,approval_status,approved_at,approved_by,rejection_reason')
       .eq('approval_status', 'rejected');
 
     if (error) throw new DomainError(`Falha ao buscar usuários rejeitados: ${error.message}`);
