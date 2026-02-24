@@ -9,6 +9,7 @@ export interface AuditLogEntry {
     activeSeconds: number; // Time actually moving mouse/typing
     idleSeconds: number; // Time AFK
     activityScore: number; // 0-100%
+    resourceTitle?: string; // e.g. "Aula 01: Introdução"
     device: string;
     details: string[];
 }

@@ -63,7 +63,7 @@ const AuditPage: React.FC = () => {
         return 'bg-red-500/10 border-red-500/30 text-red-400';
     };
 
-    const getFriendlyPageName = (path: string, currentTitle: string) => {
+    const getFriendlyPageName = (path: string, currentTitle: string, resourceTitle?: string) => {
         // Priority Mappings
         if (path === '/' || path === '') return 'Dashboard';
         if (path === '/courses') return 'Meus Cursos';
@@ -73,7 +73,10 @@ const AuditPage: React.FC = () => {
         if (path === '/profile') return 'Meu Perfil';
         if (path === '/settings') return 'Configurações';
         if (path.startsWith('/admin')) return 'Administração';
-        if (path.startsWith('/course/')) return 'Sala de Aula';
+
+        if (path.startsWith('/course/')) {
+            return resourceTitle ? `Sala de Aula: ${resourceTitle}` : 'Sala de Aula';
+        }
 
         // Helper for raw paths that might have slipped in as titles
         if (currentTitle.startsWith('/')) {
@@ -233,7 +236,9 @@ const AuditPage: React.FC = () => {
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex flex-col">
-                                                <span className="font-bold text-slate-800 dark:text-white">{getFriendlyPageName(log.path, log.pageTitle)}</span>
+                                                <span className="font-bold text-slate-800 dark:text-white">
+                                                    {getFriendlyPageName(log.path, log.pageTitle, log.resourceTitle)}
+                                                </span>
                                                 <span className="text-[10px] text-slate-500 font-mono opacity-70 truncate max-w-[200px]">{log.path}</span>
                                             </div>
                                         </td>

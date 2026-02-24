@@ -3,13 +3,21 @@ import { useLocation } from 'react-router-dom';
 import { auditService } from '../services/AuditService';
 import { activityMonitor } from '../services/ActivityMonitor';
 
-export const useActivityTracker = () => {
+export const useActivityTracker = (resourceTitle?: string) => {
     const location = useLocation();
     const startTimeRef = useRef<number>(Date.now());
     const lastActivityRef = useRef<number>(Date.now());
     const activeTimeAccumulatorRef = useRef<number>(0);
     const idleTimeAccumulatorRef = useRef<number>(0);
     const pathRef = useRef<string>(location.pathname);
+    const resourceTitleRef = useRef<string | undefined>(resourceTitle);
+
+    // Sync resourceTitleRef with prop
+    useEffect(() => {
+        if (resourceTitle) {
+            resourceTitleRef.current = resourceTitle;
+        }
+    }, [resourceTitle]);
 
     // Config
     const IDLE_THRESHOLD_MS = 10000; // 10 seconds of no input = idle
@@ -55,6 +63,7 @@ export const useActivityTracker = () => {
             auditService.logSession({
                 path: pathRef.current,
                 pageTitle: pageName,
+                resourceTitle: resourceTitleRef.current,
                 durationSeconds: totalDuration,
                 activeSeconds: activeSeconds,
                 idleSeconds: idleSeconds,
@@ -76,8 +85,9 @@ export const useActivityTracker = () => {
             idleTimeAccumulatorRef.current = 0;
             passiveTimeAccumulatorRef.current = 0;
             pathRef.current = location.pathname;
+            resourceTitleRef.current = resourceTitle; // Reset to current prop for new path
         }
-    }, [location.pathname]);
+    }, [location.pathname, resourceTitle]);
 
     useEffect(() => {
         const handleUnload = () => {
@@ -87,9 +97,6 @@ export const useActivityTracker = () => {
         };
 
         window.addEventListener('beforeunload', handleUnload);
-
-        // Also capture visibility change to mobile tab switch?
-        // window.addEventListener('visibilitychange', ...);
 
         return () => {
             window.removeEventListener('beforeunload', handleUnload);
@@ -120,23 +127,10 @@ export const useActivityTracker = () => {
                 activeTimeAccumulatorRef.current += stepSeconds;
             } else if (isMediaPlaying) {
                 // User is idle but media is playing (Passive Consumption)
-                // We count this as Active Time...
                 activeTimeAccumulatorRef.current += stepSeconds;
-
-                // ...BUT we increment the passive timer
                 passiveTimeAccumulatorRef.current += stepSeconds;
 
-                // If passive timer exceeds 5 minutes (300 seconds)
                 if (passiveTimeAccumulatorRef.current >= 300) {
-                    // Trigger "Are you there?"
-                    // And STOP accumulating active time until confirmed?
-                    // Actually, let's trigger it. If they ignore, next tick will continue here?
-                    // We should probably stop counting active time if modal is open.
-                    // Implementation: The Modal should pause media if possible, but definitely stop active counting.
-                    // For now, let's keep triggering. The modal usually handles the "once" logic or the monitor does.
-
-                    // We only trigger if not already triggered recently?
-                    // Let's delegate to monitor.
                     activityMonitor.triggerPresenceCheck();
                 }
             } else {

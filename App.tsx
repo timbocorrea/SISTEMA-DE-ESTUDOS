@@ -99,6 +99,13 @@ const LessonContentEditorWrapper: React.FC<{ adminService: AdminService }> = ({ 
   );
 };
 
+// Admin Check Helper wrapper to protect admin routes
+// Extracted outside `App` to prevent React from unmounting all children on every App re-render
+const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
+  return user?.role === 'INSTRUCTOR' ? <>{children}</> : <div className="p-8 flex items-center justify-center min-h-screen text-slate-500">Acesso negado. Somente Instrutores podem acessar esta área.</div>;
+};
+
 const App: React.FC = () => {
   const { user, session, isLoading: authLoading, logout, authService, refreshSession } = useAuth();
 
@@ -106,9 +113,6 @@ const App: React.FC = () => {
 
   // Instantiate AdminService (Lazy — only created once)
   const [adminService] = useState(() => new AdminService(new SupabaseAdminRepository()));
-
-  // Start Audit Tracker
-  useActivityTracker();
 
   const {
     availableCourses,
@@ -123,6 +127,9 @@ const App: React.FC = () => {
     selectModule,
     isLoadingCourses
   } = useCourse();
+
+  // Start Audit Tracker
+  useActivityTracker(activeLesson?.title);
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -450,10 +457,7 @@ const App: React.FC = () => {
 
 
 
-  // Admin Check Helper
-  const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    return user.role === 'INSTRUCTOR' ? <>{children}</> : <div className="p-8">Acesso negado.</div>;
-  };
+  // Admin Check Helper foi movido para fora do componente App para evitar unmount das rotas filhas em re-renders
 
   const topbarActions = (
     <div className="flex items-center gap-1">
