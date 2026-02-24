@@ -29,22 +29,57 @@ export class SupabaseCourseRepository implements ICourseRepository {
     this.client = client;
   }
 
-  private async getProgressByUser(userId?: string): Promise<Map<string, LessonProgressRow>> {
+  private async getProgressByUser(
+    userId?: string,
+    lessonIds?: string[],
+    options?: { structureOnly?: boolean }
+  ): Promise<Map<string, LessonProgressRow>> {
     if (!userId) return new Map();
 
-    const { data, error } = await this.client
-      .from('lesson_progress')
-      .select('lesson_id, watched_seconds, is_completed, last_accessed_block_id, video_progress, text_blocks_read, pdfs_viewed, audios_played, materials_accessed')
-      .eq('user_id', userId);
+    const structureOnly = options?.structureOnly ?? false;
+    const selectFields = structureOnly
+      ? 'lesson_id, is_completed'
+      : 'lesson_id, watched_seconds, is_completed, last_accessed_block_id, video_progress, text_blocks_read, pdfs_viewed, audios_played, materials_accessed';
 
-    if (error) {
-      throw new DomainError(`Falha ao buscar progresso: ${error.message}`);
-    }
+    const uniqueLessonIds = lessonIds
+      ? Array.from(new Set(lessonIds.filter(Boolean)))
+      : [];
 
     const progressMap = new Map<string, LessonProgressRow>();
-    (data || []).forEach(row => {
-      progressMap.set(row.lesson_id, row);
-    });
+    const chunkSize = 500;
+
+    if (lessonIds && uniqueLessonIds.length === 0) {
+      return progressMap;
+    }
+
+    const fetchChunk = async (idsChunk?: string[]) => {
+      let query = this.client
+        .from('lesson_progress')
+        .select(selectFields)
+        .eq('user_id', userId);
+
+      if (idsChunk && idsChunk.length > 0) {
+        query = query.in('lesson_id', idsChunk);
+      }
+
+      const { data, error } = await query;
+      if (error) {
+        throw new DomainError(`Falha ao buscar progresso: ${error.message}`);
+      }
+
+      (data || []).forEach((row: any) => {
+        progressMap.set(row.lesson_id, row as LessonProgressRow);
+      });
+    };
+
+    if (uniqueLessonIds.length > 0) {
+      for (let i = 0; i < uniqueLessonIds.length; i += chunkSize) {
+        await fetchChunk(uniqueLessonIds.slice(i, i + chunkSize));
+      }
+      return progressMap;
+    }
+
+    await fetchChunk();
     return progressMap;
   }
 
@@ -109,8 +144,6 @@ export class SupabaseCourseRepository implements ICourseRepository {
    */
   async getCourseById(id: string, userId?: string): Promise<Course> {
     try {
-      const progressMap = await this.getProgressByUser(userId);
-
       const { data: courseData, error } = await this.client
         .from('courses')
         .select(`
@@ -150,6 +183,11 @@ export class SupabaseCourseRepository implements ICourseRepository {
         throw new NotFoundError('Course', id);
       }
 
+      const lessonIds = (courseData.modules || []).flatMap((m: any) =>
+        (m.lessons || []).map((l: any) => l.id)
+      );
+      const progressMap = await this.getProgressByUser(userId, lessonIds);
+
       const modules = (courseData.modules || [])
         .sort((a: any, b: any) => (a.position || 0) - (b.position || 0))
         .map((m: any) => this.mapModule(m, progressMap));
@@ -167,9 +205,6 @@ export class SupabaseCourseRepository implements ICourseRepository {
    */
   async getCourseStructure(id: string, userId?: string): Promise<Course> {
     try {
-      // Ainda precisamos do progresso para saber quais aulas foram concluídas na sidebar
-      const progressMap = await this.getProgressByUser(userId);
-
       const { data: courseData, error } = await this.client
         .from('courses')
         .select(`
@@ -184,9 +219,6 @@ export class SupabaseCourseRepository implements ICourseRepository {
             lessons:lessons (
               id,
               title,
-              position,
-              id,
-              title,
               position
             )
           )
@@ -197,6 +229,11 @@ export class SupabaseCourseRepository implements ICourseRepository {
       if (error || !courseData) {
         throw new NotFoundError('Course', id);
       }
+
+      const lessonIds = (courseData.modules || []).flatMap((m: any) =>
+        (m.lessons || []).map((l: any) => l.id)
+      );
+      const progressMap = await this.getProgressByUser(userId, lessonIds, { structureOnly: true });
 
       const modules = (courseData.modules || [])
         .sort((a: any, b: any) => (a.position || 0) - (b.position || 0))
@@ -214,8 +251,6 @@ export class SupabaseCourseRepository implements ICourseRepository {
    */
   async getLessonById(lessonId: string, userId?: string): Promise<Lesson | null> {
     try {
-      const progressMap = await this.getProgressByUser(userId);
-
       const { data: lessonData, error } = await this.client
         .from('lessons')
         .select(`
@@ -245,6 +280,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
       }
 
       if (!lessonData) return null;
+      const progressMap = await this.getProgressByUser(userId, [lessonId]);
 
       // Reutiliza mapLesson passando o progressMap para manter o status de concluído/progresso
       // Note: DatabaseLessonResponse might not exact match what select returns if type is strict, 
@@ -583,7 +619,6 @@ export class SupabaseCourseRepository implements ICourseRepository {
 
   private async getCoursesStructureBulk(ids: string[], userId?: string): Promise<Course[]> {
     if (!ids || ids.length === 0) return [];
-    const progressMap = await this.getProgressByUser(userId);
 
     const { data: coursesData, error } = await this.client
       .from('courses')
@@ -606,6 +641,13 @@ export class SupabaseCourseRepository implements ICourseRepository {
       .in('id', ids);
 
     if (error) throw new DomainError(`Erro ao carregar cursos em massa: ${error.message}`);
+
+    const lessonIds = (coursesData || []).flatMap((c: any) =>
+      (c.modules || []).flatMap((m: any) =>
+        (m.lessons || []).map((l: any) => l.id)
+      )
+    );
+    const progressMap = await this.getProgressByUser(userId, lessonIds, { structureOnly: true });
 
     return (coursesData || []).map((row: any) => ({
       ...row,
@@ -795,7 +837,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
         questions_count: quiz.questionsCount,
         pool_difficulty: quiz.poolDifficulty
       })
-      .select()
+      .select('id')
       .single();
 
     if (quizError) throw new DomainError(`Erro ao criar quiz: ${quizError.message}`);
@@ -810,7 +852,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
           position: question.position,
           points: question.points
         })
-        .select()
+        .select('id')
         .single();
 
       if (questionError) throw new DomainError(`Erro ao criar pergunta: ${questionError.message}`);
@@ -997,7 +1039,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
   async getLatestQuizAttempt(userId: string, quizId: string): Promise<QuizAttempt | null> {
     const { data, error } = await this.client
       .from('quiz_attempts')
-      .select('*')
+      .select('id, user_id, quiz_id, score, passed, answers, attempt_number, completed_at')
       .eq('user_id', userId)
       .eq('quiz_id', quizId)
       .order('completed_at', { ascending: false })
@@ -1022,7 +1064,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
   async getQuizAttempts(userId: string, quizId: string): Promise<QuizAttempt[]> {
     const { data, error } = await this.client
       .from('quiz_attempts')
-      .select('*')
+      .select('id, user_id, quiz_id, score, passed, answers, attempt_number, completed_at')
       .eq('user_id', userId)
       .eq('quiz_id', quizId)
       .order('completed_at', { ascending: false });
@@ -1065,7 +1107,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
   async getQuizReports(quizId: string): Promise<import('../domain/quiz-entities').QuizReport[]> {
     const { data, error } = await this.client
       .from('quiz_reports')
-      .select('*')
+      .select('id, quiz_id, question_id, user_id, issue_type, comment, status, created_at')
       .eq('quiz_id', quizId)
       .order('created_at', { ascending: false });
 
@@ -1090,7 +1132,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
 
     const { data, error } = await this.client
       .from('lesson_progress_requirements')
-      .select('*')
+      .select('lesson_id, video_required_percent, text_blocks_required_percent, required_pdfs, required_audios, required_materials')
       .eq('lesson_id', lessonId)
       .maybeSingle();
 

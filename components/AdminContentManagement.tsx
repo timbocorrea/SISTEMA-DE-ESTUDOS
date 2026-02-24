@@ -4,6 +4,7 @@ import { AdminService } from '../services/AdminService';
 import { toast } from 'sonner';
 import { CourseRecord, LessonRecord, LessonResourceRecord, ModuleRecord, SystemStats } from '../domain/admin';
 import { fileUploadService } from '../services/FileUploadService';
+import { supabaseClient as supabase } from '../services/Dependencies';
 import ResourceUploadForm from './ResourceUploadForm';
 import CreateCourseModal from './CreateCourseModal';
 import CreateModuleModal from './CreateModuleModal';

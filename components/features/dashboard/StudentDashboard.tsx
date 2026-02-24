@@ -81,15 +81,15 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
       });
   }, [user?.id, courseService]);
 
-  // Calculate Course Progress for Charts
-  const [courseProgressData, setCourseProgressData] = useState<{ courseId: string; title: string; progress: number }[]>([]);
-
-  useEffect(() => {
-    if (!user?.id) return;
-    courseService.getCourseProgressSummary(user.id)
-      .then(setCourseProgressData)
-      .catch(console.error);
-  }, [user?.id, courseService]);
+  // Calculate Course Progress locally from already-loaded courses to avoid extra network roundtrip.
+  const courseProgressData = React.useMemo(
+    () =>
+      courses.map((course) => {
+        const { percent } = computeCourseProgress(course);
+        return { courseId: course.id, title: course.title, progress: percent };
+      }),
+    [courses]
+  );
 
 
   return (

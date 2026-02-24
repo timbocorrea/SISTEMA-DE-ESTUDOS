@@ -1,4 +1,4 @@
-import { courseRepository } from '../services/Dependencies';
+import { courseRepository, supabaseClient as supabase } from '../services/Dependencies';
 import React, { useState } from 'react';
 import { Quiz, QuizQuestion } from '../domain/quiz-entities';
 import { toast } from 'sonner';

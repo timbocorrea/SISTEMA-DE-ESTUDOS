@@ -3,6 +3,7 @@ import { Quiz, QuizAttemptResult } from '../domain/quiz-entities';
 import { QuizQuestion } from '../domain/quiz-entities';
 import { Course, Lesson, User } from '../domain/entities';
 import { toast } from 'sonner';
+import { courseRepository, questionBankRepository } from '../services/Dependencies';
 
 interface UseLessonQuizProps {
     lesson: Lesson;
@@ -53,14 +54,7 @@ export const useLessonQuiz = ({
     useEffect(() => {
         async function loadQuiz() {
             try {
-                const { createSupabaseClient } = await import('../services/supabaseClient');
-                const { SupabaseCourseRepository } = await import('../repositories/SupabaseCourseRepository');
-                const { Quiz } = await import('../domain/quiz-entities');
-
-                const supabase = createSupabaseClient();
-                const courseRepo = new SupabaseCourseRepository(supabase);
-
-                const loadedQuiz = await courseRepo.getQuizByLessonId(lesson.id);
+                const loadedQuiz = await courseRepository.getQuizByLessonId(lesson.id);
                 setQuiz(loadedQuiz);
             } catch (error) {
                 console.error('Erro ao carregar quiz:', error);
@@ -78,13 +72,7 @@ export const useLessonQuiz = ({
         setIsSubmittingQuiz(true);
 
         try {
-            const { SupabaseCourseRepository } = await import('../repositories/SupabaseCourseRepository');
-            const { createSupabaseClient } = await import('../services/supabaseClient');
-
-            const supabase = createSupabaseClient();
-            const courseRepo = new SupabaseCourseRepository(supabase);
-
-            await courseRepo.submitQuizAttempt(
+            await courseRepository.submitQuizAttempt(
                 user.id,
                 quiz.id,
                 answers
@@ -118,14 +106,7 @@ export const useLessonQuiz = ({
 
         toast.loading('Preparando modo prática...');
         try {
-            const { createSupabaseClient } = await import('../services/supabaseClient');
-            const { SupabaseQuestionBankRepository } = await import('../repositories/SupabaseQuestionBankRepository');
-            const { QuizQuestion } = await import('../domain/quiz-entities');
-
-            const supabase = createSupabaseClient();
-            const bankRepo = new SupabaseQuestionBankRepository(supabase);
-
-            const bankQuestions = await bankRepo.getRandomQuestions(
+            const bankQuestions = await questionBankRepository.getRandomQuestions(
                 practiceQuestionCount,
                 {
                     courseId: course.id,
@@ -191,19 +172,10 @@ export const useLessonQuiz = ({
             // Pool Mode detected
             toast.loading('Sorteando questões do banco...');
             try {
-                const { createSupabaseClient } = await import('../services/supabaseClient');
-                const { SupabaseQuestionBankRepository } = await import('../repositories/SupabaseQuestionBankRepository');
-                const { SupabaseCourseRepository } = await import('../repositories/SupabaseCourseRepository');
-                const { QuizQuestion } = await import('../domain/quiz-entities');
-
-                const supabase = createSupabaseClient();
-                const bankRepo = new SupabaseQuestionBankRepository(supabase);
-                const courseRepo = new SupabaseCourseRepository(supabase);
-
                 // Check for previous failed attempt to exclude questions
                 let excludeIds: string[] = [];
                 try {
-                    const lastAttempt = await courseRepo.getLatestQuizAttempt(user.id, quiz.id);
+                    const lastAttempt = await courseRepository.getLatestQuizAttempt(user.id, quiz.id);
                     if (lastAttempt && !lastAttempt.passed && lastAttempt.answers) {
                         excludeIds = Object.keys(lastAttempt.answers);
                         console.log('Excluding questions from previous failed attempt:', excludeIds);
@@ -216,7 +188,7 @@ export const useLessonQuiz = ({
                 // Default to 20 questions if not specified, or use the configured count
                 const countToFetch = quiz.questionsCount > 0 ? quiz.questionsCount : 20;
 
-                const bankQuestions = await bankRepo.getRandomQuestions(
+                const bankQuestions = await questionBankRepository.getRandomQuestions(
                     countToFetch,
                     {
                         difficulty: quiz.poolDifficulty || undefined,

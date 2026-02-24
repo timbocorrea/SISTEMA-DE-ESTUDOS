@@ -67,7 +67,7 @@ const QuestionBankEditor: React.FC<QuestionBankEditorProps> = ({ existingQuestio
 
     const loadLessons = async (mid: string) => {
         try {
-            const list = await adminService.listLessons(mid);
+            const list = await adminService.listLessons(mid, { summary: true });
             setLessons(list);
         } catch (e) { console.error(e); }
     };

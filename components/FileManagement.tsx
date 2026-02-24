@@ -1,5 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { supabaseClient as supabase } from '../services/Dependencies';
+
+const BUCKET_NAME = 'lesson-resources';
+const INDEX_CACHE_TTL_MS = 5 * 60 * 1000;
 
 interface FileInfo {
     name: string;
@@ -29,78 +33,118 @@ const FileManagement: React.FC<FileManagementProps> = ({ path, onPathChange }) =
 
     const currentPath = path !== undefined ? path : internalPath;
     const setCurrentPath = onPathChange || setInternalPath;
+    const pathCacheRef = useRef<Record<string, FileInfo[]>>({});
+    const fullIndexCacheRef = useRef<{ data: FileInfo[]; cachedAt: number } | null>(null);
+
+    const getPathItems = useCallback(async (pathToList: string, forceRefresh = false): Promise<FileInfo[]> => {
+        if (!forceRefresh && pathCacheRef.current[pathToList]) {
+            return pathCacheRef.current[pathToList];
+        }
+
+        const { data, error } = await supabase.storage
+            .from(BUCKET_NAME)
+            .list(pathToList);
+
+        if (error) throw error;
+        const items = (data || []) as FileInfo[];
+        pathCacheRef.current[pathToList] = items;
+        return items;
+    }, []);
 
     
 
     useEffect(() => {
-        loadFiles(currentPath);
+        if (filterType === 'all') {
+            loadFiles(currentPath);
+        }
     }, [currentPath, filterType]);
+
+    useEffect(() => {
+        if (filterType !== 'all') {
+            // Flat mode ignores currentPath, so avoid reloading when only path changes.
+            loadFiles('');
+        }
+    }, [filterType]);
 
     useEffect(() => {
         // Calculate global stats only when in root or initial load
         calculateGlobalStats();
     }, []);
 
-    const calculateGlobalStats = async () => {
-        const { data: rootItems } = await supabase.storage.from('lesson-resources').list('');
-        if (!rootItems) return;
+    const calculateGlobalStats = async (forceRefresh = false) => {
+        try {
+            const rootItems = await getPathItems('', forceRefresh);
+            if (!rootItems) return;
 
-        let totalCount = 0;
-        let totalSize = 0;
-        let imgCount = 0;
-        let mediaCount = 0;
-        const newFolderStats: Record<string, { count: number, size: number }> = {};
+            let totalCount = 0;
+            let totalSize = 0;
+            let imgCount = 0;
+            let mediaCount = 0;
+            const newFolderStats: Record<string, { count: number, size: number }> = {};
 
-        const folders = rootItems.filter(i => i.id === null);
-        const rootFiles = rootItems.filter(i => i.id !== null);
+            const folders = rootItems.filter(i => i.id === null);
+            const rootFiles = rootItems.filter(i => i.id !== null);
 
-        // Process root files
-        totalCount += rootFiles.length;
-        rootFiles.forEach(f => {
-            totalSize += f.metadata?.size || 0;
-            const type = getFileType(f.name);
-            if (type === 'image') imgCount++;
-            if (type === 'video' || type === 'audio') mediaCount++;
-        });
+            totalCount += rootFiles.length;
+            rootFiles.forEach(f => {
+                totalSize += f.metadata?.size || 0;
+                const type = getFileType(f.name);
+                if (type === 'image') imgCount++;
+                if (type === 'video' || type === 'audio') mediaCount++;
+            });
 
-        // Process folders recursively (1 level deep for now as structure seems flat)
-        for (const folder of folders) {
-            const { data: folderItems } = await supabase.storage.from('lesson-resources').list(folder.name);
-            if (folderItems) {
-                const folderCount = folderItems.length;
-                const folderSize = folderItems.reduce((acc, item) => acc + (item.metadata?.size || 0), 0);
+            const folderResults = await Promise.all(
+                folders.map(async (folder) => ({
+                    folderName: folder.name,
+                    items: await getPathItems(folder.name, forceRefresh)
+                }))
+            );
 
-                newFolderStats[folder.name] = { count: folderCount, size: folderSize };
+            folderResults.forEach(({ folderName, items }) => {
+                const folderCount = items.length;
+                const folderSize = items.reduce((acc, item) => acc + (item.metadata?.size || 0), 0);
+
+                newFolderStats[folderName] = { count: folderCount, size: folderSize };
                 totalCount += folderCount;
                 totalSize += folderSize;
 
-                folderItems.forEach(f => {
+                items.forEach(f => {
                     const type = getFileType(f.name);
                     if (type === 'image') imgCount++;
                     if (type === 'video' || type === 'audio') mediaCount++;
                 });
-            }
-        }
+            });
 
-        setGlobalStats({ total: totalCount, images: imgCount, media: mediaCount, size: totalSize });
-        setFolderStats(newFolderStats);
+            setGlobalStats({ total: totalCount, images: imgCount, media: mediaCount, size: totalSize });
+            setFolderStats(newFolderStats);
+        } catch (err) {
+            // Keep UI functional even if stats fail; listing still works.
+            console.error('Failed to calculate global stats:', err);
+        }
     };
 
-    const loadFiles = async (path: string = '') => {
+    const loadFiles = async (path: string = '', forceRefresh = false) => {
         try {
             setLoading(true);
             setError('');
 
             // If filtering, we want to see ALL files of that type, regardless of folder structure
             if (filterType !== 'all') {
+                const cachedIndex = fullIndexCacheRef.current;
+                const isCacheValid =
+                    !forceRefresh &&
+                    !!cachedIndex &&
+                    (Date.now() - cachedIndex.cachedAt) < INDEX_CACHE_TTL_MS;
+
+                if (isCacheValid && cachedIndex) {
+                    setFiles(cachedIndex.data);
+                    return;
+                }
+
                 const allFiles: FileInfo[] = [];
 
                 // 1. Get root files
-                const { data: rootData, error: rootError } = await supabase.storage
-                    .from('lesson-resources')
-                    .list('');
-
-                if (rootError) throw rootError;
+                const rootData = await getPathItems('', forceRefresh);
 
                 if (rootData) {
                     // Add root files that match
@@ -113,10 +157,7 @@ const FileManagement: React.FC<FileManagementProps> = ({ path, onPathChange }) =
                     // 3. Fetch content from each folder
                     // Parallel fetching for performance
                     await Promise.all(folders.map(async (folder) => {
-                        const { data: folderData } = await supabase.storage
-                            .from('lesson-resources')
-                            .list(folder.name);
-
+                        const folderData = await getPathItems(folder.name, forceRefresh);
                         if (folderData) {
                             const filesInFolder = folderData.filter(f => f.id !== null).map(f => ({
                                 ...f,
@@ -126,15 +167,15 @@ const FileManagement: React.FC<FileManagementProps> = ({ path, onPathChange }) =
                         }
                     }));
                 }
+
+                fullIndexCacheRef.current = {
+                    data: allFiles,
+                    cachedAt: Date.now()
+                };
                 setFiles(allFiles);
             } else {
                 // Normal behavior: list current path
-                const { data, error: listError } = await supabase.storage
-                    .from('lesson-resources')
-                    .list(path);
-
-                if (listError) throw listError;
-
+                const data = await getPathItems(path, forceRefresh);
                 setFiles(data || []);
             }
 
@@ -147,7 +188,7 @@ const FileManagement: React.FC<FileManagementProps> = ({ path, onPathChange }) =
 
     const getFileUrl = (filePath: string) => {
         const { data } = supabase.storage
-            .from('lesson-resources')
+            .from(BUCKET_NAME)
             .getPublicUrl(filePath);
         return data.publicUrl;
     };
@@ -176,12 +217,18 @@ const FileManagement: React.FC<FileManagementProps> = ({ path, onPathChange }) =
             setDeleting(fileName);
             const fullPath = currentPath ? currentPath + '/' + fileName : fileName;
             const { error: deleteError } = await supabase.storage
-                .from('lesson-resources')
+                .from(BUCKET_NAME)
                 .remove([fullPath]);
 
             if (deleteError) throw deleteError;
 
-            await loadFiles(currentPath);
+            // Invalidate caches to avoid stale UI and stale stats after delete.
+            pathCacheRef.current = {};
+            fullIndexCacheRef.current = null;
+            await Promise.all([
+                loadFiles(filterType === 'all' ? currentPath : '', true),
+                calculateGlobalStats(true)
+            ]);
         } catch (err: any) {
             toast.error('Erro ao excluir arquivo: ' + err.message);
         } finally {

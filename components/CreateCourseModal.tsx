@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { toast } from 'sonner';
+import { supabaseClient as supabase } from '../services/Dependencies';
 
 interface CreateCourseModalProps {
     isOpen: boolean;

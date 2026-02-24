@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { createSupabaseClient } from '../services/supabaseClient';
+import { supabaseClient as supabase } from '../services/Dependencies';
 
 interface StudentAnswer {
     blockId: string;
@@ -31,7 +31,6 @@ export const useStudentAnswers = ({ userId, lessonId }: UseStudentAnswersProps) 
 
         const loadAnswers = async () => {
             try {
-                const supabase = createSupabaseClient();
                 const { data, error } = await supabase
                     .from('student_answers')
                     .select('block_id, answer_text')
@@ -73,7 +72,6 @@ export const useStudentAnswers = ({ userId, lessonId }: UseStudentAnswersProps) 
         setSavingBlocks(prev => new Set(prev).add(blockId));
 
         try {
-            const supabase = createSupabaseClient();
             const { error } = await supabase
                 .from('student_answers')
                 .upsert({

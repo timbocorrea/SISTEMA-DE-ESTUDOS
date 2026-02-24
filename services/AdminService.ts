@@ -95,8 +95,8 @@ export class AdminService {
     return this.adminRepository.deleteModule(id);
   }
 
-  listLessons(moduleId: string): Promise<LessonRecord[]> {
-    return this.adminRepository.listLessons(moduleId);
+  listLessons(moduleId: string, options?: { summary?: boolean }): Promise<LessonRecord[]> {
+    return this.adminRepository.listLessons(moduleId, options);
   }
 
   createLesson(

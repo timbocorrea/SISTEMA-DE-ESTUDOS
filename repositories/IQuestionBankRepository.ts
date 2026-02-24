@@ -1,13 +1,25 @@
 import { QuizQuestion, QuestionDifficulty } from '../domain/quiz-entities';
 
+export type QuestionBankFilters = {
+    courseId?: string;
+    moduleId?: string;
+    lessonId?: string;
+    difficulty?: QuestionDifficulty;
+    keyword?: string;
+};
+
+export type QuestionBankPagination = {
+    page: number;
+    pageSize: number;
+};
+
 export interface IQuestionBankRepository {
-    getQuestions(filters: {
-        courseId?: string;
-        moduleId?: string;
-        lessonId?: string;
-        difficulty?: QuestionDifficulty;
-        keyword?: string;
-    }): Promise<QuizQuestion[]>;
+    getQuestions(filters: QuestionBankFilters): Promise<QuizQuestion[]>;
+
+    getQuestionsPage(
+        filters: QuestionBankFilters,
+        pagination: QuestionBankPagination
+    ): Promise<{ questions: QuizQuestion[]; total: number }>;
 
     getQuestionById(id: string): Promise<QuizQuestion | null>;
 

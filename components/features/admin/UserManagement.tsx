@@ -10,6 +10,7 @@ import DeleteConfirmationModal from '@/components/DeleteConfirmationModal';
 import { toast } from 'sonner';
 import UserCourseAccessModal from '@/components/UserCourseAccessModal';
 import AdminResetPasswordModal from '@/components/AdminResetPasswordModal';
+import { supabaseClient as supabase } from '@/services/Dependencies';
 
 type Props = {
   adminService: AdminService;
@@ -41,7 +42,7 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
 
-  const loadUsers = async () => {
+  const loadUsers = async (): Promise<ProfileRecord[]> => {
     setError('');
     let list: ProfileRecord[];
 
@@ -56,17 +57,17 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
     }
 
     setUsers(list);
+    return list;
   };
 
   useEffect(() => {
     const run = async () => {
       try {
         setLoading(true);
-        await loadUsers();
+        const list = await loadUsers();
 
         if (!adminId) {
-          const profiles = await adminService.listProfiles();
-          const instructor = profiles.find(p => p.role === 'INSTRUCTOR');
+          const instructor = list.find(p => p.role === 'INSTRUCTOR');
           if (instructor) setAdminId(instructor.id);
         }
       } catch (e) {
@@ -186,7 +187,7 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
   const handleBulkBlock = async () => {
     setBulkActionLoading(true);
     try {
-      const currentUserId = (await createSupabaseClient().auth.getUser()).data.user?.id;
+      const currentUserId = (await supabase.auth.getUser()).data.user?.id;
       if (!currentUserId) throw new Error('Usuário não autenticado');
 
       for (const userId of selectedUserIds) {
@@ -206,7 +207,7 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
   const handleBulkApprove = async () => {
     setBulkActionLoading(true);
     try {
-      const currentUserId = (await createSupabaseClient().auth.getUser()).data.user?.id;
+      const currentUserId = (await supabase.auth.getUser()).data.user?.id;
       if (!currentUserId) throw new Error('Usuário não autenticado');
 
       for (const userId of selectedUserIds) {

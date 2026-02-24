@@ -13,7 +13,7 @@ export interface IAdminRepository {
   updateModule(id: string, patch: { title?: string; position?: number | null }): Promise<ModuleRecord>;
   deleteModule(id: string): Promise<void>;
 
-  listLessons(moduleId: string): Promise<LessonRecord[]>;
+  listLessons(moduleId: string, options?: { summary?: boolean }): Promise<LessonRecord[]>;
   createLesson(
     moduleId: string,
     payload: {

@@ -1,10 +1,25 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-import { IQuestionBankRepository } from './IQuestionBankRepository';
+import { IQuestionBankRepository, QuestionBankFilters, QuestionBankPagination } from './IQuestionBankRepository';
 import { QuizQuestion, QuizOption, QuestionDifficulty } from '../domain/quiz-entities';
 import { DomainError } from '../domain/errors';
 
 export class SupabaseQuestionBankRepository implements IQuestionBankRepository {
     constructor(private client: SupabaseClient) { }
+
+    private readonly QUESTION_SELECT = `
+        id,
+        question_text,
+        image_url,
+        difficulty,
+        points,
+        course_id,
+        module_id,
+        lesson_id,
+        question_bank_options ( id, question_id, option_text, is_correct, position ),
+        courses:course_id ( title ),
+        modules:module_id ( title ),
+        lessons:lesson_id ( title )
+    `;
 
     private mapQuestion(row: any): QuizQuestion {
         const options = (row.question_bank_options || []).map((o: any) =>
@@ -28,60 +43,70 @@ export class SupabaseQuestionBankRepository implements IQuestionBankRepository {
             row.lessons?.title
         );
     }
-
-    async getQuestions(filters: {
-        courseId?: string;
-        moduleId?: string;
-        lessonId?: string;
-        difficulty?: QuestionDifficulty;
-        keyword?: string;
-    }): Promise<QuizQuestion[]> {
-        let query = this.client
-            .from('question_bank')
-            .select(`
-                *,
-                question_bank_options ( id, question_id, option_text, is_correct, position ),
-                courses:course_id ( title ),
-                modules:module_id ( title ),
-                lessons:lesson_id ( title )
-            `);
+    private buildQuestionsQuery(filters: QuestionBankFilters, withCount: boolean = false) {
+        let query = withCount
+            ? this.client.from('question_bank').select(this.QUESTION_SELECT, { count: 'exact' })
+            : this.client.from('question_bank').select(this.QUESTION_SELECT);
 
         if (filters.courseId) query = query.eq('course_id', filters.courseId);
         if (filters.moduleId) query = query.eq('module_id', filters.moduleId);
         if (filters.lessonId) query = query.eq('lesson_id', filters.lessonId);
         if (filters.difficulty) query = query.eq('difficulty', filters.difficulty);
-        if (filters.keyword) query = query.ilike('question_text', `%${filters.keyword}%`);
+        if (filters.keyword) query = query.ilike('question_text', '%' + filters.keyword + '%');
 
-        const { data, error } = await query.order('created_at', { ascending: false });
+        return query;
+    }
 
-        if (error) throw new DomainError(`Erro ao buscar questões do banco: ${error.message}`);
-
+    private mapQuestionsRows(rows: any[] | null): QuizQuestion[] {
         const questions: QuizQuestion[] = [];
-        (data || []).forEach(row => {
+        (rows || []).forEach(row => {
             try {
                 questions.push(this.mapQuestion(row));
             } catch (e) {
                 console.warn(`[SupabaseQuestionBankRepository] Skipping invalid question ${row.id}:`, e);
             }
         });
-
         return questions;
+    }
+
+    async getQuestions(filters: QuestionBankFilters): Promise<QuizQuestion[]> {
+        const { data, error } = await this.buildQuestionsQuery(filters)
+            .order('created_at', { ascending: false });
+
+        if (error) throw new DomainError(`Erro ao buscar questões do banco: ${error.message}`);
+
+        return this.mapQuestionsRows(data);
+    }
+
+    async getQuestionsPage(
+        filters: QuestionBankFilters,
+        pagination: QuestionBankPagination
+    ): Promise<{ questions: QuizQuestion[]; total: number }> {
+        const safePage = Math.max(1, Math.floor(pagination.page || 1));
+        const safePageSize = Math.min(100, Math.max(1, Math.floor(pagination.pageSize || 20)));
+        const from = (safePage - 1) * safePageSize;
+        const to = from + safePageSize - 1;
+
+        const { data, error, count } = await this.buildQuestionsQuery(filters, true)
+            .order('created_at', { ascending: false })
+            .range(from, to);
+
+        if (error) throw new DomainError(`Erro ao buscar questões paginadas: ${error.message}`);
+
+        return {
+            questions: this.mapQuestionsRows(data),
+            total: count || 0
+        };
     }
 
     async getQuestionById(id: string): Promise<QuizQuestion | null> {
         const { data, error } = await this.client
             .from('question_bank')
-            .select(`
-                *,
-                question_bank_options ( id, question_id, option_text, is_correct, position ),
-                courses:course_id ( title ),
-                modules:module_id ( title ),
-                lessons:lesson_id ( title )
-            `)
+            .select(this.QUESTION_SELECT)
             .eq('id', id)
             .maybeSingle();
 
-        if (error) throw new DomainError(`Erro ao buscar questão: ${error.message}`);
+        if (error) throw new DomainError(`Erro ao buscar questÃ£o: ${error.message}`);
         if (!data) return null;
 
         return this.mapQuestion(data);
@@ -103,10 +128,10 @@ export class SupabaseQuestionBankRepository implements IQuestionBankRepository {
                 difficulty: question.difficulty,
                 points: question.points
             })
-            .select()
+            .select('id')
             .single();
 
-        if (error) throw new DomainError(`Erro ao criar questão no banco: ${error.message}`);
+        if (error) throw new DomainError(`Erro ao criar questÃ£o no banco: ${error.message}`);
 
         const options = question.options.map((o, idx) => ({
             question_id: data.id,
@@ -119,10 +144,10 @@ export class SupabaseQuestionBankRepository implements IQuestionBankRepository {
             .from('question_bank_options')
             .insert(options);
 
-        if (optionsError) throw new DomainError(`Erro ao criar opções no banco: ${optionsError.message}`);
+        if (optionsError) throw new DomainError(`Erro ao criar opÃ§Ãµes no banco: ${optionsError.message}`);
 
         const created = await this.getQuestionById(data.id);
-        if (!created) throw new DomainError('Erro ao recuperar questão criada');
+        if (!created) throw new DomainError('Erro ao recuperar questÃ£o criada');
         return created;
     }
 
@@ -157,7 +182,7 @@ export class SupabaseQuestionBankRepository implements IQuestionBankRepository {
             })
             .eq('id', question.id);
 
-        if (error) throw new DomainError(`Erro ao atualizar questão no banco: ${error.message}`);
+        if (error) throw new DomainError(`Erro ao atualizar questÃ£o no banco: ${error.message}`);
 
         // Delete old options and insert new ones (simpler than syncing)
         await this.client.from('question_bank_options').delete().eq('question_id', question.id);
@@ -173,10 +198,10 @@ export class SupabaseQuestionBankRepository implements IQuestionBankRepository {
             .from('question_bank_options')
             .insert(options);
 
-        if (optionsError) throw new DomainError(`Erro ao atualizar opções no banco: ${optionsError.message}`);
+        if (optionsError) throw new DomainError(`Erro ao atualizar opÃ§Ãµes no banco: ${optionsError.message}`);
 
         const updated = await this.getQuestionById(question.id);
-        if (!updated) throw new DomainError('Erro ao recuperar questão atualizada');
+        if (!updated) throw new DomainError('Erro ao recuperar questÃ£o atualizada');
         return updated;
     }
 
@@ -190,11 +215,11 @@ export class SupabaseQuestionBankRepository implements IQuestionBankRepository {
 
         if (optionsError) {
             console.error('Error deleting options:', optionsError);
-            throw new DomainError(`Erro ao deletar opções da questão: ${optionsError.message}`);
+            throw new DomainError(`Erro ao deletar opÃ§Ãµes da questÃ£o: ${optionsError.message}`);
         }
 
         const { error } = await this.client.from('question_bank').delete().eq('id', id);
-        if (error) throw new DomainError(`Erro ao deletar questão: ${error.message}`);
+        if (error) throw new DomainError(`Erro ao deletar questÃ£o: ${error.message}`);
     }
 
     async getRandomQuestions(count: number, filters: {
@@ -220,10 +245,53 @@ export class SupabaseQuestionBankRepository implements IQuestionBankRepository {
 
         if (error) {
             console.error('RPC get_random_bank_questions failed:', error);
-            // Fallback: Fetch a limited pool and shuffle (less efficient but works without migration if RPC is missing)
-            return this.getQuestions(filters).then(qs =>
-                qs.sort(() => Math.random() - 0.5).slice(0, count)
-            );
+            // Fallback bounded pool to avoid large egress when RPC/migration is missing.
+            const fallbackPoolSize = Math.min(Math.max(count * 3, 30), 200);
+            let fallbackQuery = this.client
+                .from('question_bank')
+                .select(`
+                    id,
+                    question_text,
+                    image_url,
+                    difficulty,
+                    points,
+                    course_id,
+                    module_id,
+                    lesson_id,
+                    question_bank_options ( id, question_id, option_text, is_correct, position ),
+                    courses:course_id ( title ),
+                    modules:module_id ( title ),
+                    lessons:lesson_id ( title )
+                `);
+
+            if (filters.courseId) fallbackQuery = fallbackQuery.eq('course_id', filters.courseId);
+            if (filters.moduleId) fallbackQuery = fallbackQuery.eq('module_id', filters.moduleId);
+            if (filters.lessonId) fallbackQuery = fallbackQuery.eq('lesson_id', filters.lessonId);
+            if (filters.difficulty) fallbackQuery = fallbackQuery.eq('difficulty', filters.difficulty);
+
+            const { data: fallbackData, error: fallbackError } = await fallbackQuery
+                .order('created_at', { ascending: false })
+                .limit(fallbackPoolSize);
+
+            if (fallbackError) {
+                throw new DomainError(`Erro ao buscar questÃµes aleatÃ³rias (fallback): ${fallbackError.message}`);
+            }
+
+            const excludeSet = new Set(filters.excludeIds || []);
+            const fallbackQuestions: QuizQuestion[] = [];
+            (fallbackData || [])
+                .filter((row: any) => !excludeSet.has(row.id))
+                .forEach((row: any) => {
+                    try {
+                        fallbackQuestions.push(this.mapQuestion(row));
+                    } catch (e) {
+                        console.warn(`[SupabaseQuestionBankRepository] Skipping invalid fallback question ${row.id}:`, e);
+                    }
+                });
+
+            return fallbackQuestions
+                .sort(() => Math.random() - 0.5)
+                .slice(0, count);
         }
 
         const questions: QuizQuestion[] = [];

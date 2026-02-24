@@ -1,4 +1,4 @@
-import { questionBankRepository } from '../services/Dependencies';
+import { questionBankRepository, supabaseClient as supabase } from '../services/Dependencies';
 import React, { useEffect, useState, useMemo } from 'react';
 import { AdminService } from '../services/AdminService';
 import { QuizQuestion, QuestionDifficulty, Quiz, QuizAttemptResult } from '../domain/quiz-entities';
@@ -34,6 +34,7 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
     const [searchKeyword, setSearchKeyword] = useState<string>('');
 
     const [questions, setQuestions] = useState<QuizQuestion[]>([]);
+    const [totalFilteredQuestions, setTotalFilteredQuestions] = useState(0);
     const [isLoading, setIsLoading] = useState(false);
     const [isBusy, setIsBusy] = useState(false);
 
@@ -62,10 +63,10 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
     const [itemsPerPage, setItemsPerPage] = useState(20);
 
     const repository = useMemo(() => questionBankRepository, []);
+    const hasInitializedFilterEffect = React.useRef(false);
 
     useEffect(() => {
         loadCourses();
-        loadQuestions();
         loadSystemStats();
     }, []);
 
@@ -78,10 +79,10 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
                 { count: lessonsCount },
                 { count: questionsCount }
             ] = await Promise.all([
-                supabase.from('courses').select('*', { count: 'exact', head: true }),
-                supabase.from('modules').select('*', { count: 'exact', head: true }),
-                supabase.from('lessons').select('*', { count: 'exact', head: true }),
-                supabase.from('question_bank').select('*', { count: 'exact', head: true })
+                supabase.from('courses').select('id', { count: 'exact', head: true }),
+                supabase.from('modules').select('id', { count: 'exact', head: true }),
+                supabase.from('lessons').select('id', { count: 'exact', head: true }),
+                supabase.from('question_bank').select('id', { count: 'exact', head: true })
             ]);
 
             setStats({
@@ -91,7 +92,7 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
                 questions: questionsCount || 0
             });
         } catch (error) {
-            console.error('Erro ao carregar estatísticas:', error);
+            console.error('Erro ao carregar estatÃƒÂ­sticas:', error);
         }
     };
 
@@ -123,40 +124,66 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
             return;
         }
         try {
-            const list = await adminService.listLessons(moduleId);
+            const list = await adminService.listLessons(moduleId, { summary: true });
             setLessons(list);
         } catch (error) {
             console.error(error);
         }
     };
 
-    const loadQuestions = async () => {
+    const loadQuestions = async (page: number = currentPage, pageSize: number = itemsPerPage) => {
         setIsLoading(true);
         try {
-            const list = await repository.getQuestions({
-                courseId: selectedCourseId || undefined,
-                moduleId: selectedModuleId || undefined,
-                lessonId: selectedLessonId || undefined,
-                difficulty: selectedDifficulty || undefined,
-                keyword: searchKeyword || undefined
-            });
+            const { questions: list, total } = await repository.getQuestionsPage(
+                {
+                    courseId: selectedCourseId || undefined,
+                    moduleId: selectedModuleId || undefined,
+                    lessonId: selectedLessonId || undefined,
+                    difficulty: selectedDifficulty || undefined,
+                    keyword: searchKeyword || undefined
+                },
+                {
+                    page,
+                    pageSize
+                }
+            );
+
+            const safeTotalPages = Math.max(1, Math.ceil((total || 0) / pageSize));
+            if (page > safeTotalPages) {
+                setCurrentPage(safeTotalPages);
+                return;
+            }
+
             setQuestions(list);
+            setTotalFilteredQuestions(total || 0);
         } catch (error: any) {
             console.error(error);
-            toast.error(`Erro ao carregar questões: ${error.message || 'Erro desconhecido'}`);
+            toast.error(`Erro ao carregar questoes: ${error.message || 'Erro desconhecido'}`);
         } finally {
             setIsLoading(false);
         }
     };
 
     useEffect(() => {
+        if (!hasInitializedFilterEffect.current) {
+            hasInitializedFilterEffect.current = true;
+            return;
+        }
+
         const timer = setTimeout(() => {
-            loadQuestions();
-            setCurrentPage(1); // Reset to page 1 when filters change
+            if (currentPage === 1) {
+                loadQuestions(1, itemsPerPage);
+            } else {
+                setCurrentPage(1); // Reset to page 1 when filters change
+            }
             setSelectedQuestions(new Set()); // Reset selection
         }, 300); // 300ms debounce
         return () => clearTimeout(timer);
     }, [selectedCourseId, selectedModuleId, selectedLessonId, selectedDifficulty, searchKeyword]);
+
+    useEffect(() => {
+        loadQuestions(currentPage, itemsPerPage);
+    }, [currentPage, itemsPerPage]);
 
     const handleCourseChange = (id: string) => {
         setSelectedCourseId(id);
@@ -202,14 +229,14 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
     };
 
     const handleDeleteQuestion = async (id: string) => {
-        if (!confirm('Deseja realmente excluir esta questão?')) return;
+        if (!confirm('Deseja realmente excluir esta questÃƒÂ£o?')) return;
         try {
             await repository.deleteQuestion(id);
-            toast.success('Questão excluída');
+            toast.success('QuestÃƒÂ£o excluÃƒÂ­da');
             loadQuestions();
             loadSystemStats(); // Refresh stats on delete
         } catch (error) {
-            toast.error('Erro ao excluir questão');
+            toast.error('Erro ao excluir questÃƒÂ£o');
         }
     };
 
@@ -243,7 +270,7 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
 
     const handleBulkDelete = async () => {
         if (selectedQuestions.size === 0) return;
-        if (!confirm(`Deseja realmente excluir ${selectedQuestions.size} questões? Esta ação não pode ser desfeita.`)) return;
+        if (!confirm(`Deseja realmente excluir ${selectedQuestions.size} questÃƒÂµes? Esta aÃƒÂ§ÃƒÂ£o nÃƒÂ£o pode ser desfeita.`)) return;
 
         setIsBusy(true);
         try {
@@ -256,13 +283,13 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
                 await Promise.all(batch.map(id => repository.deleteQuestion(id)));
             }
 
-            toast.success(`${selectedQuestions.size} questões excluídas com sucesso.`);
+            toast.success(`${selectedQuestions.size} questÃƒÂµes excluÃƒÂ­das com sucesso.`);
             setSelectedQuestions(new Set());
             loadQuestions();
             loadSystemStats();
         } catch (error) {
-            console.error('Erro ao excluir questões em massa:', error);
-            toast.error('Erro ao excluir algumas questões. Tente novamente.');
+            console.error('Erro ao excluir questÃƒÂµes em massa:', error);
+            toast.error('Erro ao excluir algumas questÃƒÂµes. Tente novamente.');
         } finally {
             setIsBusy(false);
         }
@@ -270,7 +297,7 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
 
     const handleImportJson = async () => {
         if (!selectedCourseId) {
-            toast.error('Por favor, selecione um curso para as questões.');
+            toast.error('Por favor, selecione um curso para as questÃƒÂµes.');
             return;
         }
 
@@ -283,7 +310,7 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
             const normalized = normalizeQuestions(parsed);
 
             if (normalized.length === 0) {
-                toast.error('Nenhuma questão válida encontrada no Markdown.');
+                toast.error('Nenhuma questÃƒÂ£o vÃƒÂ¡lida encontrada no Markdown.');
                 return;
             }
 
@@ -295,7 +322,7 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
                     lessonId: selectedLessonId || undefined
                 });
 
-                toast.success(`${normalized.length} questões importadas e salvas no banco com sucesso!`);
+                toast.success(`${normalized.length} questÃƒÂµes importadas e salvas no banco com sucesso!`);
                 setImportRawJson('');
                 setIsImportModalOpen(false);
                 loadQuestions();
@@ -305,7 +332,7 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
             }
         } catch (error) {
             console.error('Erro ao processar Markdown:', error);
-            toast.error('Erro ao processar arquivo. Verifique a formatação.');
+            toast.error('Erro ao processar arquivo. Verifique a formataÃƒÂ§ÃƒÂ£o.');
         }
     };
 
@@ -337,8 +364,8 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
         const virtualQuiz = new Quiz(
             'SIMULATION',
             'BANK',
-            'Simulação de Banco de Questões',
-            'Teste suas questões aqui',
+            'SimulaÃƒÂ§ÃƒÂ£o de Banco de QuestÃƒÂµes',
+            'Teste suas questÃƒÂµes aqui',
             70, // Standard passing score
             shuffledQuestions
         );
@@ -350,10 +377,10 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
     };
 
     // Pagination Logic
-    const totalPages = Math.ceil(questions.length / itemsPerPage);
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    const paginatedQuestions = questions.slice(startIndex, endIndex);
+    const totalPages = Math.max(1, Math.ceil(totalFilteredQuestions / itemsPerPage));
+    const startIndex = totalFilteredQuestions === 0 ? 0 : ((currentPage - 1) * itemsPerPage) + 1;
+    const endIndex = Math.min(currentPage * itemsPerPage, totalFilteredQuestions);
+    const paginatedQuestions = questions;
 
     const handlePageChange = (page: number) => {
         setCurrentPage(page);
@@ -383,7 +410,7 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
                             </button>
                             <div className="hidden sm:block">
                                 <h1 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                                    Questionário Centralizado
+                                    QuestionÃƒÂ¡rio Centralizado
                                 </h1>
                                 <p className="text-[10px] text-indigo-500 font-black uppercase tracking-widest">
                                     Admin / <span className="text-slate-400">Banco de Dados</span>
@@ -429,7 +456,7 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
                                 className="h-9 px-4 rounded-lg bg-indigo-600 text-white border border-transparent hover:bg-indigo-700 dark:bg-transparent dark:border-indigo-500 dark:text-indigo-400 dark:hover:bg-indigo-500/10 font-semibold transition-all active:scale-95 flex items-center gap-2 text-[10px] uppercase shadow-lg shadow-indigo-600/10 dark:shadow-none"
                             >
                                 <i className="fas fa-plus text-[10px]"></i>
-                                Nova Questão
+                                Nova QuestÃƒÂ£o
                             </button>
                         </div>
                     </div>
@@ -461,7 +488,7 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
                                     <div className="w-10 h-10 rounded-xl bg-cyan-100 dark:bg-cyan-500/10 flex items-center justify-center flex-shrink-0">
                                         <i className="fas fa-layer-group text-lg text-cyan-600 dark:text-cyan-400"></i>
                                     </div>
-                                    <p className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Módulos</p>
+                                    <p className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">MÃƒÂ³dulos</p>
                                 </div>
                                 <p className="text-2xl font-black text-slate-900 dark:text-white">{stats.modules}</p>
                             </div>
@@ -487,7 +514,7 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
                                     <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-500/10 flex items-center justify-center flex-shrink-0">
                                         <i className="fas fa-database text-lg text-amber-600 dark:text-amber-400"></i>
                                     </div>
-                                    <p className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Questões</p>
+                                    <p className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">QuestÃƒÂµes</p>
                                 </div>
                                 <p className="text-2xl font-black text-slate-900 dark:text-white">{stats.questions}</p>
                             </div>
@@ -509,14 +536,14 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Módulo</label>
+                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">MÃƒÂ³dulo</label>
                             <select
                                 value={selectedModuleId}
                                 onChange={(e) => handleModuleChange(e.target.value)}
                                 disabled={!selectedCourseId}
                                 className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-3 text-sm font-bold text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none appearance-none cursor-pointer disabled:opacity-50"
                             >
-                                <option value="">Todos os Módulos</option>
+                                <option value="">Todos os MÃƒÂ³dulos</option>
                                 {modules.map(m => <option key={m.id} value={m.id}>{m.title}</option>)}
                             </select>
                         </div>
@@ -542,9 +569,9 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
                                 className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-3 text-sm font-bold text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none appearance-none cursor-pointer"
                             >
                                 <option value="">Todas as Dificuldades</option>
-                                <option value="easy">Fácil</option>
-                                <option value="medium">Médio</option>
-                                <option value="hard">Difícil</option>
+                                <option value="easy">FÃƒÂ¡cil</option>
+                                <option value="medium">MÃƒÂ©dio</option>
+                                <option value="hard">DifÃƒÂ­cil</option>
                             </select>
                         </div>
 
@@ -570,7 +597,7 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
                                     type="text"
                                     value={searchKeyword}
                                     onChange={(e) => setSearchKeyword(e.target.value)}
-                                    placeholder="Digite parte do enunciado ou conteúdo da questão..."
+                                    placeholder="Digite parte do enunciado ou conteÃƒÂºdo da questÃƒÂ£o..."
                                     className="w-full bg-slate-50 dark:bg-slate-800 border border-transparent rounded-2xl px-5 py-3.5 text-sm font-medium text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:bg-white dark:focus:bg-slate-900 focus:border-indigo-500/50 outline-none transition-all shadow-inner"
                                 />
                                 {searchKeyword && (
@@ -588,7 +615,7 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
                     {/* Questions List */}
                     <div className="space-y-4">
                         {/* Pagination Info */}
-                        {questions.length > 0 && (
+                        {totalFilteredQuestions > 0 && (
                             <div className="flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sticky top-20 z-40 shadow-sm">
                                 <div className="flex items-center gap-4">
                                     <div className="flex items-center gap-2 pl-2 border-r border-slate-200 dark:border-slate-800 pr-4">
@@ -603,11 +630,11 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
                                         </label>
                                     </div>
                                     <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
-                                        Exibindo <span className="text-indigo-600 dark:text-indigo-400">{startIndex + 1}-{Math.min(endIndex, questions.length)}</span> de <span className="text-indigo-600 dark:text-indigo-400">{questions.length}</span> questões
+                                        Exibindo <span className="text-indigo-600 dark:text-indigo-400">{startIndex}-{endIndex}</span> de <span className="text-indigo-600 dark:text-indigo-400">{totalFilteredQuestions}</span> questoes
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Por página:</label>
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Por pagina:</label>
                                     <select
                                         value={itemsPerPage}
                                         onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
@@ -625,7 +652,7 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
                         {isLoading ? (
                             <div className="flex flex-col items-center justify-center py-20 gap-4">
                                 <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-                                <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">Carregando Questões...</p>
+                                <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">Carregando QuestÃƒÂµes...</p>
                             </div>
                         ) : paginatedQuestions.length > 0 ? (
                             <div className="grid grid-cols-1 gap-4">
@@ -647,7 +674,7 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
                                                 <div className="flex items-start gap-6 min-w-0">
                                                     {q.imageUrl && (
                                                         <div className="w-24 h-24 rounded-2xl overflow-hidden flex-shrink-0 border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
-                                                            <img src={q.imageUrl} alt="Questão" className="w-full h-full object-cover" />
+                                                            <img src={q.imageUrl} alt="QuestÃƒÂ£o" className="w-full h-full object-cover" />
                                                         </div>
                                                     )}
                                                     <div className="space-y-2 min-w-0">
@@ -656,7 +683,7 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
                                                                 q.difficulty === 'medium' ? 'bg-amber-100 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400' :
                                                                     'bg-rose-100 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400'
                                                                 }`}>
-                                                                {q.difficulty === 'easy' ? 'Fácil' : q.difficulty === 'medium' ? 'Médio' : 'Difícil'}
+                                                                {q.difficulty === 'easy' ? 'FÃƒÂ¡cil' : q.difficulty === 'medium' ? 'MÃƒÂ©dio' : 'DifÃƒÂ­cil'}
                                                             </span>
                                                             <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
                                                                 {q.points} Pontos
@@ -721,8 +748,8 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
                                 </div>
                                 <div className="space-y-4">
                                     <div className="space-y-1">
-                                        <h3 className="text-xl font-black text-slate-800 dark:text-white">Nenhuma questão encontrada</h3>
-                                        <p className="text-sm font-bold text-slate-500 dark:text-slate-400">Refine seus filtros ou adicione uma nova questão ao banco.</p>
+                                        <h3 className="text-xl font-black text-slate-800 dark:text-white">Nenhuma questÃƒÂ£o encontrada</h3>
+                                        <p className="text-sm font-bold text-slate-500 dark:text-slate-400">Refine seus filtros ou adicione uma nova questÃƒÂ£o ao banco.</p>
                                     </div>
                                     {(selectedCourseId || selectedModuleId || selectedLessonId || selectedDifficulty || searchKeyword) && (
                                         <button
@@ -828,7 +855,7 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
                             <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] w-full max-w-2xl shadow-2xl overflow-hidden border border-slate-100 dark:border-slate-800 flex flex-col max-h-[85vh]">
                                 <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                                     <div>
-                                        <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Importar Questões (Markdown)</h3>
+                                        <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Importar QuestÃƒÂµes (Markdown)</h3>
                                         <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">
                                             Carregue um arquivo .md ou cole o texto abaixo.
                                         </p>
@@ -842,7 +869,7 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
                                     {/* Course Selector for Import */}
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">
-                                            Vincular ao Curso (Obrigatório)
+                                            Vincular ao Curso (ObrigatÃƒÂ³rio)
                                         </label>
                                         <select
                                             value={selectedCourseId}
@@ -860,17 +887,17 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
                                             Formato Markdown Esperado
                                         </div>
                                         <code className="text-[11px] block whitespace-pre bg-white/50 dark:bg-black/20 p-3 rounded-lg overflow-x-auto text-slate-600 dark:text-indigo-300">
-                                            {`# Enunciado da questão aqui...
-A) Opção 1
-B) Opção 2
-C) Opção 3
+                                            {`# Enunciado da questÃƒÂ£o aqui...
+A) OpÃƒÂ§ÃƒÂ£o 1
+B) OpÃƒÂ§ÃƒÂ£o 2
+C) OpÃƒÂ§ÃƒÂ£o 3
 
 Gabarito: B
-Justificativa: Explicação opcional...
+Justificativa: ExplicaÃƒÂ§ÃƒÂ£o opcional...
 
 ---
 
-# Próxima questão...`}
+# PrÃƒÂ³xima questÃƒÂ£o...`}
                                         </code>
                                     </div>
 
@@ -895,7 +922,7 @@ Justificativa: Explicação opcional...
                                         <textarea
                                             value={importRawJson}
                                             onChange={(e) => setImportRawJson(e.target.value)}
-                                            placeholder="Cole o conteúdo do Markdown aqui..."
+                                            placeholder="Cole o conteÃƒÂºdo do Markdown aqui..."
                                             className="w-full h-48 p-5 rounded-3xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-mono text-xs outline-none focus:border-indigo-500 transition-all resize-none"
                                         />
                                     </div>
@@ -913,7 +940,7 @@ Justificativa: Explicação opcional...
                                         disabled={!importRawJson.trim() || isBusy || !selectedCourseId}
                                         className="flex-1 py-4 rounded-2xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-indigo-600/20 transition-all active:scale-95 disabled:opacity-50"
                                     >
-                                        {isBusy ? 'Processando...' : 'Importar Questões'}
+                                        {isBusy ? 'Processando...' : 'Importar QuestÃƒÂµes'}
                                     </button>
                                 </div>
                             </div>

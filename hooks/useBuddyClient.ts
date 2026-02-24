@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { createSupabaseClient } from '../services/supabaseClient';
+import { supabaseClient as supabase } from '../services/Dependencies';
 import { useBuddyStore } from '../stores/useBuddyStore';
 
 interface UseBuddyClientProps {
@@ -18,8 +17,6 @@ export const useBuddyClient = ({ userId, systemContext = '', currentContext = ''
     const activeThreadId = activeThreadIdByUser[userId];
     const activeThread = threads.find(t => t.id === activeThreadId);
     const history = activeThread?.messages || [];
-
-    const supabase = createSupabaseClient();
 
     const sendMessage = async (text: string, image?: string | null) => {
         if (!text.trim() && !image) return;

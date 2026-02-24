@@ -147,7 +147,7 @@ class AuditService {
     public async getSessionDetail(sessionId: string): Promise<AuditLogEntry | null> {
         const { data, error } = await this.supabase
             .from('audit_logs')
-            .select('*')
+            .select('id, created_at, path, page_title, resource_title, total_duration_seconds, interaction_stats, events')
             .eq('id', sessionId)
             .single();
 

@@ -1,8 +1,7 @@
-import { courseRepository } from '../services/Dependencies';
+import { courseRepository, adminRepository, supabaseClient as supabase } from '../services/Dependencies';
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { LessonRecord, LessonResourceRecord } from '../domain/admin';
 import ResourceUploadForm from './ResourceUploadForm';
-import { SupabaseAdminRepository } from '../repositories/SupabaseAdminRepository';
 import { LessonResource } from '../domain/entities';
 import QuizEditor from './QuizEditor';
 import { LessonRequirementsEditor } from './LessonRequirementsEditor';
@@ -912,8 +911,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
         if (!lesson.id) return;
         setIsLoadingResources(true);
         try {
-            const repo = new SupabaseAdminRepository();
-            const resources = await repo.listLessonResources(lesson.id);
+            const resources = await adminRepository.listLessonResources(lesson.id);
             setLessonResources(resources);
         } catch (error) {
             console.error('Erro ao buscar materiais:', error);
@@ -971,8 +969,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
             setModuleId(lesson.module_id);
             const fetchHierarchy = async () => {
                 try {
-                    const repo = new SupabaseAdminRepository();
-                    const mod = await repo.getModule(lesson.module_id);
+                    const mod = await adminRepository.getModule(lesson.module_id);
                     setCourseId(mod.course_id);
                 } catch (error) {
                     console.error('Error fetching hierarchy:', error);
@@ -3235,14 +3232,13 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
     const handleSaveResource = async (data: { title: string; resourceType: LessonResourceRecord['resource_type']; url: string; category: string }) => {
         if (!lesson.id) return;
         try {
-            const repo = new SupabaseAdminRepository();
             let finalUrl = data.url;
             if (data.resourceType === 'AUDIO') {
                 finalUrl = convertGoogleDriveUrl(finalUrl);
                 finalUrl = convertDropboxUrl(finalUrl);
             }
 
-            await repo.createLessonResource(lesson.id, {
+            await adminRepository.createLessonResource(lesson.id, {
                 title: data.title,
                 resourceType: data.resourceType,
                 url: finalUrl,
@@ -3261,8 +3257,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
     const handleDeleteResource = async (resourceId: string) => {
         if (!confirm('Tem certeza que deseja remover este material?')) return;
         try {
-            const repo = new SupabaseAdminRepository();
-            await repo.deleteLessonResource(resourceId);
+            await adminRepository.deleteLessonResource(resourceId);
             await fetchLessonResources();
         } catch (error) {
             console.error('Erro ao excluir material:', error);
@@ -5619,24 +5614,9 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                                 setLoadingRequirements(true);
                                                 setShowQuizManagementModal(false);
                                                 try {
-                                                    
-                                                    const { data, error } = await supabase
-                                                        .from('lesson_progress_requirements')
-                                                        .select('*')
-                                                        .eq('lesson_id', lesson.id)
-                                                        .single();
-
-                                                    if (error && error.code !== 'PGRST116') {
-                                                        throw error;
-                                                    }
-
-                                                    setLessonRequirements(data || {
-                                                        lesson_id: lesson.id,
-                                                        videoRequiredPercent: 80,
-                                                        textBlocksRequiredPercent: 80,
-                                                        requiredPdfIds: [],
-                                                        requiredAudioIds: []
-                                                    });
+                                                    // Reuse repository method (already optimized) to avoid duplicate wide query.
+                                                    const reqs = lessonRequirements || await courseRepository.getLessonRequirements(lesson.id);
+                                                    setLessonRequirements(reqs);
                                                     setShowRequirementsEditor(true);
                                                 } catch (error) {
                                                     console.error('Error loading requirements:', error);

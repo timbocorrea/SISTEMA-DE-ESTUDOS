@@ -30,6 +30,7 @@ const isMediaPlaying = (): boolean => {
  * trigger idle timeout while media is playing.
  */
 export const useIdleTimeout = ({ onIdle, timeout = 10 * 60 * 1000, onRefreshSession }: UseIdleTimeoutProps) => {
+    const SESSION_REFRESH_INTERVAL_MS = 15 * 60 * 1000;
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const mediaCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const onIdleRef = useRef(onIdle);
@@ -45,10 +46,10 @@ export const useIdleTimeout = ({ onIdle, timeout = 10 * 60 * 1000, onRefreshSess
             clearTimeout(timerRef.current);
         }
 
-        // Refresh Supabase session if last refresh was > 5 minutes ago
+        // Refresh Supabase session if last refresh was > 15 minutes ago
         if (onRefreshSession) {
             const now = Date.now();
-            if (now - lastRefreshRef.current > 5 * 60 * 1000) {
+            if (now - lastRefreshRef.current > SESSION_REFRESH_INTERVAL_MS) {
                 lastRefreshRef.current = now;
                 onRefreshSession();
             }

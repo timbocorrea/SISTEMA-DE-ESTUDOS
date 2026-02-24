@@ -70,12 +70,18 @@ const QuizEditor: React.FC<QuizEditorProps> = ({ lessonId, existingQuiz, onSave,
         try {
             const repo = questionBankRepository;
             // Filter by lesson, module or course depending on what's available
-            const results = await repo.getQuestions({
-                lessonId: lessonId || undefined,
-                moduleId: moduleId || undefined,
-                courseId: courseId || undefined,
-                difficulty: poolDifficulty || undefined
-            });
+            const { questions: results } = await repo.getQuestionsPage(
+                {
+                    lessonId: lessonId || undefined,
+                    moduleId: moduleId || undefined,
+                    courseId: courseId || undefined,
+                    difficulty: poolDifficulty || undefined
+                },
+                {
+                    page: 1,
+                    pageSize: 50
+                }
+            );
             setBankPreview(results);
         } catch (error) {
             console.error('Error loading bank preview:', error);

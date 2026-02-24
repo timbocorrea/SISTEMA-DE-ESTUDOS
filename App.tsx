@@ -42,7 +42,7 @@ import { SupportDialog } from './components/SupportDialog';
 
 
 import { AdminService } from './services/AdminService';
-import { SupabaseAdminRepository } from './repositories/SupabaseAdminRepository';
+import { adminService as sharedAdminService } from './services/Dependencies';
 import LessonLoader from './components/LessonLoader';
 import ForcePasswordChangeModal from './components/ForcePasswordChangeModal';
 import { useActivityTracker } from './hooks/useActivityTracker';
@@ -111,8 +111,8 @@ const App: React.FC = () => {
 
 
 
-  // Instantiate AdminService (Lazy — only created once)
-  const [adminService] = useState(() => new AdminService(new SupabaseAdminRepository()));
+  // Reuse shared singleton to avoid extra Supabase client/repository instances.
+  const adminService = sharedAdminService;
 
   const {
     availableCourses,

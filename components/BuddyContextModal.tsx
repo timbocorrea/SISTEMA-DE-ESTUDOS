@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { supabaseClient as supabase } from '../services/Dependencies';
 
 interface BuddyContextModalProps {
     isOpen: boolean;

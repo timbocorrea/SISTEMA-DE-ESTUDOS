@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { AdminService } from '../services/AdminService';
 import { CourseRecord, ProfileRecord } from '../domain/admin';
+import { supabaseClient as supabase } from '../services/Dependencies';
 interface Props {
     user: ProfileRecord;
     adminService: AdminService;
@@ -49,7 +50,7 @@ const UserCourseAccessModal: React.FC<Props> = ({ user, adminService, onClose, o
             setSaving(true);
             setError('');
 
-            const currentUser = (await createSupabaseClient().auth.getUser()).data.user;
+            const currentUser = (await supabase.auth.getUser()).data.user;
             if (!currentUser) throw new Error("Você não está autenticado.");
 
             const initialAssignments = await adminService.getUserCourseAssignments(user.id);

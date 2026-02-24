@@ -1,4 +1,4 @@
-import { createSupabaseClient } from '../services/supabaseClient';
+import { supabaseClient as supabase } from '../services/Dependencies';
 
 export interface LessonNote {
     id: string;
@@ -20,15 +20,13 @@ export interface LessonNote {
 }
 
 export class LessonNotesRepository {
-    private static get client() {
-        return createSupabaseClient();
-    }
+    private static client = supabase;
 
     // Carregar notas de uma aula
     static async loadNotes(userId: string, lessonId: string): Promise<LessonNote[]> {
         const { data, error } = await this.client
             .from('lesson_notes')
-            .select('*, extra_highlights')
+            .select('id, user_id, lesson_id, title, content, position, has_highlight, highlighted_text, highlight_color, xpath_start, offset_start, xpath_end, offset_end, extra_highlights, created_at, updated_at')
             .eq('user_id', userId)
             .eq('lesson_id', lessonId)
             .order('position', { ascending: true });
@@ -46,7 +44,7 @@ export class LessonNotesRepository {
         const { data, error } = await this.client
             .from('lesson_notes')
             .insert([note])
-            .select()
+            .select('id, user_id, lesson_id, title, content, position, has_highlight, highlighted_text, highlight_color, xpath_start, offset_start, xpath_end, offset_end, extra_highlights, created_at, updated_at')
             .single();
 
         if (error) {

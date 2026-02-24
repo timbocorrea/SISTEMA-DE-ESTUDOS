@@ -1,9 +1,6 @@
 import React, { useEffect, useState, useCallback, memo, useRef } from 'react';
 import { IUserSession } from '../domain/auth';
 import { Course, User } from '../domain/entities';
-import { SupportDialog } from './SupportDialog';
-import { AdminService } from '../services/AdminService';
-import { SupabaseAdminRepository } from '../repositories/SupabaseAdminRepository';
 import { Link } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 

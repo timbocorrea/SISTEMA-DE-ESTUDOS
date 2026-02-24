@@ -4,8 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { AuthService } from '../services/AuthService';
 import { loginSchema, signupSchema, type LoginFormData, type SignupFormData } from '../domain/schemas/authSchema';
 import { SupportDialog } from './SupportDialog';
-import { AdminService } from '../services/AdminService';
-import { SupabaseAdminRepository } from '../repositories/SupabaseAdminRepository';
+import { adminService as sharedAdminService } from '../services/Dependencies';
 import { MagicCard } from './ui/magic-card';
 import { DotPattern } from './ui/dot-pattern';
 
@@ -276,7 +275,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ authService, onSuccess }) => {
       <SupportDialog
         isOpen={isSupportOpen}
         onClose={() => setIsSupportOpen(false)}
-        adminService={new AdminService(new SupabaseAdminRepository())}
+        adminService={sharedAdminService}
       />
     </div >
   );

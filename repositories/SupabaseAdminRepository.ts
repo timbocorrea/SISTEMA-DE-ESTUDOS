@@ -8,8 +8,8 @@ import { createSupabaseClient } from '../services/supabaseClient';
 export class SupabaseAdminRepository implements IAdminRepository {
   private client: SupabaseClient;
 
-  constructor() {
-    this.client = createSupabaseClient();
+  constructor(client?: SupabaseClient) {
+    this.client = client ?? createSupabaseClient();
   }
 
   async listCourses(): Promise<CourseRecord[]> {
@@ -26,10 +26,33 @@ export class SupabaseAdminRepository implements IAdminRepository {
     const { data, error } = await this.client
       .from('courses')
       .select(`
-        *,
+        id,
+        title,
+        description,
+        image_url,
+        color,
+        color_legend,
+        created_at,
         modules (
-          *,
-          lessons (*)
+          id,
+          course_id,
+          title,
+          position,
+          created_at,
+          lessons (
+            id,
+            module_id,
+            title,
+            content,
+            video_url,
+            video_urls,
+            audio_url,
+            image_url,
+            duration_seconds,
+            position,
+            content_blocks,
+            created_at
+          )
         )
       `)
       .order('created_at', { ascending: false });
@@ -204,15 +227,36 @@ export class SupabaseAdminRepository implements IAdminRepository {
     }
   }
 
-  async listLessons(moduleId: string): Promise<LessonRecord[]> {
+  async listLessons(moduleId: string, options?: { summary?: boolean }): Promise<LessonRecord[]> {
+    const summaryMode = options?.summary ?? false;
+    const selectFields = summaryMode
+      ? 'id,module_id,title,position,created_at'
+      : 'id,module_id,title,content,video_url,video_urls,audio_url,image_url,duration_seconds,position,content_blocks,created_at';
+
     const { data, error } = await this.client
       .from('lessons')
-      .select('id,module_id,title,content,video_url,video_urls,audio_url,image_url,duration_seconds,position,content_blocks,created_at')
+      .select(selectFields)
       .eq('module_id', moduleId)
       .order('position', { ascending: true });
 
     if (error) throw new DomainError(`Falha ao listar aulas: ${error.message}`);
-    return (data || []) as LessonRecord[];
+    if (!summaryMode) return (data || []) as LessonRecord[];
+
+    // Keep shape compatible while avoiding heavy content transfer in summary mode.
+    return (data || []).map((row: any) => ({
+      id: row.id,
+      module_id: row.module_id,
+      title: row.title,
+      content: null,
+      video_url: null,
+      video_urls: null,
+      audio_url: null,
+      image_url: null,
+      duration_seconds: null,
+      position: row.position ?? null,
+      content_blocks: null,
+      created_at: row.created_at
+    })) as LessonRecord[];
   }
 
   async createLesson(
@@ -421,7 +465,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
   async fetchPendingUsers(): Promise<ProfileRecord[]> {
     const { data, error } = await this.client
       .from('profiles')
-      .select('*')
+      .select('id,email,name,role,xp_total,current_level,gemini_api_key,updated_at,approval_status,approved_at,approved_by,rejection_reason')
       .eq('approval_status', 'pending');
 
     if (error) throw new DomainError(`Falha ao buscar usuários pendentes: ${error.message}`);
@@ -431,7 +475,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
   async fetchApprovedUsers(): Promise<ProfileRecord[]> {
     const { data, error } = await this.client
       .from('profiles')
-      .select('*')
+      .select('id,email,name,role,xp_total,current_level,gemini_api_key,updated_at,approval_status,approved_at,approved_by,rejection_reason')
       .eq('approval_status', 'approved');
 
     if (error) throw new DomainError(`Falha ao buscar usuários aprovados: ${error.message}`);
@@ -441,7 +485,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
   async fetchRejectedUsers(): Promise<ProfileRecord[]> {
     const { data, error } = await this.client
       .from('profiles')
-      .select('*')
+      .select('id,email,name,role,xp_total,current_level,gemini_api_key,updated_at,approval_status,approved_at,approved_by,rejection_reason')
       .eq('approval_status', 'rejected');
 
     if (error) throw new DomainError(`Falha ao buscar usuários rejeitados: ${error.message}`);
@@ -547,10 +591,10 @@ export class SupabaseAdminRepository implements IAdminRepository {
       if (error) console.warn("RPC get_db_stats failed, falling back to manual count", error);
 
       // Manual count
-      const { count: courseCount } = await this.client.from('courses').select('*', { count: 'exact', head: true });
-      const { count: moduleCount } = await this.client.from('modules').select('*', { count: 'exact', head: true });
-      const { count: lessonCount } = await this.client.from('lessons').select('*', { count: 'exact', head: true });
-      const { count: userCount } = await this.client.from('profiles').select('*', { count: 'exact', head: true });
+      const { count: courseCount } = await this.client.from('courses').select('id', { count: 'exact', head: true });
+      const { count: moduleCount } = await this.client.from('modules').select('id', { count: 'exact', head: true });
+      const { count: lessonCount } = await this.client.from('lessons').select('id', { count: 'exact', head: true });
+      const { count: userCount } = await this.client.from('profiles').select('id', { count: 'exact', head: true });
 
       return {
         db_size: 'N/A',
@@ -565,7 +609,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
 
     // Se o RPC retornou, mas precisamos garantir o module_count se não vier
     if (data.module_count === undefined) {
-      const { count: moduleCount } = await this.client.from('modules').select('*', { count: 'exact', head: true });
+      const { count: moduleCount } = await this.client.from('modules').select('id', { count: 'exact', head: true });
       data.module_count = moduleCount || 0;
     }
 
@@ -624,7 +668,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
         description: quiz.description,
         passing_score: quiz.passingScore
       })
-      .select()
+      .select('id')
       .single();
 
     if (quizError) throw new DomainError(`Erro ao criar quiz: ${quizError.message}`);
@@ -640,7 +684,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
           position: question.position,
           points: question.points
         })
-        .select()
+        .select('id')
         .single();
 
       if (questionError) throw new DomainError(`Erro ao criar pergunta: ${questionError.message}`);
@@ -717,7 +761,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
         passed,
         answers
       })
-      .select()
+      .select('id, user_id, quiz_id, score, passed, answers, attempt_number, completed_at')
       .single();
 
     if (error) throw new DomainError(`Erro ao registrar tentativa: ${error.message}`);
@@ -731,7 +775,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
   async getLatestQuizAttempt(userId: string, quizId: string): Promise<any | null> {
     const { data, error } = await this.client
       .from('quiz_attempts')
-      .select('*')
+      .select('id, user_id, quiz_id, score, passed, answers, attempt_number, completed_at')
       .eq('user_id', userId)
       .eq('quiz_id', quizId)
       .order('completed_at', { ascending: false })
@@ -750,7 +794,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
   async getQuizAttempts(userId: string, quizId: string): Promise<any[]> {
     const { data, error } = await this.client
       .from('quiz_attempts')
-      .select('*')
+      .select('id, user_id, quiz_id, score, passed, answers, attempt_number, completed_at')
       .eq('user_id', userId)
       .eq('quiz_id', quizId)
       .order('completed_at', { ascending: false });
@@ -765,7 +809,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
   async getXpHistory(userId: string): Promise<import('../domain/admin').XpLogRecord[]> {
     const { data, error } = await this.client
       .from('xp_history')
-      .select('*')
+      .select('id, user_id, amount, action_type, description, created_at')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
@@ -830,7 +874,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
   async getSystemSettings(): Promise<{ key: string; value: string; description: string }[]> {
     const { data, error } = await this.client
       .from('system_settings')
-      .select('*');
+      .select('key, value, description');
 
     if (error) throw new DomainError(`Erro ao buscar configurações do sistema: ${error.message}`);
     return (data || []) as { key: string; value: string; description: string }[];
@@ -839,8 +883,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
   async updateSystemSetting(key: string, value: string): Promise<void> {
     const { error } = await this.client
       .from('system_settings')
-      .upsert({ key, value })
-      .select();
+      .upsert({ key, value });
 
     if (error) throw new DomainError(`Erro ao atualizar configuração ${key}: ${error.message}`);
   }
