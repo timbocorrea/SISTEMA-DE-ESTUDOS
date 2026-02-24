@@ -443,7 +443,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
   async listProfiles(): Promise<ProfileRecord[]> {
     const { data, error } = await this.client
       .from('profiles')
-      .select('id,email,name,role,xp_total,current_level,gemini_api_key,updated_at,approval_status,approved_at,approved_by,rejection_reason')
+      .select('id,email,name,role,xp_total,current_level,updated_at,approval_status,approved_at,approved_by,rejection_reason,is_minor')
       .order('updated_at', { ascending: false });
 
     if (error) throw new DomainError(`Falha ao listar usuários: ${error.message}`);
@@ -453,10 +453,11 @@ export class SupabaseAdminRepository implements IAdminRepository {
 
   // ... (keeping other methods)
 
-  async updateProfile(id: string, patch: { role?: 'STUDENT' | 'INSTRUCTOR'; geminiApiKey?: string | null }): Promise<void> {
+  async updateProfile(id: string, patch: { role?: 'STUDENT' | 'INSTRUCTOR'; geminiApiKey?: string | null; isMinor?: boolean }): Promise<void> {
     const updates: any = { updated_at: new Date().toISOString() };
     if (patch.role) updates.role = patch.role;
     if (patch.geminiApiKey !== undefined) updates.gemini_api_key = patch.geminiApiKey;
+    if (patch.isMinor !== undefined) updates.is_minor = patch.isMinor;
 
     const { error } = await this.client.from('profiles').update(updates).eq('id', id);
     if (error) throw new DomainError(`Falha ao atualizar perfil: ${error.message}`);
@@ -465,7 +466,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
   async fetchPendingUsers(): Promise<ProfileRecord[]> {
     const { data, error } = await this.client
       .from('profiles')
-      .select('id,email,name,role,xp_total,current_level,gemini_api_key,updated_at,approval_status,approved_at,approved_by,rejection_reason')
+      .select('id,email,name,role,xp_total,current_level,updated_at,approval_status,approved_at,approved_by,rejection_reason,is_minor')
       .eq('approval_status', 'pending');
 
     if (error) throw new DomainError(`Falha ao buscar usuários pendentes: ${error.message}`);
@@ -475,7 +476,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
   async fetchApprovedUsers(): Promise<ProfileRecord[]> {
     const { data, error } = await this.client
       .from('profiles')
-      .select('id,email,name,role,xp_total,current_level,gemini_api_key,updated_at,approval_status,approved_at,approved_by,rejection_reason')
+      .select('id,email,name,role,xp_total,current_level,updated_at,approval_status,approved_at,approved_by,rejection_reason,is_minor')
       .eq('approval_status', 'approved');
 
     if (error) throw new DomainError(`Falha ao buscar usuários aprovados: ${error.message}`);
@@ -485,7 +486,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
   async fetchRejectedUsers(): Promise<ProfileRecord[]> {
     const { data, error } = await this.client
       .from('profiles')
-      .select('id,email,name,role,xp_total,current_level,gemini_api_key,updated_at,approval_status,approved_at,approved_by,rejection_reason')
+      .select('id,email,name,role,xp_total,current_level,updated_at,approval_status,approved_at,approved_by,rejection_reason,is_minor')
       .eq('approval_status', 'rejected');
 
     if (error) throw new DomainError(`Falha ao buscar usuários rejeitados: ${error.message}`);

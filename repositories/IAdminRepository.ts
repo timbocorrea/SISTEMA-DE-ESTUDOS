@@ -57,7 +57,7 @@ export interface IAdminRepository {
 
   listProfiles(): Promise<ProfileRecord[]>;
   updateProfileRole(profileId: string, role: 'STUDENT' | 'INSTRUCTOR'): Promise<void>;
-  updateProfile(id: string, patch: { role?: 'STUDENT' | 'INSTRUCTOR'; geminiApiKey?: string | null }): Promise<void>;
+  updateProfile(id: string, patch: { role?: 'STUDENT' | 'INSTRUCTOR'; geminiApiKey?: string | null; isMinor?: boolean }): Promise<void>;
 
   // User Approval System
   fetchPendingUsers(): Promise<ProfileRecord[]>;

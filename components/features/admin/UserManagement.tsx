@@ -24,7 +24,15 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('');
   const [busyId, setBusyId] = useState<string>('');
-  const [editingUser, setEditingUser] = useState<{ id: string; name: string; email: string; role: 'STUDENT' | 'INSTRUCTOR'; apiKey: string; isMinor: boolean } | null>(null);
+  const [editingUser, setEditingUser] = useState<{
+    id: string;
+    name: string;
+    email: string;
+    role: 'STUDENT' | 'INSTRUCTOR';
+    apiKey: string;
+    apiKeyLoaded: boolean;
+    isMinor: boolean;
+  } | null>(null);
   const [managingAccessUser, setManagingAccessUser] = useState<ProfileRecord | null>(null);
   const [resettingUser, setResettingUser] = useState<{ id: string; name: string; email: string } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -103,15 +111,39 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
     }
   };
 
-  const handleEditClick = (user: ProfileRecord) => {
+  const handleEditClick = async (user: ProfileRecord) => {
     setEditingUser({
       id: user.id,
       name: user.name || '',
       email: user.email,
       role: user.role,
-      apiKey: user.gemini_api_key || '',
+      apiKey: '',
+      apiKeyLoaded: false,
       isMinor: (user as any).is_minor || false
     });
+
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('gemini_api_key, is_minor')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      setEditingUser((prev) => {
+        if (!prev || prev.id !== user.id) return prev;
+        return {
+          ...prev,
+          apiKey: data?.gemini_api_key || '',
+          apiKeyLoaded: true,
+          isMinor: data?.is_minor ?? prev.isMinor
+        };
+      });
+    } catch (error) {
+      console.error('Erro ao carregar detalhes do perfil para ediÃ§Ã£o:', error);
+      toast.warning('NÃ£o foi possÃ­vel carregar a API key atual do usuÃ¡rio.');
+    }
   };
 
   const handleSaveUser = async (e: React.FormEvent) => {
@@ -120,11 +152,17 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
 
     try {
       setIsSaving(true);
-      await adminService.updateProfile(editingUser.id, {
+      const patch: { role: 'STUDENT' | 'INSTRUCTOR'; isMinor: boolean; geminiApiKey?: string | null } = {
         role: editingUser.role,
-        geminiApiKey: editingUser.apiKey?.trim() || null,
         isMinor: editingUser.isMinor
-      });
+      };
+
+      // Only update API key when it was loaded (or manually changed) in this modal.
+      if (editingUser.apiKeyLoaded) {
+        patch.geminiApiKey = editingUser.apiKey?.trim() || null;
+      }
+
+      await adminService.updateProfile(editingUser.id, patch);
       setEditingUser(null);
       await loadUsers();
       toast.success('Usuário salvo com sucesso!');
@@ -954,12 +992,9 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
                         onChange={e => {
                           if (editingUser) {
                             setEditingUser({
-                              id: editingUser.id,
-                              name: editingUser.name,
-                              email: editingUser.email,
-                              role: editingUser.role,
+                              ...editingUser,
                               apiKey: e.target.value,
-                              isMinor: editingUser.isMinor
+                              apiKeyLoaded: true
                             });
                           }
                         }}

@@ -18,8 +18,16 @@ type LessonProgressRow = {
   materials_accessed?: string[];
 };
 
+type DetailedProgressSeen = {
+  text: Set<string>;
+  pdf: Set<string>;
+  audio: Set<string>;
+  material: Set<string>;
+};
+
 export class SupabaseCourseRepository implements ICourseRepository {
   private client: SupabaseClient;
+  private detailedProgressSeenByLesson = new Map<string, DetailedProgressSeen>();
 
   /**
    * Construtor com Injeção de Dependência (DIP - Dependency Inversion Principle)
@@ -27,6 +35,24 @@ export class SupabaseCourseRepository implements ICourseRepository {
    */
   constructor(client: SupabaseClient) {
     this.client = client;
+  }
+
+  private getDetailedProgressSeen(userId: string, lessonId: string): DetailedProgressSeen {
+    const key = `${userId}:${lessonId}`;
+    let seen = this.detailedProgressSeenByLesson.get(key);
+    if (!seen) {
+      seen = {
+        text: new Set<string>(),
+        pdf: new Set<string>(),
+        audio: new Set<string>(),
+        material: new Set<string>()
+      };
+      this.detailedProgressSeenByLesson.set(key, seen);
+      if (this.detailedProgressSeenByLesson.size > 500) {
+        this.detailedProgressSeenByLesson.clear();
+      }
+    }
+    return seen;
   }
 
   private async getProgressByUser(
@@ -1171,6 +1197,9 @@ export class SupabaseCourseRepository implements ICourseRepository {
   // ===== DETAILED PROGRESS TRACKING =====
 
   async markTextBlockAsRead(userId: string, lessonId: string, blockId: string): Promise<void> {
+    const seen = this.getDetailedProgressSeen(userId, lessonId).text;
+    if (seen.has(blockId)) return;
+
     // Buscar progresso atual
     const { data: progress } = await this.client
       .from('lesson_progress')
@@ -1180,6 +1209,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
       .maybeSingle();
 
     const blocksRead: string[] = progress?.text_blocks_read || [];
+    blocksRead.forEach(id => seen.add(id));
 
     // Adicionar se ainda não estiver na lista
     if (!blocksRead.includes(blockId)) {
@@ -1196,9 +1226,13 @@ export class SupabaseCourseRepository implements ICourseRepository {
 
       if (error) throw new DomainError(`Erro ao marcar bloco como lido: ${error.message} `);
     }
+    seen.add(blockId);
   }
 
   async markPdfViewed(userId: string, lessonId: string, pdfId: string): Promise<void> {
+    const seen = this.getDetailedProgressSeen(userId, lessonId).pdf;
+    if (seen.has(pdfId)) return;
+
     const { data: progress } = await this.client
       .from('lesson_progress')
       .select('pdfs_viewed')
@@ -1207,6 +1241,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
       .maybeSingle();
 
     const pdfsViewed: string[] = progress?.pdfs_viewed || [];
+    pdfsViewed.forEach(id => seen.add(id));
 
     if (!pdfsViewed.includes(pdfId)) {
       pdfsViewed.push(pdfId);
@@ -1222,9 +1257,13 @@ export class SupabaseCourseRepository implements ICourseRepository {
 
       if (error) throw new DomainError(`Erro ao marcar PDF como visualizado: ${error.message} `);
     }
+    seen.add(pdfId);
   }
 
   async markAudioPlayed(userId: string, lessonId: string, audioId: string): Promise<void> {
+    const seen = this.getDetailedProgressSeen(userId, lessonId).audio;
+    if (seen.has(audioId)) return;
+
     const { data: progress } = await this.client
       .from('lesson_progress')
       .select('audios_played')
@@ -1233,6 +1272,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
       .maybeSingle();
 
     const audiosPlayed: string[] = progress?.audios_played || [];
+    audiosPlayed.forEach(id => seen.add(id));
 
     if (!audiosPlayed.includes(audioId)) {
       audiosPlayed.push(audioId);
@@ -1248,9 +1288,13 @@ export class SupabaseCourseRepository implements ICourseRepository {
 
       if (error) throw new DomainError(`Erro ao marcar áudio como reproduzido: ${error.message} `);
     }
+    seen.add(audioId);
   }
 
   async markMaterialAccessed(userId: string, lessonId: string, materialId: string): Promise<void> {
+    const seen = this.getDetailedProgressSeen(userId, lessonId).material;
+    if (seen.has(materialId)) return;
+
     const { data: progress } = await this.client
       .from('lesson_progress')
       .select('materials_accessed')
@@ -1259,6 +1303,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
       .maybeSingle();
 
     const materialsAccessed: string[] = progress?.materials_accessed || [];
+    materialsAccessed.forEach(id => seen.add(id));
 
     if (!materialsAccessed.includes(materialId)) {
       materialsAccessed.push(materialId);
@@ -1274,6 +1319,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
 
       if (error) throw new DomainError(`Erro ao marcar material como acessado: ${error.message} `);
     }
+    seen.add(materialId);
   }
 
   // ===== ANALYTICS & GAMIFICATION =====
