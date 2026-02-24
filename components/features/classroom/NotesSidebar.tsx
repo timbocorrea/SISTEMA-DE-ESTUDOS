@@ -1,5 +1,5 @@
 import React from 'react';
-import NotesPanelPrototype from '../NotesPanelPrototype';
+import NotesPanelPrototype from '@/components/NotesPanelPrototype';
 
 interface NotesSidebarProps {
     lessonId: string;

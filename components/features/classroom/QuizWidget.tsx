@@ -1,7 +1,7 @@
 import React from 'react';
-import { Lesson } from '../../domain/entities';
-import { Quiz } from '../../domain/quiz-entities';
-import QuizModal from '../QuizModal';
+import { Lesson } from '@/domain/entities';
+import { Quiz } from '@/domain/quiz-entities';
+import QuizModal from '@/components/QuizModal';
 
 interface QuizWidgetProps {
     lesson: Lesson;

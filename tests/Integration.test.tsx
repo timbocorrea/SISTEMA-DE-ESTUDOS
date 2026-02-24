@@ -5,7 +5,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { CourseProvider } from '../contexts/CourseContext';
 import { useAuth } from '../contexts/AuthContext';
-import StudentDashboard from '../components/StudentDashboard';
+import StudentDashboard from '@/components/features/dashboard/StudentDashboard';
 import { Course, Module, Lesson, User } from '../domain/entities';
 
 // Mocks

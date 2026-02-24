@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { auditService } from '../../services/AuditService';
-import { User } from '../../domain/entities';
+import { auditService } from '@/services/AuditService';
+import { User } from '@/domain/entities';
+import Skeleton from '@/components/ui/Skeleton';
 
 interface RecentActivityProps {
     user: User;
@@ -17,17 +18,22 @@ interface ActivityLog {
 const RecentActivity: React.FC<RecentActivityProps> = ({ user }) => {
     const [activities, setActivities] = useState<ActivityLog[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchRecentActivity = async () => {
             if (!user?.id) return;
 
             setLoading(true);
+            setError(null);
             try {
+                // Utilizando o AuditService para buscar os últimos 5 logs (limit(5) garantido)
                 const data = await auditService.getRecentActivity(user.id);
-                setActivities(data);
+                // Garantimos no front-end os últimos 5
+                setActivities(data.slice(0, 5));
             } catch (err) {
                 console.error('Failed to load recent activity', err);
+                setError('Falha ao carregar as atividades recentes.');
             } finally {
                 setLoading(false);
             }
@@ -64,19 +70,28 @@ const RecentActivity: React.FC<RecentActivityProps> = ({ user }) => {
 
     if (loading) {
         return (
-            <div className="bg-white/90 dark:bg-slate-900/80 shadow-md backdrop-blur-md rounded-2xl p-4 border border-slate-200 dark:border-white/5 animate-pulse">
-                <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/3 mb-4"></div>
+            <div className="bg-white/90 dark:bg-slate-900/80 shadow-md backdrop-blur-md rounded-2xl p-4 border border-slate-200 dark:border-white/5">
+                <Skeleton width="w-1/3" height="h-4" className="mb-4" />
                 <div className="space-y-3">
-                    {[1, 2, 3].map(i => (
+                    {[1, 2, 3, 4, 5].map(i => (
                         <div key={i} className="flex gap-3 items-center">
-                            <div className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-700"></div>
+                            <Skeleton width="w-8" height="h-8" rounded="rounded-lg" />
                             <div className="flex-1 space-y-2">
-                                <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-3/4"></div>
-                                <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded w-1/4"></div>
+                                <Skeleton width="w-3/4" height="h-3" />
+                                <Skeleton width="w-1/4" height="h-2" />
                             </div>
                         </div>
                     ))}
                 </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="bg-white/90 dark:bg-slate-900/80 shadow-md backdrop-blur-md rounded-2xl p-4 border border-red-200 dark:border-red-900/20 text-center">
+                <i className="fas fa-exclamation-triangle text-red-500 text-2xl mb-2"></i>
+                <p className="text-sm font-medium text-red-600 dark:text-red-400">{error}</p>
             </div>
         );
     }

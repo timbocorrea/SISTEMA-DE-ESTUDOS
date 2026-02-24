@@ -1,9 +1,9 @@
 import React from 'react';
-import { Course } from '../../domain/entities';
-import { ShinyButton } from '../ui/shiny-button';
-import { InteractiveHoverButton } from '../ui/interactive-hover-button';
+import { Course } from '@/domain/entities';
+import { ShinyButton } from '@/components/ui/shiny-button';
+import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button';
 
-import LazyImage from '../ui/LazyImage';
+import LazyImage from '@/components/ui/LazyImage';
 
 interface CourseCardProps {
     course: Course;

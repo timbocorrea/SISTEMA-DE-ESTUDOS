@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { ShimmerButton } from '@/components/ui/shimmer-button';
 import { Course, Lesson, User, UserProgress } from '@/domain/entities';
-import VideoPlayer, { VideoPlayerRef } from '@/components/features/classroom/components/VideoPlayer';
+import VideoPlayer, { VideoPlayerRef } from '@/components/features/classroom/VideoPlayer';
 import SlideViewer from '@/components/SlideViewer';
 import LessonMaterialsSidebar from '@/components/LessonMaterialsSidebar';
 import BuddyContextModal from '@/components/BuddyContextModal';

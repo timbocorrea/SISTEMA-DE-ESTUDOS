@@ -1,15 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AdminService } from '../services/AdminService';
+import { AdminService } from '@/services/AdminService';
 
-import { ProfileRecord } from '../domain/admin';
-import ApproveUserModal from './ApproveUserModal';
-import RejectUserModal from './RejectUserModal';
-import UserDetailsModal from './UserDetailsModal';
-import DeleteConfirmationModal from './DeleteConfirmationModal';
+import { ProfileRecord } from '@/domain/admin';
+import ApproveUserModal from '@/components/ApproveUserModal';
+import RejectUserModal from '@/components/RejectUserModal';
+import UserDetailsModal from '@/components/features/admin/UserDetailsModal';
+import DeleteConfirmationModal from '@/components/DeleteConfirmationModal';
 import { toast } from 'sonner';
-import UserCourseAccessModal from './UserCourseAccessModal';
-import AdminResetPasswordModal from './AdminResetPasswordModal';
+import UserCourseAccessModal from '@/components/UserCourseAccessModal';
+import AdminResetPasswordModal from '@/components/AdminResetPasswordModal';
 
 type Props = {
   adminService: AdminService;

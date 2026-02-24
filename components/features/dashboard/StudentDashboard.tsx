@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Course, User } from '@/domain/entities';
-import WeeklySummary from '@/components/dashboard/WeeklySummary';
+import WeeklySummary from '@/components/features/dashboard/WeeklySummary';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
-import CourseCard from '@/components/dashboard/CourseCard';
+import CourseCard from '@/components/features/dashboard/CourseCard';
 import DashboardSkeleton from '@/components/skeletons/DashboardSkeleton';
-import RecentActivity from '@/components/dashboard/RecentActivity';
+import RecentActivity from '@/components/features/dashboard/RecentActivity';
 import { useCourse } from '@/contexts/CourseContext';
 
 interface StudentDashboardProps {
@@ -55,9 +55,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
     courseService.getWeeklyXpHistory(user.id)
-      .then((data) => {
+      .then((data: any[]) => {
         // data is { date: 'DD/MM', xp: number }[] for last 7 days
-        const formatted = data.map((entry) => {
+        const formatted = data.map((entry: any) => {
           const [dd, mm] = entry.date.split('/');
           // Find day of week from dd/mm
           const year = new Date().getFullYear();
@@ -75,7 +75,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
         });
         setXpHistory(formatted);
       })
-      .catch((err) => {
+      .catch((err: any) => {
         console.error('Failed to load XP history:', err);
         setXpHistory([]);
       });
@@ -172,7 +172,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   return (
                     <div
                       key={course.id}
-                      onMouseEnter={() => import('@/components/CourseLayout')}
+                      onMouseEnter={() => import('../../CourseLayout')}
                       onClick={() => onCourseClick(course.id)}
                       className="bg-white dark:bg-black/20 backdrop-blur-md rounded-2xl p-4 border border-slate-200 dark:border-white/5 shadow-sm hover:shadow-lg hover:border-indigo-500/30 transition-all group flex items-center gap-6 cursor-pointer relative overflow-hidden"
                     >
@@ -232,7 +232,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   return (
                     <div
                       key={course.id}
-                      onMouseEnter={() => import('@/components/CourseLayout')}
+                      onMouseEnter={() => import('../../CourseLayout')}
                       onClick={() => onCourseClick(course.id)}
                       className="bg-white dark:bg-black/20 backdrop-blur-md rounded-2xl p-6 border border-slate-200 dark:border-white/5 shadow-sm hover:border-indigo-500/30 hover:shadow-2xl hover:shadow-indigo-500/10 cursor-pointer transition-all group flex flex-col h-full relative"
                     >

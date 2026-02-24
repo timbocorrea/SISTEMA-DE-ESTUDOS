@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { throttle } from '../../utils/performance';
 import { Lesson } from '../../domain/entities';
-import VideoPlayer from '@/components/features/classroom/components/VideoPlayer';
+import VideoPlayer from '@/components/features/classroom/VideoPlayer';
 import { useLessonStore } from '../../stores/useLessonStore';
 
 interface VideoPlayerWidgetProps {

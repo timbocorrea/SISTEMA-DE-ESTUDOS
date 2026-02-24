@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AdminService } from '../services/AdminService';
+import { AdminService } from '@/services/AdminService';
 import { toast } from 'sonner';
 
 interface AdminSettingsPageProps {

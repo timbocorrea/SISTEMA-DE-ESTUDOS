@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { AdminService } from '../services/AdminService';
-import { ProfileRecord, CourseRecord } from '../domain/admin';
-import { AdminStudentHistory } from './AdminStudentHistory';
-import { UserAuditHistory } from './UserAuditHistory';
-import { UserOverviewTab } from './features/admin/users/tabs/UserOverviewTab';
-import { UserCoursesTab } from './features/admin/users/tabs/UserCoursesTab';
+import { AdminService } from '@/services/AdminService';
+import { ProfileRecord, CourseRecord } from '@/domain/admin';
+import { AdminStudentHistory } from '@/components/AdminStudentHistory';
+import { UserAuditHistory } from '@/components/UserAuditHistory';
+import { UserOverviewTab } from '@/components/features/admin/users/tabs/UserOverviewTab';
+import { UserCoursesTab } from '@/components/features/admin/users/tabs/UserCoursesTab';
 
 interface UserDetailsModalProps {
     user: ProfileRecord;

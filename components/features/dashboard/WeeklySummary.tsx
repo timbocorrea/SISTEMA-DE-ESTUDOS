@@ -1,7 +1,7 @@
 import React from 'react';
 import { BarChart, ComposedChart, Line, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
 
-import { NumberTicker } from '../ui/number-ticker';
+import { NumberTicker } from '@/components/ui/number-ticker';
 
 interface WeeklySummaryProps {
     xpHistory: { date: string; xp: number }[];
