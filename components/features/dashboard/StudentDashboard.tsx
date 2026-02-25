@@ -160,7 +160,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
             </div>
           ) : (
             <div
-              className={`gap-6 p-1 overflow-y-auto max-h-[700px] scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600 scrollbar-track-transparent pr-2 ${viewMode === 'list' ? 'flex flex-col' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3'}`} // Modified for scrollable 2-row view
+              className={`gap-6 p-1 overflow-y-auto max-h-[1050px] scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600 scrollbar-track-transparent pr-2 ${viewMode === 'list' ? 'flex flex-col' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3'}`} // Modified for scrollable 2-row view
             >
               {courses.map(course => {
                 const progressItem = courseProgressData.find(p => p.courseId === course.id);
@@ -294,4 +294,4 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
 };
 
 export default StudentDashboard;
-//
+

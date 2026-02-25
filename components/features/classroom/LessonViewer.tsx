@@ -8,6 +8,7 @@ import VideoPlayer, { VideoPlayerRef } from '@/components/features/classroom/Vid
 import SlideViewer from '@/components/SlideViewer';
 import LessonMaterialsSidebar from '@/components/LessonMaterialsSidebar';
 import BuddyContextModal from '@/components/BuddyContextModal';
+import NotesPanelPrototype from '@/components/NotesPanelPrototype';
 // import GeminiBuddy from '@/components/GeminiBuddy'; // Removed: Uses global now
 import QuizOptionsModal from '@/components/QuizOptionsModal';
 import QuizModal from '@/components/QuizModal';
@@ -702,14 +703,29 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                         {/* Materials Button */}
                                         <button
                                             onClick={() => {
+                                                setSidebarTab('materials');
                                                 setIsMaterialsPanelOpen(true);
-                                                onTrackAction?.('Abriu Materiais/Notas');
+                                                onTrackAction?.('Abriu Materiais');
                                             }}
-                                            className="flex items-center justify-center gap-1.5 h-6 px-2.5 rounded-md bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 transition-colors text-[10px] font-bold border border-indigo-200 dark:border-indigo-800 uppercase tracking-wider"
-                                            title="Materiais e Notas"
+                                            className={`flex items-center justify-center gap-1.5 h-6 px-2.5 rounded-md transition-colors text-[10px] font-bold border uppercase tracking-wider ${sidebarTab === 'materials' && isMaterialsPanelOpen ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800'}`}
+                                            title="Materiais de Apoio"
                                         >
                                             <i className="fas fa-book-reader"></i>
                                             <span className="hidden sm:inline">Materiais</span>
+                                        </button>
+
+                                        {/* Notes Button */}
+                                        <button
+                                            onClick={() => {
+                                                setSidebarTab('notes');
+                                                setIsMaterialsPanelOpen(true);
+                                                onTrackAction?.('Abriu Minhas Notas');
+                                            }}
+                                            className={`flex items-center justify-center gap-1.5 h-6 px-2.5 rounded-md transition-colors text-[10px] font-bold border uppercase tracking-wider ${sidebarTab === 'notes' && isMaterialsPanelOpen ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800'}`}
+                                            title="Minhas Notas"
+                                        >
+                                            <i className="fas fa-sticky-note"></i>
+                                            <span className="hidden sm:inline">Notas</span>
                                         </button>
 
                                         {/* Video Index Indicator */}
@@ -1159,16 +1175,10 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
                 {/* Overlay: Painel Materiais/Notas/Quiz (Desktop Only) - Always mounted for audio persistence */}
                 <>
-                    {/* Backdrop */}
-                    {isMaterialsPanelOpen && (
-                        <div
-                            className="hidden lg:block fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] animate-in fade-in duration-200"
-                            onClick={() => setIsMaterialsPanelOpen(false)}
-                        />
-                    )}
+
                     {/* Panel - rendered as a Left bottom-up drawer reaching the video base under Desktop Layout  */}
                     <div
-                        className={`hidden fixed left-0 bottom-0 top-[40vh] md:top-[50vh] xl:top-[60vh] w-[40%] z-[65] flex-col bg-white dark:bg-slate-900 border-t border-r border-slate-200 dark:border-slate-800 rounded-tr-3xl shadow-[5px_-5px_30px_rgba(0,0,0,0.1)] transition-transform duration-300 ${isMaterialsPanelOpen ? 'lg:flex translate-y-0' : 'lg:flex translate-y-full pointer-events-none invisible'}`}
+                        className={`hidden fixed left-0 bottom-0 top-[10vh] w-[90%] md:w-[70%] lg:w-[40%] z-[65] flex-col bg-white dark:bg-slate-900 border-t border-r border-slate-200 dark:border-slate-800 rounded-tr-3xl shadow-[5px_-5px_30px_rgba(0,0,0,0.1)] transition-transform duration-300 ${isMaterialsPanelOpen ? 'lg:flex translate-y-0' : 'lg:flex translate-y-full pointer-events-none invisible'}`}
                     >
                         {/* Header */}
                         <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-800 shrink-0">
@@ -1211,13 +1221,13 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                             {sidebarTab === 'materials' ? (
                                 <LessonMaterialsSidebar lesson={lesson} onTrackAction={onTrackAction} onAudioStateChange={handleAudioStateChange} />
                             ) : (
-                                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
-                                    <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
-                                        <i className="fas fa-tools text-2xl text-slate-400"></i>
-                                    </div>
-                                    <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">My Notes (Em Construção)</h3>
-                                    <p className="text-slate-500 dark:text-slate-400 text-sm">O sistema avançado de notas está em refatoração para próxima versão.</p>
-                                </div>
+                                <NotesPanelPrototype
+                                    userId={user.id}
+                                    lessonId={lesson.id}
+                                    refreshTrigger={activeBlockId}
+                                    externalDraft={noteDraftWithRange}
+                                    onNotesChange={handleNotesChange}
+                                />
                             )}
 
                         </div>
@@ -1295,13 +1305,15 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                 )}
 
                                 {activeMobileTab === 'notes' && (
-                                    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-                                        <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
-                                            <i className="fas fa-tools text-2xl text-slate-400"></i>
-                                        </div>
-                                        <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">My Notes (Em Construção)</h3>
-                                        <p className="text-slate-500 dark:text-slate-400 text-sm">O sistema avançado de notas está em refatoração.</p>
-                                    </div>
+                                    <NotesPanelPrototype
+                                        userId={user.id}
+                                        lessonId={lesson.id}
+                                        refreshTrigger={activeBlockId}
+                                        onNoteSelect={handleCloseDrawer}
+                                        focusedNoteId={focusedNoteId}
+                                        externalDraft={noteDraftWithRange}
+                                        onNotesChange={handleNotesChange}
+                                    />
                                 )}
 
                                 {activeMobileTab === 'quiz' && (
