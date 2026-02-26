@@ -30,7 +30,7 @@ const isMediaPlaying = (): boolean => {
  * trigger idle timeout while media is playing.
  */
 export const useIdleTimeout = ({ onIdle, timeout = 10 * 60 * 1000, onRefreshSession }: UseIdleTimeoutProps) => {
-    const SESSION_REFRESH_INTERVAL_MS = 15 * 60 * 1000;
+    const SESSION_REFRESH_INTERVAL_MS = 4 * 60 * 1000;
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const mediaCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const onIdleRef = useRef(onIdle);

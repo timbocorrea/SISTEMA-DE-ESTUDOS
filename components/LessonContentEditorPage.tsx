@@ -945,6 +945,10 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
     // Unsaved Changes Tracking
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const hasUnsavedChangesRef = useRef(hasUnsavedChanges);
+    useEffect(() => {
+        hasUnsavedChangesRef.current = hasUnsavedChanges;
+    }, [hasUnsavedChanges]);
     const initialBlocksRef = useRef(JSON.stringify(blocks));
     const [changedBlocks, setChangedBlocks] = useState<Map<string, { before: Block; after: Block }>>(new Map());
     const [showChangesModal, setShowChangesModal] = useState(false);
@@ -988,7 +992,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
             console.log('🔍 [QUIZ DEBUG] Iniciando busca de quiz para aula:', lesson.id);
 
             try {
-                
+
                 const courseRepo = courseRepository;
 
                 const quiz = await courseRepo.getQuizByLessonId(lesson.id);
@@ -1013,7 +1017,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
         async function loadRequirements() {
             setLoadingRequirements(true);
             try {
-                
+
                 const courseRepo = courseRepository;
                 const reqs = await courseRepo.getLessonRequirements(lesson.id);
                 setLessonRequirements(reqs);
@@ -1150,11 +1154,18 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
     useEffect(() => {
         console.log('🔍 Network monitoring initialized. Current state:', navigator.onLine ? 'ONLINE' : 'OFFLINE');
 
-        const handleOnline = () => {
+        const handleOnline = async () => {
             console.log('🌐 Conexão restaurada');
             setIsOnline(true);
             setShowOfflineModal(false);
             toast.success('✅ Conexão com a internet restaurada!');
+
+            if (hasUnsavedChangesRef.current) {
+                toast.info('⏳ Salvando alterações pendentes após recuperar conexão...');
+                try {
+                    await handleSave();
+                } catch (e) { /* error handled inside handleSave */ }
+            }
         };
 
         const handleOffline = () => {
@@ -1163,6 +1174,21 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
             setIsOnline(false);
             setShowOfflineModal(true);
             toast.error('❌ Conexão com a internet perdida!');
+
+            if (hasUnsavedChangesRef.current && lesson.id) {
+                const normalizedBlocks = blocksRef.current.map((block: any) => ({
+                    ...block,
+                    spacing: block.spacing !== undefined ? block.spacing : 0
+                }));
+                const draftData = {
+                    lessonId: lesson.id,
+                    title: titleRef.current,
+                    content_blocks: normalizedBlocks,
+                    timestamp: new Date().getTime()
+                };
+                localStorage.setItem(`offline_draft_${lesson.id}`, JSON.stringify(draftData));
+                console.log('💾 Rascunho de emergência salvo localmente.');
+            }
         };
 
         window.addEventListener('online', handleOnline);
@@ -1184,16 +1210,31 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
     // Prevent accidental page close/reload when there are unsaved changes
     useEffect(() => {
         const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-            if (hasUnsavedChanges) {
+            if (hasUnsavedChangesRef.current) {
+                // Emergency save before unload
+                if (lesson.id) {
+                    const normalizedBlocks = blocksRef.current.map((block: any) => ({
+                        ...block,
+                        spacing: block.spacing !== undefined ? block.spacing : 0
+                    }));
+                    const draftData = {
+                        lessonId: lesson.id,
+                        title: titleRef.current,
+                        content_blocks: normalizedBlocks,
+                        timestamp: new Date().getTime()
+                    };
+                    localStorage.setItem(`offline_draft_${lesson.id}`, JSON.stringify(draftData));
+                }
+
                 e.preventDefault();
-                e.returnValue = 'Você tem alterações não salvas. Tem certeza que deseja sair?';
+                e.returnValue = 'Você tem alterações não salvas. Um rascunho de emergência foi salvo localmente.';
                 return e.returnValue;
             }
         };
 
         window.addEventListener('beforeunload', handleBeforeUnload);
         return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-    }, [hasUnsavedChanges]);
+    }, [lesson.id]);
 
     // Handle preview request from App topbar
     useEffect(() => {
@@ -1224,7 +1265,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
     const handleCreateQuiz = async (quizData: any) => {
         try {
-            
+
             const courseRepo = courseRepository;
 
             const quiz = new Quiz(
@@ -1281,7 +1322,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
         setIsTogglingRelease(true);
         try {
-            
+
             const courseRepo = courseRepository;
 
             const newReleaseState = !existingQuiz.isManuallyReleased;
@@ -1331,7 +1372,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
     const handleSaveRequirements = async (requirements: import('../domain/lesson-requirements').LessonProgressRequirements) => {
         try {
-            
+
             const courseRepo = courseRepository;
 
             await courseRepo.saveLessonRequirements(requirements);
@@ -1467,7 +1508,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
         setIsSaving(true);
         try {
             // Garantir token JWT atualizado antes de salvar
-            
+
             await supabase.auth.getSession();
 
             const htmlContent = editorRef.current?.innerHTML || '';
@@ -1519,6 +1560,10 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
     // Auto-save a cada 2 minutos (usa handleSave estável via useCallback + refs)
     useEffect(() => {
         const autoSaveInterval = setInterval(async () => {
+            if (!hasUnsavedChangesRef.current) {
+                console.log('⏱️ Auto-save: Nenhuma alteração pendente para salvar (Egress Otimizado).');
+                return;
+            }
             console.log('⏱️ Auto-save: Salvando automaticamente...');
             setIsAutoSaving(true);
             try {
@@ -2999,7 +3044,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
             setUploadProgress(0);
 
             // Criar client Supabase
-            
+
 
             // Nome único para o arquivo
             const timestamp = Date.now();
@@ -3054,7 +3099,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
     const handleImageUpload = async (file: File) => {
         try {
             setUploadingMedia(true);
-            
+
 
             const timestamp = Date.now();
             const fileExt = file.name.split('.').pop();
@@ -4878,7 +4923,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
                                                                                             const toastId = toast.loading(`Enviando ${file.name}...`);
                                                                                             try {
-                                                                                                
+
                                                                                                 const timestamp = Date.now();
                                                                                                 const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
                                                                                                 const filePath = `slides/${timestamp}-${safeName}`;
