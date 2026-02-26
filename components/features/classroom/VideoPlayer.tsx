@@ -225,16 +225,19 @@ const VideoPlayer = React.forwardRef<VideoPlayerRef, VideoPlayerProps>(({ lesson
 
   if (!currentVideoUrl) {
     return (
-      <div className="relative w-full bg-slate-900 rounded-xl overflow-hidden shadow-2xl border border-slate-700 p-8">
-        <div className="flex items-center justify-between gap-4">
+      <div className="relative w-full aspect-[4/3] bg-slate-900/40 rounded-xl overflow-hidden shadow-inner border border-slate-800 flex flex-col items-center justify-center p-8 text-center">
+        <div className="flex flex-col items-center justify-center gap-4">
+          <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mb-2 shadow-sm">
+            <i className="fas fa-video-slash text-slate-500 text-2xl"></i>
+          </div>
           <div>
-            <p className="text-white font-black text-lg">Vídeo não configurado</p>
-            <p className="text-slate-300 text-sm mt-1">Adicione uma URL de vídeo na gestão de conteúdo para esta aula.</p>
+            <p className="text-slate-300 font-bold text-lg">Vídeo não configurado</p>
+            <p className="text-slate-500 text-sm mt-2 max-w-sm mx-auto">Nenhum conteúdo de vídeo foi adicionado para esta aula.</p>
           </div>
           {showManualComplete && (
             <button
               onClick={markAsCompleted}
-              className="bg-indigo-600 text-white text-xs font-bold px-3 py-2 rounded-lg shadow-lg shadow-indigo-600/30 hover:bg-indigo-500 transition flex-shrink-0"
+              className="mt-4 bg-indigo-600 text-white text-xs font-bold px-4 py-2 rounded-lg shadow-lg shadow-indigo-600/30 hover:bg-indigo-500 transition"
             >
               Marcar como concluída
             </button>

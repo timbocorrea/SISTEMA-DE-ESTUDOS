@@ -639,10 +639,10 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
             </div>
 
             {/* Layout Principal: Flex 2 Colunas (Vídeo 40% | Texto 60%) em Desktop */}
-            <div className={`flex flex-col ${!isCinemaMode && (lesson.videoUrl || (lesson.videoUrls && lesson.videoUrls.length > 0)) ? 'lg:flex-row' : ''} gap-4 relative`}>
+            <div className={`flex flex-col ${!isCinemaMode ? 'lg:flex-row' : ''} gap-4 relative`}>
 
                 {/* Coluna Esquerda: Vídeo + Playlist (40% desktop, 100% mobile, hidden cinema mode) */}
-                {(lesson.videoUrl || (lesson.videoUrls && lesson.videoUrls.length > 0)) && !isCinemaMode && !isVideoCollapsed && (
+                {!isCinemaMode && !isVideoCollapsed && (
                     <div className="lg:w-[40%] shrink-0 space-y-3 animate-in fade-in slide-in-from-left duration-500">
                         <div className="lg:sticky lg:top-4 space-y-3">
                             {/* Player or SlideViewer */}
@@ -788,7 +788,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                 )}
 
                 {/* Cinema Mode: Vídeo fullwidth */}
-                {(lesson.videoUrl || (lesson.videoUrls && lesson.videoUrls.length > 0)) && isCinemaMode && (
+                {isCinemaMode && (
                     <div className="w-full space-y-3">
                         <VideoPlayer
                             ref={activeVideoRef}
