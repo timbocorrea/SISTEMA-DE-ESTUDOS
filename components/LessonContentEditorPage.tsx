@@ -1195,6 +1195,33 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
         return () => window.removeEventListener('beforeunload', handleBeforeUnload);
     }, [hasUnsavedChanges]);
 
+    // Handle preview request from App topbar
+    useEffect(() => {
+        const handlePreview = (e: any) => {
+            if (e.detail?.lessonId === lesson.id) {
+                console.log('👀 Preparando pré-visualização: Salvando estado não salvo na cache local...');
+                const normalizedBlocks = blocksRef.current.map(block => ({
+                    ...block,
+                    spacing: block.spacing !== undefined ? block.spacing : 0
+                }));
+                const previewData = {
+                    lessonId: lesson.id,
+                    title: titleRef.current,
+                    video_urls: videoUrlsRef.current,
+                    audio_url: audioUrlRef.current,
+                    duration_seconds: durationSecondsRef.current,
+                    image_url: imageUrlRef.current,
+                    content_blocks: normalizedBlocks,
+                    timestamp: new Date().getTime()
+                };
+                localStorage.setItem('preview_lesson_' + lesson.id, JSON.stringify(previewData));
+            }
+        };
+
+        window.addEventListener('previewAsStudent', handlePreview);
+        return () => window.removeEventListener('previewAsStudent', handlePreview);
+    }, [lesson.id]);
+
     const handleCreateQuiz = async (quizData: any) => {
         try {
             

@@ -461,6 +461,38 @@ const App: React.FC = () => {
 
   const topbarActions = (
     <div className="flex items-center gap-1">
+      {location.pathname.match(/\/admin\/lesson\/[^/]+\/edit/) && activeLessonId && (
+        <button
+          onClick={() => {
+            let foundCourseId;
+            for (const course of adminCourses) {
+              for (const module of course.modules || []) {
+                if (module.lessons?.some((l: any) => l.id === activeLessonId)) {
+                  foundCourseId = course.id;
+                  break;
+                }
+              }
+              if (foundCourseId) break;
+            }
+            const targetCourseId = foundCourseId || activeCourse?.id;
+
+            if (targetCourseId) {
+              const event = new CustomEvent('previewAsStudent', { detail: { lessonId: activeLessonId } });
+              window.dispatchEvent(event);
+
+              setTimeout(() => {
+                window.open(`/course/${targetCourseId}/lesson/${activeLessonId}?preview=true`, '_blank');
+              }, 100);
+            } else {
+              import('sonner').then(({ toast }) => toast.error('Não foi possível identificar o curso desta aula para pré-visualização.'));
+            }
+          }}
+          className="w-10 h-10 flex items-center justify-center text-indigo-500 dark:text-indigo-400 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg transition-colors bg-indigo-50/50 dark:bg-indigo-500/10"
+          title="Pré-visualizar como Estudante"
+        >
+          <i className="fas fa-play"></i>
+        </button>
+      )}
       <button
         onClick={toggleFullscreen}
         className="w-10 h-10 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg transition-colors"

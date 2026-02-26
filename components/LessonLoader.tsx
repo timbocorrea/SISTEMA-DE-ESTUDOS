@@ -4,7 +4,7 @@ import { useCourse } from '../contexts/CourseContext';
 import LessonViewer from '@/components/features/classroom/LessonViewer';
 import LessonSkeleton from './skeletons/LessonSkeleton';
 import { useLessonStore } from '../stores/useLessonStore';
-import { User } from '../domain/entities';
+import { User, Lesson } from '../domain/entities';
 import { useTheme } from '../contexts/ThemeContext';
 
 interface LessonLoaderProps {
@@ -31,6 +31,22 @@ const LessonLoader: React.FC<LessonLoaderProps> = ({ user, onTrackAction, onTogg
     const { contentTheme, setContentTheme } = useLessonStore();
     const { theme } = useTheme();
 
+    // Check for preview mode
+    const [previewData, setPreviewData] = React.useState<any>(null);
+    useEffect(() => {
+        const queryParams = new URLSearchParams(window.location.search);
+        if (queryParams.get('preview') === 'true' && lessonId) {
+            try {
+                const stored = localStorage.getItem(`preview_lesson_${lessonId}`);
+                if (stored) {
+                    setPreviewData(JSON.parse(stored));
+                }
+            } catch (e) {
+                console.error("Failed to load preview data", e);
+            }
+        }
+    }, [lessonId]);
+
     // Sync URL -> Context
     useEffect(() => {
         if (lessonId && activeCourse) {
@@ -45,6 +61,41 @@ const LessonLoader: React.FC<LessonLoaderProps> = ({ user, onTrackAction, onTogg
     useEffect(() => {
         setContentTheme(theme);
     }, [theme, setContentTheme]);
+
+    // Merge preview data into activeLesson if available
+    // MUST BE BEFORE CONDITIONAL RETURNS!
+    const displayLesson = React.useMemo(() => {
+        if (!activeLesson && !previewData) return null;
+
+        if (!previewData) return activeLesson;
+
+        const baseLesson = activeLesson || { id: previewData.lessonId } as any;
+
+        const mergedData = {
+            id: previewData.lessonId || baseLesson.id,
+            title: previewData.title !== undefined ? previewData.title : baseLesson.title,
+            videoUrl: previewData.video_url !== undefined ? previewData.video_url : baseLesson.videoUrl,
+            videoUrls: previewData.video_urls !== undefined ? previewData.video_urls : baseLesson.videoUrls,
+            audioUrl: previewData.audio_url !== undefined ? previewData.audio_url : baseLesson.audioUrl,
+            durationSeconds: previewData.duration_seconds !== undefined ? previewData.duration_seconds : baseLesson.durationSeconds,
+            imageUrl: previewData.image_url !== undefined ? previewData.image_url : baseLesson.imageUrl,
+            contentBlocks: previewData.content_blocks !== undefined ? previewData.content_blocks : baseLesson.contentBlocks,
+            content: baseLesson.content,
+            resources: baseLesson.resources,
+            watchedSeconds: baseLesson.watchedSeconds,
+            isCompleted: baseLesson.isCompleted,
+            position: baseLesson.position,
+            lastAccessedBlockId: baseLesson.lastAccessedBlockId,
+            hasQuiz: baseLesson.hasQuiz,
+            quizPassed: baseLesson.quizPassed,
+            isLoaded: baseLesson.isLoaded,
+            textBlocksRead: baseLesson.textBlocksRead ? Array.from(baseLesson.textBlocksRead) : [],
+            videosWatched: baseLesson.videosWatched ? Array.from(baseLesson.videosWatched) : [],
+            audiosListened: baseLesson.audiosListened ? Array.from(baseLesson.audiosListened) : []
+        };
+
+        return new Lesson(mergedData as any);
+    }, [activeLesson, previewData]);
 
     if (isLoadingCourses) {
         return <LessonSkeleton />;
@@ -62,14 +113,16 @@ const LessonLoader: React.FC<LessonLoaderProps> = ({ user, onTrackAction, onTogg
         );
     }
 
-    if (!activeLesson) {
+    if (!activeLesson && !previewData) {
         return <LessonSkeleton />;
     }
+
+    if (!displayLesson) return <LessonSkeleton />;
 
     return (
         <LessonViewer
             course={activeCourse}
-            lesson={activeLesson}
+            lesson={displayLesson as any}
             user={user}
             onLessonSelect={(l) => navigate(`/course/${activeCourse.id}/lesson/${l.id}`)}
             onProgressUpdate={async (secs, blockId) => await updateProgress(secs, blockId)}
