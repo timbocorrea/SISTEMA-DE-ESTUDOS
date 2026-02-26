@@ -3,6 +3,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 // @ts-ignore
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+// @ts-ignore
+import { GoogleGenAI } from 'https://esm.sh/@google/genai@1.34.0';
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -69,7 +71,7 @@ serve(async (req: Request) => {
 
         // 4. Determine Provider based on Key Prefix (Server-Side Logic)
         let aiProvider = 'google';
-        let aiModel = model || 'gemini-1.5-flash-latest';
+        let aiModel = model || 'gemini-2.5-flash';
 
         if (resolvedApiKey.startsWith('sk-')) {
             aiProvider = 'openai';
@@ -93,8 +95,8 @@ serve(async (req: Request) => {
                     const match = m.image.match(/^data:(.+);base64,(.+)$/);
                     if (match) {
                         parts.push({
-                            inline_data: {
-                                mime_type: match[1],
+                            inlineData: {
+                                mimeType: match[1],
                                 data: match[2]
                             }
                         });
@@ -121,31 +123,30 @@ serve(async (req: Request) => {
             while (finalContent.length > 0 && finalContent[0].role !== 'user') finalContent.shift();
             if (finalContent.length === 0) throw new Error('Nenhuma mensagem válida encontrada para enviar à IA.');
 
-            if (systemText && finalContent.length > 0) {
-                finalContent[0].parts.unshift({ text: `[INSTRUCÃO DE SISTEMA]:\n${systemText}\n\n---\n` });
+            try {
+                const ai = new GoogleGenAI({ apiKey });
+                const requestOptions: any = {
+                    model: model === 'gemini-1.5-flash-latest' ? 'gemini-2.5-flash' : model,
+                    contents: finalContent,
+                    config: {
+                        temperature: 0.7,
+                        maxOutputTokens: 1000
+                    }
+                };
+
+                // The new SDK properly accepts systemInstruction directly in the config
+                if (systemText) {
+                    requestOptions.config.systemInstruction = systemText;
+                }
+
+                const response = await ai.models.generateContent(requestOptions);
+
+                if (!response.candidates || response.candidates.length === 0) return "IA_SEM_CANDIDATOS";
+                return response.text || response.candidates[0].content?.parts?.[0]?.text || "IA_SEM_TEXTO";
+            } catch (error: any) {
+                const errorMsg = error.message || JSON.stringify(error);
+                throw { status: error.status || 500, message: errorMsg, provider: 'google' };
             }
-
-            const body: any = {
-                contents: finalContent,
-                generationConfig: { temperature: 0.7, maxOutputTokens: 1000 }
-            };
-
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            });
-
-            const data = await response.json();
-            if (!response.ok) {
-                // Return structured error to be caught
-                const errorMsg = data.error?.message || JSON.stringify(data.error);
-                throw { status: response.status, message: errorMsg, provider: 'google' };
-            }
-
-            const candidate = data.candidates?.[0];
-            if (!candidate) return "IA_SEM_CANDIDATOS";
-            return candidate.content?.parts?.[0]?.text || "IA_SEM_TEXTO";
         };
 
         const callOpenAICompatible = async (apiKey: string, model: string, messages: any[], systemText: string, baseUrl: string) => {
