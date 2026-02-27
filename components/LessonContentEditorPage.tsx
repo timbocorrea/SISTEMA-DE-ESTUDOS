@@ -227,7 +227,7 @@ const BlockItem = React.memo(({
                             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 transition-colors"
                         >
                             <i className="fas fa-video w-4"></i>
-                            <span>Inserir Vídeo (Youtube/Vimeo)</span>
+                            <span>Inserir Vídeo (Youtube/Vimeo/Dropbox)</span>
                         </button>
                         <button
                             onClick={() => {
@@ -3202,6 +3202,8 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
         if (!mediaUrl) return;
         let videoId = '';
         let embedUrl = '';
+        let isVideoTag = false;
+        
         if (mediaUrl.includes('youtube.com') || mediaUrl.includes('youtu.be')) {
             const match = mediaUrl.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
             videoId = match ? match[1] : '';
@@ -3210,13 +3212,26 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
             const match = mediaUrl.match(/vimeo\.com\/(\d+)/);
             videoId = match ? match[1] : '';
             embedUrl = `https://player.vimeo.com/video/${videoId}`;
+        } else if (mediaUrl.includes('dropbox.com')) {
+            let dbUrl = mediaUrl.replace('dl=0', 'raw=1');
+            if (!dbUrl.includes('raw=1')) {
+                dbUrl += (dbUrl.includes('?') ? '&' : '?') + 'raw=1';
+            }
+            embedUrl = dbUrl;
+            isVideoTag = true;
         }
+        
         if (!embedUrl) {
-            alert('URL de vídeo inválida. Use YouTube ou Vimeo.');
+            alert('URL de vídeo inválida. Use YouTube, Vimeo ou Dropbox.');
             return;
         }
 
-        const html = `<div class="video-wrapper" style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; margin: 20px 0; border-radius: 12px;"><div class="video-overlay"></div><iframe src="${embedUrl}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;" frameborder="0" allowfullscreen></iframe></div>`;
+        let html = '';
+        if (isVideoTag) {
+            html = `<div class="video-wrapper" style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; margin: 20px 0; border-radius: 12px; background: #000;"><video controls src="${embedUrl}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></video></div>`;
+        } else {
+            html = `<div class="video-wrapper" style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; margin: 20px 0; border-radius: 12px;"><div class="video-overlay"></div><iframe src="${embedUrl}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;" frameborder="0" allowfullscreen></iframe></div>`;
+        }
 
         const newBlock = {
             id: Math.random().toString(36).substring(2) + Date.now().toString(36),
@@ -5273,17 +5288,17 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                    URL do Vídeo (YouTube ou Vimeo)
+                                    URL do Vídeo (YouTube, Vimeo ou Dropbox)
                                 </label>
                                 <input
                                     type="url"
                                     value={mediaUrl}
                                     onChange={(e) => setMediaUrl(e.target.value)}
-                                    placeholder="https://www.youtube.com/watch?v=..."
+                                    placeholder="https://www.youtube.com/watch?v=... ou https://www.dropbox.com/s/..."
                                     className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                                 />
                                 <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                                    Cole o link completo do YouTube ou Vimeo
+                                    Cole o link completo do YouTube, Vimeo ou Dropbox
                                 </p>
                                 <button
                                     onClick={() => insertVideoEmbed(mediaMenuIndex !== null ? mediaMenuIndex : undefined)}

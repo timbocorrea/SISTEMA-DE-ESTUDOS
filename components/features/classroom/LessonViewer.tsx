@@ -872,28 +872,26 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                 {lesson.contentBlocks && lesson.contentBlocks.length > 0 && (
                                     <button
                                         onClick={() => setAudioEnabled(!audioEnabled)}
-                                        className={`h-9 px-2 sm:px-3 rounded-lg font-semibold transition-all active:scale-95 flex items-center gap-1.5 text-[10px] uppercase shadow-sm border ${audioEnabled
+                                        className={`w-9 h-9 rounded-lg font-semibold transition-all active:scale-95 flex items-center justify-center text-[10px] uppercase shadow-sm border ${audioEnabled
                                             ? (contentTheme === 'dark' ? 'bg-indigo-500/20 border-indigo-500 text-indigo-400' : 'bg-indigo-600 border-indigo-500 text-white')
                                             : (contentTheme === 'dark' ? 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700' : 'bg-slate-100 border-slate-200 text-slate-500 hover:bg-slate-200')
                                             }`}
                                         title={audioEnabled ? 'Desativar Leitura por Áudio' : 'Ativar Leitura por Áudio'}
                                     >
-                                        <i className={`fas ${audioEnabled ? 'fa-volume-up' : 'fa-volume-mute'} text-[10px]`}></i>
-                                        <span className="hidden sm:inline">Leitura por Áudio</span>
+                                        <i className={`fas ${audioEnabled ? 'fa-volume-up' : 'fa-volume-mute'} text-[12px]`}></i>
                                     </button>
                                 )}
 
                                 {/* Theme Toggle */}
                                 <button
                                     onClick={() => setContentTheme(contentTheme === 'light' ? 'dark' : 'light')}
-                                    className={`h-9 px-2 sm:px-3 rounded-lg font-semibold transition-all active:scale-95 flex items-center gap-1.5 text-[10px] uppercase shadow-sm border ${contentTheme === 'dark'
+                                    className={`w-9 h-9 rounded-lg font-semibold transition-all active:scale-95 flex items-center justify-center text-[10px] uppercase shadow-sm border ${contentTheme === 'dark'
                                         ? 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
                                         : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                                         }`}
                                     title={contentTheme === 'dark' ? 'Mudar para Modo Claro' : 'Mudar para Modo Escuro'}
                                 >
-                                    <i className={`fas ${contentTheme === 'dark' ? 'fa-sun' : 'fa-moon'} text-[10px]`}></i>
-                                    <span className="hidden sm:inline">{contentTheme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}</span>
+                                    <i className={`fas ${contentTheme === 'dark' ? 'fa-sun' : 'fa-moon'} text-[12px]`}></i>
                                 </button>
 
                                 {/* Speed Control Standalone */}
@@ -947,15 +945,15 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                 <div className="relative" ref={optionsMenuRef}>
                                     <button
                                         onClick={() => setIsOptionsMenuOpen(!isOptionsMenuOpen)}
-                                        className={`h-9 px-2 sm:px-3 rounded-lg font-semibold transition-all active:scale-95 flex items-center justify-center gap-1.5 border transition-all duration-300 text-[10px] uppercase tracking-wider shadow-sm hover:shadow-md ${isOptionsMenuOpen
+                                        className={`w-9 h-9 rounded-lg font-semibold transition-all active:scale-95 flex items-center justify-center border transition-all duration-300 text-[10px] uppercase tracking-wider shadow-sm hover:shadow-md ${isOptionsMenuOpen
                                             ? 'bg-indigo-600 border-indigo-500 text-white'
                                             : (contentTheme === 'dark'
                                                 ? 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
                                                 : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50')
                                             }`}
+                                        title="Opções"
                                     >
-                                        <i className={`fas fa-cog text-[10px] transition-transform duration-500 ${isOptionsMenuOpen ? 'rotate-90' : ''}`}></i>
-                                        <span className="hidden sm:inline">Opções</span>
+                                        <i className={`fas fa-cog text-[12px] transition-transform duration-500 ${isOptionsMenuOpen ? 'rotate-90' : ''}`}></i>
                                     </button>
 
                                     {/* Dropdown Menu */}
