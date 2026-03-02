@@ -505,6 +505,21 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
 
 
+    // Initialize previous and next lesson variables
+    let previousLesson: Lesson | null = null;
+    let nextLesson: Lesson | null = null;
+
+    if (course?.modules) {
+        for (const module of course.modules) {
+            const index = module.lessons?.findIndex(l => l.id === lesson.id);
+            if (index !== -1 && index !== undefined) {
+                if (index > 0) previousLesson = module.lessons[index - 1];
+                if (index < module.lessons.length - 1) nextLesson = module.lessons[index + 1];
+                break;
+            }
+        }
+    }
+
     // Determine which video URL to use
     const hasMultipleVideos = lesson.videoUrls && lesson.videoUrls.length > 1;
     const currentVideoUrl = (lesson.videoUrls && lesson.videoUrls.length > 0)
@@ -1147,6 +1162,37 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                     setShowBuddyModal(false);
                                 }}
                             />
+
+                            {/* Lesson Navigation Buttons */}
+                            <div className="mt-12 mb-8 pt-8 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4 mr-4">
+                                {previousLesson ? (
+                                    <button
+                                        onClick={() => onLessonSelect(previousLesson!)}
+                                        className="flex-1 flex flex-col items-start gap-1 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-md transition-all group max-w-[48%]"
+                                    >
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                                            <i className="fas fa-arrow-left group-hover:-translate-x-1 transition-transform"></i> Aula Anterior
+                                        </span>
+                                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 truncate w-full text-left">
+                                            {previousLesson.title}
+                                        </span>
+                                    </button>
+                                ) : <div className="flex-1"></div>}
+
+                                {nextLesson ? (
+                                    <button
+                                        onClick={() => onLessonSelect(nextLesson!)}
+                                        className="flex-1 flex flex-col items-end gap-1 p-4 rounded-2xl bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/30 hover:border-indigo-300 dark:hover:border-indigo-500 hover:shadow-md transition-all group max-w-[48%]"
+                                    >
+                                        <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest flex items-center gap-1.5">
+                                            Próxima Aula <i className="fas fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                                        </span>
+                                        <span className="text-sm font-semibold text-indigo-700 dark:text-indigo-300 truncate w-full text-right">
+                                            {nextLesson.title}
+                                        </span>
+                                    </button>
+                                ) : <div className="flex-1"></div>}
+                            </div>
                         </div>
                     </div>
                 </div>

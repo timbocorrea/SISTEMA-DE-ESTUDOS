@@ -3203,7 +3203,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
         let videoId = '';
         let embedUrl = '';
         let isVideoTag = false;
-        
+
         if (mediaUrl.includes('youtube.com') || mediaUrl.includes('youtu.be')) {
             const match = mediaUrl.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
             videoId = match ? match[1] : '';
@@ -3220,7 +3220,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
             embedUrl = dbUrl;
             isVideoTag = true;
         }
-        
+
         if (!embedUrl) {
             alert('URL de vídeo inválida. Use YouTube, Vimeo ou Dropbox.');
             return;
@@ -3354,7 +3354,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
 
     return (
-        <div className="h-[100dvh] bg-white dark:bg-slate-950 flex flex-col overflow-hidden">
+        <div className="h-full bg-white dark:bg-slate-950 flex flex-col overflow-hidden">
             {/* Header fixo */}
             <div className="z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 shadow-sm">
                 <div className="px-8 py-4">
