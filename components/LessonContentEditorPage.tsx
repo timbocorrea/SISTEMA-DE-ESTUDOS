@@ -402,16 +402,13 @@ const BlockItem = React.memo(({
                         <div className="sticky top-2 z-30 flex items-center flex-wrap gap-1 bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl mb-4 animate-in fade-in slide-in-from-top-2 duration-300 ring-1 ring-slate-900/5">
                             {/* Grupo: Tipografia */}
                             <div className="flex items-center gap-1 p-1 bg-slate-50 dark:bg-slate-900/50 rounded-xl mr-1">
-                                <input
-                                    type="number"
-                                    min="8"
-                                    max="72"
-                                    value={handlers.currentFontSize}
-                                    onChange={(e) => {
-                                        const size = e.target.value;
-                                        handlers.setCurrentFontSize(size);
+                                <button
+                                    onClick={() => {
+                                        const current = parseInt(handlers.currentFontSize) || 12;
+                                        const newSize = Math.max(8, current - 1);
+                                        handlers.setCurrentFontSize(String(newSize));
                                         const activeEl = document.querySelector(`[data-block-id="${block.id}"] [contenteditable="true"]`) as HTMLElement;
-                                        if (size && activeEl) {
+                                        if (activeEl) {
                                             const selection = window.getSelection();
                                             if (!selection || selection.isCollapsed || !activeEl.contains(selection.anchorNode)) {
                                                 const range = document.createRange();
@@ -423,7 +420,7 @@ const BlockItem = React.memo(({
                                             const fontElements = activeEl.querySelectorAll('font[size="7"]');
                                             fontElements.forEach(font => {
                                                 const span = document.createElement('span');
-                                                span.style.fontSize = `${size}pt`;
+                                                span.style.fontSize = `${newSize}pt`;
                                                 span.innerHTML = font.innerHTML;
                                                 font.parentNode?.replaceChild(span, font);
                                             });
@@ -432,9 +429,46 @@ const BlockItem = React.memo(({
                                             setTimeout(() => activeEl.focus(), 0);
                                         }
                                     }}
-                                    className="w-14 h-9 rounded-lg border-none bg-white dark:bg-slate-800 text-xs px-2 text-center font-bold shadow-sm focus:ring-2 focus:ring-indigo-500"
-                                    title="Tamanho da fonte"
-                                />
+                                    className="w-9 h-9 rounded-lg bg-white dark:bg-slate-800 text-sm font-bold shadow-sm hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex items-center justify-center text-slate-600 dark:text-slate-300"
+                                    title="Diminuir fonte"
+                                >
+                                    −
+                                </button>
+                                <div className="w-10 h-9 rounded-lg bg-white dark:bg-slate-800 text-[11px] font-black shadow-sm flex items-center justify-center text-slate-700 dark:text-slate-200">
+                                    {handlers.currentFontSize}
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        const current = parseInt(handlers.currentFontSize) || 12;
+                                        const newSize = Math.min(72, current + 1);
+                                        handlers.setCurrentFontSize(String(newSize));
+                                        const activeEl = document.querySelector(`[data-block-id="${block.id}"] [contenteditable="true"]`) as HTMLElement;
+                                        if (activeEl) {
+                                            const selection = window.getSelection();
+                                            if (!selection || selection.isCollapsed || !activeEl.contains(selection.anchorNode)) {
+                                                const range = document.createRange();
+                                                range.selectNodeContents(activeEl);
+                                                selection?.removeAllRanges();
+                                                selection?.addRange(range);
+                                            }
+                                            document.execCommand('fontSize', false, '7');
+                                            const fontElements = activeEl.querySelectorAll('font[size="7"]');
+                                            fontElements.forEach(font => {
+                                                const span = document.createElement('span');
+                                                span.style.fontSize = `${newSize}pt`;
+                                                span.innerHTML = font.innerHTML;
+                                                font.parentNode?.replaceChild(span, font);
+                                            });
+                                            handlers.updateBlock(block.id, { text: activeEl.innerHTML });
+                                            handlers.saveSelection();
+                                            setTimeout(() => activeEl.focus(), 0);
+                                        }
+                                    }}
+                                    className="w-9 h-9 rounded-lg bg-white dark:bg-slate-800 text-sm font-bold shadow-sm hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex items-center justify-center text-slate-600 dark:text-slate-300"
+                                    title="Aumentar fonte"
+                                >
+                                    +
+                                </button>
                                 <select
                                     className="w-24 h-9 rounded-lg border-none bg-white dark:bg-slate-800 text-[10px] px-1 ml-1 font-bold shadow-sm focus:ring-2 focus:ring-indigo-500"
                                     onChange={(e) => handlers.execCommand('fontName', e.target.value)}
@@ -1405,6 +1439,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
     // Seleção em massa
     const [selectedBlocks, setSelectedBlocks] = useState<Set<string>>(new Set());
     const [isSelectionMode, setIsSelectionMode] = useState(false);
+    const [bulkFontSize, setBulkFontSize] = useState(12);
 
     // Auto-save
     const [isAutoSaving, setIsAutoSaving] = useState(false);
@@ -1958,64 +1993,20 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                     }
                 });
             } else if (command === 'insertUnorderedList' || command === 'insertOrderedList') {
-                // Manual list creation - execCommand is unreliable for lists
-                const listTag = command === 'insertUnorderedList' ? 'ul' : 'ol';
-                const otherListTag = command === 'insertUnorderedList' ? 'ol' : 'ul';
+                // Use native execCommand for list toggling — it respects the current selection
+                // and only converts the selected/caret paragraph(s) into list items.
                 const contentElement = activeEditableElement || targetElement;
 
                 if (contentElement) {
-                    const existingSameList = contentElement.querySelector(listTag);
-                    const existingOtherList = contentElement.querySelector(otherListTag);
-
-                    if (existingSameList) {
-                        // Toggle off same list type - convert list items back to paragraphs
-                        const listItems = existingSameList.querySelectorAll('li');
-                        let newContent = '';
-                        listItems.forEach(li => {
-                            newContent += `<p>${li.innerHTML}</p>`;
-                        });
-                        existingSameList.outerHTML = newContent;
-                    } else if (existingOtherList) {
-                        // Switch list type - change ul to ol or vice versa
-                        const listItems = existingOtherList.querySelectorAll('li');
-                        let newListContent = `<${listTag}>`;
-                        listItems.forEach(li => {
-                            newListContent += `<li>${li.innerHTML}</li>`;
-                        });
-                        newListContent += `</${listTag}>`;
-                        existingOtherList.outerHTML = newListContent;
-                    } else {
-                        // Create list from content - check for paragraphs first
-                        const paragraphs = contentElement.querySelectorAll('p');
-                        if (paragraphs.length > 0) {
-                            // Convert paragraphs to list items
-                            let listContent = `<${listTag}>`;
-                            paragraphs.forEach(p => {
-                                listContent += `<li>${p.innerHTML}</li>`;
-                            });
-                            listContent += `</${listTag}>`;
-                            contentElement.innerHTML = listContent;
-                        } else {
-                            // No paragraphs - split by line breaks or wrap entire content
-                            const content = contentElement.innerHTML;
-                            const lines = content.split(/<br\s*\/?>/gi).filter(line => line.trim());
-
-                            if (lines.length > 1) {
-                                // Multiple lines - create list item per line
-                                let listContent = `<${listTag}>`;
-                                lines.forEach(line => {
-                                    listContent += `<li>${line.trim()}</li>`;
-                                });
-                                listContent += `</${listTag}>`;
-                                contentElement.innerHTML = listContent;
-                            } else {
-                                // Single content - wrap as single list item
-                                contentElement.innerHTML = `<${listTag}><li>${content}</li></${listTag}>`;
-                            }
-                        }
+                    // Restore saved selection if none exists
+                    const sel = window.getSelection();
+                    if (sel && sel.rangeCount === 0 && savedSelectionRef.current) {
+                        sel.removeAllRanges();
+                        sel.addRange(savedSelectionRef.current);
                     }
 
-                    console.log('[List] New content:', contentElement.innerHTML);
+                    // Use native execCommand — it handles selection-based list toggling correctly
+                    document.execCommand(command, false, '');
 
                     // Trigger update
                     const event = new Event('input', { bubbles: true });
@@ -3969,15 +3960,31 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                         <div className="flex flex-wrap items-center gap-1 bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-300 ring-1 ring-slate-900/5">
                                             {/* Grupo: Tipografia em massa */}
                                             <div className="flex items-center gap-1 p-1 bg-slate-50 dark:bg-slate-900/50 rounded-xl mr-1">
-                                                <input
-                                                    type="number"
-                                                    min="8"
-                                                    max="72"
-                                                    defaultValue="12"
-                                                    onChange={(e) => applyBulkFormatting('fontSize', e.target.value)}
-                                                    className="w-12 h-9 rounded-lg border-none bg-white dark:bg-slate-800 text-[10px] px-1 text-center font-bold shadow-sm focus:ring-2 focus:ring-indigo-500"
-                                                    title="Tamanho da fonte em massa"
-                                                />
+                                                <button
+                                                    onClick={() => {
+                                                        const newSize = Math.max(8, bulkFontSize - 1);
+                                                        setBulkFontSize(newSize);
+                                                        applyBulkFormatting('fontSize', String(newSize));
+                                                    }}
+                                                    className="w-9 h-9 rounded-lg bg-white dark:bg-slate-800 text-sm font-bold shadow-sm hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex items-center justify-center text-slate-600 dark:text-slate-300"
+                                                    title="Diminuir fonte"
+                                                >
+                                                    −
+                                                </button>
+                                                <div className="w-10 h-9 rounded-lg bg-white dark:bg-slate-800 text-[11px] font-black shadow-sm flex items-center justify-center text-slate-700 dark:text-slate-200">
+                                                    {bulkFontSize}
+                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        const newSize = Math.min(72, bulkFontSize + 1);
+                                                        setBulkFontSize(newSize);
+                                                        applyBulkFormatting('fontSize', String(newSize));
+                                                    }}
+                                                    className="w-9 h-9 rounded-lg bg-white dark:bg-slate-800 text-sm font-bold shadow-sm hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex items-center justify-center text-slate-600 dark:text-slate-300"
+                                                    title="Aumentar fonte"
+                                                >
+                                                    +
+                                                </button>
                                                 <select
                                                     className="w-24 h-9 rounded-lg border-none bg-white dark:bg-slate-800 text-[10px] px-1 ml-1 font-bold shadow-sm focus:ring-2 focus:ring-indigo-500"
                                                     onChange={(e) => applyBulkFormatting('fontName', e.target.value)}
