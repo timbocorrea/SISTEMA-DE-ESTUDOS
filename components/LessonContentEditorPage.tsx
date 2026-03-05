@@ -2008,6 +2008,21 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                     // Use native execCommand — it handles selection-based list toggling correctly
                     document.execCommand(command, false, '');
 
+                    // Post-process: fix ordered list numbering continuity
+                    // When an item is removed from the middle of an <ol>, the browser creates
+                    // two separate <ol> elements and the second restarts at 1. Fix by setting
+                    // the `start` attribute so numbering continues sequentially.
+                    const allOls = contentElement.querySelectorAll('ol');
+                    if (allOls.length > 1) {
+                        let runningCount = 0;
+                        allOls.forEach((ol) => {
+                            if (runningCount > 0) {
+                                ol.setAttribute('start', String(runningCount + 1));
+                            }
+                            runningCount += ol.querySelectorAll(':scope > li').length;
+                        });
+                    }
+
                     // Trigger update
                     const event = new Event('input', { bubbles: true });
                     contentElement.dispatchEvent(event);
