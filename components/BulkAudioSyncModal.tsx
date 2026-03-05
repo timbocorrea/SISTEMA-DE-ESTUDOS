@@ -220,6 +220,14 @@ const BulkAudioSyncModal: React.FC<BulkAudioSyncModalProps> = ({
                     if (el) {
                         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         console.log(`[SyncModal] Auto-scrolled to next pending block ${i + 1} (${nextBlockId})`);
+
+                        // Foco automático no próximo input usando o índice real da lista (i)
+                        setTimeout(() => {
+                            const nextInput = document.getElementById(`audio-input-${i}`);
+                            if (nextInput) {
+                                nextInput.focus();
+                            }
+                        }, 50);
                     }
                     break;
                 }
@@ -503,6 +511,7 @@ const BulkAudioSyncModal: React.FC<BulkAudioSyncModalProps> = ({
                                                     {/* Audio Selection */}
                                                     <div className="flex items-center gap-2">
                                                         <SearchableSelect
+                                                            id={`audio-input-${index}`}
                                                             value={mapping.audioPath || ''}
                                                             onChange={(val) => {
                                                                 const file = dropboxFiles.find(f => (f.path_lower || f.id) === val);

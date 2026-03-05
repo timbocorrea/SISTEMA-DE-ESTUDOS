@@ -13,6 +13,7 @@ interface SearchableSelectProps {
     disabled?: boolean;
     className?: string;
     noOptionsMessage?: string;
+    id?: string;
 }
 
 export const SearchableSelect: React.FC<SearchableSelectProps> = ({
@@ -22,7 +23,8 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
     placeholder = 'Selecione...',
     disabled = false,
     className = '',
-    noOptionsMessage = 'Nenhum arquivo encontrado'
+    noOptionsMessage = 'Nenhum arquivo encontrado',
+    id
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -135,6 +137,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
         <div className={`relative ${className}`} ref={containerRef}>
             <div className="relative">
                 <input
+                    id={id}
                     type="text"
                     className={`w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 ${disabled ? 'cursor-not-allowed' : 'cursor-text'}`}
                     placeholder={placeholder}

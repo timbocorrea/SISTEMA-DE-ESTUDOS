@@ -18,7 +18,7 @@ const MoveLessonModal: React.FC<Props> = ({ lesson, currentModuleTitle, availabl
 
     return (
         <div className="fixed inset-0 z-[130] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6">
-            <div className="w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden">
+            <div className="w-[95%] md:max-w-lg max-h-[85vh] md:max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl">
                 {/* Header */}
                 <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
                     <div className="flex items-center gap-3">

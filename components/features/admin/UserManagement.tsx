@@ -293,7 +293,7 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
   };
 
   return (
-    <div className="min-h-screen bg-transparent p-8 space-y-8 transition-colors duration-300">
+    <div className="min-h-screen bg-transparent p-4 md:p-8 space-y-8 transition-colors duration-300">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-[10px] text-indigo-400 font-bold uppercase tracking-widest mb-2">
@@ -604,165 +604,167 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
       </div>
 
       {/* Desktop View: Table */}
-      <div className="hidden md:block overflow-hidden rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
-              {isSelectMode && <th className="p-4 w-12"></th>}
-              <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Usuário</th>
-              <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Função</th>
-              <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Status</th>
-              <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Nível</th>
-              <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-wider">XP</th>
-              <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-right">Ações</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-600 dark:text-slate-300">
-            {loading && (
-              <tr>
-                <td colSpan={7} className="p-12 text-center text-slate-500">
-                  <i className="fas fa-spinner fa-spin text-2xl mb-2"></i>
-                  <p>Carregando...</p>
-                </td>
+      <div className="hidden md:block w-full overflow-x-auto pb-4">
+        <div className="overflow-hidden min-w-[800px] rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+                {isSelectMode && <th className="p-4 w-12"></th>}
+                <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Usuário</th>
+                <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Função</th>
+                <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Status</th>
+                <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Nível</th>
+                <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-wider">XP</th>
+                <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-right">Ações</th>
               </tr>
-            )}
-
-            {!loading && filtered.length === 0 && (
-              <tr>
-                <td colSpan={7} className="p-12 text-center text-slate-500">
-                  <p>Nenhum usuário encontrado.</p>
-                </td>
-              </tr>
-            )}
-
-            {!loading && filtered.map(u => {
-              const isBlocked = (u as any).approval_status === 'rejected';
-              const isPending = (u as any).approval_status === 'pending';
-              const isSelected = selectedUserIds.includes(u.id);
-
-              return (
-                <tr
-                  key={u.id}
-                  className={`group transition-all cursor-pointer ${isSelected
-                    ? 'bg-indigo-50 dark:bg-indigo-500/10'
-                    : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
-                    }`}
-                  onClick={() => {
-                    if (isSelectMode) toggleUserSelection(u.id);
-                    else setViewingUser(u);
-                  }}
-                >
-                  {isSelectMode && (
-                    <td className="p-4" onClick={e => e.stopPropagation()}>
-                      <div
-                        onClick={() => toggleUserSelection(u.id)}
-                        className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors cursor-pointer ${isSelected
-                          ? 'bg-indigo-500 border-indigo-500 text-white shadow-[0_0_10px_rgba(99,102,241,0.5)]'
-                          : 'border-white/20 bg-black/40'
-                          }`}>
-                        {isSelected && <i className="fas fa-check text-[10px]"></i>}
-                      </div>
-                    </td>
-                  )}
-                  <td className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg shadow-lg ${u.role === 'INSTRUCTOR'
-                        ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
-                        : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
-                        }`}>
-                        <i className={`fas ${u.role === 'INSTRUCTOR' ? 'fa-chalkboard-teacher' : 'fa-user-graduate'}`}></i>
-                      </div>
-                      <div className="min-w-0">
-                        <p className={`font-bold text-sm truncate max-w-[200px] ${isSelected ? 'text-indigo-600 dark:text-indigo-200' : 'text-slate-800 dark:text-slate-200'}`}>{u.name || 'Sem nome'}</p>
-                        <p className="text-xs text-slate-500 truncate max-w-[200px]">{u.email}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <span className={`text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-wider border ${u.role === 'INSTRUCTOR'
-                      ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
-                      : 'bg-white/5 text-slate-400 border-white/10'
-                      }`}>
-                      {u.role === 'INSTRUCTOR' ? 'Admin' : 'Aluno'}
-                    </span>
-                  </td>
-                  <td className="p-4">
-                    {isPending && (
-                      <span className="text-[10px] font-black px-2 py-1 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase tracking-wider">
-                        Pendente
-                      </span>
-                    )}
-                    {isBlocked && (
-                      <span className="text-[10px] font-black px-2 py-1 rounded-md bg-red-500/10 text-red-400 border border-red-500/20 uppercase tracking-wider">
-                        Bloqueado
-                      </span>
-                    )}
-                    {!isPending && !isBlocked && (
-                      <span className="text-[10px] font-black px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-wider">
-                        Ativo
-                      </span>
-                    )}
-                  </td>
-
-                  <td className="p-4">
-                    <span className="text-sm font-bold text-slate-400">
-                      Level {u.current_level ?? 1}
-                    </span>
-                  </td>
-                  <td className="p-4">
-                    <span className="text-sm font-black text-indigo-400">
-                      {(u.xp_total ?? 0).toLocaleString()}
-                    </span>
-                  </td>
-                  <td className="p-4 text-right" onClick={e => e.stopPropagation()}>
-                    <div className="flex items-center justify-end gap-2 transition-opacity">
-                      {activeTab === 'pending' && (
-                        <>
-                          <button
-                            onClick={() => handleApproveClick(u)}
-                            className="p-2 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 transition-colors border border-emerald-500/20"
-                            title="Aprovar"
-                          >
-                            <i className="fas fa-check"></i>
-                          </button>
-                          <button
-                            onClick={() => handleRejectClick(u)}
-                            className="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors border border-red-500/20"
-                            title="Rejeitar"
-                          >
-                            <i className="fas fa-times"></i>
-                          </button>
-                        </>
-                      )}
-
-                      <button
-                        onClick={() => handleEditClick(u)}
-                        className="p-2 rounded-lg hover:bg-white/10 text-slate-500 hover:text-white transition-colors"
-                        title="Editar Usuário"
-                      >
-                        <i className="fas fa-cog"></i>
-                      </button>
-                      <button
-                        onClick={() => handleAccessClick(u)}
-                        className="p-2 rounded-lg hover:bg-indigo-500/20 text-slate-500 hover:text-indigo-400 transition-colors"
-                        title="Gerenciar Acesso"
-                      >
-                        <i className="fas fa-lock"></i>
-                      </button>
-                      <button
-                        onClick={() => handleResetPasswordClick(u)}
-                        className="p-2 rounded-lg hover:bg-amber-500/20 text-slate-500 hover:text-amber-400 transition-colors"
-                        title="Resetar Senha"
-                      >
-                        <i className="fas fa-key"></i>
-                      </button>
-                    </div>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-600 dark:text-slate-300">
+              {loading && (
+                <tr>
+                  <td colSpan={7} className="p-12 text-center text-slate-500">
+                    <i className="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                    <p>Carregando...</p>
                   </td>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              )}
+
+              {!loading && filtered.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="p-12 text-center text-slate-500">
+                    <p>Nenhum usuário encontrado.</p>
+                  </td>
+                </tr>
+              )}
+
+              {!loading && filtered.map(u => {
+                const isBlocked = (u as any).approval_status === 'rejected';
+                const isPending = (u as any).approval_status === 'pending';
+                const isSelected = selectedUserIds.includes(u.id);
+
+                return (
+                  <tr
+                    key={u.id}
+                    className={`group transition-all cursor-pointer ${isSelected
+                      ? 'bg-indigo-50 dark:bg-indigo-500/10'
+                      : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                      }`}
+                    onClick={() => {
+                      if (isSelectMode) toggleUserSelection(u.id);
+                      else setViewingUser(u);
+                    }}
+                  >
+                    {isSelectMode && (
+                      <td className="p-4" onClick={e => e.stopPropagation()}>
+                        <div
+                          onClick={() => toggleUserSelection(u.id)}
+                          className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors cursor-pointer ${isSelected
+                            ? 'bg-indigo-500 border-indigo-500 text-white shadow-[0_0_10px_rgba(99,102,241,0.5)]'
+                            : 'border-white/20 bg-black/40'
+                            }`}>
+                          {isSelected && <i className="fas fa-check text-[10px]"></i>}
+                        </div>
+                      </td>
+                    )}
+                    <td className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg shadow-lg ${u.role === 'INSTRUCTOR'
+                          ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
+                          : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
+                          }`}>
+                          <i className={`fas ${u.role === 'INSTRUCTOR' ? 'fa-chalkboard-teacher' : 'fa-user-graduate'}`}></i>
+                        </div>
+                        <div className="min-w-0">
+                          <p className={`font-bold text-sm truncate max-w-[200px] ${isSelected ? 'text-indigo-600 dark:text-indigo-200' : 'text-slate-800 dark:text-slate-200'}`}>{u.name || 'Sem nome'}</p>
+                          <p className="text-xs text-slate-500 truncate max-w-[200px]">{u.email}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <span className={`text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-wider border ${u.role === 'INSTRUCTOR'
+                        ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
+                        : 'bg-white/5 text-slate-400 border-white/10'
+                        }`}>
+                        {u.role === 'INSTRUCTOR' ? 'Admin' : 'Aluno'}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      {isPending && (
+                        <span className="text-[10px] font-black px-2 py-1 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase tracking-wider">
+                          Pendente
+                        </span>
+                      )}
+                      {isBlocked && (
+                        <span className="text-[10px] font-black px-2 py-1 rounded-md bg-red-500/10 text-red-400 border border-red-500/20 uppercase tracking-wider">
+                          Bloqueado
+                        </span>
+                      )}
+                      {!isPending && !isBlocked && (
+                        <span className="text-[10px] font-black px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-wider">
+                          Ativo
+                        </span>
+                      )}
+                    </td>
+
+                    <td className="p-4">
+                      <span className="text-sm font-bold text-slate-400">
+                        Level {u.current_level ?? 1}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <span className="text-sm font-black text-indigo-400">
+                        {(u.xp_total ?? 0).toLocaleString()}
+                      </span>
+                    </td>
+                    <td className="p-4 text-right" onClick={e => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-2 transition-opacity">
+                        {activeTab === 'pending' && (
+                          <>
+                            <button
+                              onClick={() => handleApproveClick(u)}
+                              className="p-2 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 transition-colors border border-emerald-500/20"
+                              title="Aprovar"
+                            >
+                              <i className="fas fa-check"></i>
+                            </button>
+                            <button
+                              onClick={() => handleRejectClick(u)}
+                              className="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors border border-red-500/20"
+                              title="Rejeitar"
+                            >
+                              <i className="fas fa-times"></i>
+                            </button>
+                          </>
+                        )}
+
+                        <button
+                          onClick={() => handleEditClick(u)}
+                          className="p-2 rounded-lg hover:bg-white/10 text-slate-500 hover:text-white transition-colors"
+                          title="Editar Usuário"
+                        >
+                          <i className="fas fa-cog"></i>
+                        </button>
+                        <button
+                          onClick={() => handleAccessClick(u)}
+                          className="p-2 rounded-lg hover:bg-indigo-500/20 text-slate-500 hover:text-indigo-400 transition-colors"
+                          title="Gerenciar Acesso"
+                        >
+                          <i className="fas fa-lock"></i>
+                        </button>
+                        <button
+                          onClick={() => handleResetPasswordClick(u)}
+                          className="p-2 rounded-lg hover:bg-amber-500/20 text-slate-500 hover:text-amber-400 transition-colors"
+                          title="Resetar Senha"
+                        >
+                          <i className="fas fa-key"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div className="text-[11px] text-slate-400 dark:text-slate-500">
@@ -864,7 +866,7 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
       {
         editingUser && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-[#0a0e14]/90 backdrop-blur-xl w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden border border-white/10">
+            <div className="bg-[#0a0e14]/90 backdrop-blur-xl w-[95%] md:max-w-2xl max-h-[85vh] md:max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl border border-white/10">
               <div className="p-6 border-b border-white/5 flex justify-between items-center bg-white/5">
                 <h3 className="text-xl font-black text-white">Gerenciar Usuário</h3>
                 <button
@@ -891,7 +893,7 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
                     <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
                       Tipo de Acesso
                     </label>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col md:flex-row gap-2">
                       <button
                         type="button"
                         onClick={() => {

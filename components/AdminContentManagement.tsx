@@ -205,7 +205,7 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
     setIsUploading(true);
 
     try {
-      
+
       const fileExt = file.name.split('.').pop();
       const fileName = `course-cover-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
       const filePath = `course-covers/${fileName}`;
@@ -860,7 +860,7 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
   };
 
   return (
-    <div className="p-8 space-y-8 bg-transparent min-h-full transition-colors">
+    <div className="p-4 md:p-8 space-y-8 bg-transparent min-h-full transition-colors">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mb-2">
@@ -1015,8 +1015,8 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
       </div>
 
       {(editingCourse || editingModule || editingLesson) && (
-        <div className="fixed inset-0 z-[120] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6">
-          <div className="w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden">
+        <div className="fixed inset-0 z-[120] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-[95%] md:max-w-2xl max-h-[85vh] md:max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl">
             <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
               <h4 className="text-lg font-black text-slate-800 dark:text-white">Editar</h4>
               <button
@@ -1100,7 +1100,7 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
                     placeholder="Descricao"
                     className="w-full bg-slate-50 dark:bg-[#0a0e14] border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-slate-700 dark:text-slate-200 text-sm outline-none"
                   />
-                  <div className="mt-4 grid grid-cols-2 gap-4">
+                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Cor</label>
                       <div className="flex flex-wrap gap-2">
@@ -1167,7 +1167,7 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
                     rows={5}
                     className="w-full bg-slate-50 dark:bg-[#0a0e14] border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-slate-700 dark:text-slate-200 text-sm outline-none resize-y"
                   />
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <input
                       value={editingLesson.duration_seconds ?? 0}
                       onChange={e => setEditingLesson({ ...editingLesson, duration_seconds: Number(e.target.value) })}

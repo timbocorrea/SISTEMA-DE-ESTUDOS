@@ -45,7 +45,7 @@ const CreateModuleModal: React.FC<CreateModuleModalProps> = ({
             {/* Modal */}
             <div className="flex min-h-full items-center justify-center p-4">
                 <div
-                    className="relative bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden transform transition-all"
+                    className="relative bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-[95%] md:max-w-lg max-h-[85vh] md:max-h-[90vh] overflow-y-auto transform transition-all"
                     onClick={(e) => e.stopPropagation()}
                 >
                     <div className="p-6 border-b border-slate-100 dark:border-slate-800">
