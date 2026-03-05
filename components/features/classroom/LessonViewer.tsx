@@ -309,20 +309,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
             setTimeout(() => {
                 const element = blockRefs.current[blockId];
-                const container = contentScrollContainerRef.current;
-
-                if (element && container) {
-                    // Calcular posição centralizada no container
-                    const containerHeight = container.clientHeight;
-                    const elementTop = element.offsetTop;
-                    const elementHeight = element.offsetHeight;
-
-                    const targetScroll = elementTop - (containerHeight / 2) + (elementHeight / 2);
-
-                    container.scrollTo({
-                        top: targetScroll,
-                        behavior: 'smooth'
-                    });
+                if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
             }, 500);
         }
@@ -333,29 +321,10 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     useEffect(() => {
         if (activeBlockId) {
             const element = blockRefs.current[activeBlockId];
-            const container = contentScrollContainerRef.current;
-
-            if (element && container) {
-                // Use setTimeout to ensure UI has settled
+            if (element) {
+                // Use setTimeout to ensure UI has settled before natively scrolling
                 setTimeout(() => {
-                    // Use getBoundingClientRect for robust calculation relative to viewport
-                    // This avoids issues with zoom, offsetParent, and prevents window scrolling (unlike scrollIntoView)
-                    const containerRect = container.getBoundingClientRect();
-                    const elementRect = element.getBoundingClientRect();
-
-                    // Calculate the relative position of the element inside the visible container area
-                    const relativeTop = elementRect.top - containerRect.top;
-                    const elementHeight = elementRect.height;
-                    const containerHeight = containerRect.height;
-
-                    // Calculate desired scroll position to center the element
-                    // container.scrollTop is the current scroll. We add relativeTop to get to element, then subtract half container to center.
-                    const targetScrollTop = container.scrollTop + relativeTop - (containerHeight / 2) + (elementHeight / 2);
-
-                    container.scrollTo({
-                        top: targetScrollTop,
-                        behavior: 'smooth'
-                    });
+                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }, 100);
             }
         }
