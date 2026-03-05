@@ -312,7 +312,7 @@ const DropboxFileBrowser: React.FC<DropboxFileBrowserProps> = ({
                                         <span className="text-sm font-bold">{error}</span>
                                         <button
                                             onClick={() => {
-                                                localStorage.removeItem('dropbox_access_token');
+                                                DropboxService.logout();
                                                 setIsAuthenticated(false);
                                                 handleLogin();
                                             }}

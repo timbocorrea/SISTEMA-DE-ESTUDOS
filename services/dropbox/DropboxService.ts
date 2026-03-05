@@ -1,6 +1,5 @@
 import { Dropbox, DropboxAuth } from 'dropbox';
 
-// Interface para itens do Dropbox (arquivos ou pastas)
 export interface DropboxItem {
     id: string;
     name: string;
@@ -8,19 +7,38 @@ export interface DropboxItem {
     path_display?: string;
     tag: 'file' | 'folder';
     size?: number;
-    client_modified?: string; // Data de modificação
+    client_modified?: string;
+}
+
+interface DropboxEntry {
+    id: string;
+    name: string;
+    path_lower?: string;
+    path_display?: string;
+    '.tag': 'file' | 'folder';
+    size?: number;
+    client_modified?: string;
 }
 
 const CLIENT_ID = import.meta.env.VITE_DROPBOX_APP_KEY || '';
+
+const STORAGE_KEYS = {
+    ACCESS_TOKEN: 'dropbox_access_token',
+    OAUTH_STATE: 'dropbox_oauth_state',
+    CODE_VERIFIER: 'dropbox_code_verifier',
+} as const;
+
+function generateCryptoState(): string {
+    const array = new Uint8Array(32);
+    crypto.getRandomValues(array);
+    return Array.from(array, (b) => b.toString(16).padStart(2, '0')).join('');
+}
 
 export class DropboxService {
     private static auth: DropboxAuth | null = null;
     private static dbx: Dropbox | null = null;
     private static accessToken: string | null = null;
 
-    /**
-     * Inicializa o serviço e verifica se há token salvo
-     */
     static initialize() {
         if (!CLIENT_ID) {
             console.error('Dropbox App Key não configurada (VITE_DROPBOX_APP_KEY)');
@@ -29,20 +47,15 @@ export class DropboxService {
 
         this.auth = new DropboxAuth({ clientId: CLIENT_ID });
 
-        // Tenta recuperar token do localStorage
-        const savedToken = localStorage.getItem('dropbox_access_token');
+        const savedToken = sessionStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
         if (savedToken) {
             this.setAccessToken(savedToken);
         }
     }
 
-    /**
-     * Define o Access Token e inicializa o cliente Dropbox
-     */
     static setAccessToken(token: string) {
         this.accessToken = token;
-        // Salva para persistência básica (em produção idealmente usaria refresh tokens com backend)
-        localStorage.setItem('dropbox_access_token', token);
+        sessionStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, token);
 
         this.dbx = new Dropbox({
             accessToken: token,
@@ -50,20 +63,18 @@ export class DropboxService {
         });
     }
 
-    /**
-     * Remove o token e desconecta
-     */
     static logout() {
         this.accessToken = null;
         this.dbx = null;
-        localStorage.removeItem('dropbox_access_token');
+        sessionStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
+        sessionStorage.removeItem(STORAGE_KEYS.OAUTH_STATE);
+        sessionStorage.removeItem(STORAGE_KEYS.CODE_VERIFIER);
     }
 
     static isAuthenticated(): boolean {
         if (this.accessToken) return true;
 
-        // Check localStorage as fallback (e.g., token saved by popup)
-        const storedToken = localStorage.getItem('dropbox_access_token');
+        const storedToken = sessionStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
         if (storedToken) {
             this.setAccessToken(storedToken);
             return true;
@@ -71,21 +82,12 @@ export class DropboxService {
         return false;
     }
 
-    /**
-     * Gera URL de Autenticação (Fluxo OAuth 2.0 Implicit ou PKCE)
-     * Para SPA simples sem backend, usaremos redirect para obter o token na URL (Implicit/Token flow)
-     * ou Code flow com PKCE se o SDK suportar nativamente fácil.
-     * Simplificando para Implicit Grant (token na URL) para este uso.
-     */
-    /**
-     * Retorna a URI de redirecionamento estável para o OAuth
-     */
     static getRedirectUri(): string {
         return `${window.location.origin}/oauth/dropbox`;
     }
 
     /**
-     * Gera URL de Autenticação (Fluxo OAuth 2.0 Implicit)
+     * Generates OAuth URL using Authorization Code + PKCE flow with CSRF state parameter.
      */
     static async getAuthUrl(redirectUri?: string): Promise<string> {
         if (!this.auth) this.initialize();
@@ -93,46 +95,87 @@ export class DropboxService {
 
         const finalRedirectUri = redirectUri || this.getRedirectUri();
 
-        // authenticationUrl retorna uma Promise
-        return this.auth.getAuthenticationUrl(
+        const state = generateCryptoState();
+        sessionStorage.setItem(STORAGE_KEYS.OAUTH_STATE, state);
+
+        const authUrl = await this.auth.getAuthenticationUrl(
             finalRedirectUri,
+            state,
+            'code',
+            'offline',
             undefined,
-            'token', // 'token' para Implicit Grant (retorna o token no hash)
             undefined,
-            undefined,
-            undefined,
-            false
-        ) as Promise<string>;
+            true
+        ) as string;
+
+        const codeVerifier = this.auth.getCodeVerifier();
+        if (codeVerifier) {
+            sessionStorage.setItem(STORAGE_KEYS.CODE_VERIFIER, codeVerifier);
+        }
+
+        return authUrl;
     }
 
     /**
-     * Processa a URL de retorno para extrair o token (Implicit Grant)
+     * Processes OAuth callback: validates CSRF state and exchanges authorization code for token via PKCE.
      */
-    static handleAuthCallback(): string | null {
-        const hash = window.location.hash;
-        if (!hash.includes('access_token=')) return null;
+    static async handleAuthCallback(): Promise<string | null> {
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get('code');
+        const returnedState = params.get('state');
 
-        const params = new URLSearchParams(hash.substring(1)); // remove o #
-        const token = params.get('access_token');
+        if (!code) return null;
 
-        if (token) {
-            this.setAccessToken(token);
-            // Limpa o hash da URL para não ficar sujo
-            window.history.replaceState(null, '', window.location.pathname);
-            return token;
+        const savedState = sessionStorage.getItem(STORAGE_KEYS.OAUTH_STATE);
+        if (!savedState || savedState !== returnedState) {
+            console.error('OAuth CSRF state mismatch — possível ataque CSRF.');
+            this.cleanupOAuthState();
+            throw new Error('Falha de segurança: estado CSRF inválido. Tente autenticar novamente.');
         }
+
+        const codeVerifier = sessionStorage.getItem(STORAGE_KEYS.CODE_VERIFIER);
+        if (!codeVerifier) {
+            console.error('PKCE code verifier not found in session.');
+            this.cleanupOAuthState();
+            throw new Error('Falha de segurança: verificador PKCE não encontrado. Tente autenticar novamente.');
+        }
+
+        if (!this.auth) this.initialize();
+        if (!this.auth) throw new Error('Falha ao inicializar DropboxAuth');
+
+        try {
+            this.auth.setCodeVerifier(codeVerifier);
+
+            const response = await this.auth.getAccessTokenFromCode(
+                this.getRedirectUri(),
+                code
+            );
+
+            const token = (response as { result: { access_token: string } }).result.access_token;
+
+            if (token) {
+                this.setAccessToken(token);
+                this.cleanupOAuthState();
+                window.history.replaceState(null, '', window.location.pathname);
+                return token;
+            }
+        } catch (error) {
+            console.error('Erro ao trocar código por token:', error);
+            this.cleanupOAuthState();
+            throw new Error('Falha ao obter token de acesso do Dropbox. Tente autenticar novamente.');
+        }
+
         return null;
     }
 
-    /**
-     * Lista arquivos de uma pasta
-     * @param path Caminho da pasta (vazio '' para raiz)
-     */
+    private static cleanupOAuthState() {
+        sessionStorage.removeItem(STORAGE_KEYS.OAUTH_STATE);
+        sessionStorage.removeItem(STORAGE_KEYS.CODE_VERIFIER);
+    }
+
     static async listFolder(path: string = ''): Promise<DropboxItem[]> {
         if (!this.dbx) throw new Error('Usuário não autenticado no Dropbox');
 
-        // Dropbox API v2 requires root path to be empty string
-        // All other paths must start with / and not end with /
         let cleanPath = path;
         if (cleanPath === '/') cleanPath = '';
         if (cleanPath.length > 1 && cleanPath.endsWith('/')) {
@@ -147,38 +190,37 @@ export class DropboxService {
 
             let allEntries = response.result.entries;
 
-            // Paginação: Buscar o restante dos arquivos se houver mais
             while (response.result.has_more) {
-                console.log('🔄 Dropbox: Fetching more files...');
                 response = await this.dbx.filesListFolderContinue({
                     cursor: response.result.cursor
                 });
                 allEntries = allEntries.concat(response.result.entries);
             }
 
-            return allEntries.map((entry: any) => ({
-                id: entry.id,
-                name: entry.name,
-                path_lower: entry.path_lower,
-                path_display: entry.path_display,
-                tag: entry['.tag'], // 'file' ou 'folder'
-                size: entry.size,
-                client_modified: entry.client_modified
-            }));
+            return allEntries.map((entry) => {
+                const e = entry as unknown as DropboxEntry;
+                return {
+                    id: e.id,
+                    name: e.name,
+                    path_lower: e.path_lower,
+                    path_display: e.path_display,
+                    tag: e['.tag'],
+                    size: e.size,
+                    client_modified: e.client_modified
+                };
+            });
         } catch (error) {
-            console.error('Erro ao listar pasta Dropbox:', error);
+            const err = error as { error?: Record<string, unknown>; status?: number };
 
-            if ((error as any).error) {
-                const errorBody = JSON.stringify((error as any).error);
-                // Check for specific scope error
+            if (err.error) {
+                const errorBody = JSON.stringify(err.error);
                 if (errorBody.includes('required scope')) {
                     this.logout();
                     throw new Error('Permissões insuficientes. Habilite "files.metadata.read" e "files.content.read" no Console do Dropbox.');
                 }
             }
 
-            // Se erro for de token expirado (401), deveríamos fazer logout
-            if ((error as any).status === 401) {
+            if (err.status === 401) {
                 this.logout();
                 throw new Error('Sessão expirada');
             }
@@ -186,13 +228,10 @@ export class DropboxService {
         }
     }
 
-    /**
-     * Obtém item (metadata)
-     */
     static async getMetadata(path: string): Promise<DropboxItem> {
         if (!this.dbx) throw new Error('Não autenticado');
         const r = await this.dbx.filesGetMetadata({ path });
-        const entry: any = r.result;
+        const entry = r.result as unknown as DropboxEntry;
         return {
             id: entry.id,
             name: entry.name,
@@ -203,8 +242,7 @@ export class DropboxService {
     }
 
     /**
-     * Obtém Link Temporário para Download/Preview
-     * ⚠️ ATENÇÃO: Este link expira em 4 horas!
+     * Gets temporary download link (expires in 4 hours)
      */
     static async getTemporaryLink(path: string): Promise<string> {
         if (!this.dbx) throw new Error('Não autenticado');
@@ -213,40 +251,28 @@ export class DropboxService {
     }
 
     /**
-     * Cria ou obtém um Link Compartilhado Permanente
-     * Este link NÃO expira e pode ser usado para streaming de áudio
+     * Creates or retrieves a permanent shared link for audio streaming.
      */
     static async createSharedLink(path: string): Promise<string> {
         if (!this.dbx) throw new Error('Não autenticado');
 
-        // Validar formato do caminho
         if (!path || !path.startsWith('/')) {
-            console.error('❌ Invalid Dropbox path format:', path);
             throw new Error(`Caminho inválido: ${path}. O caminho deve começar com '/'`);
         }
 
-        console.log('🔍 Creating shared link for path:', path);
-        console.log('🔑 Access token present:', !!this.accessToken);
-
         try {
-            // Primeiro, tenta obter um link compartilhado existente
-            console.log('📋 Checking for existing shared links...');
             const existingLinks = await this.dbx.sharingListSharedLinks({ path });
 
             if (existingLinks.result.links && existingLinks.result.links.length > 0) {
                 const link = existingLinks.result.links[0].url;
-                console.log('✅ Using existing shared link:', link);
-                // Converter para link direto (dl=1)
                 return this.convertToDirectLink(link);
             }
-        } catch (error: any) {
-            console.log('⚠️ No existing shared link found or error checking:', error?.error?.error_summary || error.message);
-            console.log('📝 Full error details:', JSON.stringify(error, null, 2));
+        } catch (error: unknown) {
+            const err = error as { error?: { error_summary?: string }; message?: string };
+            console.warn('No existing shared link found:', err.error?.error_summary || err.message);
         }
 
-        // Se não existe, cria um novo link compartilhado
         try {
-            console.log('🆕 Creating new shared link...');
             const response = await this.dbx.sharingCreateSharedLinkWithSettings({
                 path,
                 settings: {
@@ -257,17 +283,11 @@ export class DropboxService {
             });
 
             const link = response.result.url;
-            console.log('✅ Created new shared link:', link);
-            // Converter para link direto (dl=1)
             return this.convertToDirectLink(link);
-        } catch (error: any) {
-            console.error('❌ Error creating shared link:', error);
-            console.error('📝 Error summary:', error?.error?.error_summary);
-            console.error('📝 Error status:', error?.status);
+        } catch (error: unknown) {
+            const err = error as { error?: { error_summary?: string }; status?: number };
 
-            // Se o erro for porque o link já existe, tenta listar novamente
-            if (error.error?.error_summary?.includes('shared_link_already_exists')) {
-                console.log('🔄 Link already exists, fetching it...');
+            if (err.error?.error_summary?.includes('shared_link_already_exists')) {
                 const existingLinks = await this.dbx.sharingListSharedLinks({ path });
                 if (existingLinks.result.links && existingLinks.result.links.length > 0) {
                     const link = existingLinks.result.links[0].url;
@@ -278,25 +298,16 @@ export class DropboxService {
         }
     }
 
-    /**
-     * Converte um link compartilhado do Dropbox para link direto de download/streaming
-     * Exemplo: https://www.dropbox.com/s/abc123/file.mp3?dl=0 
-     *       -> https://www.dropbox.com/s/abc123/file.mp3?dl=1
-     */
     private static convertToDirectLink(url: string): string {
-        // Remove dl=0 e adiciona dl=1 para forçar download direto
         let directUrl = url.replace('?dl=0', '?dl=1').replace('&dl=0', '&dl=1');
 
-        // Se não tem parâmetro dl, adiciona
         if (!directUrl.includes('dl=')) {
             directUrl += (directUrl.includes('?') ? '&' : '?') + 'dl=1';
         }
 
-        // Também pode converter para dl.dropboxusercontent.com para melhor performance
         directUrl = directUrl.replace('www.dropbox.com', 'dl.dropboxusercontent.com')
             .replace('dropbox.com', 'dl.dropboxusercontent.com');
 
-        console.log('🔄 Converted to direct link:', directUrl);
         return directUrl;
     }
 }

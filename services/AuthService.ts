@@ -5,55 +5,30 @@ export class AuthService {
   constructor(private authRepo: IAuthRepository) { }
 
   async login(email: string, pass: string): Promise<AuthResponse> {
-    const res = await this.authRepo.login(email, pass);
-    if (res.success && res.data) {
-      localStorage.setItem('study_system_session', JSON.stringify(res.data));
-    }
-    return res;
+    return this.authRepo.login(email, pass);
   }
 
   async register(name: string, email: string, pass: string, isMinor: boolean = false): Promise<AuthResponse> {
-    const res = await this.authRepo.register(name, email, pass, isMinor);
-    if (res.success && res.data) {
-      localStorage.setItem('study_system_session', JSON.stringify(res.data));
-    }
-    return res;
+    return this.authRepo.register(name, email, pass, isMinor);
   }
 
   async restoreSession(): Promise<IUserSession | null> {
-    const activeSession = await this.authRepo.getCurrentSession();
-    if (activeSession) {
-      localStorage.setItem('study_system_session', JSON.stringify(activeSession));
-      return activeSession;
-    }
-    // Se o Supabase diz que não há sessão (token inválido/expirado), não devemos usar o cache local
-    localStorage.removeItem('study_system_session');
-    return null;
+    return this.authRepo.getCurrentSession();
   }
 
   async signInWithGoogle(): Promise<AuthResponse> {
-    return await this.authRepo.signInWithGoogle();
+    return this.authRepo.signInWithGoogle();
   }
 
   async handleOAuthCallback(): Promise<AuthResponse> {
-    const res = await this.authRepo.handleOAuthCallback();
-    if (res.success && res.data) {
-      localStorage.setItem('study_system_session', JSON.stringify(res.data));
-    }
-    return res;
+    return this.authRepo.handleOAuthCallback();
   }
 
   async logout(): Promise<void> {
     await this.authRepo.logout();
-    localStorage.removeItem('study_system_session');
   }
 
   async completePasswordReset(newPassword: string): Promise<void> {
     return this.authRepo.completePasswordReset(newPassword);
-  }
-
-  getCachedSession(): IUserSession | null {
-    const session = localStorage.getItem('study_system_session');
-    return session ? JSON.parse(session) : null;
   }
 }

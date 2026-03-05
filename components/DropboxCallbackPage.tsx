@@ -8,32 +8,25 @@ const DropboxCallbackPage: React.FC = () => {
     const [errorMessage, setErrorMessage] = useState('');
 
     useEffect(() => {
-        const processCallback = () => {
+        const processCallback = async () => {
             try {
-                // Tenta extrair o token da URL
-                const token = DropboxService.handleAuthCallback();
+                const token = await DropboxService.handleAuthCallback();
 
                 if (token) {
                     setStatus('success');
 
-                    // Verifica se está rodando em um popup
                     if (window.opener) {
-                        // Envia o token para a janela principal
                         window.opener.postMessage({
                             type: 'DROPBOX_AUTH_SUCCESS',
                             token: token
                         }, window.location.origin);
 
-                        // Fecha o popup após um breve delay
                         setTimeout(() => {
                             window.close();
                         }, 1000);
                     } else {
-                        // Fallback para comportamento antigo (redirecionamento) se não for popup
-                        localStorage.setItem('dropbox_access_token', token);
-                        localStorage.setItem('dropbox_just_logged_in', 'true');
-                        const returnUrl = localStorage.getItem('dropbox_return_url') || '/';
-                        localStorage.removeItem('dropbox_return_url');
+                        const returnUrl = sessionStorage.getItem('dropbox_return_url') || '/';
+                        sessionStorage.removeItem('dropbox_return_url');
 
                         setTimeout(() => {
                             window.location.href = returnUrl;
@@ -46,7 +39,8 @@ const DropboxCallbackPage: React.FC = () => {
             } catch (error) {
                 console.error('Dropbox Callback Error:', error);
                 setStatus('error');
-                setErrorMessage('Ocorreu um erro ao processar o login do Dropbox.');
+                const msg = error instanceof Error ? error.message : 'Ocorreu um erro ao processar o login do Dropbox.';
+                setErrorMessage(msg);
             }
         };
 

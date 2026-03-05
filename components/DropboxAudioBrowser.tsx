@@ -358,7 +358,7 @@ const DropboxAudioBrowser: React.FC<DropboxAudioBrowserProps> = ({
                   <span className="text-xs font-bold">{error}</span>
                   <button
                     onClick={() => {
-                      localStorage.removeItem('dropbox_access_token');
+                      DropboxService.logout();
                       setIsAuthenticated(false);
                       handleLogin();
                     }}
