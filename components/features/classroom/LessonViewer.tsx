@@ -21,6 +21,7 @@ import ContentReader from '@/components/lesson/ContentReader';
 import { useAudioPlayer } from '@/hooks/useAudioPlayer';
 import { useLessonQuiz } from '@/hooks/useLessonQuiz';
 import { useLessonNavigation } from '@/hooks/useLessonNavigation';
+import { MobileToolsFab } from '@/components/lesson/MobileToolsFab';
 import { useStudentAnswers } from '@/hooks/useStudentAnswers';
 import { toast } from 'sonner';
 
@@ -1520,6 +1521,9 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                     </div>
                 )
             }
+
+            {/* Menu Flutuante de Ferramentas (Apenas Mobile) */}
+            <MobileToolsFab isPlaying={isPlaying} toggleAudio={toggleAudio} />
         </div >
     );
 };
