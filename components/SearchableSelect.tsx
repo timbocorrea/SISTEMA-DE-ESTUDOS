@@ -26,7 +26,9 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [focusedIndex, setFocusedIndex] = useState(-1);
     const containerRef = useRef<HTMLDivElement>(null);
+    const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
 
     // Initialize/Update search term based on selected value
     const prevValueRef = useRef(value);
@@ -47,6 +49,24 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
 
         prevValueRef.current = value;
     }, [value, options]);
+
+    // Reset focus when search changes or menu closes
+    useEffect(() => {
+        setFocusedIndex(-1);
+    }, [searchTerm, isOpen]);
+
+    const filteredOptions = options.filter(option =>
+        option.label.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    // Auto-scroll to focused item
+    useEffect(() => {
+        if (isOpen && focusedIndex >= 0 && itemRefs.current[focusedIndex]) {
+            itemRefs.current[focusedIndex]?.scrollIntoView({
+                block: 'nearest',
+            });
+        }
+    }, [focusedIndex, isOpen]);
 
     // Handle clicks outside to close dropdown
     useEffect(() => {
@@ -69,15 +89,47 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
         };
     }, [options, value]);
 
-    const filteredOptions = options.filter(option =>
-        option.label.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
     const handleSelect = (option: Option) => {
         onChange(option.value);
         setSearchTerm(option.label);
         setIsOpen(false);
+        setFocusedIndex(-1);
     };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (!isOpen) {
+            if (e.key === 'ArrowDown' || e.key === 'Enter') {
+                e.preventDefault();
+                setIsOpen(true);
+            }
+            return;
+        }
+
+        switch (e.key) {
+            case 'ArrowDown':
+                e.preventDefault();
+                setFocusedIndex(prev => (prev < filteredOptions.length - 1 ? prev + 1 : prev));
+                break;
+            case 'ArrowUp':
+                e.preventDefault();
+                setFocusedIndex(prev => (prev > 0 ? prev - 1 : prev));
+                break;
+            case 'Enter':
+                e.preventDefault();
+                if (focusedIndex >= 0 && focusedIndex < filteredOptions.length) {
+                    handleSelect(filteredOptions[focusedIndex]);
+                } else if (filteredOptions.length === 1) {
+                    // Auto-select if only one option left
+                    handleSelect(filteredOptions[0]);
+                }
+                break;
+            case 'Escape':
+                e.preventDefault();
+                setIsOpen(false);
+                break;
+        }
+    };
+
 
     return (
         <div className={`relative ${className}`} ref={containerRef}>
@@ -97,6 +149,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
                     onClick={() => {
                         if (!disabled) setIsOpen(true);
                     }}
+                    onKeyDown={handleKeyDown}
                     disabled={disabled}
                 />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
@@ -107,11 +160,18 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
             {isOpen && !disabled && (
                 <div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                     {filteredOptions.length > 0 ? (
-                        filteredOptions.map((option) => (
+                        filteredOptions.map((option, index) => (
                             <div
                                 key={option.value}
-                                className={`px-3 py-2 text-sm cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-900/30 ${option.value === value ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 font-medium' : 'text-slate-700 dark:text-slate-300'}`}
+                                ref={(el: HTMLDivElement | null) => { itemRefs.current[index] = el; }}
+                                className={`px-3 py-2 text-sm cursor-pointer transition-colors ${option.value === value
+                                    ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 font-medium'
+                                    : focusedIndex === index
+                                        ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white'
+                                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                                    }`}
                                 onClick={() => handleSelect(option)}
+                                onMouseEnter={() => setFocusedIndex(index)}
                             >
                                 {option.label}
                             </div>
