@@ -7,6 +7,7 @@ import { CourseService } from '../services/CourseService';
 import { SupabaseCourseRepository } from '../repositories/SupabaseCourseRepository';
 import { createSupabaseClient } from '../services/supabaseClient';
 import { useBuddyStore } from '../stores/useBuddyStore';
+import { clearBrowserCache } from '../utils/cacheManager';
 
 interface AuthContextType {
     session: IUserSession | null;
@@ -78,6 +79,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await authService.logout();
         setSession(null);
         setUser(null);
+
+        // Purge all PWA caches + Service Workers + session data
+        await clearBrowserCache();
+
+        // Hard reload to force fresh JS/HTML download from server
+        window.location.href = '/';
     };
 
     return (

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AuthService } from '../services/AuthService';
@@ -6,7 +6,10 @@ import { loginSchema, signupSchema, type LoginFormData, type SignupFormData } fr
 import { SupportDialog } from './SupportDialog';
 import { adminService as sharedAdminService } from '../services/Dependencies';
 import { MagicCard } from './ui/magic-card';
+
 import { DotPattern } from './ui/dot-pattern';
+import { forceClearCacheOnLogin } from '../utils/cacheManager';
+
 
 interface AuthFormProps {
   authService: AuthService;
@@ -17,8 +20,20 @@ const AuthForm: React.FC<AuthFormProps> = ({ authService, onSuccess }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
   const [isSupportOpen, setIsSupportOpen] = useState(false);
+  const [isClearingCache, setIsClearingCache] = useState(false);
+
+  // Auto cache-busting mechanism on mount
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const isReloading = await forceClearCacheOnLogin();
+      if (isReloading && active) {
+        setIsClearingCache(true);
+      }
+    })();
+    return () => { active = false; };
+  }, []);
 
   // Form com validação dinâmica baseada no tipo (login ou signup)
   const {
@@ -56,6 +71,8 @@ const AuthForm: React.FC<AuthFormProps> = ({ authService, onSuccess }) => {
         );
 
       if (res.success) {
+        // Clear flag so that on next logout, cache is cleaned again
+        sessionStorage.removeItem('login_cache_cleared');
         await onSuccess();
       } else {
         setError(res.message || 'Ocorreu um erro.');
@@ -66,6 +83,15 @@ const AuthForm: React.FC<AuthFormProps> = ({ authService, onSuccess }) => {
       setLoading(false);
     }
   };
+
+  if (isClearingCache) {
+    return (
+      <div className="dark h-screen flex flex-col items-center justify-center bg-[#050810] px-4 space-y-4">
+        <div className="w-12 h-12 border-4 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin"></div>
+        <p className="text-emerald-500/80 font-bold text-sm tracking-wider uppercase animate-pulse">Atualizando o sistema...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="dark h-screen flex items-center justify-center bg-[#050810] px-4 overflow-y-auto relative">
@@ -231,7 +257,10 @@ const AuthForm: React.FC<AuthFormProps> = ({ authService, onSuccess }) => {
                 onClick={async () => {
                   try {
                     setLoading(true);
-                    await authService.signInWithGoogle();
+                    const authResp = await authService.signInWithGoogle();
+                    if (authResp.success) {
+                      sessionStorage.removeItem('login_cache_cleared');
+                    }
                   } catch (e) {
                     setError('Erro ao iniciar login com Google');
                     setLoading(false);
