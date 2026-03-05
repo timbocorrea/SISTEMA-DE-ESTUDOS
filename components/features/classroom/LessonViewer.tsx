@@ -856,7 +856,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                 <div className={`flex-1 min-w-0 ${isCinemaMode ? 'hidden' : ''} transition-all duration-500 ease-in-out`}>
 
                     {/* Conteúdo da Matéria (Texto Rico OU Blocos de Áudio) */}
-                    <div className={`rounded-3xl border shadow-sm transition-colors flex flex-col h-[calc(100vh-140px)] ${contentTheme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-white border-slate-200'}`}>
+                    <div className={`rounded-3xl border shadow-sm transition-colors flex flex-col min-h-[300px] lg:h-[calc(100vh-140px)] ${contentTheme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-white border-slate-200'}`}>
                         <div className={`flex-shrink-0 flex items-center justify-between p-4 md:p-6 border-b ${contentTheme === 'dark' ? 'border-slate-800' : 'border-slate-200'}`}>
                             <div className="flex items-center gap-3">
                                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${contentTheme === 'dark' ? 'bg-indigo-900/30' : 'bg-indigo-100'}`}>
@@ -1018,7 +1018,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                         {/* Content area - Inner Scroll */}
                         <div
                             ref={contentScrollContainerRef}
-                            className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-indigo-200 dark:scrollbar-thumb-slate-700 p-0 md:p-6 relative"
+                            className="flex-1 lg:overflow-y-auto scrollbar-thin scrollbar-thumb-indigo-200 dark:scrollbar-thumb-slate-700 p-0 md:p-6 relative"
                             onContextMenu={(e) => {
                                 const selection = window.getSelection();
                                 const text = selection?.toString().trim();
