@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 // Imports removidos de framer-motion para performance
+import { convertDropboxUrl, convertGoogleDriveUrl } from '@/utils/mediaUtils';
 
 interface SlideViewerProps {
     title: string;
     slides?: string[];
     fileUrl?: string;
-    fileType?: 'pdf' | 'pptx';
+    fileType?: 'pdf' | 'pptx' | 'ppt';
     onClose?: () => void;
 }
 
@@ -46,19 +47,8 @@ const SlideViewer: React.FC<SlideViewerProps> = ({ title, slides = [], fileUrl, 
                 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
                 // Handle Dropbox CORS issues by converting www.dropbox.com to dl.dropboxusercontent.com
-                let corsFriendlyUrl = fileUrl;
-                if (fileUrl?.includes('dropbox.com')) {
-                    corsFriendlyUrl = fileUrl
-                        .replace('www.dropbox.com', 'dl.dropboxusercontent.com')
-                        .replace('dropbox.com', 'dl.dropboxusercontent.com')
-                        .replace('&raw=1', '')
-                        .replace('dl=0', '');
-
-                    if (!corsFriendlyUrl.includes('raw=1')) {
-                        // Sometimes helps to ensure raw is properly set or append if not present in dropboxusercontent
-                        // actually dropboxusercontent doesn't need raw=1, it parses directly.
-                    }
-                }
+                let corsFriendlyUrl = convertDropboxUrl(fileUrl);
+                corsFriendlyUrl = convertGoogleDriveUrl(corsFriendlyUrl);
 
                 // Load Document
                 const loadingTask = pdfjsLib.getDocument(corsFriendlyUrl);
@@ -229,17 +219,14 @@ const SlideViewer: React.FC<SlideViewerProps> = ({ title, slides = [], fileUrl, 
     const isExternalDocUrl = fileUrl?.includes('dropbox.com') || fileUrl?.includes('dropboxusercontent.com') || fileUrl?.includes('drive.google.com');
 
     // External Doc Fallback (PPTX or PDF via Dropbox/Drive)
-    if (isFileMode && (fileType === 'pptx' || (fileType === 'pdf' && isExternalDocUrl))) {
+    if (isFileMode && (fileType === 'pptx' || fileType === 'ppt' || (fileType === 'pdf' && isExternalDocUrl))) {
         let viewerUrl = '';
-        if (fileType === 'pptx') {
-            viewerUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`;
+        if (fileType === 'pptx' || fileType === 'ppt') {
+            const directUrl = convertDropboxUrl(convertGoogleDriveUrl(fileUrl));
+            viewerUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(directUrl)}`;
         } else {
             // Use Google Docs Viewer for Dropbox PDFs to avoid browser CORS restrictions on canvas
-            let directUrl = fileUrl;
-            if (directUrl.includes('dropbox.com') && !directUrl.includes('raw=1')) {
-                directUrl = directUrl.replace('dl=0', 'raw=1');
-                if (!directUrl.includes('raw=1')) directUrl += (directUrl.includes('?') ? '&raw=1' : '?raw=1');
-            }
+            const directUrl = convertDropboxUrl(convertGoogleDriveUrl(fileUrl));
             viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(directUrl)}&embedded=true`;
         }
 

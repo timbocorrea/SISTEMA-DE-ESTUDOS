@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Lesson, LessonResourceType } from '../domain/entities';
+import { convertDropboxUrl, convertGoogleDriveUrl, isDocumentFile } from '@/utils/mediaUtils';
 
 const iconByType: Record<LessonResourceType, string> = {
   PDF: 'fa-file-pdf',
@@ -114,6 +115,8 @@ const LessonMaterialsSidebar: React.FC<Props> = ({ lesson, onTrackAction, onAudi
   // State for modals
   const [modalImage, setModalImage] = useState<string | null>(null);
   const [modalPDF, setModalPDF] = useState<string | null>(null);
+  const [modalDocUrl, setModalDocUrl] = useState<string | null>(null);
+  const [modalDocTitle, setModalDocTitle] = useState<string | null>(null);
 
   // Close modals with ESC
   useEffect(() => {
@@ -121,11 +124,12 @@ const LessonMaterialsSidebar: React.FC<Props> = ({ lesson, onTrackAction, onAudi
       if (e.key === 'Escape') {
         if (modalImage) setModalImage(null);
         if (modalPDF) setModalPDF(null);
+        if (modalDocUrl) setModalDocUrl(null);
       }
     };
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
-  }, [modalImage, modalPDF]);
+  }, [modalImage, modalPDF, modalDocUrl]);
 
   // State to track active audio player (Drawer style)
   const [currentAudio, setCurrentAudio] = useState<MaterialItem | null>(null);
@@ -136,19 +140,9 @@ const LessonMaterialsSidebar: React.FC<Props> = ({ lesson, onTrackAction, onAudi
     onAudioStateChange?.(!!currentAudio, currentAudio?.title);
   }, [currentAudio, onAudioStateChange]);
 
-  // Helper function to convert Dropbox URLs to direct links
-  const convertDropboxUrl = (url: string): string => {
-    if (url.includes('dropboxusercontent.com') || url.includes('dropbox.com')) {
-      if (url.includes('dl.dropboxusercontent.com')) return url; // Already direct
-
-      // Replace generic dropbox domain with direct download domain
-      // and remove download query params to ensure clean display
-      return url.replace('www.dropbox.com', 'dl.dropboxusercontent.com')
-        .replace('dropbox.com', 'dl.dropboxusercontent.com')
-        .replace('?dl=0', '')
-        .replace('?dl=1', '');
-    }
-    return url;
+  // Helper function to convert Media URLs
+  const convertUrl = (url: string): string => {
+    return convertDropboxUrl(convertGoogleDriveUrl(url));
   };
 
   const handleItemClick = (item: MaterialItem) => {
@@ -164,24 +158,45 @@ const LessonMaterialsSidebar: React.FC<Props> = ({ lesson, onTrackAction, onAudi
 
     switch (effectiveType) {
       case 'AUDIO':
-        setCurrentAudio({ ...item, url: convertDropboxUrl(item.url) });
-        setIsMinimized(false); // Always expand when selecting new
+        setCurrentAudio({ ...item, url: convertDropboxUrl(convertGoogleDriveUrl(item.url)) });
+        setIsMinimized(false);
         onTrackAction?.(`Abriu Player Áudio: ${item.title}`);
         break;
       case 'IMAGE':
-        // Fix: Convert Dropbox sharing links to direct image links
-        setModalImage(convertDropboxUrl(item.url));
+        setModalImage(convertDropboxUrl(convertGoogleDriveUrl(item.url)));
         onTrackAction?.(`Visualizou Imagem: ${item.title}`);
         break;
       case 'PDF':
-        // PDF viewer usually handles redirect, but direct link is safer
-        setModalPDF(convertDropboxUrl(item.url));
+        // Use unified Doc Viewer for PDF if external
+        const isExternal = item.url.includes('dropbox.com') || item.url.includes('drive.google.com');
+        if (isExternal) {
+          const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(convertDropboxUrl(convertGoogleDriveUrl(item.url)))}&embedded=true`;
+          setModalDocUrl(viewerUrl);
+          setModalDocTitle(item.title);
+        } else {
+          setModalPDF(item.url);
+        }
         onTrackAction?.(`Visualizou PDF: ${item.title}`);
         break;
       case 'LINK':
       case 'FILE':
-        window.open(item.url, '_blank');
-        onTrackAction?.(`Abriu Link/Arquivo: ${item.title}`);
+        const lowerUrlFile = item.url.toLowerCase();
+        if (lowerUrlFile.includes('.pptx') || lowerUrlFile.includes('.ppt')) {
+          const directDocUrl = convertDropboxUrl(convertGoogleDriveUrl(item.url));
+          const viewerUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(directDocUrl)}`;
+          setModalDocUrl(viewerUrl);
+          setModalDocTitle(item.title);
+          onTrackAction?.(`Visualizou Slides: ${item.title}`);
+        } else if (isDocumentFile(item.url)) {
+          const directDocUrl = convertDropboxUrl(convertGoogleDriveUrl(item.url));
+          const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(directDocUrl)}&embedded=true`;
+          setModalDocUrl(viewerUrl);
+          setModalDocTitle(item.title);
+          onTrackAction?.(`Visualizou Documento: ${item.title}`);
+        } else {
+          window.open(item.url, '_blank');
+          onTrackAction?.(`Abriu Link/Arquivo: ${item.title}`);
+        }
         break;
     }
   };
@@ -360,6 +375,41 @@ const LessonMaterialsSidebar: React.FC<Props> = ({ lesson, onTrackAction, onAudi
             />
             <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 text-white/60 text-xs text-center whitespace-nowrap">
               Clique fora do PDF ou pressione ESC para fechar
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Modal de Visualização de Documento (PPTX, PDF Externo, etc) */}
+      {modalDocUrl && (
+        <div
+          className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setModalDocUrl(null)}
+        >
+          <div className="relative max-w-7xl w-full h-[90vh] flex flex-col bg-slate-900 rounded-2xl overflow-hidden shadow-2xl border border-white/10" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-slate-800">
+               <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center text-indigo-400">
+                    <i className="fas fa-file-lines"></i>
+                  </div>
+                  <h3 className="text-white font-bold truncate max-w-md">{modalDocTitle}</h3>
+               </div>
+               <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setModalDocUrl(null)}
+                    className="w-10 h-10 bg-white/5 hover:bg-white/10 rounded-xl flex items-center justify-center text-white transition-all"
+                  >
+                    <i className="fas fa-times"></i>
+                  </button>
+               </div>
+            </div>
+            <div className="flex-1 bg-white relative">
+              <iframe
+                src={modalDocUrl}
+                className="w-full h-full border-0"
+                title="Visualização de Documento"
+                allowFullScreen
+              />
             </div>
           </div>
         </div>

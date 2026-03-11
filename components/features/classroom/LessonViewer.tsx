@@ -24,6 +24,7 @@ import { useLessonNavigation } from '@/hooks/useLessonNavigation';
 import { MobileToolsFab } from '@/components/lesson/MobileToolsFab';
 import { useStudentAnswers } from '@/hooks/useStudentAnswers';
 import { toast } from 'sonner';
+import { isDocumentFile } from '@/utils/mediaUtils';
 
 interface LessonViewerProps {
     course: Course;
@@ -520,7 +521,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
     // Determine if current active item is a slide presentation
     const activePlaylistItem = (lesson.videoUrls && lesson.videoUrls.length > 0) ? lesson.videoUrls[activeVideoIndex] : null;
-    const isSlideActive = activePlaylistItem?.type === 'slides' && ((activePlaylistItem?.slides && activePlaylistItem.slides.length > 0) || !!activePlaylistItem?.fileUrl || !!activePlaylistItem?.url);
+    const isSlideActive = activePlaylistItem?.type === 'slides' || 
+                         isDocumentFile(activePlaylistItem?.fileUrl || activePlaylistItem?.url || '');
 
     // Loading State (Partial Content)
     if (lesson.isLoaded === false) {
