@@ -82,18 +82,11 @@ export default defineConfig(({ mode }) => {
               }
             },
             {
+              // FontAwesome (cdnjs.cloudflare.com) must NOT be cached by SW.
+              // CacheFirst with opaque responses causes icons to vanish on reload.
+              // NetworkOnly forces SW to always pass through to CDN directly.
               urlPattern: /^https:\/\/cdnjs\.cloudflare\.com\/.*/i,
-              handler: 'CacheFirst',
-              options: {
-                cacheName: 'cdnjs-cache',
-                expiration: {
-                  maxEntries: 20,
-                  maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
-                },
-                cacheableResponse: {
-                  statuses: [0, 200]
-                }
-              }
+              handler: 'NetworkOnly',
             },
             {
               urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp)$/i,
