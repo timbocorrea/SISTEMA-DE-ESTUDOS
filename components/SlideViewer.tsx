@@ -255,7 +255,7 @@ const SlideViewer: React.FC<SlideViewerProps> = ({ title, slides = [], fileUrl, 
                         </button>
                     </div>
                 </div>
-                <div className={`${isFullscreen ? 'flex-1' : 'aspect-[4/3]'} bg-slate-950`}>
+                <div className={`${isFullscreen ? 'flex-1' : 'aspect-video'} bg-slate-950`}>
                     <iframe src={viewerUrl} className="w-full h-full border-0" title={title} allowFullScreen sandbox="allow-scripts allow-same-origin allow-popups allow-forms" />
                 </div>
             </div>
@@ -299,7 +299,7 @@ const SlideViewer: React.FC<SlideViewerProps> = ({ title, slides = [], fileUrl, 
             </div>
 
             {/* Main Content Area */}
-            <div className={`relative ${isFullscreen ? 'w-full flex-1' : 'aspect-[4/3]'} flex items-center justify-center bg-slate-950 overflow-hidden`}>
+            <div className={`relative ${isFullscreen ? 'w-full flex-1' : 'aspect-video'} flex items-center justify-center bg-slate-950 overflow-hidden`}>
 
                 {/* PDF Mode */}
                 {fileType === 'pdf' && (
@@ -351,19 +351,24 @@ const SlideViewer: React.FC<SlideViewerProps> = ({ title, slides = [], fileUrl, 
                 {/* Navigation Arrows (Common) */}
                 {totalSlides > 1 && (
                     <>
+                        <div className="absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10"></div>
                         <button
                             onClick={goPrev}
                             disabled={currentIndex === 0}
-                            className={`absolute left-3 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full flex items-center justify-center transition-all backdrop-blur-sm ${currentIndex === 0 ? 'opacity-0 pointer-events-none' : 'bg-black/50 hover:bg-black/70 text-white opacity-0 group-hover:opacity-100 hover:scale-110'}`}
+                            className={`absolute left-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 rounded-full flex items-center justify-center transition-all backdrop-blur-md ${currentIndex === 0 ? 'opacity-0 pointer-events-none' : 'bg-white/10 hover:bg-white/20 text-white opacity-0 group-hover:opacity-100 translate-x-4 group-hover:translate-x-0'}`}
+                            title="Anterior"
                         >
-                            <i className="fas fa-chevron-left text-sm"></i>
+                            <i className="fas fa-chevron-left text-lg"></i>
                         </button>
+
+                        <div className="absolute inset-y-0 right-0 w-20 bg-gradient-to-l from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10"></div>
                         <button
                             onClick={goNext}
                             disabled={currentIndex === totalSlides - 1}
-                            className={`absolute right-3 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full flex items-center justify-center transition-all backdrop-blur-sm ${currentIndex === totalSlides - 1 ? 'opacity-0 pointer-events-none' : 'bg-black/50 hover:bg-black/70 text-white opacity-0 group-hover:opacity-100 hover:scale-110'}`}
+                            className={`absolute right-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 rounded-full flex items-center justify-center transition-all backdrop-blur-md ${currentIndex === totalSlides - 1 ? 'opacity-0 pointer-events-none' : 'bg-white/10 hover:bg-white/20 text-white opacity-0 group-hover:opacity-100 -translate-x-4 group-hover:translate-x-0'}`}
+                            title="Próximo"
                         >
-                            <i className="fas fa-chevron-right text-sm"></i>
+                            <i className="fas fa-chevron-right text-lg"></i>
                         </button>
                     </>
                 )}

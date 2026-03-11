@@ -172,6 +172,19 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
         };
     }, []);
 
+    // Prevent main scroll in Cinema Mode
+    useEffect(() => {
+        if (isCinemaMode) {
+            document.body.style.overflow = 'hidden';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [isCinemaMode]);
+
     const toggleFullscreen = () => {
         if (!document.fullscreenElement) {
             document.documentElement.requestFullscreen().catch(err => {
@@ -803,15 +816,17 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
                 {/* Cinema Mode: Player fullwidth + Playlist below */}
                 {isCinemaMode && (
-                    <div className="w-full space-y-6 animate-in fade-in duration-500">
-                        <div className="w-full">
+                    <div className="w-full space-y-6 animate-in fade-in duration-500 max-w-[1400px] mx-auto px-4">
+                        <div className="w-full bg-black rounded-3xl overflow-hidden shadow-2xl border border-white/5 relative aspect-video max-h-[75vh] min-h-[400px] flex items-center justify-center">
                             {isSlideActive ? (
-                                <SlideViewer
-                                    title={activePlaylistItem?.title || 'Apresentação'}
-                                    slides={activePlaylistItem?.slides}
-                                    fileUrl={activePlaylistItem?.fileUrl || activePlaylistItem?.url}
-                                    fileType={activePlaylistItem?.fileType || (activePlaylistItem?.fileUrl?.toLowerCase().includes('.pptx') || activePlaylistItem?.url?.toLowerCase().includes('.pptx') ? 'pptx' : 'pdf')}
-                                />
+                                <div className="w-full h-full flex items-center justify-center bg-slate-900">
+                                    <SlideViewer
+                                        title={activePlaylistItem?.title || 'Apresentação'}
+                                        slides={activePlaylistItem?.slides}
+                                        fileUrl={activePlaylistItem?.fileUrl || activePlaylistItem?.url}
+                                        fileType={activePlaylistItem?.fileType || (activePlaylistItem?.fileUrl?.toLowerCase().includes('.pptx') || activePlaylistItem?.url?.toLowerCase().includes('.pptx') ? 'pptx' : 'pdf')}
+                                    />
+                                </div>
                             ) : (
                                 <VideoPlayer
                                     ref={activeVideoRef}
@@ -827,17 +842,17 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                         </div>
 
                         {/* Controls & Exit */}
-                        <div className="flex justify-end">
+                        <div className="flex justify-end gap-3">
                             <button
                                 onClick={() => {
                                     toggleCinemaMode();
                                     onTrackAction?.('Desativou Modo Cinema');
                                 }}
-                                className="px-4 py-2 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-all flex items-center gap-2 text-xs font-bold border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md active:scale-95"
+                                className="px-5 py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 backdrop-blur-md text-white transition-all flex items-center gap-2 text-xs font-bold border border-white/10 shadow-lg hover:shadow-indigo-500/20 active:scale-95"
                                 title="Sair do Modo Cinema"
                             >
-                                <i className="fas fa-compress text-xs"></i>
-                                <span>Sair do Cinema</span>
+                                <i className="fas fa-compress text-xs text-indigo-400"></i>
+                                <span>Fechar Modo Cinema</span>
                             </button>
                         </div>
 
