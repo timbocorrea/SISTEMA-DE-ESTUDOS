@@ -4,15 +4,17 @@
 -- =============================================================================
 
 -- Enable RLS on storage.objects (usually enabled by default in Supabase)
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
 
 -- 1. SELECT: Authenticated users can read any file in the bucket
+DROP POLICY IF EXISTS "Authenticated users can read lesson resources" ON storage.objects;
 CREATE POLICY "Authenticated users can read lesson resources"
 ON storage.objects FOR SELECT
 TO authenticated
 USING (bucket_id = 'lesson-resources');
 
 -- 2. INSERT: Only authenticated users, with file extension + size validation
+DROP POLICY IF EXISTS "Authenticated users can upload safe files to lesson resources" ON storage.objects;
 CREATE POLICY "Authenticated users can upload safe files to lesson resources"
 ON storage.objects FOR INSERT
 TO authenticated
@@ -46,6 +48,7 @@ WITH CHECK (
 );
 
 -- 3. UPDATE: Authenticated users can update metadata of their own uploads
+DROP POLICY IF EXISTS "Authenticated users can update own lesson resources" ON storage.objects;
 CREATE POLICY "Authenticated users can update own lesson resources"
 ON storage.objects FOR UPDATE
 TO authenticated
@@ -53,6 +56,7 @@ USING (bucket_id = 'lesson-resources' AND owner_id = auth.uid()::text)
 WITH CHECK (bucket_id = 'lesson-resources' AND owner_id = auth.uid()::text);
 
 -- 4. DELETE: Authenticated users can delete files (instructors manage content)
+DROP POLICY IF EXISTS "Authenticated users can delete lesson resources" ON storage.objects;
 CREATE POLICY "Authenticated users can delete lesson resources"
 ON storage.objects FOR DELETE
 TO authenticated

@@ -4,7 +4,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Create Audit Logs table for granular tracking
 CREATE TABLE IF NOT EXISTS public.audit_logs (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
     session_id UUID NOT NULL,
     path TEXT NOT NULL,
@@ -26,6 +26,14 @@ CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON public.audit_logs(user_id);
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 
 -- Policies: Users can view their own logs, Admins can view all
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'audit_logs') THEN
+        DROP POLICY IF EXISTS "Users can view own audit logs" ON public.audit_logs;
+        DROP POLICY IF EXISTS "Instructors can view all audit logs" ON public.audit_logs;
+    END IF;
+END $$;
+
 CREATE POLICY "Users can view own audit logs" 
 ON public.audit_logs FOR SELECT 
 USING (auth.uid() = user_id);

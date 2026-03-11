@@ -11,6 +11,14 @@ CREATE TABLE IF NOT EXISTS user_achievements (
 -- RLS Policies
 ALTER TABLE user_achievements ENABLE ROW LEVEL SECURITY;
 
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'user_achievements') THEN
+        DROP POLICY IF EXISTS "Users can view their own achievements" ON user_achievements;
+        DROP POLICY IF EXISTS "System can insert achievements" ON user_achievements;
+    END IF;
+END $$;
+
 CREATE POLICY "Users can view their own achievements"
   ON user_achievements FOR SELECT
   USING (auth.uid() = user_id);
