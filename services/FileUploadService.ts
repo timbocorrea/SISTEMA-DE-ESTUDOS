@@ -9,7 +9,6 @@ const ALLOWED_MIME_TYPES: Record<string, readonly string[]> = {
         'image/jpeg',
         'image/webp',
         'image/gif',
-        'image/svg+xml',
     ],
     AUDIO: [
         'audio/mpeg',
@@ -35,7 +34,7 @@ const ALLOWED_MIME_TYPES: Record<string, readonly string[]> = {
 
 const ALLOWED_EXTENSIONS: Record<string, readonly string[]> = {
     PDF: ['pdf'],
-    IMAGE: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'],
+    IMAGE: ['png', 'jpg', 'jpeg', 'webp', 'gif'],
     AUDIO: ['mp3', 'wav', 'ogg', 'aac', 'm4a', 'webm', 'flac'],
     FILE: ['pdf', 'txt', 'csv', 'docx', 'xlsx', 'pptx'],
 } as const;
@@ -45,8 +44,13 @@ export class FileUploadService {
     private bucketName = 'lesson-resources';
 
     async uploadFile(file: File, folder: string = 'general'): Promise<string> {
-        if (file.size > MAX_FILE_SIZE_BYTES) {
-            throw new Error(`Arquivo excede o tamanho máximo de ${MAX_FILE_SIZE_BYTES / 1024 / 1024}MB.`);
+        let maxAllowedSize = 10 * 1024 * 1024; // Default 10MB
+        if (folder === 'audios') {
+            maxAllowedSize = 50 * 1024 * 1024; // 50MB for Audio
+        }
+
+        if (file.size > maxAllowedSize) {
+            throw new Error(`Arquivo excede o tamanho máximo de ${maxAllowedSize / 1024 / 1024}MB.`);
         }
 
         const timestamp = Date.now();
