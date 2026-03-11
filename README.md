@@ -43,7 +43,7 @@ VITE_SUPABASE_URL=https://<YOUR_PROJECT_ID>.supabase.co
 VITE_SUPABASE_ANON_KEY=<YOUR_SUPABASE_ANON_KEY>
 
 # Google Gemini API
-VITE_API_KEY=<YOUR_GEMINI_API_KEY>
+GEMINI_API_KEY=<YOUR_GEMINI_API_KEY>
 ```
 
 **Onde encontrar as chaves:**
@@ -77,7 +77,7 @@ O app estará disponível em `http://localhost:3000`
    ```
    VITE_SUPABASE_URL=https://<YOUR_PROJECT_ID>.supabase.co
    VITE_SUPABASE_ANON_KEY=<YOUR_SUPABASE_ANON_KEY>
-   VITE_API_KEY=<YOUR_GEMINI_API_KEY>
+   GEMINI_API_KEY=<YOUR_GEMINI_API_KEY>
    ```
 
 5. **Clique em "Deploy"**
