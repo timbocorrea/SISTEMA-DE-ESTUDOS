@@ -63,5 +63,9 @@
     "vite-plugin-compression": "^0.5.1",
     "vite-plugin-pwa": "^0.21.2",
     "vitest": "^4.0.16"
+  },
+  "overrides": {
+    "object-path": "^0.11.8",
+    "serialize-javascript": "^7.0.4"
   }
 }
