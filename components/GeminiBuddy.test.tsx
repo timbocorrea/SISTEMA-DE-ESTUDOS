@@ -7,6 +7,8 @@ vi.mock('../services/supabaseClient', () => ({
     createSupabaseClient: vi.fn(),
 }));
 
+import { createSupabaseClient } from '../services/supabaseClient';
+
 const mockInvoke = vi.fn();
 (createSupabaseClient as any).mockReturnValue({
     functions: {

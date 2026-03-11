@@ -266,7 +266,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
       .order('position', { ascending: true });
 
     if (error) throw new DomainError(`Falha ao listar aulas: ${error.message}`);
-    if (!summaryMode) return (data || []) as LessonRecord[];
+    if (!summaryMode) return (data || []) as unknown as LessonRecord[];
 
     // Keep shape compatible while avoiding heavy content transfer in summary mode.
     return (data || []).map((row: any) => ({

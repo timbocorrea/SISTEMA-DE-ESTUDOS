@@ -65,7 +65,7 @@ export const useActivityTracker = (resourceTitle?: string) => {
             statsDelta: stats
         };
 
-        if (isFinal && navigator.sendBeacon) {
+        if (isFinal && typeof navigator.sendBeacon === 'function') {
             // For final flush on unload, use sendBeacon if possible
             // Note: sendBeacon doesn't support headers/POST easily with JSON 
             // without Blob, but we'll try to sync via AuditService normally first

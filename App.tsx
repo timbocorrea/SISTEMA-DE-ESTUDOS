@@ -1,15 +1,14 @@
-﻿import React, { useEffect, useState, startTransition } from 'react';
+import React, { useEffect, useState, startTransition } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Toaster, toast } from 'sonner';
 // Lazy Load Heavy UI Components
 const Sidebar = React.lazy(() => import('./components/Sidebar'));
 const GeminiBuddy = React.lazy(() => import('./components/GeminiBuddy'));
-import AuthForm from './components/AuthForm';
+const AuthForm = React.lazy(() => import('./components/AuthForm'));
 import { PresenceCheckModal } from './components/PresenceCheckModal';
 const PendingApprovalScreen = React.lazy(() => import('./components/PendingApprovalScreen'));
 import Breadcrumb from './components/Breadcrumb';
 import { LessonRecord } from './domain/admin';
-import { HistoryItem } from './components/HistoryPage'; // Type only
 import { ModernLoader } from './components/ModernLoader';
 
 // Lazy Imports
@@ -43,8 +42,8 @@ import { SupportDialog } from './components/SupportDialog';
 
 import { AdminService } from './services/AdminService';
 import { adminService as sharedAdminService } from './services/Dependencies';
-import LessonLoader from './components/LessonLoader';
-import ForcePasswordChangeModal from './components/ForcePasswordChangeModal';
+const LessonLoader = React.lazy(() => import('./components/LessonLoader'));
+const ForcePasswordChangeModal = React.lazy(() => import('./components/ForcePasswordChangeModal'));
 import { useActivityTracker } from './hooks/useActivityTracker';
 import { useIdleTimeout } from './hooks/useIdleTimeout';
 
@@ -421,7 +420,9 @@ const App: React.FC = () => {
   // Auth Screen
   if (!session || !user) {
     return (
-      <AuthForm authService={authService} onSuccess={async () => { await refreshSession(); }} />
+      <React.Suspense fallback={<div className="h-screen w-full bg-[#050810] flex items-center justify-center"><ModernLoader message="Carregando Login..." /></div>}>
+        <AuthForm authService={authService} onSuccess={async () => { await refreshSession(); }} />
+      </React.Suspense>
     );
   }
 
@@ -444,13 +445,15 @@ const App: React.FC = () => {
     return (
       <>
         <Toaster theme="dark" richColors position="top-center" />
-        <ForcePasswordChangeModal
-          authService={authService}
-          onSuccess={async () => {
-            // Refresh session to update user profile (isTempPassword should come back false)
-            await refreshSession();
-          }}
-        />
+        <React.Suspense fallback={<ModernLoader />}>
+          <ForcePasswordChangeModal
+            authService={authService}
+            onSuccess={async () => {
+              // Refresh session to update user profile (isTempPassword should come back false)
+              await refreshSession();
+            }}
+          />
+        </React.Suspense>
       </>
     );
   }
