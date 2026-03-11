@@ -524,6 +524,98 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     const isSlideActive = activePlaylistItem?.type === 'slides' || 
                          isDocumentFile(activePlaylistItem?.fileUrl || activePlaylistItem?.url || '');
 
+    // Playlist Renderer for reuse in Cinema Mode
+    const renderPlaylist = () => (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+            <div className="flex items-center gap-2 p-3 border-b border-slate-200 dark:border-slate-800">
+                <i className="fas fa-film text-indigo-500 text-xs"></i>
+                <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300">Playlist</h3>
+                <div className="ml-auto flex items-center gap-2">
+                    {/* Materials Button */}
+                    <button
+                        onClick={() => {
+                            setSidebarTab('materials');
+                            setIsMaterialsPanelOpen(true);
+                            onTrackAction?.('Abriu Materiais');
+                        }}
+                        className={`flex items-center justify-center gap-1.5 h-6 px-2.5 rounded-md transition-colors text-[10px] font-bold border uppercase tracking-wider ${sidebarTab === 'materials' && isMaterialsPanelOpen ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800'}`}
+                        title="Materiais de Apoio"
+                    >
+                        <i className="fas fa-book-reader"></i>
+                        <span className="hidden sm:inline">Materiais</span>
+                    </button>
+
+                    {/* Notes Button */}
+                    <button
+                        onClick={() => {
+                            setSidebarTab('notes');
+                            setIsMaterialsPanelOpen(true);
+                            onTrackAction?.('Abriu Minhas Notas');
+                        }}
+                        className={`flex items-center justify-center gap-1.5 h-6 px-2.5 rounded-md transition-colors text-[10px] font-bold border uppercase tracking-wider ${sidebarTab === 'notes' && isMaterialsPanelOpen ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800'}`}
+                        title="Minhas Notas"
+                    >
+                        <i className="fas fa-sticky-note"></i>
+                        <span className="hidden sm:inline">Notas</span>
+                    </button>
+
+                    {/* Video Index Indicator */}
+                    {lesson.videoUrls && lesson.videoUrls.length > 1 && (
+                        <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+                            {activeVideoIndex + 1} / {lesson.videoUrls.length}
+                        </span>
+                    )}
+                </div>
+            </div>
+
+            <div className="max-h-[300px] overflow-y-auto scrollbar-thin scrollbar-thumb-indigo-200 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent">
+                {(lesson.videoUrls && lesson.videoUrls.length > 0 ? lesson.videoUrls : [{ url: lesson.videoUrl, title: lesson.title }]).map((video: any, index: number) => (
+                    <button
+                        key={index}
+                        onClick={() => {
+                            setActiveVideoIndex(index);
+                            onTrackAction?.(`Trocou para conteúdo: ${video.title}`);
+                        }}
+                        className={`w-full flex items-center gap-3 p-3 text-left transition-all border-b last:border-b-0 ${activeVideoIndex === index
+                            ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-800'
+                            : 'hover:bg-slate-50 dark:hover:bg-slate-800/50 border-slate-100 dark:border-slate-800'
+                            }`}
+                    >
+                        {/* Thumbnail */}
+                        <div className="w-16 h-10 rounded-lg bg-slate-800 overflow-hidden shrink-0 relative">
+                            {video.imageUrl ? (
+                                <img src={getOptimizedUrl(video.imageUrl, 150)} alt={video.title} loading="lazy" className="w-full h-full object-cover" />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                    <i className={`fas ${video.type === 'slides' || isDocumentFile(video.fileUrl || video.url || '') ? 'fa-images text-amber-400' : 'fa-play'} text-xs ${activeVideoIndex === index ? (video.type === 'slides' || isDocumentFile(video.fileUrl || video.url || '') ? 'text-amber-400' : 'text-indigo-400') : (video.type === 'slides' || isDocumentFile(video.fileUrl || video.url || '') ? 'text-amber-500/50' : 'text-white/30')}`}></i>
+                                </div>
+                            )}
+                            {activeVideoIndex === index && (
+                                <div className={`absolute inset-0 ${video.type === 'slides' || isDocumentFile(video.fileUrl || video.url || '') ? 'bg-amber-500/20' : 'bg-indigo-600/20'} flex items-center justify-center`}>
+                                    <i className={`fas ${video.type === 'slides' || isDocumentFile(video.fileUrl || video.url || '') ? 'fa-images' : 'fa-volume-up'} text-white text-xs animate-pulse`}></i>
+                                </div>
+                            )}
+                        </div>
+                        {/* Info */}
+                        <div className="min-w-0 flex-1">
+                            <p className={`text-xs font-semibold truncate ${activeVideoIndex === index ? (video.type === 'slides' || isDocumentFile(video.fileUrl || video.url || '') ? 'text-amber-600 dark:text-amber-400' : 'text-indigo-600 dark:text-indigo-400') : 'text-slate-700 dark:text-slate-300'}`}>
+                                {video.title || (video.type === 'slides' || isDocumentFile(video.fileUrl || video.url || '') ? `Slides ${index + 1}` : `Vídeo ${index + 1}`)}
+                            </p>
+                            {activeVideoIndex === index && (
+                                <span className={`text-[10px] font-bold uppercase tracking-wider ${video.type === 'slides' || isDocumentFile(video.fileUrl || video.url || '') ? 'text-amber-500' : 'text-indigo-500'}`}>
+                                    {video.type === 'slides' || isDocumentFile(video.fileUrl || video.url || '') ? 'Apresentação' : 'Reproduzindo'}
+                                </span>
+                            )}
+                            {(video.type === 'slides' || isDocumentFile(video.fileUrl || video.url || '')) && activeVideoIndex !== index && (
+                                <span className="text-[10px] font-bold text-amber-500/60 uppercase tracking-wider">Slides</span>
+                            )}
+                        </div>
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+
     // Loading State (Partial Content)
     if (lesson.isLoaded === false) {
         return (
@@ -704,123 +796,63 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                             </div>
 
                             {/* Playlist Vertical de Vídeos */}
-                            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-                                <div className="flex items-center gap-2 p-3 border-b border-slate-200 dark:border-slate-800">
-                                    <i className="fas fa-film text-indigo-500 text-xs"></i>
-                                    <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300">Playlist</h3>
-                                    <div className="ml-auto flex items-center gap-2">
-                                        {/* Materials Button */}
-                                        <button
-                                            onClick={() => {
-                                                setSidebarTab('materials');
-                                                setIsMaterialsPanelOpen(true);
-                                                onTrackAction?.('Abriu Materiais');
-                                            }}
-                                            className={`flex items-center justify-center gap-1.5 h-6 px-2.5 rounded-md transition-colors text-[10px] font-bold border uppercase tracking-wider ${sidebarTab === 'materials' && isMaterialsPanelOpen ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800'}`}
-                                            title="Materiais de Apoio"
-                                        >
-                                            <i className="fas fa-book-reader"></i>
-                                            <span className="hidden sm:inline">Materiais</span>
-                                        </button>
-
-                                        {/* Notes Button */}
-                                        <button
-                                            onClick={() => {
-                                                setSidebarTab('notes');
-                                                setIsMaterialsPanelOpen(true);
-                                                onTrackAction?.('Abriu Minhas Notas');
-                                            }}
-                                            className={`flex items-center justify-center gap-1.5 h-6 px-2.5 rounded-md transition-colors text-[10px] font-bold border uppercase tracking-wider ${sidebarTab === 'notes' && isMaterialsPanelOpen ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800'}`}
-                                            title="Minhas Notas"
-                                        >
-                                            <i className="fas fa-sticky-note"></i>
-                                            <span className="hidden sm:inline">Notas</span>
-                                        </button>
-
-                                        {/* Video Index Indicator */}
-                                        {lesson.videoUrls && lesson.videoUrls.length > 1 && (
-                                            <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
-                                                {activeVideoIndex + 1} / {lesson.videoUrls.length}
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div className="max-h-[300px] overflow-y-auto scrollbar-thin scrollbar-thumb-indigo-200 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent">
-                                    {(lesson.videoUrls && lesson.videoUrls.length > 0 ? lesson.videoUrls : [{ url: lesson.videoUrl, title: lesson.title }]).map((video: any, index: number) => (
-                                        <button
-                                            key={index}
-                                            onClick={() => {
-                                                setActiveVideoIndex(index);
-                                                onTrackAction?.(`Trocou para vídeo: ${video.title}`);
-                                            }}
-                                            className={`w-full flex items-center gap-3 p-3 text-left transition-all border-b last:border-b-0 ${activeVideoIndex === index
-                                                ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-800'
-                                                : 'hover:bg-slate-50 dark:hover:bg-slate-800/50 border-slate-100 dark:border-slate-800'
-                                                }`}
-                                        >
-                                            {/* Thumbnail */}
-                                            <div className="w-16 h-10 rounded-lg bg-slate-800 overflow-hidden shrink-0 relative">
-                                                {video.imageUrl ? (
-                                                    <img src={getOptimizedUrl(video.imageUrl, 150)} alt={video.title} loading="lazy" className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <div className="w-full h-full flex items-center justify-center">
-                                                        <i className={`fas ${video.type === 'slides' ? 'fa-images text-amber-400' : 'fa-play'} text-xs ${activeVideoIndex === index ? (video.type === 'slides' ? 'text-amber-400' : 'text-indigo-400') : (video.type === 'slides' ? 'text-amber-500/50' : 'text-white/30')}`}></i>
-                                                    </div>
-                                                )}
-                                                {activeVideoIndex === index && (
-                                                    <div className={`absolute inset-0 ${video.type === 'slides' ? 'bg-amber-500/20' : 'bg-indigo-600/20'} flex items-center justify-center`}>
-                                                        <i className={`fas ${video.type === 'slides' ? 'fa-images' : 'fa-volume-up'} text-white text-xs animate-pulse`}></i>
-                                                    </div>
-                                                )}
-                                            </div>
-                                            {/* Info */}
-                                            <div className="min-w-0 flex-1">
-                                                <p className={`text-xs font-semibold truncate ${activeVideoIndex === index ? (video.type === 'slides' ? 'text-amber-600 dark:text-amber-400' : 'text-indigo-600 dark:text-indigo-400') : 'text-slate-700 dark:text-slate-300'}`}>
-                                                    {video.title || (video.type === 'slides' ? `Slides ${index + 1}` : `Vídeo ${index + 1}`)}
-                                                </p>
-                                                {activeVideoIndex === index && (
-                                                    <span className={`text-[10px] font-bold uppercase tracking-wider ${video.type === 'slides' ? 'text-amber-500' : 'text-indigo-500'}`}>
-                                                        {video.type === 'slides' ? 'Apresentação' : 'Reproduzindo'}
-                                                    </span>
-                                                )}
-                                                {video.type === 'slides' && activeVideoIndex !== index && (
-                                                    <span className="text-[10px] font-bold text-amber-500/60 uppercase tracking-wider">Slides</span>
-                                                )}
-                                            </div>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
+                            {renderPlaylist()}
                         </div>
                     </div>
                 )}
 
-                {/* Cinema Mode: Vídeo fullwidth */}
+                {/* Cinema Mode: Player fullwidth + Playlist below */}
                 {isCinemaMode && (
-                    <div className="w-full space-y-3">
-                        <VideoPlayer
-                            ref={activeVideoRef}
-                            lesson={lesson}
-                            videoUrl={currentVideoUrl}
-                            onProgress={handleProgressUpdateInternal}
-                            onPlay={() => {
-                                pauseAudio();
-                                onTrackAction?.(`Reproduziu vídeo: ${currentVideoUrl || lesson.title}`);
-                            }}
-                        />
+                    <div className="w-full space-y-6 animate-in fade-in duration-500">
+                        <div className="w-full">
+                            {isSlideActive ? (
+                                <SlideViewer
+                                    title={activePlaylistItem?.title || 'Apresentação'}
+                                    slides={activePlaylistItem?.slides}
+                                    fileUrl={activePlaylistItem?.fileUrl || activePlaylistItem?.url}
+                                    fileType={activePlaylistItem?.fileType || (activePlaylistItem?.fileUrl?.toLowerCase().includes('.pptx') || activePlaylistItem?.url?.toLowerCase().includes('.pptx') ? 'pptx' : 'pdf')}
+                                />
+                            ) : (
+                                <VideoPlayer
+                                    ref={activeVideoRef}
+                                    lesson={lesson}
+                                    videoUrl={currentVideoUrl}
+                                    onProgress={handleProgressUpdateInternal}
+                                    onPlay={() => {
+                                        pauseAudio();
+                                        onTrackAction?.(`Reproduziu vídeo: ${currentVideoUrl || lesson.title}`);
+                                    }}
+                                />
+                            )}
+                        </div>
+
+                        {/* Controls & Exit */}
                         <div className="flex justify-end">
                             <button
                                 onClick={() => {
                                     toggleCinemaMode();
                                     onTrackAction?.('Desativou Modo Cinema');
                                 }}
-                                className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors flex items-center gap-2 text-xs font-medium"
+                                className="px-4 py-2 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-all flex items-center gap-2 text-xs font-bold border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md active:scale-95"
                                 title="Sair do Modo Cinema"
                             >
                                 <i className="fas fa-compress text-xs"></i>
-                                <span className="hidden sm:inline">Sair do Cinema</span>
+                                <span>Sair do Cinema</span>
                             </button>
+                        </div>
+
+                        {/* Playlist Below Player in Cinema Mode */}
+                        <div className="max-w-4xl mx-auto w-full pb-12">
+                            <div className="flex items-center gap-3 mb-4 px-2">
+                                <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-500">
+                                    <i className="fas fa-list-ul"></i>
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">Conteúdo Recomendado</h4>
+                                    <p className="text-[10px] text-slate-500 dark:text-slate-400">Continue sua jornada de aprendizado</p>
+                                </div>
+                            </div>
+                            {renderPlaylist()}
                         </div>
                     </div>
                 )}
