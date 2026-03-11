@@ -103,7 +103,7 @@ const BuddyContextModal: React.FC<BuddyContextModalProps> = ({ isOpen, onClose, 
 
         try {
             // Use Supabase Edge Function
-            
+
 
             // Attempt 1: Edge Function
             const { data, error } = await supabase.functions.invoke('ask-ai', {
@@ -122,49 +122,11 @@ const BuddyContextModal: React.FC<BuddyContextModalProps> = ({ isOpen, onClose, 
                 return;
             }
 
-            console.warn("Edge Function failed or empty, trying direct fallback...", error);
-
-            // Fallback: Direct Client-Side Call (Bypassing Edge Function)
-            // 1. Get User
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error('Usuário não autenticado.');
-
-            // 2. Get API Key from Profile
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('gemini_api_key')
-                .eq('id', user.id)
-                .single();
-
-            const apiKey = profile?.gemini_api_key;
-            if (!apiKey) throw new Error('Chave de API não encontrada (Edge e Fallback falharam).');
-
-            // 3. Call Google API Directly
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/${activeModel}:generateContent?key=${apiKey}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{
-                        role: 'user',
-                        parts: [{ text: `[INSTRUCÃO DE SISTEMA]:\n${systemInstruction}\n\n---\n${userMessage}` }]
-                    }],
-                    generationConfig: {
-                        temperature: 0.7,
-                        maxOutputTokens: 1000,
-                    }
-                })
-            });
-
-            const genData = await response.json();
-            if (!response.ok) throw new Error(genData.error?.message || 'Erro na API do Google (Fallback)');
-
-            const text = genData.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (!text) throw new Error('IA não retornou texto (Fallback)');
-
-            setMessages(prev => [...prev, { role: 'ai', text: text }]);
+            console.error("Edge Function failed:", error);
+            throw new Error('Falha na comunicação com a IA (Edge Function). O serviço pode estar temporariamente indisponível.');
 
         } catch (error) {
-            console.error("Buddy Ask Error (All attempts failed):", error);
+            console.error("Buddy Ask Error:", error);
             let errorMessage = "Desculpe, não consegui processar sua dúvida no momento.";
             if (error instanceof Error) {
                 errorMessage = `Erro: ${error.message}`;

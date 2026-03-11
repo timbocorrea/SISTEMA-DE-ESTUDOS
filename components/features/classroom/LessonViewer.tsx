@@ -498,7 +498,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
     // Determine if current active item is a slide presentation
     const activePlaylistItem = (lesson.videoUrls && lesson.videoUrls.length > 0) ? lesson.videoUrls[activeVideoIndex] : null;
-    const isSlideActive = activePlaylistItem?.type === 'slides' && ((activePlaylistItem?.slides && activePlaylistItem.slides.length > 0) || !!activePlaylistItem?.fileUrl);
+    const isSlideActive = activePlaylistItem?.type === 'slides' && ((activePlaylistItem?.slides && activePlaylistItem.slides.length > 0) || !!activePlaylistItem?.fileUrl || !!activePlaylistItem?.url);
 
     // Loading State (Partial Content)
     if (lesson.isLoaded === false) {
@@ -636,8 +636,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                     <SlideViewer
                                         title={activePlaylistItem!.title || 'Apresentação'}
                                         slides={activePlaylistItem!.slides}
-                                        fileUrl={activePlaylistItem!.fileUrl}
-                                        fileType={activePlaylistItem!.fileType}
+                                        fileUrl={activePlaylistItem!.fileUrl || activePlaylistItem!.url}
+                                        fileType={activePlaylistItem!.fileType || (activePlaylistItem!.fileUrl?.toLowerCase().includes('.pptx') || activePlaylistItem!.url?.toLowerCase().includes('.pptx') ? 'pptx' : 'pdf')}
                                     />
                                 ) : (
                                     <VideoPlayer

@@ -9,6 +9,7 @@ import { Quiz, QuizQuestion, QuizOption } from '../domain/quiz-entities';
 // Ajuste conforme necessário recuperando do context
 import { marked } from 'marked'; // Para conversão de Markdown para HTML
 import { toast } from 'sonner';
+import { sanitizeHtml } from '../utils/sanitizeHtml';
 import DropboxAudioBrowser, { DropboxFile } from './DropboxAudioBrowser';
 import { DropboxService } from '../services/dropbox/DropboxService';
 import DropboxFileBrowser from './DropboxFileBrowser';
@@ -3729,7 +3730,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                                         </div>
                                                     </div>
                                                 )}
-                                                {text && <div className="editor-content w-full text-sm" style={{ lineHeight: block.lineHeight || '1.6' }} dangerouslySetInnerHTML={{ __html: text }} />}
+                                                {text && <div className="editor-content w-full text-sm" style={{ lineHeight: block.lineHeight || '1.6' }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(text) }} />}
                                             </div>
                                         );
                                     })
@@ -4872,7 +4873,18 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                                                                 value={video.url}
                                                                                 onChange={e => {
                                                                                     const updated = [...videoUrls];
-                                                                                    updated[index].url = e.target.value;
+                                                                                    const val = e.target.value;
+                                                                                    const isDoc = val.toLowerCase().includes('.pdf') || val.toLowerCase().includes('.pptx');
+
+                                                                                    if (isDoc && video.type !== 'slides') {
+                                                                                        updated[index].fileUrl = val;
+                                                                                        updated[index].url = '';
+                                                                                        updated[index].type = 'slides';
+                                                                                        updated[index].fileType = val.toLowerCase().includes('.pptx') ? 'pptx' : 'pdf';
+                                                                                    } else {
+                                                                                        updated[index].url = val;
+                                                                                    }
+
                                                                                     setVideoUrls(updated);
                                                                                 }}
                                                                                 className="w-full px-2 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded text-xs outline-none focus:ring-2 focus:ring-indigo-500"
@@ -6031,7 +6043,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                             </button>
                                         </div>
                                         <div className="max-h-48 overflow-auto px-2 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
-                                            <div className="prose prose-invert prose-xs max-w-none text-slate-300" dangerouslySetInnerHTML={{ __html: docPreviewHtml }} />
+                                            <div className="prose prose-invert prose-xs max-w-none text-slate-300" dangerouslySetInnerHTML={{ __html: sanitizeHtml(docPreviewHtml) }} />
                                         </div>
                                     </div>
                                 )}
@@ -6578,7 +6590,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                             </h3>
                                             <div
                                                 className="text-sm text-slate-600 dark:text-slate-400 line-clamp-3"
-                                                dangerouslySetInnerHTML={{ __html: blocksNeedingSync[syncingBlockIndex]?.text || '' }}
+                                                dangerouslySetInnerHTML={{ __html: sanitizeHtml(blocksNeedingSync[syncingBlockIndex]?.text || '') }}
                                             />
                                         </div>
 

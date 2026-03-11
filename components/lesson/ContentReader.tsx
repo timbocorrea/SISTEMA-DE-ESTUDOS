@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 
 import { Lesson } from '../../domain/entities';
 import { useLessonStore } from '../../stores/useLessonStore';
+import { sanitizeHtml } from '../../utils/sanitizeHtml';
 
 interface HighlightData {
     id: string;
@@ -396,7 +397,7 @@ const ContentReader: React.FC<ContentReaderProps> = React.memo(({
                             </>
                         )}
                         <div
-                            dangerouslySetInnerHTML={{ __html: htmlWithHighlights }}
+                            dangerouslySetInnerHTML={{ __html: sanitizeHtml(htmlWithHighlights) }}
                             style={{ display: 'block' }}
                         />
 
@@ -432,7 +433,7 @@ const ContentReader: React.FC<ContentReaderProps> = React.memo(({
 
             return (
                 <div
-                    dangerouslySetInnerHTML={{ __html: htmlWithHighlights }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(htmlWithHighlights) }}
                     style={{ fontSize: '1rem', lineHeight: 1.8 }}
                     onClick={(e) => {
                         // Check if a highlight was clicked
@@ -499,7 +500,7 @@ const ContentReader: React.FC<ContentReaderProps> = React.memo(({
                     overflow: hidden;
                 }
 
-                /* The inner div that holds dangerouslySetInnerHTML must also establish
+                /* The inner div that holds the HTML content must also establish
                    a block formatting context so floats work inside it */
                 .content-reader .content-block > div {
                     display: flow-root;

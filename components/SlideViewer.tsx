@@ -29,7 +29,8 @@ const SlideViewer: React.FC<SlideViewerProps> = ({ title, slides = [], fileUrl, 
 
     // --- PDF Loading Logic ---
     useEffect(() => {
-        if (!fileUrl || fileType !== 'pdf') return;
+        const isExtUrl = fileUrl?.includes('dropbox.com') || fileUrl?.includes('dropboxusercontent.com') || fileUrl?.includes('drive.google.com');
+        if (!fileUrl || fileType !== 'pdf' || isExtUrl) return;
 
         let isMounted = true;
         setPdfLoading(true);
@@ -225,25 +226,37 @@ const SlideViewer: React.FC<SlideViewerProps> = ({ title, slides = [], fileUrl, 
 
     // =========== RENDERERS ===========
 
-    // PPTX Fallback
-    if (isFileMode && fileType === 'pptx') {
-        const encodedUrl = encodeURIComponent(fileUrl);
-        const viewerUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodedUrl}`;
+    const isExternalDocUrl = fileUrl?.includes('dropbox.com') || fileUrl?.includes('dropboxusercontent.com') || fileUrl?.includes('drive.google.com');
+
+    // External Doc Fallback (PPTX or PDF via Dropbox/Drive)
+    if (isFileMode && (fileType === 'pptx' || (fileType === 'pdf' && isExternalDocUrl))) {
+        let viewerUrl = '';
+        if (fileType === 'pptx') {
+            viewerUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`;
+        } else {
+            // Use Google Docs Viewer for Dropbox PDFs to avoid browser CORS restrictions on canvas
+            let directUrl = fileUrl;
+            if (directUrl.includes('dropbox.com') && !directUrl.includes('raw=1')) {
+                directUrl = directUrl.replace('dl=0', 'raw=1');
+                if (!directUrl.includes('raw=1')) directUrl += (directUrl.includes('?') ? '&raw=1' : '?raw=1');
+            }
+            viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(directUrl)}&embedded=true`;
+        }
 
         return (
             <div
                 ref={containerRef}
                 className={`relative w-full bg-slate-900 rounded-xl overflow-hidden shadow-2xl border border-slate-700 group ${isFullscreen ? 'flex flex-col' : ''}`}
             >
-                {/* Header PPTX */}
+                {/* Header Document */}
                 <div className="flex items-center justify-between bg-slate-800 px-3 py-2 border-b border-slate-700">
                     <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-orange-500/20">
-                            <i className="fas fa-file-powerpoint text-orange-400 text-xs"></i>
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${fileType === 'pdf' ? 'bg-red-500/20' : 'bg-orange-500/20'}`}>
+                            <i className={`fas ${fileType === 'pdf' ? 'fa-file-pdf text-red-400' : 'fa-file-powerpoint text-orange-400'} text-xs`}></i>
                         </div>
                         <span className="text-white text-xs font-bold truncate max-w-[250px]">{title}</span>
-                        <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400">
-                            PPTX
+                        <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${fileType === 'pdf' ? 'bg-red-500/20 text-red-400' : 'bg-orange-500/20 text-orange-400'}`}>
+                            {fileType === 'pdf' ? 'PDF' : 'PPTX'}
                         </span>
                     </div>
                     <div className="flex items-center gap-1">

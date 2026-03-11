@@ -1,9 +1,13 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
+const FRONTEND_URL = Deno.env.get('FRONTEND_URL') || 'http://localhost:3000';
+
 const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': FRONTEND_URL,
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+    'Vary': 'Origin'
 }
 
 serve(async (req) => {
@@ -30,6 +34,17 @@ serve(async (req) => {
         )
         const { data: { user } } = await supabaseClient.auth.getUser()
         if (!user) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders })
+
+        // 1.5 Authorize User Role (Instructor/Admin)
+        const { data: profile } = await supabaseClient
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single()
+
+        if (!profile || !['admin', 'instructor'].includes(profile.role)) {
+            return new Response(JSON.stringify({ error: 'Acesso Proibido: Requer privilégios administrativos.' }), { status: 403, headers: corsHeaders })
+        }
 
         if (!PROJECT_REF) {
             const url = Deno.env.get('SUPABASE_URL') || '';
@@ -84,24 +99,20 @@ serve(async (req) => {
 
         return new Response(
             JSON.stringify({
-                egress_bytes: usageData.network_egress ?? 0, // 0 or -1
+                egress_bytes: usageData.network_egress ?? 0,
                 storage_bytes: usageData.storage_size ?? 0,
                 db_size_bytes: dbSizeBytes,
-                is_mock: false,
-                api_status: apiError ? 'error' : 'ok',
-                api_message: apiError || 'Endpoint /usage not available via public API',
-                project_ref: PROJECT_REF
+                api_status: apiError ? 'error' : 'ok'
             }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
 
     } catch (error) {
         return new Response(JSON.stringify({
-            error: error.message,
-            is_error: true
+            error: 'Erro Interno do Servidor',
         }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 200
+            status: 500
         })
     }
 })
