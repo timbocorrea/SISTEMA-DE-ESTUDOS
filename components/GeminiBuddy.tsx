@@ -130,7 +130,7 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
   // Hide widget completely on /buddy page
   if (isBuddyPage) return null;
 
-  const mobileBottomClass = isLessonPage ? 'bottom-24' : 'bottom-6';
+  const mobileBottomClass = isLessonPage ? 'bottom-28' : 'bottom-20';
 
   return (
     <>
@@ -138,7 +138,7 @@ const GeminiBuddy: React.FC<GeminiBuddyProps> = ({
       <button
         onClick={() => setIsOpen(!isOpen)}
         aria-label="Abrir assistente IA"
-        className={`fixed ${mobileBottomClass} md:bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 ${isOpen
+        className={`fixed ${mobileBottomClass} md:bottom-6 right-6 z-[75] w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 ${isOpen
           ? 'bg-red-500 rotate-90'
           : 'bg-indigo-600 md:bg-indigo-600/40 md:hover:bg-indigo-600 md:hover:shadow-indigo-600/40 backdrop-blur-sm'
           }`}

@@ -302,6 +302,28 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
     const contentScrollContainerRef = useRef<HTMLDivElement>(null);
 
+    const scrollToBlockSafely = useCallback((element: HTMLElement) => {
+        const container = contentScrollContainerRef.current;
+        
+        if (container && window.innerWidth >= 1024) {
+             // Desktop: Scrolling within the constrained side panel
+             const containerRect = container.getBoundingClientRect();
+             const elementRect = element.getBoundingClientRect();
+             const relativeTop = elementRect.top - containerRect.top;
+             const targetScroll = container.scrollTop + relativeTop - (container.clientHeight / 2) + (elementRect.height / 2);
+             
+             container.scrollTo({ top: Math.max(0, targetScroll), behavior: 'smooth' });
+        } else {
+             // Mobile/Cinema Mode: Scrolling the entire window
+             const rect = element.getBoundingClientRect();
+             const scrollTop = window.scrollY || document.documentElement.scrollTop;
+             // Discount approx 60px for fixed headers
+             const targetScroll = scrollTop + rect.top - (window.innerHeight / 2) + (rect.height / 2) - 60;
+             
+             window.scrollTo({ top: Math.max(0, targetScroll), behavior: 'smooth' });
+        }
+    }, []);
+
     // Initial Resume Logic (Scroll and Focus)
     useEffect(() => {
         if (lessonProgress?.lastAccessedBlockId) {
@@ -311,7 +333,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
             setTimeout(() => {
                 const element = blockRefs.current[blockId];
                 if (element) {
-                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    scrollToBlockSafely(element);
                 }
             }, 500);
         }
@@ -325,7 +347,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
             if (element) {
                 // Use setTimeout to ensure UI has settled before natively scrolling
                 setTimeout(() => {
-                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    scrollToBlockSafely(element);
                 }, 100);
             }
         }

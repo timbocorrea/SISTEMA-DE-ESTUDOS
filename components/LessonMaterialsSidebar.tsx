@@ -164,7 +164,7 @@ const LessonMaterialsSidebar: React.FC<Props> = ({ lesson, onTrackAction, onAudi
 
     switch (effectiveType) {
       case 'AUDIO':
-        setCurrentAudio(item);
+        setCurrentAudio({ ...item, url: convertDropboxUrl(item.url) });
         setIsMinimized(false); // Always expand when selecting new
         onTrackAction?.(`Abriu Player Áudio: ${item.title}`);
         break;
