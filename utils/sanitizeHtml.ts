@@ -11,7 +11,18 @@ import DOMPurify from 'dompurify';
 export function sanitizeHtml(html: string): string {
     if (!html) return '';
 
-    return DOMPurify.sanitize(html, {
+    // Add a hook to ensure no javascript URIs sneak through even if DOMPurify allows them.
+    // DOMPurify strips javascript: by default, but this adds a mandatory check layer.
+    DOMPurify.addHook('uponSanitizeAttribute', function (node, data) {
+        if (data.attrName === 'href' || data.attrName === 'src') {
+            const val = data.attrValue.toLowerCase();
+            if (val.trim().startsWith('javascript:')) {
+                data.keepAttr = false;
+            }
+        }
+    });
+
+    const cleanHtml = DOMPurify.sanitize(html, {
         USE_PROFILES: { html: true },
         ALLOWED_TAGS: [
             'b', 'i', 'em', 'strong', 'a', 'p', 'br', 'ul', 'ol', 'li', 'span',
@@ -25,7 +36,12 @@ export function sanitizeHtml(html: string): string {
             'frameborder', 'allow', 'allowfullscreen', 'controls'
         ],
         ALLOW_DATA_ATTR: true,
-        // Block dangerous protocols specifically
-        FORBID_ATTR: ['onerror', 'onload', 'onmouseover', 'onmouseout', 'onfocus', 'onblur', 'onkeydown', 'onkeyup', 'onkeypress', 'ondrag', 'ondrop'],
+        FORBID_ATTR: ['onerror', 'onload', 'onmouseover', 'onmouseout', 'onfocus', 'onblur', 'onkeydown', 'onkeyup', 'onkeypress', 'ondrag', 'ondrop', 'onclick'],
+        FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'style']
     });
+
+    // Remove the hook so it doesn't duplicate/pollute for future calls
+    DOMPurify.removeHook('uponSanitizeAttribute');
+
+    return cleanHtml as string;
 }

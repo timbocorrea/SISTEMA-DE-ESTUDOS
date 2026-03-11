@@ -29,4 +29,11 @@ describe('XSS Sanitization', () => {
         expect(clean).toContain('<em>Italic</em>');
         expect(clean).toContain('<li>List Item</li>');
     });
+
+    it('should neutralize SVG obfuscation attacks', () => {
+        const payload = '<svg/onload=alert(1)>';
+        const clean = sanitizeHtml(payload);
+        expect(clean).not.toContain('onload');
+        expect(clean).not.toContain('alert');
+    });
 });

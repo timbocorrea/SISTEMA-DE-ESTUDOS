@@ -1,15 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { supabase } from '../../services/supabaseClient';
+import { createSupabaseClient } from '../../services/supabaseClient';
 
 // We mock the Supabase client to test the *logic* of our access controls
 // Since we don't have a local Supabase instance running in the test environment,
 // we simulate the expected RLS and trigger behaviors based on the migration we wrote.
 
+const mockFrom = vi.fn();
+const mockSupabase = {
+    from: mockFrom
+};
+
 vi.mock('../../services/supabaseClient', () => {
     return {
-        supabase: {
-            from: vi.fn(),
-        }
+        createSupabaseClient: vi.fn(() => mockSupabase)
     };
 });
 
@@ -30,8 +33,9 @@ describe('Security Hardening & RLS Validation (Simulated)', () => {
             const mockEq = vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ single: mockUpdate }) });
             const mockUpdateChain = { eq: mockEq };
             
-            (supabase.from as any).mockReturnValue({ update: vi.fn().mockReturnValue(mockUpdateChain) });
+            mockFrom.mockReturnValue({ update: vi.fn().mockReturnValue(mockUpdateChain) });
 
+            const supabase = createSupabaseClient();
             const result = await supabase.from('profiles').update({ role: 'INSTRUCTOR' }).eq('id', 'user-1').select().single();
             
             // Validate the simulation result matches our Trigger's intended behavior
@@ -48,8 +52,9 @@ describe('Security Hardening & RLS Validation (Simulated)', () => {
             const mockEq = vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ single: mockUpdate }) });
             const mockUpdateChain = { eq: mockEq };
             
-            (supabase.from as any).mockReturnValue({ update: vi.fn().mockReturnValue(mockUpdateChain) });
+            mockFrom.mockReturnValue({ update: vi.fn().mockReturnValue(mockUpdateChain) });
 
+            const supabase = createSupabaseClient();
             const result = await supabase.from('profiles').update({ xp_total: 99999 }).eq('id', 'user-1').select().single();
             
             expect(result.data.xp_total).toBe(150);
@@ -66,9 +71,10 @@ describe('Security Hardening & RLS Validation (Simulated)', () => {
             const mockEq = vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ single: mockUpdate }) }) });
             const mockUpdateChain = { eq: mockEq };
             
-            (supabase.from as any).mockReturnValue({ update: vi.fn().mockReturnValue(mockUpdateChain) });
+            mockFrom.mockReturnValue({ update: vi.fn().mockReturnValue(mockUpdateChain) });
 
             // Simulating user-1 trying to update user-2's progress
+            const supabase = createSupabaseClient();
             const result = await supabase.from('lesson_progress')
                 .update({ is_completed: true })
                 .eq('user_id', 'user-2')
@@ -89,9 +95,10 @@ describe('Security Hardening & RLS Validation (Simulated)', () => {
             const mockEq = vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ single: mockUpdate }) }) });
             const mockUpdateChain = { eq: mockEq };
             
-            (supabase.from as any).mockReturnValue({ update: vi.fn().mockReturnValue(mockUpdateChain) });
+            mockFrom.mockReturnValue({ update: vi.fn().mockReturnValue(mockUpdateChain) });
 
             // Simulating user-1 updating their own progress
+            const supabase = createSupabaseClient();
             const result = await supabase.from('lesson_progress')
                 .update({ is_completed: true })
                 .eq('user_id', 'user-1')
@@ -112,8 +119,9 @@ describe('Security Hardening & RLS Validation (Simulated)', () => {
                 error: null 
             });
             
-            (supabase.from as any).mockReturnValue({ select: mockSelect });
+            mockFrom.mockReturnValue({ select: mockSelect });
 
+            const supabase = createSupabaseClient();
             const result = await supabase.from('courses').select('*');
             
             expect(result.data).toEqual([]); 
