@@ -2159,7 +2159,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                 const videoId = match[2];
                 embedHtml = `<div class="video-wrapper" style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; margin: 20px 0;">
                     <div class="video-overlay"></div>
-                    <iframe src="https://www.youtube.com/embed/${videoId}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+                    <iframe src="https://www.youtube.com/embed/${videoId}?origin=${window.location.origin}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
                 </div><p><br></p>`;
             } else {
                 toast.error('URL do YouTube inválida!');
@@ -3214,7 +3214,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
         if (mediaUrl.includes('youtube.com') || mediaUrl.includes('youtu.be')) {
             const match = mediaUrl.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
             videoId = match ? match[1] : '';
-            embedUrl = `https://www.youtube.com/embed/${videoId}`;
+            embedUrl = `https://www.youtube.com/embed/${videoId}?origin=${window.location.origin}`;
         } else if (mediaUrl.includes('vimeo.com')) {
             const match = mediaUrl.match(/vimeo\.com\/(\d+)/);
             videoId = match ? match[1] : '';
@@ -3237,7 +3237,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
         if (isVideoTag) {
             html = `<div class="video-wrapper" style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; margin: 20px 0; border-radius: 12px; background: #000;"><video controls src="${embedUrl}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></video></div>`;
         } else {
-            html = `<div class="video-wrapper" style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; margin: 20px 0; border-radius: 12px;"><div class="video-overlay"></div><iframe src="${embedUrl}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;" frameborder="0" allowfullscreen></iframe></div>`;
+            html = `<div class="video-wrapper" style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; margin: 20px 0; border-radius: 12px;"><div class="video-overlay"></div><iframe src="${embedUrl}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
         }
 
         const newBlock = {

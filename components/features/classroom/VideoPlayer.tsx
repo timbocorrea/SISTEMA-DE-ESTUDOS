@@ -144,7 +144,8 @@ const VideoPlayer = React.forwardRef<VideoPlayerRef, VideoPlayerProps>(({ lesson
       playerVars: {
         autoplay: 0,
         modestbranding: 1,
-        rel: 0
+        rel: 0,
+        origin: window.location.origin
       },
       events: {
         onStateChange: (event: any) => {
