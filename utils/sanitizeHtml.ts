@@ -27,10 +27,9 @@ export function sanitizeHtml(html: string): string {
             const el = node as Element;
             const src = el.getAttribute('src') || '';
             const isSafeDomain = 
-                src.startsWith('https://www.youtube.com/') || 
-                src.startsWith('https://youtube.com/') ||
-                src.startsWith('https://www.youtube-nocookie.com/') ||
-                src.startsWith('https://player.vimeo.com/');
+                src.startsWith('https://www.youtube.com/embed/') || 
+                src.startsWith('https://www.youtube-nocookie.com/embed/') ||
+                src.startsWith('https://player.vimeo.com/video/');
 
             if (!isSafeDomain) {
                 node.parentNode?.removeChild(node);
@@ -49,7 +48,7 @@ export function sanitizeHtml(html: string): string {
         ALLOWED_ATTR: [
             'href', 'src', 'alt', 'title', 'class', 'style', 'target', 'rel',
             'width', 'height', 'd', 'viewBox', 'fill', 'xmlns', 'data-note-id',
-            'frameborder', 'allow', 'allowfullscreen', 'controls'
+            'frameborder', 'allow', 'allowfullscreen', 'controls', 'scrolling'
         ],
         ALLOW_DATA_ATTR: true,
         FORBID_ATTR: ['onerror', 'onload', 'onmouseover', 'onmouseout', 'onfocus', 'onblur', 'onkeydown', 'onkeyup', 'onkeypress', 'ondrag', 'ondrop', 'onclick'],
