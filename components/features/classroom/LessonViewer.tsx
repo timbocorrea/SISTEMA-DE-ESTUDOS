@@ -817,7 +817,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                 {/* Cinema Mode: Player fullwidth + Playlist below */}
                 {isCinemaMode && (
                     <div className="w-full space-y-6 animate-in fade-in duration-500 max-w-[1400px] mx-auto px-4">
-                        <div className="w-full bg-black rounded-3xl overflow-hidden shadow-2xl border border-white/5 relative aspect-video max-h-[75vh] min-h-[400px] flex items-center justify-center">
+                        <div className="w-full bg-black rounded-3xl overflow-hidden shadow-2xl border border-white/5 relative aspect-[4/3] max-h-[75vh] min-h-[400px] flex items-center justify-center">
                             {isSlideActive ? (
                                 <div className="w-full h-full flex items-center justify-center bg-slate-900">
                                     <SlideViewer

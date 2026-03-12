@@ -255,7 +255,7 @@ const SlideViewer: React.FC<SlideViewerProps> = ({ title, slides = [], fileUrl, 
                         </button>
                     </div>
                 </div>
-                <div className={`${isFullscreen ? 'flex-1' : 'aspect-video'} bg-slate-950`}>
+                <div className={`${isFullscreen ? 'flex-1' : 'aspect-[4/3]'} bg-slate-950`}>
                     <iframe src={viewerUrl} className="w-full h-full border-0" title={title} allowFullScreen sandbox="allow-scripts allow-same-origin allow-popups allow-forms" />
                 </div>
             </div>
@@ -299,7 +299,7 @@ const SlideViewer: React.FC<SlideViewerProps> = ({ title, slides = [], fileUrl, 
             </div>
 
             {/* Main Content Area */}
-            <div className={`relative ${isFullscreen ? 'w-full flex-1' : 'aspect-video'} flex items-center justify-center bg-slate-950 overflow-hidden`}>
+            <div className={`relative ${isFullscreen ? 'w-full flex-1' : 'aspect-[4/3]'} flex items-center justify-center bg-slate-950 overflow-hidden`}>
 
                 {/* PDF Mode */}
                 {fileType === 'pdf' && (
