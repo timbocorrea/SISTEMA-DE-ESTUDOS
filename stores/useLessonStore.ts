@@ -70,7 +70,6 @@ export const useLessonStore = create<LessonStore>()(
                 playbackSpeed: state.playbackSpeed,
                 audioEnabled: state.audioEnabled,
                 fontSize: state.fontSize,
-                isCinemaMode: state.isCinemaMode,
                 contentTheme: state.contentTheme
             }),
         }

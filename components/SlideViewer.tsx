@@ -233,7 +233,7 @@ const SlideViewer: React.FC<SlideViewerProps> = ({ title, slides = [], fileUrl, 
         return (
             <div
                 ref={containerRef}
-                className={`relative w-full bg-slate-900 rounded-xl overflow-hidden shadow-2xl border border-slate-700 group ${isFullscreen ? 'flex flex-col' : ''}`}
+                className={`relative w-full h-full bg-slate-900 rounded-xl overflow-hidden shadow-2xl border border-slate-700 group flex flex-col`}
             >
                 {/* Header Document */}
                 <div className="flex items-center justify-between bg-slate-800 px-3 py-2 border-b border-slate-700">
@@ -266,7 +266,7 @@ const SlideViewer: React.FC<SlideViewerProps> = ({ title, slides = [], fileUrl, 
     return (
         <div
             ref={containerRef}
-            className={`relative w-full bg-slate-900 rounded-xl overflow-hidden shadow-2xl border border-slate-700 group flex flex-col ${isFullscreen ? 'h-full justify-center' : ''}`}
+            className={`relative w-full h-full bg-slate-900 rounded-xl overflow-hidden shadow-2xl border border-slate-700 group flex flex-col`}
         >
             {/* Header (Unified) */}
             <div className={`absolute top-0 left-0 right-0 z-20 bg-gradient-to-b from-black/80 to-transparent p-3 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity duration-300`}>
@@ -322,22 +322,26 @@ const SlideViewer: React.FC<SlideViewerProps> = ({ title, slides = [], fileUrl, 
                             </div>
                         )}
 
-                        <canvas
-                            ref={canvasRef}
-                            className={`max-w-full max-h-full object-contain transition-opacity duration-300 ${pdfLoading ? 'opacity-0' : 'opacity-100'}`}
-                        />
+                        <div key={currentIndex} className="w-full h-full flex items-center justify-center animate-in fade-in slide-in-from-right-5 duration-500">
+                            <canvas
+                                ref={canvasRef}
+                                className={`max-w-full max-h-full object-contain shadow-2xl transition-opacity duration-300 ${pdfLoading ? 'opacity-0' : 'opacity-100'}`}
+                            />
+                        </div>
                     </>
                 )}
 
-                {/* Slides (Images) Mode - Transição Sutil */}
+                {/* Slides (Images) Mode - Transição Horizontal */}
                 {!isFileMode && slides.length > 0 && (
-                    <img
-                        key={currentIndex}
-                        src={slides[currentIndex]}
-                        alt={`Slide ${currentIndex + 1}`}
-                        className={`${isFullscreen ? 'max-w-full max-h-full' : 'w-full h-full'} object-contain select-none transition-opacity duration-300`}
-                        draggable={false}
-                    />
+                    <div className="w-full h-full relative overflow-hidden">
+                        <img
+                            key={currentIndex}
+                            src={slides[currentIndex]}
+                            alt={`Slide ${currentIndex + 1}`}
+                            className={`w-full h-full object-contain select-none animate-in fade-in slide-in-from-${direction > 0 ? 'right' : 'left'}-10 duration-500`}
+                            draggable={false}
+                        />
+                    </div>
                 )}
 
                 {(!isFileMode && slides.length === 0) && (
