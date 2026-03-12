@@ -483,12 +483,37 @@ const ContentReader: React.FC<ContentReaderProps> = React.memo(({
 
             {/* Injected Styles for Responsive Content */}
             <style>{`
-                .content-reader iframe,
-                .content-reader video,
+                /* Responsive video wrapper (padding-bottom technique) */
+                .content-reader .video-wrapper,
+                .content-reader .embed-wrapper {
+                    position: relative;
+                    width: 100%;
+                    max-width: 100%;
+                    margin: 1rem 0;
+                    border-radius: 0.75rem;
+                    overflow: hidden;
+                }
+
+                /* iFrames INSIDE a video-wrapper fill the container */
+                .content-reader .video-wrapper iframe,
+                .content-reader .video-wrapper video {
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100% !important;
+                    height: 100% !important;
+                    border-radius: 0;
+                    margin: 0;
+                }
+
+                /* Standalone iFrames (not inside wrapper) */
+                .content-reader iframe:not(.video-wrapper iframe),
+                .content-reader video:not(.video-wrapper video),
                 .content-reader embed,
                 .content-reader object {
                     max-width: 100%;
-                    height: auto !important;
+                    width: 100%;
+                    height: auto;
                     aspect-ratio: 16/9;
                     border-radius: 0.5rem;
                     margin: 1rem 0;
