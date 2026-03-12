@@ -12,12 +12,28 @@ export function sanitizeHtml(html: string): string {
     if (!html) return '';
 
     // Add a hook to ensure no javascript URIs sneak through even if DOMPurify allows them.
-    // DOMPurify strips javascript: by default, but this adds a mandatory check layer.
     DOMPurify.addHook('uponSanitizeAttribute', function (node, data) {
         if (data.attrName === 'href' || data.attrName === 'src') {
             const val = data.attrValue.toLowerCase();
             if (val.trim().startsWith('javascript:')) {
                 data.keepAttr = false;
+            }
+        }
+    });
+
+    // Hook to allow only specific safe domains for iframes
+    DOMPurify.addHook('uponSanitizeElement', (node, data) => {
+        if (data.tagName === 'iframe') {
+            const el = node as Element;
+            const src = el.getAttribute('src') || '';
+            const isSafeDomain = 
+                src.startsWith('https://www.youtube.com/') || 
+                src.startsWith('https://youtube.com/') ||
+                src.startsWith('https://www.youtube-nocookie.com/') ||
+                src.startsWith('https://player.vimeo.com/');
+
+            if (!isSafeDomain) {
+                node.parentNode?.removeChild(node);
             }
         }
     });
@@ -37,11 +53,12 @@ export function sanitizeHtml(html: string): string {
         ],
         ALLOW_DATA_ATTR: true,
         FORBID_ATTR: ['onerror', 'onload', 'onmouseover', 'onmouseout', 'onfocus', 'onblur', 'onkeydown', 'onkeyup', 'onkeypress', 'ondrag', 'ondrop', 'onclick'],
-        FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'style']
+        FORBID_TAGS: ['script', 'object', 'embed', 'style']
     });
 
-    // Remove the hook so it doesn't duplicate/pollute for future calls
+    // Remove hooks so they don't duplicate/pollute for future calls
     DOMPurify.removeHook('uponSanitizeAttribute');
+    DOMPurify.removeHook('uponSanitizeElement');
 
     return cleanHtml as string;
 }
