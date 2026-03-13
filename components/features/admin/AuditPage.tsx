@@ -4,6 +4,24 @@ import { NumberTicker } from '@/components/ui/number-ticker';
 import { AnimatedDuration } from '@/components/ui/animated-duration';
 import { AuditSessionDetailModal } from '@/components/AuditSessionDetailModal';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
+import { motion, AnimatePresence } from 'framer-motion';
+
+const containerVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+        opacity: 1,
+        y: 0,
+        transition: {
+            duration: 0.4,
+            staggerChildren: 0.1
+        }
+    }
+};
+
+const itemVariants = {
+    hidden: { opacity: 0, scale: 0.95 },
+    visible: { opacity: 1, scale: 1, transition: { duration: 0.3 } }
+};
 
 const AuditPage: React.FC = () => {
     const { data: rawLogs, loadMore, loading: isLoadingMore, hasMore } = useInfiniteScroll('audit_logs', { 
@@ -51,7 +69,6 @@ const AuditPage: React.FC = () => {
             const isStudyPage = log.path.startsWith('/course/') || log.path.includes('/lesson/');
 
             if (!isStudyPage) {
-                // If a specific status filter is active, exclude non-study pages as they have no status
                 matchesStatus = false;
             } else {
                 const score = log.total_duration_seconds > 0
@@ -86,7 +103,6 @@ const AuditPage: React.FC = () => {
     };
 
     const getFriendlyPageName = (path: string, currentTitle: string, resourceTitle?: string) => {
-        // Priority Mappings
         if (path === '/' || path === '') return 'Dashboard';
         if (path === '/courses') return 'Meus Cursos';
         if (path === '/history') return 'Histórico';
@@ -100,10 +116,9 @@ const AuditPage: React.FC = () => {
             return resourceTitle ? `Sala de Aula: ${resourceTitle}` : 'Sala de Aula';
         }
 
-        // Helper for raw paths that might have slipped in as titles
         if (currentTitle.startsWith('/')) {
             if (currentTitle.includes('course')) return 'Sala de Aula';
-            return currentTitle; // Keep distinct if unknown
+            return currentTitle;
         }
 
         return currentTitle;
@@ -113,26 +128,27 @@ const AuditPage: React.FC = () => {
         return path.startsWith('/course/') || path.includes('/lesson/');
     };
 
-    // Filters application
-    // Note: since we use infinite scroll, filters apply to loaded data.
-    // In a fully robust infinite scroll with filters, filters would be passed to the hook.
-    // This is kept here for pure UI filtering on loaded chunks as per previous logic.
-
     return (
-        <div className="p-6 max-w-7xl mx-auto space-y-6">
-            <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <motion.div 
+            className="p-6 max-w-7xl mx-auto space-y-6 relative"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+        >
+            <div className="noise-overlay" />
+            
+            <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4 relative z-10">
                 <div>
                     <h1 className="text-3xl font-black text-slate-800 dark:text-white uppercase tracking-tighter flex items-center gap-3">
                         <i className="fas fa-shield-alt text-indigo-500"></i>
-                        Auditoria de Atividade
+                        <span className="premium-text-gradient">Auditoria de Atividade</span>
                     </h1>
                     <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium">
                         Monitoramento detalhado de permanência e engajamento para validação acadêmica.
                     </p>
                 </div>
 
-                {/* Filters */}
-                <div className="flex items-center gap-3 bg-white dark:bg-[#0a0e14]/50 p-2 rounded-xl border border-slate-200 dark:border-white/10 shadow-sm backdrop-blur-md">
+                <div className="flex items-center gap-3 glass-panel p-2 rounded-xl">
                     <div className="relative">
                         <i className="fas fa-calendar absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
                         <input
@@ -170,9 +186,8 @@ const AuditPage: React.FC = () => {
                 </div>
             </header>
 
-            {/* Stats Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-white dark:bg-[#0a0e14]/50 backdrop-blur-xl border border-slate-200 dark:border-white/5 p-6 rounded-2xl">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 relative z-10">
+                <motion.div variants={itemVariants} className="glass-card p-6 rounded-2xl">
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400">
                             <i className="fas fa-history text-xl"></i>
@@ -184,9 +199,9 @@ const AuditPage: React.FC = () => {
                             </h2>
                         </div>
                     </div>
-                </div>
+                </motion.div>
 
-                <div className="bg-white dark:bg-[#0a0e14]/50 backdrop-blur-xl border border-slate-200 dark:border-white/5 p-6 rounded-2xl">
+                <motion.div variants={itemVariants} className="glass-card p-6 rounded-2xl">
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400">
                             <i className="fas fa-clock text-xl"></i>
@@ -198,9 +213,9 @@ const AuditPage: React.FC = () => {
                             </h2>
                         </div>
                     </div>
-                </div>
+                </motion.div>
 
-                <div className="bg-white dark:bg-[#0a0e14]/50 backdrop-blur-xl border border-slate-200 dark:border-white/5 p-6 rounded-2xl">
+                <motion.div variants={itemVariants} className="glass-card p-6 rounded-2xl">
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center text-red-400">
                             <i className="fas fa-bed text-xl"></i>
@@ -212,46 +227,67 @@ const AuditPage: React.FC = () => {
                             </h2>
                         </div>
                     </div>
-                </div>
+                </motion.div>
             </div>
 
-            {/* Timeline Table */}
-            <div className="bg-white dark:bg-[#0a0e14]/80 backdrop-blur-xl border border-slate-200 dark:border-white/5 rounded-2xl overflow-hidden shadow-xl shadow-black/5 flex flex-col">
+            <div className="glass-panel rounded-2xl overflow-hidden shadow-xl flex flex-col">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm">
                         <thead className="bg-slate-50 dark:bg-white/5 border-b border-slate-200 dark:border-white/5">
                             <tr>
                                 <th className="px-6 py-4 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs">Horário</th>
                                 <th className="px-6 py-4 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs">Local / Página</th>
-                                <th className="px-6 py-4 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs text-center">Duração Total</th>
-                                <th className="px-6 py-4 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs text-center">Atividade Real</th>
+                                <th className="px-6 py-4 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs text-center">Tempo Total</th>
+                                <th className="px-6 py-4 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs text-center">Atividade</th>
                                 <th className="px-6 py-4 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs text-center">Status</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-200 dark:divide-white/5">
-                            {filteredLogs.length === 0 ? (
-                                <tr>
-                                    <td colSpan={5} className="px-6 py-12 text-center text-slate-500 italic">
-                                        Nenhuma atividade encontrada com os filtros atuais.
-                                    </td>
-                                </tr>
-                            ) : (
-                                filteredLogs.map((log) => (
-                                    <tr
-                                        key={log.id}
-                                        onClick={() => handleRowClick(log.id)}
-                                        className={`hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group cursor-pointer ${isDetailLoading ? 'opacity-50 pointer-events-none' : ''}`}
+                        <tbody className="divide-y divide-slate-100 dark:divide-white/5 bg-white/50 dark:bg-transparent">
+                            <AnimatePresence mode="popLayout">
+                                {filteredLogs.length === 0 ? (
+                                    <motion.tr 
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        exit={{ opacity: 0 }}
                                     >
-                                        <td className="px-6 py-4 text-slate-600 dark:text-slate-300 font-mono text-xs whitespace-nowrap">
-                                            {new Date(log.timestamp).toLocaleTimeString()}
-                                            <span className="opacity-50 ml-2">{new Date(log.timestamp).toLocaleDateString()}</span>
+                                        <td colSpan={5} className="px-6 py-20 text-center">
+                                            <div className="flex flex-col items-center gap-3 opacity-40">
+                                                <i className="fas fa-history text-4xl"></i>
+                                                <p className="text-sm font-medium">Nenhum registro encontrado para este período.</p>
+                                            </div>
+                                        </td>
+                                    </motion.tr>
+                                ) : (
+                                    filteredLogs.map((log) => (
+                                        <motion.tr 
+                                            key={log.id} 
+                                            variants={itemVariants}
+                                            layout
+                                            initial="hidden"
+                                            animate="visible"
+                                            exit={{ opacity: 0, scale: 0.95 }}
+                                            onClick={() => handleRowClick(log.id)} 
+                                            className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors group cursor-pointer"
+                                        >
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="text-xs font-bold text-slate-400 dark:text-slate-500 mb-1">
+                                                {new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' }).format(new Date(log.timestamp))}
+                                            </div>
+                                            <div className="text-sm font-black text-slate-700 dark:text-slate-200">
+                                                {new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(new Date(log.timestamp))}
+                                            </div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div className="flex flex-col">
-                                                <span className="font-bold text-slate-800 dark:text-white">
-                                                    {getFriendlyPageName(log.path, log.pageTitle, log.resourceTitle)}
+                                            <div className="flex flex-col gap-1">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]"></span>
+                                                    <span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-300">
+                                                        {getFriendlyPageName(log.path, log.pageTitle, log.resourceTitle)}
+                                                    </span>
+                                                </div>
+                                                <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 truncate max-w-[200px] hover:text-indigo-400 transition-colors cursor-help" title={log.path}>
+                                                    {log.path}
                                                 </span>
-                                                <span className="text-[10px] text-slate-500 font-mono opacity-70 truncate max-w-[200px]">{log.path}</span>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-center font-mono text-slate-600 dark:text-slate-400">
@@ -299,14 +335,14 @@ const AuditPage: React.FC = () => {
                                                 <span className="text-xs font-medium text-slate-400 dark:text-slate-500 opacity-60">N/A</span>
                                             )}
                                         </td>
-                                    </tr>
+                                    </motion.tr>
                                 ))
                             )}
+                            </AnimatePresence>
                         </tbody>
                     </table>
                 </div>
 
-                {/* Load More Button */}
                 {hasMore && (
                     <div className="px-6 py-4 border-t border-slate-200 dark:border-white/5 flex flex-col items-center justify-center bg-slate-50/50 dark:bg-white/[0.02]">
                         <button
@@ -321,14 +357,13 @@ const AuditPage: React.FC = () => {
                 )}
             </div>
 
-            {/* Modal de Detalhes da Sessão */}
             {selectedLog && (
                 <AuditSessionDetailModal
                     log={selectedLog}
                     onClose={() => setSelectedLog(null)}
                 />
             )}
-        </div>
+        </motion.div>
     );
 };
 

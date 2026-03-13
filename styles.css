@@ -372,7 +372,25 @@ body {
 }
 
 /* Responsive Images for Lesson Content (Mobile Fixes) */
-@media (max-width: 768px) {
+@layer utilities {
+  .glass-panel {
+    @apply bg-white/70 dark:bg-slate-900/60 backdrop-blur-xl border border-white/20 dark:border-slate-800/50 shadow-2xl;
+  }
+  
+  .glass-card {
+    @apply bg-white/50 dark:bg-slate-800/40 backdrop-blur-lg border border-white/30 dark:border-slate-700/50 shadow-xl hover:shadow-2xl transition-all duration-300;
+  }
+
+  .premium-text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 via-cyan-500 to-emerald-500 dark:from-indigo-400 dark:via-cyan-400 dark:to-emerald-400;
+  }
+
+  .noise-overlay {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    mask-image: radial-gradient(circle at center, black, transparent);
+    @apply absolute inset-0 opacity-[0.03] pointer-events-none mix-blend-overlay;
+  }
+}
 
   /* Ensure images within the editor preview or content reader drop customized floats and widths */
   .prose img,
@@ -386,4 +404,3 @@ body {
     margin: 1.5rem auto !important;
     display: block !important;
   }
-}
