@@ -6,6 +6,7 @@ import CourseCard from '@/components/features/dashboard/CourseCard';
 import DashboardSkeleton from '@/components/skeletons/DashboardSkeleton';
 import RecentActivity from '@/components/features/dashboard/RecentActivity';
 import { useCourse } from '@/contexts/CourseContext';
+import { MagicCard } from '@/components/ui/magic-card';
 
 interface StudentDashboardProps {
   user: User;
@@ -93,7 +94,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
 
   return (
-    <div className="p-4 md:p-8 max-w-[1600px] mx-auto">
+    <div className="p-4 md:p-8 max-w-[1600px] mx-auto relative">
+      <div className="noise-overlay" />
       {/* Header - Welcome Section */}
       <DashboardHeader user={user} />
 
@@ -103,11 +105,15 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
         {/* LEFT COLUMN: Graphical Data & Recent Activity (1/3 width) - Reordered as requested */}
         <div className="xl:col-span-1">
           <div className="sticky top-8 space-y-6">
-            <WeeklySummary
-              xpHistory={xpHistory}
-              courseProgress={courseProgressData}
-            />
-            <RecentActivity user={user} />
+            <MagicCard className="glass-panel p-0 overflow-hidden">
+              <WeeklySummary
+                xpHistory={xpHistory}
+                courseProgress={courseProgressData}
+              />
+            </MagicCard>
+            <MagicCard className="glass-panel p-0 overflow-hidden">
+              <RecentActivity user={user} />
+            </MagicCard>
           </div>
         </div>
 

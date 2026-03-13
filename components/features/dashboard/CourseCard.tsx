@@ -1,6 +1,6 @@
 import React from 'react';
 import { Course } from '@/domain/entities';
-import { ShinyButton } from '@/components/ui/shiny-button';
+import { ShimmerButton } from '@/components/ui/shimmer-button';
 import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button';
 
 import LazyImage from '@/components/ui/LazyImage';
@@ -27,7 +27,7 @@ const CourseCard: React.FC<CourseCardProps> = ({
 
     return (
         <div
-            className="group bg-white dark:bg-black/40 backdrop-blur-md rounded-2xl border border-slate-200 dark:border-white/5 overflow-hidden transition-all duration-300 cursor-pointer flex flex-col h-full relative ring-1 ring-slate-200 dark:ring-white/5 hover:transform-none lg:hover:-translate-y-1 lg:hover:shadow-[0_0_30px_-5px_rgba(99,102,241,0.6)] lg:hover:border-indigo-500/80 lg:dark:hover:shadow-[0_0_30px_-5px_rgba(99,102,241,0.4)] lg:dark:hover:border-indigo-500/80"
+            className="group glass-card rounded-2xl overflow-hidden transition-all duration-300 cursor-pointer flex flex-col h-full relative hover:transform-none lg:hover:-translate-y-1 lg:hover:shadow-[0_0_30px_-5px_rgba(99,102,241,0.6)] lg:hover:border-indigo-500/80 lg:dark:hover:shadow-[0_0_30px_-5px_rgba(99,102,241,0.4)] lg:dark:hover:border-indigo-500/80"
             onClick={onClick}
         >
             {/* Course Image */}
@@ -105,17 +105,14 @@ const CourseCard: React.FC<CourseCardProps> = ({
                             </InteractiveHoverButton>
                         </div>
                     ) : (
-                        <ShinyButton
+                        <ShimmerButton
                             onClick={(e) => {
                                 e.stopPropagation();
                                 onClick();
                             }}
-                            className={`flex-1 px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all shadow-lg active:scale-95 group/btn relative overflow-hidden ${isEnrolled
-                                ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/20'
-                                : 'bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-800 dark:text-white border border-slate-300 dark:border-white/10'
-                                }`}
+                            className="flex-1"
                         >
-                            <span className="relative z-10 flex items-center justify-center gap-2">
+                            <span className="relative z-10 flex items-center justify-center gap-2 text-white font-bold text-xs uppercase tracking-wider">
                                 {isEnrolled ? (
                                     <>
                                         <i className="fas fa-play"></i>
@@ -128,7 +125,7 @@ const CourseCard: React.FC<CourseCardProps> = ({
                                     </>
                                 )}
                             </span>
-                        </ShinyButton>
+                        </ShimmerButton>
                     )}
 
                     {onManage && (

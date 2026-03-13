@@ -3,9 +3,9 @@ import { QuizQuestion, QuizOption, QuestionDifficulty } from '../domain/quiz-ent
 import { AdminService } from '../services/AdminService';
 import { CourseRecord, ModuleRecord, LessonRecord } from '../domain/admin';
 import { toast } from 'sonner';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, Variants } from 'framer-motion';
 
-const containerVariants = {
+const containerVariants: Variants = {
     hidden: { opacity: 0, scale: 0.95, y: 30 },
     visible: {
         opacity: 1,
@@ -13,16 +13,16 @@ const containerVariants = {
         y: 0,
         transition: {
             duration: 0.5,
-            ease: [0.16, 1, 0.3, 1],
+            ease: [0.16, 1, 0.3, 1] as any,
             staggerChildren: 0.08
         }
     },
     exit: { opacity: 0, scale: 0.95, y: 20, transition: { duration: 0.2 } }
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
     hidden: { opacity: 0, y: 15 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } }
+    visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] as any } }
 };
 
 interface QuestionBankEditorProps {
