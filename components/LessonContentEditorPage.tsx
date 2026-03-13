@@ -1641,6 +1641,15 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
         }
 
         setMediaSize(size);
+
+        // Sincronizar mudança com o estado do bloco em tempo real
+        const editableParent = selectedMedia.closest('[contenteditable="true"]');
+        if (editableParent) {
+            const blockId = editableParent.getAttribute('data-block-id');
+            if (blockId) {
+                updateBlock(blockId, { text: editableParent.innerHTML });
+            }
+        }
     };
 
     // Função para alinhar mídia (inclui float para texto ao redor e inline para lado a lado)
@@ -1701,6 +1710,15 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
             const editableParent = selectedMedia.closest('[contenteditable="true"]');
             if (editableParent) {
                 editableParent.prepend(selectedMedia);
+            }
+        }
+
+        // Sincronizar mudança com o estado do bloco em tempo real
+        const editableParent = selectedMedia.closest('[contenteditable="true"]');
+        if (editableParent) {
+            const blockId = editableParent.getAttribute('data-block-id');
+            if (blockId) {
+                updateBlock(blockId, { text: editableParent.innerHTML });
             }
         }
     };
