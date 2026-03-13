@@ -7,7 +7,7 @@ interface DashboardHeaderProps {
 
 const DashboardHeader: React.FC<DashboardHeaderProps> = ({ user }) => {
     return (
-        <div className="sticky top-0 z-50 backdrop-blur-md bg-white/50 dark:bg-slate-900/50 flex items-center justify-between mb-10 -mx-4 md:-mx-8 px-4 md:px-8 py-4 border-b border-white/10">
+        <div className="flex items-center justify-between mb-10 py-4">
             <div>
                 <h2 className="text-4xl font-black text-slate-800 dark:text-white tracking-tight drop-shadow-lg">
                     Olá, <span className="premium-text-gradient">{user.name.split(' ')[0]}</span>! 👋

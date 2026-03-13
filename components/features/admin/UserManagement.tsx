@@ -138,8 +138,8 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
         };
       });
     } catch (error) {
-      console.error('Erro ao carregar detalhes do perfil para ediÃ§Ã£o:', error);
-      toast.warning('NÃ£o foi possÃ­vel carregar a API key atual do usuÃ¡rio.');
+      console.error('Erro ao carregar detalhes do perfil para edição:', error);
+      toast.warning('Não foi possível carregar a API key atual do usuário.');
     }
   };
 
