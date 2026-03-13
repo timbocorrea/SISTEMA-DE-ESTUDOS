@@ -826,7 +826,14 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
     // Controle de tamanho de mídia
     const [selectedMedia, setSelectedMedia] = useState<HTMLElement | null>(null);
+    const selectedMediaRef = useRef<HTMLElement | null>(null);
+    const updateBlockRef = useRef<(id: string, updates: any) => void>(() => {});
     const [mediaSize, setMediaSize] = useState<string>('100%');
+
+    // Manter ref sincronizado com state
+    useEffect(() => {
+        selectedMediaRef.current = selectedMedia;
+    }, [selectedMedia]);
 
     // Controle de expansão de blocos
     const [expandedBlockId, setExpandedBlockId] = useState<string | null>(null);
@@ -1534,7 +1541,19 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                 return;
             }
 
-            // Desselecionar se clicou fora
+            // Auto-aplicar mudanças antes de desselecionar
+            const currentMedia = selectedMediaRef.current;
+            if (currentMedia) {
+                const editableParent = currentMedia.closest('[contenteditable="true"]');
+                if (editableParent) {
+                    const blockId = editableParent.getAttribute('data-block-id');
+                    if (blockId) {
+                        updateBlockRef.current(blockId, { text: editableParent.innerHTML });
+                    }
+                }
+            }
+
+            // Desselecionar
             setSelectedMedia(null);
         };
 
@@ -1633,23 +1652,14 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
         if (!selectedMedia) return;
 
         if (selectedMedia.tagName === 'IMG') {
-            selectedMedia.style.maxWidth = size;
-            selectedMedia.style.width = size;
-            selectedMedia.style.height = 'auto';
+            selectedMedia.style.setProperty('max-width', size, 'important');
+            selectedMedia.style.setProperty('width', size, 'important');
+            selectedMedia.style.setProperty('height', 'auto', 'important');
         } else if (selectedMedia.classList.contains('video-wrapper')) {
-            selectedMedia.style.maxWidth = size;
+            selectedMedia.style.setProperty('max-width', size, 'important');
         }
 
         setMediaSize(size);
-
-        // Sincronizar mudança com o estado do bloco em tempo real
-        const editableParent = selectedMedia.closest('[contenteditable="true"]');
-        if (editableParent) {
-            const blockId = editableParent.getAttribute('data-block-id');
-            if (blockId) {
-                updateBlock(blockId, { text: editableParent.innerHTML });
-            }
-        }
     };
 
     // Função para alinhar mídia (inclui float para texto ao redor e inline para lado a lado)
@@ -1657,49 +1667,51 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
         if (!selectedMedia) return;
 
         // Resetar TODOS os estilos de posicionamento
-        selectedMedia.style.marginLeft = '';
-        selectedMedia.style.marginRight = '';
-        selectedMedia.style.float = 'none';
-        selectedMedia.style.display = 'block';
-        selectedMedia.style.verticalAlign = '';
-        selectedMedia.style.margin = '';
+        selectedMedia.style.removeProperty('margin-left');
+        selectedMedia.style.removeProperty('margin-right');
+        selectedMedia.style.removeProperty('float');
+        selectedMedia.style.removeProperty('display');
+        selectedMedia.style.removeProperty('vertical-align');
+        selectedMedia.style.removeProperty('margin');
+        selectedMedia.style.removeProperty('clear'); // Ensure clear is also reset
 
         // Add max-width restraint on wrap so text can flow near it
         const hasMaxWidth = !!selectedMedia.style.maxWidth && selectedMedia.style.maxWidth !== '100%' && selectedMedia.style.maxWidth !== 'auto';
         if ((alignment === 'wrap-left' || alignment === 'wrap-right') && !hasMaxWidth) {
-            selectedMedia.style.maxWidth = '50%';
-            selectedMedia.style.width = '50%';
+            selectedMedia.style.setProperty('max-width', '50%', 'important');
+            selectedMedia.style.setProperty('width', '50%', 'important');
             setMediaSize('50%');
         }
 
         switch (alignment) {
             case 'left':
-                selectedMedia.style.marginLeft = '0';
-                selectedMedia.style.marginRight = 'auto';
+                selectedMedia.style.setProperty('margin-left', '0', 'important');
+                selectedMedia.style.setProperty('margin-right', 'auto', 'important');
+                selectedMedia.style.setProperty('display', 'block', 'important');
                 break;
             case 'center':
-                selectedMedia.style.marginLeft = 'auto';
-                selectedMedia.style.marginRight = 'auto';
+                selectedMedia.style.setProperty('margin-left', 'auto', 'important');
+                selectedMedia.style.setProperty('margin-right', 'auto', 'important');
+                selectedMedia.style.setProperty('display', 'block', 'important');
                 break;
             case 'right':
-                selectedMedia.style.marginLeft = 'auto';
-                selectedMedia.style.marginRight = '0';
+                selectedMedia.style.setProperty('margin-left', 'auto', 'important');
+                selectedMedia.style.setProperty('margin-right', '0', 'important');
+                selectedMedia.style.setProperty('display', 'block', 'important');
                 break;
             case 'wrap-left':
-                selectedMedia.style.float = 'left';
-                selectedMedia.style.margin = '0 1.25rem 0.5rem 0';
-                selectedMedia.style.display = 'inline';
-                selectedMedia.style.clear = 'none';
+                selectedMedia.style.setProperty('float', 'left', 'important');
+                selectedMedia.style.setProperty('margin', '0 1.25rem 0.5rem 0', 'important');
+                selectedMedia.style.setProperty('display', 'inline', 'important');
+                selectedMedia.style.setProperty('clear', 'none', 'important');
                 break;
             case 'wrap-right':
-                selectedMedia.style.float = 'right';
-                selectedMedia.style.margin = '0 0 0.5rem 1.25rem';
-                selectedMedia.style.display = 'inline';
-                selectedMedia.style.clear = 'none';
+                selectedMedia.style.setProperty('float', 'right', 'important');
+                selectedMedia.style.setProperty('margin', '0 0 0.5rem 1.25rem', 'important');
+                selectedMedia.style.setProperty('display', 'inline', 'important');
+                selectedMedia.style.setProperty('clear', 'none', 'important');
                 break;
             case 'inline':
-                selectedMedia.style.display = 'inline-block';
-                selectedMedia.style.verticalAlign = 'top';
                 selectedMedia.style.margin = '0 8px 8px 0';
                 selectedMedia.style.float = 'none';
                 break;
@@ -1710,15 +1722,6 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
             const editableParent = selectedMedia.closest('[contenteditable="true"]');
             if (editableParent) {
                 editableParent.prepend(selectedMedia);
-            }
-        }
-
-        // Sincronizar mudança com o estado do bloco em tempo real
-        const editableParent = selectedMedia.closest('[contenteditable="true"]');
-        if (editableParent) {
-            const blockId = editableParent.getAttribute('data-block-id');
-            if (blockId) {
-                updateBlock(blockId, { text: editableParent.innerHTML });
             }
         }
     };
@@ -2673,6 +2676,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
     const updateBlock = React.useCallback((id: string, updates: any) => {
         setBlocks(prev => prev.map(b => b.id === id ? { ...b, ...updates } : b));
     }, []);
+    updateBlockRef.current = updateBlock;
 
     const toggleBlockFeatured = React.useCallback((id: string) => {
         setBlocks(prev => prev.map(b => b.id === id ? { ...b, featured: !b.featured } : b));

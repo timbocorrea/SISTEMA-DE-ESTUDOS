@@ -392,7 +392,8 @@ body {
   }
 }
 
-  /* Ensure images within the editor preview or content reader drop customized floats and widths */
+/* Ensure images are full-width on MOBILE ONLY - desktop respects editor-defined sizes */
+@media (max-width: 768px) {
   .prose img,
   .editor-content img,
   .content-reader img,
@@ -404,3 +405,4 @@ body {
     margin: 1.5rem auto !important;
     display: block !important;
   }
+}
