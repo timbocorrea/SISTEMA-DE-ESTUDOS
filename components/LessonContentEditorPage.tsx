@@ -208,7 +208,7 @@ const BlockItem = React.memo(({
                             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 transition-colors"
                         >
                             <i className="fas fa-image w-4"></i>
-                            <span>Inserir Imagem</span>
+                            <span>Inserir Imagem ou GIF</span>
                         </button>
                         <button
                             onClick={() => {
@@ -4614,13 +4614,13 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                             {imageMode === 'url' ? (
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                        URL da Imagem
+                                        URL da Imagem ou GIF
                                     </label>
                                     <input
                                         type="url"
                                         value={mediaUrl}
                                         onChange={(e) => setMediaUrl(e.target.value)}
-                                        placeholder="https://exemplo.com/imagem.jpg"
+                                        placeholder="https://exemplo.com/imagem.gif"
                                         className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                                     />
                                     <button
@@ -4628,17 +4628,17 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                                         disabled={!mediaUrl}
                                         className="w-full mt-4 py-3 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white font-semibold rounded-lg transition-colors disabled:cursor-not-allowed"
                                     >
-                                        Inserir Imagem
+                                        Inserir Imagem ou GIF
                                     </button>
                                 </div>
                             ) : (
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                        Selecione uma imagem
+                                        Selecione uma imagem ou GIF
                                     </label>
                                     <input
                                         type="file"
-                                        accept="image/*"
+                                        accept="image/png, image/jpeg, image/gif, image/webp"
                                         onChange={async (e) => {
                                             const file = e.target.files?.[0];
                                             if (file) {
