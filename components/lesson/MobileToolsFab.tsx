@@ -46,10 +46,10 @@ export const MobileToolsFab: React.FC<MobileToolsFabProps> = ({ isPlaying, toggl
     };
 
     return (
-        <div className="fixed bottom-6 left-6 z-[100] md:hidden" ref={menuRef}>
+        <div className="fixed bottom-24 right-4 z-[100] md:hidden" ref={menuRef}>
             {/* Popover Menu */}
             <div
-                className={`absolute bottom-16 left-0 w-64 bg-slate-900/95 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl p-4 transition-all duration-300 origin-bottom-left flex flex-col gap-4 ${isOpen ? 'scale-100 opacity-100 pointer-events-auto' : 'scale-75 opacity-0 pointer-events-none'
+                className={`absolute bottom-16 right-0 w-64 bg-slate-900/95 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl p-4 transition-all duration-300 origin-bottom-right flex flex-col gap-4 ${isOpen ? 'scale-100 opacity-100 pointer-events-auto' : 'scale-75 opacity-0 pointer-events-none'
                     }`}
             >
                 {/* Cabeçalho do Menu */}
