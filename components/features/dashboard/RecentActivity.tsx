@@ -70,7 +70,7 @@ const RecentActivity: React.FC<RecentActivityProps> = ({ user }) => {
 
     if (loading) {
         return (
-            <div className="bg-white/90 dark:bg-slate-900/80 shadow-md backdrop-blur-md rounded-2xl p-4 border border-slate-200 dark:border-white/5">
+            <div className="rounded-2xl p-4">
                 <Skeleton width="w-1/3" height="h-4" className="mb-4" />
                 <div className="space-y-3">
                     {[1, 2, 3, 4, 5].map(i => (
@@ -89,7 +89,7 @@ const RecentActivity: React.FC<RecentActivityProps> = ({ user }) => {
 
     if (error) {
         return (
-            <div className="bg-white/90 dark:bg-slate-900/80 shadow-md backdrop-blur-md rounded-2xl p-4 border border-red-200 dark:border-red-900/20 text-center">
+            <div className="rounded-2xl p-4 text-center">
                 <i className="fas fa-exclamation-triangle text-red-500 text-2xl mb-2"></i>
                 <p className="text-sm font-medium text-red-600 dark:text-red-400">{error}</p>
             </div>
@@ -97,7 +97,7 @@ const RecentActivity: React.FC<RecentActivityProps> = ({ user }) => {
     }
 
     return (
-        <div className="bg-white/90 dark:bg-slate-900/80 shadow-md backdrop-blur-md rounded-2xl p-4 border border-slate-200 dark:border-white/5">
+        <div className="rounded-2xl p-4">
             <h3 className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-4 uppercase tracking-wider flex items-center gap-2">
                 <i className="fas fa-history text-indigo-400"></i>
                 Atividade Recente

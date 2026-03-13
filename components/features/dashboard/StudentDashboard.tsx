@@ -105,13 +105,13 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
         {/* LEFT COLUMN: Graphical Data & Recent Activity (1/3 width) - Reordered as requested */}
         <div className="xl:col-span-1">
           <div className="sticky top-8 space-y-6">
-            <MagicCard className="glass-panel p-0 overflow-hidden">
+            <MagicCard className="glass-panel p-0 overflow-hidden border-none">
               <WeeklySummary
                 xpHistory={xpHistory}
                 courseProgress={courseProgressData}
               />
             </MagicCard>
-            <MagicCard className="glass-panel p-0 overflow-hidden">
+            <MagicCard className="glass-panel p-0 overflow-hidden border-none">
               <RecentActivity user={user} />
             </MagicCard>
           </div>
