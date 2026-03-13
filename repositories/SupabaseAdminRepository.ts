@@ -617,11 +617,35 @@ export class SupabaseAdminRepository implements IAdminRepository {
     const cached = this.getCachedSystemStats();
     if (cached) return cached;
 
-    const { data, error } = await this.client.rpc('get_db_stats');
+    // Try fetching from materialized view first for performance
+    try {
+      const { data: viewData, error: viewError } = await this.client
+        .from('mv_dashboard_stats')
+        .select('*')
+        .single();
+
+      if (!viewError && viewData) {
+        const stats = {
+          db_size: viewData.db_size || 'N/A',
+          user_count: viewData.user_count || 0,
+          course_count: viewData.course_count || 0,
+          module_count: viewData.module_count || 0,
+          lesson_count: viewData.lesson_count || 0,
+          file_count: viewData.file_count || 0,
+          storage_size_bytes: viewData.storage_size_bytes || 0
+        };
+        this.setSystemStatsCache(stats);
+        return stats;
+      }
+    } catch (err) {
+      console.warn("Failed to fetch from mv_dashboard_stats, falling back", err);
+    }
+
+    const { data: rpcData, error: rpcError } = await this.client.rpc('get_db_stats');
 
     // Fallback if RPC fails or not created yet
-    if (error || !data) {
-      if (error) console.warn("RPC get_db_stats failed, falling back to manual count", error);
+    if (rpcError || !rpcData) {
+      if (rpcError) console.warn("RPC get_db_stats failed, falling back to manual count", rpcError);
 
       // Manual count
       const [{ count: courseCount }, { count: moduleCount }, { count: lessonCount }, { count: userCount }] = await Promise.all([
@@ -645,13 +669,13 @@ export class SupabaseAdminRepository implements IAdminRepository {
     }
 
     // Se o RPC retornou, mas precisamos garantir o module_count se não vier
-    if (data.module_count === undefined) {
+    if (rpcData.module_count === undefined) {
       const { count: moduleCount } = await this.client.from('modules').select('id', { count: 'exact', head: true });
-      data.module_count = moduleCount || 0;
+      rpcData.module_count = moduleCount || 0;
     }
 
-    this.setSystemStatsCache(data);
-    return data;
+    this.setSystemStatsCache(rpcData);
+    return rpcData;
   }
 
   // ============ QUIZ METHODS IMPLEMENTATION ============

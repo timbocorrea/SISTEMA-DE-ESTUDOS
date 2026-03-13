@@ -41,8 +41,10 @@ const ToolbarButton: React.FC<{
             : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-indigo-600 dark:hover:text-indigo-400'
             }`}
         title={title}
+        aria-label={title}
+        aria-pressed={active}
     >
-        <i className={`${icon.includes(' ') ? icon : `fas fa-${icon}`} text-sm`}></i>
+        <i className={`${icon.includes(' ') ? icon : `fas fa-${icon}`} text-sm`} aria-hidden="true"></i>
     </button>
 );
 

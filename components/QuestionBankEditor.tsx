@@ -389,12 +389,17 @@ const QuestionBankEditor: React.FC<QuestionBankEditorProps> = ({ existingQuestio
                                 onClick={handleImportClick}
                                 className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[10px] font-black uppercase transition-all flex items-center gap-2"
                                 title="Importar de .json ou .md"
+                                aria-label="Importar questões de arquivo JSON ou Markdown"
                             >
-                                <i className="fas fa-file-import"></i>
+                                <i className="fas fa-file-import" aria-hidden="true"></i>
                                 Importar
                             </button>
-                            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors">
-                                <i className="fas fa-times"></i>
+                            <button
+                                onClick={onClose}
+                                className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+                                aria-label="Fechar editor"
+                            >
+                                <i className="fas fa-times" aria-hidden="true"></i>
                             </button>
                         </div>
                     </div>
@@ -409,8 +414,9 @@ const QuestionBankEditor: React.FC<QuestionBankEditorProps> = ({ existingQuestio
                             <button
                                 onClick={() => setImageUrl('')}
                                 className="absolute top-2 right-2 w-8 h-8 rounded-full bg-red-500 text-white shadow-lg flex items-center justify-center hover:bg-red-600 transition-colors"
+                                aria-label="Remover imagem da questão"
                             >
-                                <i className="fas fa-trash-alt text-xs"></i>
+                                <i className="fas fa-trash-alt text-xs" aria-hidden="true"></i>
                             </button>
                         </div>
                     )}
@@ -418,8 +424,9 @@ const QuestionBankEditor: React.FC<QuestionBankEditorProps> = ({ existingQuestio
                     {/* Hierarchy Selection */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 bg-slate-50 dark:bg-slate-950/30 rounded-2xl border border-slate-100 dark:border-slate-800">
                         <div className="space-y-1.5">
-                            <label className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Curso Alvo</label>
+                            <label htmlFor="course-select" className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Curso Alvo</label>
                             <select
+                                id="course-select"
                                 value={selectedCourseId}
                                 onChange={(e) => handleCourseChange(e.target.value)}
                                 className="w-full bg-white dark:bg-slate-800 border-none rounded-xl px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none appearance-none cursor-pointer"
@@ -429,8 +436,9 @@ const QuestionBankEditor: React.FC<QuestionBankEditorProps> = ({ existingQuestio
                             </select>
                         </div>
                         <div className="space-y-1.5">
-                            <label className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Módulo Alvo</label>
+                            <label htmlFor="module-select" className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Módulo Alvo</label>
                             <select
+                                id="module-select"
                                 value={selectedModuleId}
                                 onChange={(e) => handleModuleChange(e.target.value)}
                                 disabled={!selectedCourseId}
@@ -441,8 +449,9 @@ const QuestionBankEditor: React.FC<QuestionBankEditorProps> = ({ existingQuestio
                             </select>
                         </div>
                         <div className="space-y-1.5">
-                            <label className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Aula Alvo</label>
+                            <label htmlFor="lesson-select" className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Aula Alvo</label>
                             <select
+                                id="lesson-select"
                                 value={selectedLessonId}
                                 onChange={(e) => setSelectedLessonId(e.target.value)}
                                 disabled={!selectedModuleId}
@@ -469,6 +478,7 @@ const QuestionBankEditor: React.FC<QuestionBankEditorProps> = ({ existingQuestio
                                                     'bg-rose-500 border-rose-600 text-white shadow-lg shadow-rose-500/20')
                                             : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'
                                             }`}
+                                        aria-pressed={difficulty === d}
                                     >
                                         {d === 'easy' ? 'Fácil' : d === 'medium' ? 'Médio' : 'Difícil'}
                                     </button>
@@ -477,8 +487,9 @@ const QuestionBankEditor: React.FC<QuestionBankEditorProps> = ({ existingQuestio
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Pontos</label>
+                            <label htmlFor="question-points" className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Pontos</label>
                             <input
+                                id="question-points"
                                 type="number"
                                 min="1"
                                 value={points}
@@ -489,9 +500,10 @@ const QuestionBankEditor: React.FC<QuestionBankEditorProps> = ({ existingQuestio
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">URL da Imagem (Opcional)</label>
+                        <label htmlFor="image-url" className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">URL da Imagem (Opcional)</label>
                         <div className="flex gap-2">
                             <input
+                                id="image-url"
                                 type="text"
                                 placeholder="https://exemplo.com/imagem.png"
                                 value={imageUrl}
@@ -501,16 +513,18 @@ const QuestionBankEditor: React.FC<QuestionBankEditorProps> = ({ existingQuestio
                             <button
                                 className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
                                 title="Fazer upload (Em breve)"
+                                aria-label="Fazer upload de imagem (Indisponível)"
                                 disabled
                             >
-                                <i className="fas fa-upload"></i>
+                                <i className="fas fa-upload" aria-hidden="true"></i>
                             </button>
                         </div>
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Texto da Pergunta</label>
+                        <label htmlFor="question-text" className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Texto da Pergunta</label>
                         <textarea
+                            id="question-text"
                             value={questionText}
                             onChange={(e) => setQuestionText(e.target.value)}
                             placeholder="Escreva sua pergunta aqui..."
@@ -540,8 +554,10 @@ const QuestionBankEditor: React.FC<QuestionBankEditorProps> = ({ existingQuestio
                                             : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-300 dark:text-slate-600 hover:border-emerald-300 hover:text-emerald-300'
                                             }`}
                                         title={opt.isCorrect ? 'Resposta Correta' : 'Marcar como Correta'}
+                                        aria-label={opt.isCorrect ? 'Resposta correta selecionada' : `Marcar opção ${idx + 1} como correta`}
+                                        aria-pressed={opt.isCorrect}
                                     >
-                                        <i className={`fas ${opt.isCorrect ? 'fa-check' : 'fa-circle'} text-xs`}></i>
+                                        <i className={`fas ${opt.isCorrect ? 'fa-check' : 'fa-circle'} text-xs`} aria-hidden="true"></i>
                                     </button>
 
                                     <input
@@ -556,8 +572,9 @@ const QuestionBankEditor: React.FC<QuestionBankEditorProps> = ({ existingQuestio
                                         <button
                                             onClick={() => removeOption(idx)}
                                             className="w-10 h-10 flex-shrink-0 text-slate-400 hover:text-red-500 transition-colors"
+                                            aria-label={`Remover opção ${idx + 1}`}
                                         >
-                                            <i className="fas fa-trash-alt text-sm"></i>
+                                            <i className="fas fa-trash-alt text-sm" aria-hidden="true"></i>
                                         </button>
                                     )}
                                 </div>
@@ -577,10 +594,15 @@ const QuestionBankEditor: React.FC<QuestionBankEditorProps> = ({ existingQuestio
                     <button
                         onClick={handleSave}
                         disabled={isSaving}
+                        aria-disabled={isSaving}
+                        aria-busy={isSaving}
                         className="flex-1 py-3 rounded-2xl font-bold bg-indigo-600 text-white shadow-xl shadow-indigo-600/20 hover:bg-indigo-500 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
                     >
                         {isSaving ? (
-                            <i className="fas fa-circle-notch animate-spin"></i>
+                            <>
+                                <i className="fas fa-circle-notch animate-spin" aria-hidden="true"></i>
+                                <span className="sr-only">Salvando...</span>
+                            </>
                         ) : (
                             'Salvar Questão'
                         )}
@@ -600,7 +622,7 @@ const QuestionBankEditor: React.FC<QuestionBankEditorProps> = ({ existingQuestio
                         </div>
 
                         {/* Preview List */}
-                        <div className="p-6 overflow-y-auto flex-1 space-y-4 bg-slate-50 dark:bg-slate-950/50">
+                        <div className="p-6 overflow-y-auto flex-1 space-y-4 bg-slate-50 dark:bg-slate-950/50" aria-live="polite">
                             {pendingQuestions.map((q, i) => (
                                 <div key={i} className="p-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
                                     <div className="flex items-center justify-between">
@@ -618,8 +640,9 @@ const QuestionBankEditor: React.FC<QuestionBankEditorProps> = ({ existingQuestio
                                         <button
                                             onClick={() => setPendingQuestions(pendingQuestions.filter((_, idx) => idx !== i))}
                                             className="text-slate-400 hover:text-red-500 transition-colors"
+                                            aria-label={`Descartar questão ${i + 1} da importação`}
                                         >
-                                            <i className="fas fa-times"></i>
+                                            <i className="fas fa-times" aria-hidden="true"></i>
                                         </button>
                                     </div>
 
@@ -630,12 +653,14 @@ const QuestionBankEditor: React.FC<QuestionBankEditorProps> = ({ existingQuestio
                                             <button
                                                 key={j}
                                                 onClick={() => togglePendingCorrect(i, j)}
+                                                aria-label={`Marcar opção ${j + 1} como correta para a questão ${i + 1}`}
+                                                aria-pressed={o.isCorrect}
                                                 className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium border flex items-center gap-2 transition-all ${o.isCorrect
                                                     ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800/50 text-emerald-700 dark:text-emerald-400 font-bold shadow-sm'
                                                     : 'bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:border-indigo-300'
                                                     }`}
                                             >
-                                                <i className={`fas ${o.isCorrect ? 'fa-check-circle' : 'fa-circle'} text-[10px]`}></i>
+                                                <i className={`fas ${o.isCorrect ? 'fa-check-circle' : 'fa-circle'} text-[10px]`} aria-hidden="true"></i>
                                                 <span className="whitespace-pre-wrap">{o.optionText}</span>
                                             </button>
                                         ))}
@@ -655,10 +680,15 @@ const QuestionBankEditor: React.FC<QuestionBankEditorProps> = ({ existingQuestio
                             <button
                                 onClick={handleImportAll}
                                 disabled={isSaving || pendingQuestions.length === 0}
+                                aria-disabled={isSaving || pendingQuestions.length === 0}
+                                aria-busy={isSaving}
                                 className="flex-1 py-3 rounded-2xl font-bold bg-indigo-600 text-white shadow-xl shadow-indigo-600/20 hover:bg-indigo-500 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
                             >
                                 {isSaving ? (
-                                    <i className="fas fa-circle-notch animate-spin"></i>
+                                    <>
+                                        <i className="fas fa-circle-notch animate-spin" aria-hidden="true"></i>
+                                        <span className="sr-only">Importando questões...</span>
+                                    </>
                                 ) : (
                                     'Importar Tudo'
                                 )}

@@ -3,32 +3,36 @@ import { auditService, AuditLogEntry } from '@/services/AuditService';
 import { NumberTicker } from '@/components/ui/number-ticker';
 import { AnimatedDuration } from '@/components/ui/animated-duration';
 import { AuditSessionDetailModal } from '@/components/AuditSessionDetailModal';
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 
 const AuditPage: React.FC = () => {
-    const [logs, setLogs] = useState<AuditLogEntry[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const { data: rawLogs, loadMore, loading: isLoadingMore, hasMore } = useInfiniteScroll('audit_logs', { 
+        pageSize: 50,
+        select: 'id, created_at, path, page_title, resource_title, total_duration_seconds, active_duration_seconds'
+    });
     const [isDetailLoading, setIsDetailLoading] = useState(false);
     const [dateFilter, setDateFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [selectedLog, setSelectedLog] = useState<AuditLogEntry | null>(null);
 
+    // Initial load
     useEffect(() => {
-        const fetchLogs = async () => {
-            setIsLoading(true);
-            const data = await auditService.getLogs(0, 50);
-            setLogs(data);
-            setIsLoading(false);
-        };
+        loadMore();
+    }, [loadMore]);
 
-        fetchLogs();
-
-        const interval = setInterval(async () => {
-            const data = await auditService.getLogs(0, 50);
-            setLogs(data);
-        }, 60000);
-
-        return () => clearInterval(interval);
-    }, []);
+    // Map raw DB rows to the AuditLogEntry structure expected by the component
+    const logs: AuditLogEntry[] = React.useMemo(() => rawLogs.map((row: any) => ({
+        id: row.id,
+        timestamp: row.created_at,
+        path: row.path,
+        pageTitle: row.page_title,
+        resourceTitle: row.resource_title,
+        total_duration_seconds: row.total_duration_seconds,
+        active_duration_seconds: row.active_duration_seconds,
+        interaction_stats: row.interaction_stats || {},
+        events: row.events || [],
+        device: 'Unknown'
+    })), [rawLogs]);
 
     const handleRowClick = async (logId: string) => {
         setIsDetailLoading(true);
@@ -109,24 +113,10 @@ const AuditPage: React.FC = () => {
         return path.startsWith('/course/') || path.includes('/lesson/');
     };
 
-    const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 15;
-
-    // Reset pagination when filters change
-    useEffect(() => {
-        setCurrentPage(1);
-    }, [dateFilter, statusFilter, logs]);
-
-    // Pagination Logic
-    const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const currentLogs = filteredLogs.slice(startIndex, startIndex + itemsPerPage);
-
-    const handlePageChange = (newPage: number) => {
-        if (newPage >= 1 && newPage <= totalPages) {
-            setCurrentPage(newPage);
-        }
-    };
+    // Filters application
+    // Note: since we use infinite scroll, filters apply to loaded data.
+    // In a fully robust infinite scroll with filters, filters would be passed to the hook.
+    // This is kept here for pure UI filtering on loaded chunks as per previous logic.
 
     return (
         <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -239,14 +229,14 @@ const AuditPage: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200 dark:divide-white/5">
-                            {currentLogs.length === 0 ? (
+                            {filteredLogs.length === 0 ? (
                                 <tr>
                                     <td colSpan={5} className="px-6 py-12 text-center text-slate-500 italic">
                                         Nenhuma atividade encontrada com os filtros atuais.
                                     </td>
                                 </tr>
                             ) : (
-                                currentLogs.map((log) => (
+                                filteredLogs.map((log) => (
                                     <tr
                                         key={log.id}
                                         onClick={() => handleRowClick(log.id)}
@@ -316,56 +306,17 @@ const AuditPage: React.FC = () => {
                     </table>
                 </div>
 
-                {/* Pagination Controls */}
-                {totalPages > 1 && (
-                    <div className="px-6 py-4 border-t border-slate-200 dark:border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/50 dark:bg-white/[0.02]">
-                        <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                            Mostrando <span className="font-bold text-slate-700 dark:text-slate-200">{startIndex + 1}</span> a <span className="font-bold text-slate-700 dark:text-slate-200">{Math.min(startIndex + itemsPerPage, filteredLogs.length)}</span> de <span className="font-bold text-slate-700 dark:text-slate-200">{filteredLogs.length}</span> registros
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={() => handlePageChange(currentPage - 1)}
-                                disabled={currentPage === 1}
-                                className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            >
-                                <i className="fas fa-chevron-left text-xs"></i>
-                            </button>
-
-                            <div className="flex items-center gap-1">
-                                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                                    // Logic to show partial pages if too many
-                                    let pageNum = i + 1;
-                                    if (totalPages > 5) {
-                                        if (currentPage > 3) {
-                                            pageNum = currentPage - 2 + i;
-                                        }
-                                        if (pageNum > totalPages) return null;
-                                    }
-
-                                    return (
-                                        <button
-                                            key={pageNum}
-                                            onClick={() => handlePageChange(pageNum)}
-                                            className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-bold transition-all ${currentPage === pageNum
-                                                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20 scale-105'
-                                                : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5'
-                                                }`}
-                                        >
-                                            {pageNum}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-
-                            <button
-                                onClick={() => handlePageChange(currentPage + 1)}
-                                disabled={currentPage === totalPages}
-                                className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            >
-                                <i className="fas fa-chevron-right text-xs"></i>
-                            </button>
-                        </div>
+                {/* Load More Button */}
+                {hasMore && (
+                    <div className="px-6 py-4 border-t border-slate-200 dark:border-white/5 flex flex-col items-center justify-center bg-slate-50/50 dark:bg-white/[0.02]">
+                        <button
+                            onClick={() => loadMore()}
+                            disabled={isLoadingMore}
+                            className="px-6 py-2 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-800 dark:hover:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 rounded-lg font-bold transition-colors disabled:opacity-50 flex items-center gap-2"
+                        >
+                            {isLoadingMore ? <i className="fas fa-circle-notch animate-spin"></i> : <i className="fas fa-chevron-down"></i>}
+                            {isLoadingMore ? 'Carregando...' : 'Carregar Mais Logs'}
+                        </button>
                     </div>
                 )}
             </div>

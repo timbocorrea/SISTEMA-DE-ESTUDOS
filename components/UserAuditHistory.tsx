@@ -4,56 +4,41 @@ import { AuditLogEntry } from '../services/AuditService';
 import VirtualList from './ui/VirtualList';
 import { AuditSessionDetailModal } from './AuditSessionDetailModal';
 
+import { useInfiniteScroll } from '../hooks/useInfiniteScroll';
+
 interface UserAuditHistoryProps {
     userId: string;
 }
 
 export const UserAuditHistory: React.FC<UserAuditHistoryProps> = ({ userId }) => {
-    const [logs, setLogs] = useState<AuditLogEntry[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [page, setPage] = useState(0);
-    const [hasMore, setHasMore] = useState(true);
+    const { data: rawLogs, loadMore, loading: isLoading, hasMore } = useInfiniteScroll('audit_logs', {
+        pageSize: 20,
+        filter: { user_id: userId },
+        select: 'id, created_at, path, page_title, resource_title, total_duration_seconds, active_duration_seconds'
+    });
     const [selectedLog, setSelectedLog] = useState<AuditLogEntry | null>(null);
     const [isDetailLoading, setIsDetailLoading] = useState(false);
 
-    const LOGS_PER_PAGE = 20;
-
-    const fetchLogs = useCallback(async (pageNum: number, isInitial = false) => {
-        if (!hasMore && !isInitial) return;
-
-        setIsLoading(true);
-        try {
-            const data = await auditService.getLogs(pageNum, LOGS_PER_PAGE, userId);
-
-            if (data.length < LOGS_PER_PAGE) {
-                setHasMore(false);
-            }
-
-            if (isInitial) {
-                setLogs(data);
-            } else {
-                setLogs(prev => [...prev, ...data]);
-            }
-        } catch (error) {
-            console.error("Failed to fetch user audit logs:", error);
-        } finally {
-            setIsLoading(false);
-        }
-    }, [userId, hasMore]);
-
+    // Initial load
     useEffect(() => {
-        setLogs([]);
-        setPage(0);
-        setHasMore(true);
-        fetchLogs(0, true);
-    }, [userId, fetchLogs]);
+        loadMore(true);
+    }, [userId, loadMore]);
+
+    const logs: AuditLogEntry[] = React.useMemo(() => rawLogs.map((row: any) => ({
+        id: row.id,
+        timestamp: row.created_at,
+        path: row.path,
+        pageTitle: row.page_title,
+        resourceTitle: row.resource_title,
+        total_duration_seconds: row.total_duration_seconds,
+        active_duration_seconds: row.active_duration_seconds,
+        interaction_stats: row.interaction_stats || {},
+        events: row.events || [],
+        device: 'Unknown'
+    })), [rawLogs]);
 
     const handleLoadMore = () => {
-        if (!isLoading && hasMore) {
-            const nextPage = page + 1;
-            setPage(nextPage);
-            fetchLogs(nextPage);
-        }
+        loadMore();
     };
 
     const handleRowClick = async (logId: string) => {

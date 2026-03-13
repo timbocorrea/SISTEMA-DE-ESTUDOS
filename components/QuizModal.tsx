@@ -3,6 +3,8 @@ import React, { useState } from 'react';
 import { Quiz, QuizQuestion } from '../domain/quiz-entities';
 import { toast } from 'sonner';
 import { hapticActions } from '../utils/haptics';
+import { useAuth } from '../contexts/AuthContext';
+import { useQuizAutoSave } from '../hooks/useQuizAutoSave';
 
 interface QuizModalProps {
     quiz: Quiz;
@@ -13,7 +15,12 @@ interface QuizModalProps {
 }
 
 const QuizModal: React.FC<QuizModalProps> = ({ quiz, isOpen, onClose, onSubmit, isSubmitting = false }) => {
-    const [answers, setAnswers] = useState<Record<string, string>>({});
+    const { user } = useAuth();
+    const { answers, setAnswers, clearAutoSave, isRestored } = useQuizAutoSave<Record<string, string>>(
+        quiz?.id,
+        user?.id,
+        {}
+    );
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [shuffledQuestions, setShuffledQuestions] = useState<QuizQuestion[]>([]);
     const [displayMode, setDisplayMode] = useState<'paged' | 'vertical'>('paged');
@@ -33,6 +40,16 @@ const QuizModal: React.FC<QuizModalProps> = ({ quiz, isOpen, onClose, onSubmit, 
     const [reportIssueType, setReportIssueType] = useState<string>('no_correct');
     const [reportComment, setReportComment] = useState('');
     const [isReporting, setIsReporting] = useState(false);
+
+    // Show restoration toast
+    React.useEffect(() => {
+        if (isRestored && isOpen) {
+            toast.info('Seu progresso anterior foi restaurado automaticamente.', {
+                icon: <i className="fas fa-magic text-indigo-500"></i>,
+                duration: 4000
+            });
+        }
+    }, [isRestored, isOpen]);
 
     // Inicializar e embaralhar quando o modal abrir ou o quiz mudar
     React.useEffect(() => {
@@ -65,7 +82,6 @@ const QuizModal: React.FC<QuizModalProps> = ({ quiz, isOpen, onClose, onSubmit, 
             }
 
             setShuffledQuestions(questionsWithShuffledOptions);
-            setAnswers({}); // Resetar respostas ao reabrir
             setCurrentQuestionIndex(0); // Voltar para primeira
         }
     }, [quiz, isOpen]);
@@ -77,14 +93,14 @@ const QuizModal: React.FC<QuizModalProps> = ({ quiz, isOpen, onClose, onSubmit, 
         setIsReporting(true);
         try {
             const repo = courseRepository;
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user: currentUser } } = await supabase.auth.getUser();
 
-            if (!user) throw new Error('Usuário não autenticado');
+            if (!currentUser) throw new Error('Usuário não autenticado');
 
             await repo.createQuizReport({
                 quizId: quiz.id,
                 questionId: qId,
-                userId: user.id,
+                userId: currentUser.id,
                 issueType: reportIssueType as any,
                 comment: reportComment,
                 status: 'pending'
@@ -122,12 +138,11 @@ const QuizModal: React.FC<QuizModalProps> = ({ quiz, isOpen, onClose, onSubmit, 
             toast.warning('Por favor, responda todas as perguntas antes de enviar.');
             return;
         }
+        clearAutoSave();
         onSubmit(answers);
     };
 
     const renderQuestion = (q: QuizQuestion, index: number, isVertical: boolean = false) => {
-        const isSelected = !!answers[q.id];
-
         return (
             <div key={q.id} className={`${isVertical ? 'py-8 border-b border-slate-100 dark:border-slate-800 last:border-0' : ''}`}>
                 <div className={`${isVertical ? 'grid grid-cols-1 md:grid-cols-2 gap-8' : 'group'}`}>

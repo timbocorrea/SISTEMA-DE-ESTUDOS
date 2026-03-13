@@ -1,0 +1,41 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - img
+  - generic [ref=e6]:
+    - generic [ref=e7]:
+      - generic [ref=e9]: 
+      - heading "StudySystem" [level=1] [ref=e10]
+      - paragraph [ref=e11]: Sua jornada de conhecimento
+    - generic [ref=e14]:
+      - generic [ref=e15]:
+        - heading "Bem-vindo de volta" [level=2] [ref=e16]
+        - paragraph [ref=e17]: Digite suas credenciais para acessar.
+      - generic [ref=e18]:
+        - generic [ref=e19]:
+          - generic [ref=e20]: E-mail Institucional
+          - textbox "E-mail Institucional" [ref=e21]:
+            - /placeholder: exemplo@email.com
+        - generic [ref=e22]:
+          - generic [ref=e23]: Senha
+          - generic [ref=e24]:
+            - textbox "Senha" [ref=e25]:
+              - /placeholder: ••••••••
+            - button "" [ref=e26] [cursor=pointer]:
+              - generic [ref=e27]: 
+        - button "Entrar no Sistema" [ref=e28] [cursor=pointer]
+      - generic [ref=e29]:
+        - generic [ref=e34]: Ou continue com
+        - button "Continuar com Google" [ref=e36] [cursor=pointer]:
+          - img [ref=e38]
+          - generic [ref=e43]: Continuar com Google
+      - generic [ref=e44]:
+        - paragraph [ref=e45]:
+          - text: Não tem uma conta?
+          - button "Criar agora" [ref=e46] [cursor=pointer]
+        - button " Precisa de ajuda?" [ref=e48] [cursor=pointer]:
+          - generic [ref=e49]: 
+          - text: Precisa de ajuda?
+```
