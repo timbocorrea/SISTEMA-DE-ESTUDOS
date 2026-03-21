@@ -10,6 +10,7 @@ export class SupabaseQuestionBankRepository implements IQuestionBankRepository {
         id,
         question_text,
         image_url,
+        image_alt,
         difficulty,
         points,
         course_id,
@@ -35,6 +36,7 @@ export class SupabaseQuestionBankRepository implements IQuestionBankRepository {
             options,
             row.difficulty as QuestionDifficulty,
             row.image_url,
+            row.image_alt,
             row.course_id,
             row.module_id,
             row.lesson_id,
@@ -106,7 +108,7 @@ export class SupabaseQuestionBankRepository implements IQuestionBankRepository {
             .eq('id', id)
             .maybeSingle();
 
-        if (error) throw new DomainError(`Erro ao buscar questÃ£o: ${error.message}`);
+        if (error) throw new DomainError(`Erro ao buscar questão: ${error.message}`);
         if (!data) return null;
 
         return this.mapQuestion(data);
@@ -125,13 +127,14 @@ export class SupabaseQuestionBankRepository implements IQuestionBankRepository {
                 lesson_id: hierarchy.lessonId,
                 question_text: question.questionText,
                 image_url: question.imageUrl,
+                image_alt: question.imageAlt,
                 difficulty: question.difficulty,
                 points: question.points
             })
             .select('id')
             .single();
 
-        if (error) throw new DomainError(`Erro ao criar questÃ£o no banco: ${error.message}`);
+        if (error) throw new DomainError(`Erro ao criar questão no banco: ${error.message}`);
 
         const options = question.options.map((o, idx) => ({
             question_id: data.id,
@@ -144,10 +147,10 @@ export class SupabaseQuestionBankRepository implements IQuestionBankRepository {
             .from('question_bank_options')
             .insert(options);
 
-        if (optionsError) throw new DomainError(`Erro ao criar opÃ§Ãµes no banco: ${optionsError.message}`);
+        if (optionsError) throw new DomainError(`Erro ao criar opções no banco: ${optionsError.message}`);
 
         const created = await this.getQuestionById(data.id);
-        if (!created) throw new DomainError('Erro ao recuperar questÃ£o criada');
+        if (!created) throw new DomainError('Erro ao recuperar questão criada');
         return created;
     }
 
@@ -177,12 +180,13 @@ export class SupabaseQuestionBankRepository implements IQuestionBankRepository {
                 lesson_id: hierarchy.lessonId,
                 question_text: question.questionText,
                 image_url: question.imageUrl,
+                image_alt: question.imageAlt,
                 difficulty: question.difficulty,
                 points: question.points
             })
             .eq('id', question.id);
 
-        if (error) throw new DomainError(`Erro ao atualizar questÃ£o no banco: ${error.message}`);
+        if (error) throw new DomainError(`Erro ao atualizar questão no banco: ${error.message}`);
 
         // Delete old options and insert new ones (simpler than syncing)
         await this.client.from('question_bank_options').delete().eq('question_id', question.id);
@@ -198,10 +202,10 @@ export class SupabaseQuestionBankRepository implements IQuestionBankRepository {
             .from('question_bank_options')
             .insert(options);
 
-        if (optionsError) throw new DomainError(`Erro ao atualizar opÃ§Ãµes no banco: ${optionsError.message}`);
+        if (optionsError) throw new DomainError(`Erro ao atualizar opções no banco: ${optionsError.message}`);
 
         const updated = await this.getQuestionById(question.id);
-        if (!updated) throw new DomainError('Erro ao recuperar questÃ£o atualizada');
+        if (!updated) throw new DomainError('Erro ao recuperar questão atualizada');
         return updated;
     }
 
@@ -215,11 +219,11 @@ export class SupabaseQuestionBankRepository implements IQuestionBankRepository {
 
         if (optionsError) {
             console.error('Error deleting options:', optionsError);
-            throw new DomainError(`Erro ao deletar opÃ§Ãµes da questÃ£o: ${optionsError.message}`);
+            throw new DomainError(`Erro ao deletar opções da questão: ${optionsError.message}`);
         }
 
         const { error } = await this.client.from('question_bank').delete().eq('id', id);
-        if (error) throw new DomainError(`Erro ao deletar questÃ£o: ${error.message}`);
+        if (error) throw new DomainError(`Erro ao deletar questão: ${error.message}`);
     }
 
     async getRandomQuestions(count: number, filters: {
@@ -253,6 +257,7 @@ export class SupabaseQuestionBankRepository implements IQuestionBankRepository {
                     id,
                     question_text,
                     image_url,
+                    image_alt,
                     difficulty,
                     points,
                     course_id,
@@ -274,7 +279,7 @@ export class SupabaseQuestionBankRepository implements IQuestionBankRepository {
                 .limit(fallbackPoolSize);
 
             if (fallbackError) {
-                throw new DomainError(`Erro ao buscar questÃµes aleatÃ³rias (fallback): ${fallbackError.message}`);
+                throw new DomainError(`Erro ao buscar questões aleatórias (fallback): ${fallbackError.message}`);
             }
 
             const excludeSet = new Set(filters.excludeIds || []);

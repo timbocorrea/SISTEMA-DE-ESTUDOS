@@ -55,6 +55,7 @@ export class QuizQuestion {
         public readonly options: QuizOption[],
         public readonly difficulty: QuestionDifficulty = 'medium',
         public readonly imageUrl?: string,
+        public readonly imageAlt?: string,
         public readonly courseId?: string,
         public readonly moduleId?: string,
         public readonly lessonId?: string,

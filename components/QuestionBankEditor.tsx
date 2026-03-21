@@ -4,6 +4,8 @@ import { AdminService } from '../services/AdminService';
 import { toast } from 'sonner';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { useCourseHierarchy } from '../hooks/useCourseHierarchy';
+import { ImageFormattingService } from '../services/imageFormattingService';
+import DropboxFileBrowser from './DropboxFileBrowser';
 
 const containerVariants: Variants = {
     hidden: { opacity: 0, scale: 0.95, y: 30 },
@@ -60,8 +62,13 @@ const QuestionBankEditor: React.FC<QuestionBankEditorProps> = ({ existingQuestio
 
     const [questionText, setQuestionText] = useState(existingQuestion?.questionText || '');
     const [difficulty, setDifficulty] = useState<QuestionDifficulty>(existingQuestion?.difficulty || 'medium');
-    const [imageUrl, setImageUrl] = useState(existingQuestion?.imageUrl || '');
     const [points, setPoints] = useState(existingQuestion?.points || 1);
+    const [imageUrl, setImageUrl] = useState(existingQuestion?.imageUrl || '');
+    const [imageAlt, setImageAlt] = useState(existingQuestion?.imageAlt || '');
+    const [imagePreviewUrl, setImagePreviewUrl] = useState('');
+    const [isDropboxOpen, setIsDropboxOpen] = useState(false);
+    const [isImageLoading, setIsImageLoading] = useState(false);
+    const [hasImageError, setHasImageError] = useState(false);
     const [options, setOptions] = useState<any[]>(
         existingQuestion?.options.map(o => ({
             optionText: o.optionText,
@@ -74,6 +81,34 @@ const QuestionBankEditor: React.FC<QuestionBankEditorProps> = ({ existingQuestio
     const [isSaving, setIsSaving] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [pendingQuestions, setPendingQuestions] = useState<any[] | null>(null);
+
+    // Update preview when URL changes
+    useEffect(() => {
+        if (!imageUrl) {
+            setImagePreviewUrl('');
+            setHasImageError(false);
+            return;
+        }
+
+        const timer = setTimeout(() => {
+            const formatted = ImageFormattingService.formatUrl(imageUrl);
+            setImagePreviewUrl(formatted);
+            setHasImageError(false);
+            setIsImageLoading(true);
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [imageUrl]);
+
+    const handleDropboxSelect = (url: string, filename: string) => {
+        setImageUrl(url);
+        // Set alt text if empty
+        if (!imageAlt) {
+            // Remove extension and common separators
+            const cleanName = filename.split('.')[0].replace(/[-_]/g, ' ');
+            setImageAlt(cleanName);
+        }
+    };
 
 
     const addOption = () => {
@@ -232,7 +267,7 @@ const QuestionBankEditor: React.FC<QuestionBankEditorProps> = ({ existingQuestio
                 const quizOptions = qData.options.map((o: any, idx: number) =>
                     new QuizOption('', '', o.optionText, o.isCorrect, idx)
                 );
-                const question = new QuizQuestion('', 'BANK', qData.questionText, 'multiple_choice', 0, qData.points, quizOptions, qData.difficulty, '');
+                const question = new QuizQuestion('', 'BANK', qData.questionText, 'multiple_choice', 0, qData.points, quizOptions, qData.difficulty, qData.imageUrl || '', qData.imageAlt || '');
                 await onSave(question, {
                     courseId: selectedCourseId || undefined,
                     moduleId: selectedModuleId || undefined,
@@ -259,7 +294,7 @@ const QuestionBankEditor: React.FC<QuestionBankEditorProps> = ({ existingQuestio
             const quizOptions = options.map((o, idx) =>
                 new QuizOption(existingQuestion?.options[idx]?.id || '', existingQuestion?.id || '', o.optionText, o.isCorrect, idx)
             );
-            const question = new QuizQuestion(existingQuestion?.id || '', 'BANK', questionText, 'multiple_choice', 0, points, quizOptions, difficulty, imageUrl);
+            const question = new QuizQuestion(existingQuestion?.id || '', 'BANK', questionText, 'multiple_choice', 0, points, quizOptions, difficulty, imageUrl, imageAlt);
             await onSave(question, {
                 courseId: selectedCourseId || undefined,
                 moduleId: selectedModuleId || undefined,
@@ -315,17 +350,6 @@ const QuestionBankEditor: React.FC<QuestionBankEditorProps> = ({ existingQuestio
 
                 {/* Content */}
                 <div className="p-8 max-h-[70vh] overflow-y-auto space-y-8 relative z-10 scrollbar-thin flex-1">
-                    {imageUrl && (
-                        <motion.div 
-                            variants={itemVariants}
-                            className="relative rounded-3xl overflow-hidden aspect-video bg-slate-900/50 border border-white/10 group"
-                        >
-                            <img src={imageUrl} alt="Preview" className="w-full h-full object-contain" />
-                            <button onClick={() => setImageUrl('')} className="absolute top-4 right-4 w-10 h-10 rounded-xl bg-rose-500 text-white opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center shadow-lg">
-                                <i className="fas fa-trash-alt"></i>
-                            </button>
-                        </motion.div>
-                    )}
                                   <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="space-y-3">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Curso</label>
@@ -386,9 +410,84 @@ const QuestionBankEditor: React.FC<QuestionBankEditorProps> = ({ existingQuestio
                         </div>
                     </motion.div>
 
-                    <motion.div variants={itemVariants} className="space-y-3">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">URL da Imagem</label>
-                        <input type="text" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://..." className="w-full px-4 py-3.5 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800/50 text-sm font-medium dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" />
+                    <motion.div variants={itemVariants} className="space-y-4">
+                        <div className="flex flex-col gap-3">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Mídia da Questão</label>
+                            <div className="flex gap-2">
+                                <div className="relative flex-1 group">
+                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors">
+                                        <i className="fas fa-link text-xs"></i>
+                                    </div>
+                                    <input 
+                                        type="text" 
+                                        value={imageUrl} 
+                                        onChange={(e) => setImageUrl(e.target.value)} 
+                                        placeholder="Cole a URL (Dropbox, Drive) ou use o seletor -->" 
+                                        className="w-full pl-10 pr-4 py-3.5 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800/50 text-sm font-medium dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all" 
+                                    />
+                                </div>
+                                <motion.button
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={() => setIsDropboxOpen(true)}
+                                    className="px-4 bg-[#0061FE] hover:bg-blue-600 text-white rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-blue-500/10 transition-all"
+                                    title="Selecionar do Dropbox"
+                                >
+                                    <i className="fab fa-dropbox text-lg"></i>
+                                    <span className="text-[10px] font-black uppercase tracking-wider hidden sm:inline">Dropbox</span>
+                                </motion.button>
+                            </div>
+                        </div>
+
+                        {imagePreviewUrl && (
+                            <motion.div 
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="relative rounded-3xl overflow-hidden border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-900/50"
+                            >
+                                <div className="aspect-video relative flex items-center justify-center p-4">
+                                    {isImageLoading && !hasImageError && (
+                                        <div className="absolute inset-0 flex items-center justify-center bg-slate-50/50 dark:bg-slate-900/50 backdrop-blur-sm z-10">
+                                            <i className="fas fa-spinner fa-spin text-indigo-500"></i>
+                                        </div>
+                                    )}
+                                    {hasImageError ? (
+                                        <div className="flex flex-col items-center gap-2 text-slate-400">
+                                            <i className="fas fa-image text-4xl opacity-20"></i>
+                                            <span className="text-[10px] font-bold uppercase tracking-widest">Erro ao carregar imagem</span>
+                                        </div>
+                                    ) : (
+                                        <img 
+                                            src={imagePreviewUrl} 
+                                            alt={imageAlt || 'Preview'} 
+                                            className="max-h-full max-w-full object-contain rounded-xl shadow-lg"
+                                            onLoad={() => setIsImageLoading(false)}
+                                            onError={() => {
+                                                setIsImageLoading(false);
+                                                setHasImageError(true);
+                                            }}
+                                        />
+                                    )}
+                                </div>
+                                <button 
+                                    onClick={() => setImageUrl('')}
+                                    className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 hover:bg-rose-500 text-white flex items-center justify-center backdrop-blur-md transition-all border border-white/10"
+                                >
+                                    <i className="fas fa-times text-xs"></i>
+                                </button>
+                            </motion.div>
+                        )}
+
+                        <div className="space-y-3">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Texto Alternativo (Acessibilidade)</label>
+                            <input 
+                                type="text" 
+                                value={imageAlt} 
+                                onChange={(e) => setImageAlt(e.target.value)} 
+                                placeholder="Descreva o que aparece na imagem..." 
+                                className="w-full px-4 py-3.5 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800/50 text-sm font-medium dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm" 
+                            />
+                        </div>
                     </motion.div>
 
                     <motion.div variants={itemVariants} className="space-y-3">
@@ -454,6 +553,13 @@ const QuestionBankEditor: React.FC<QuestionBankEditorProps> = ({ existingQuestio
                         {isSaving ? 'Salvando...' : 'Finalizar Questão'}
                     </motion.button>
                 </div>
+
+                <DropboxFileBrowser 
+                    isOpen={isDropboxOpen} 
+                    onClose={() => setIsDropboxOpen(false)} 
+                    allowedExtensions={['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg']} 
+                    onSelectFile={handleDropboxSelect}
+                />
             </motion.div>
 
             {/* Import Preview Modal */}
@@ -497,7 +603,7 @@ const QuestionBankEditor: React.FC<QuestionBankEditorProps> = ({ existingQuestio
                                             <div className="grid grid-cols-1 gap-2">
                                                 {q.options.map((o: any, j: number) => (
                                                     <button key={j} onClick={() => togglePendingCorrect(i, j)} className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold border flex items-center gap-3 transition-all ${o.isCorrect ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600' : 'bg-slate-500/5 border-slate-200 dark:border-white/10 text-slate-400'}`}>
-                                                        <i className={`fas ${o.isCorrect ? 'fa-check-circle' : 'fa-circle-notch'} text-[10px]'}`}></i>
+                                                        <i className={`fas ${o.isCorrect ? 'fa-check-circle' : 'fa-circle-notch'} text-[10px]`}></i>
                                                         <span>{o.optionText}</span>
                                                     </button>
                                                 ))}
