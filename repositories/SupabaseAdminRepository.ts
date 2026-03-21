@@ -37,7 +37,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
   async listCourses(): Promise<CourseRecord[]> {
     const { data, error } = await this.client
       .from('courses')
-      .select('id,title,description,image_url,color,color_legend,created_at')
+      .select('id,title,description,image_url,instructor_id,color,color_legend,created_at')
       .order('created_at', { ascending: false });
 
     if (error) throw new DomainError(`Falha ao listar cursos: ${error.message}`);
@@ -52,6 +52,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
         title,
         description,
         image_url,
+        instructor_id,
         color,
         color_legend,
         created_at,
@@ -616,30 +617,6 @@ export class SupabaseAdminRepository implements IAdminRepository {
   async getSystemStats(): Promise<any> {
     const cached = this.getCachedSystemStats();
     if (cached) return cached;
-
-    // Try fetching from materialized view first for performance
-    try {
-      const { data: viewData, error: viewError } = await this.client
-        .from('mv_dashboard_stats')
-        .select('*')
-        .single();
-
-      if (!viewError && viewData) {
-        const stats = {
-          db_size: viewData.db_size || 'N/A',
-          user_count: viewData.user_count || 0,
-          course_count: viewData.course_count || 0,
-          module_count: viewData.module_count || 0,
-          lesson_count: viewData.lesson_count || 0,
-          file_count: viewData.file_count || 0,
-          storage_size_bytes: viewData.storage_size_bytes || 0
-        };
-        this.setSystemStatsCache(stats);
-        return stats;
-      }
-    } catch (err) {
-      console.warn("Failed to fetch from mv_dashboard_stats, falling back", err);
-    }
 
     const { data: rpcData, error: rpcError } = await this.client.rpc('get_db_stats');
 

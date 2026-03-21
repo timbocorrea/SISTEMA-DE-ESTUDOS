@@ -573,13 +573,17 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
                   <>
                     <button
                       onClick={() => handleApproveClick(u)}
-                      className="flex-1 px-3 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 font-bold text-xs transition-colors flex items-center justify-center gap-1"
+                      disabled={u.email === 'timbo.correa@gmail.com'}
+                      className={`flex-1 px-3 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 font-bold text-xs transition-colors flex items-center justify-center gap-1 ${u.email === 'timbo.correa@gmail.com' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      title={u.email === 'timbo.correa@gmail.com' ? "O Fundador não pode ser editado" : "Aprovar"}
                     >
                       <i className="fas fa-check"></i> Aprovar
                     </button>
                     <button
                       onClick={() => handleRejectClick(u)}
-                      className="flex-1 px-3 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 font-bold text-xs transition-colors flex items-center justify-center gap-1"
+                      disabled={u.email === 'timbo.correa@gmail.com'}
+                      className={`flex-1 px-3 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 font-bold text-xs transition-colors flex items-center justify-center gap-1 ${u.email === 'timbo.correa@gmail.com' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      title={u.email === 'timbo.correa@gmail.com' ? "O Fundador não pode ser editado" : "Rejeitar"}
                     >
                       <i className="fas fa-times"></i> Rejeitar
                     </button>
@@ -588,7 +592,9 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
 
                 <button
                   onClick={() => handleEditClick(u)}
-                  className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold text-xs transition-colors border border-white/5"
+                  disabled={u.email === 'timbo.correa@gmail.com'}
+                  className={`px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold text-xs transition-colors border border-white/5 ${u.email === 'timbo.correa@gmail.com' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  title={u.email === 'timbo.correa@gmail.com' ? "O Fundador não pode ser editado" : "Editar"}
                 >
                   <i className="fas fa-cog"></i> Editar
                 </button>
@@ -734,15 +740,17 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
                           <>
                             <button
                               onClick={() => handleApproveClick(u)}
-                              className="p-2 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 transition-colors border border-emerald-500/20"
-                              title="Aprovar"
+                              disabled={u.email === 'timbo.correa@gmail.com'}
+                              className={`p-2 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 transition-colors border border-emerald-500/20 ${u.email === 'timbo.correa@gmail.com' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              title={u.email === 'timbo.correa@gmail.com' ? "O Fundador não pode ser editado" : "Aprovar"}
                             >
                               <i className="fas fa-check"></i>
                             </button>
                             <button
                               onClick={() => handleRejectClick(u)}
-                              className="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors border border-red-500/20"
-                              title="Rejeitar"
+                              disabled={u.email === 'timbo.correa@gmail.com'}
+                              className={`p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors border border-red-500/20 ${u.email === 'timbo.correa@gmail.com' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              title={u.email === 'timbo.correa@gmail.com' ? "O Fundador não pode ser editado" : "Rejeitar"}
                             >
                               <i className="fas fa-times"></i>
                             </button>
@@ -751,8 +759,9 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
 
                         <button
                           onClick={() => handleEditClick(u)}
-                          className="p-2 rounded-lg hover:bg-white/10 text-slate-500 hover:text-white transition-colors"
-                          title="Editar Usuário"
+                          disabled={u.email === 'timbo.correa@gmail.com'}
+                          className={`p-2 rounded-lg hover:bg-white/10 text-slate-500 hover:text-white transition-colors ${u.email === 'timbo.correa@gmail.com' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          title={u.email === 'timbo.correa@gmail.com' ? "O Fundador não pode ser editado" : "Editar Usuário"}
                         >
                           <i className="fas fa-cog"></i>
                         </button>

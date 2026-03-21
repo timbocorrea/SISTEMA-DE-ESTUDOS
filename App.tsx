@@ -103,7 +103,7 @@ const LessonContentEditorWrapper: React.FC<{ adminService: AdminService }> = ({ 
 // Extracted outside `App` to prevent React from unmounting all children on every App re-render
 const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
-  return user?.role === 'INSTRUCTOR' ? <>{children}</> : <div className="p-8 flex items-center justify-center min-h-screen text-slate-500">Acesso negado. Somente Instrutores podem acessar esta área.</div>;
+  return user?.hasAdminPanelAccess ? <>{children}</> : <div className="p-8 flex items-center justify-center min-h-screen text-slate-500">Acesso negado. Somente Instrutores podem acessar esta área.</div>;
 };
 
 const App: React.FC = () => {
@@ -193,10 +193,18 @@ const App: React.FC = () => {
   });
 
   useEffect(() => {
-    if (user?.role === 'INSTRUCTOR') {
+    if (user?.hasAdminPanelAccess) {
       setIsAdminCoursesLoading(true);
       adminService.listCoursesOutline()
-        .then(setAdminCourses)
+        .then(courses => {
+          // Filtragem: Professores (INSTRUCTOR) veem apenas seus cursos.
+          // Masters (MASTER) veem todos.
+          if (user.role === 'INSTRUCTOR') {
+            setAdminCourses(courses.filter(c => (c as any).instructor_id === user.id));
+          } else {
+            setAdminCourses(courses);
+          }
+        })
         .catch(err => console.error("Failed to load admin courses", err))
         .finally(() => setIsAdminCoursesLoading(false));
     } else {
@@ -433,7 +441,7 @@ const App: React.FC = () => {
   }
 
   // Prevenir que alunos acessem o sistema se logaram via /admin/login (Check de segurança pós-login)
-  if (location.pathname === '/admin/login' && user.role !== 'INSTRUCTOR') {
+  if (location.pathname === '/admin/login' && !user.hasAdminPanelAccess) {
     toast.error('Acesso negado. Esta página é restrita para administradores.');
     logout();
     return null;
@@ -563,7 +571,7 @@ const App: React.FC = () => {
           onNavigateFile={(path) => navigate('/admin/files', { state: { path } })}
           courses={enrolledCourses}
           adminCourses={adminCourses}
-          onOpenContent={user.role === 'INSTRUCTOR' ? traverseToAdminEditor : verifyEnrollmentAndNavigate}
+          onOpenContent={user.hasAdminPanelAccess ? traverseToAdminEditor : verifyEnrollmentAndNavigate}
           onSelectLesson={(courseId, modId, lessId) => navigate(`/course/${courseId}/lesson/${lessId}`)}
           isMobileOpen={isMobileMenuOpen}
           onCloseMobile={() => setIsMobileMenuOpen(false)}
@@ -613,13 +621,13 @@ const App: React.FC = () => {
               <Route path="/" element={
                 <StudentDashboard
                   user={user}
-                  courses={availableCourses}
+                  courses={user.hasAdminPanelAccess ? adminCourses : availableCourses}
                   onCourseClick={handleEnrollRequest}
                   showEnrollButton={true}
                   enrolledCourseIds={enrolledCourses.map(c => c.id)}
                   sectionTitle="Cursos da Plataforma"
-                  onManageCourse={user.role === 'INSTRUCTOR' ? (id) => navigate('/admin/content', { state: { courseId: id } }) : undefined}
-                  onManageContent={user.role === 'INSTRUCTOR' ? () => navigate('/admin/content') : undefined}
+                  onManageCourse={user.hasAdminPanelAccess ? (id) => navigate('/admin/content', { state: { courseId: id } }) : undefined}
+                  onManageContent={user.hasAdminPanelAccess ? () => navigate('/admin/content') : undefined}
                   isLoading={isLoadingCourses}
                 />
               } />
@@ -633,8 +641,8 @@ const App: React.FC = () => {
                   showEnrollButton={false}
                   sectionTitle="Meus Cursos"
                   enrolledCourseIds={enrolledCourses.map(c => c.id)}
-                  onManageCourse={user.role === 'INSTRUCTOR' ? (id) => navigate('/admin/content', { state: { courseId: id } }) : undefined}
-                  onManageContent={user.role === 'INSTRUCTOR' ? () => navigate('/admin/content') : undefined}
+                  onManageCourse={user.hasAdminPanelAccess ? (id) => navigate('/admin/content', { state: { courseId: id } }) : undefined}
+                  onManageContent={user.hasAdminPanelAccess ? () => navigate('/admin/content') : undefined}
                   isLoading={isLoadingCourses}
                 />
               } />

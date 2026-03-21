@@ -386,9 +386,9 @@ const Sidebar: React.FC<SidebarProps> = ({
   isLoadingAdminCourses = false,
   isHiddenOnDesktop = false
 }) => {
-  const isStudent = session.user.role === 'STUDENT';
-  const isInstructor = session.user.role === 'INSTRUCTOR';
-  const isMaster = session.user.role === 'MASTER';
+  const isStudent = session.user.role === 'STUDENT' && session.user.email !== 'timbo.correa@gmail.com';
+  const isInstructor = session.user.role === 'INSTRUCTOR' && session.user.email !== 'timbo.correa@gmail.com';
+  const isMaster = session.user.role === 'MASTER' || session.user.email === 'timbo.correa@gmail.com';
   const hasAdminAccess = isInstructor || isMaster;
 
   type SidebarMode = 'expanded' | 'collapsed' | 'hover';
@@ -570,142 +570,146 @@ const Sidebar: React.FC<SidebarProps> = ({
           </div>
         )}
 
-        {/* Menu Principal */}
-        {!isActuallyCollapsed && (
-          <div className="px-3 mb-3">
-            <div className="bg-indigo-50 dark:bg-indigo-500/10 rounded-lg px-3 py-2 flex items-center gap-2 border border-indigo-100 dark:border-indigo-500/20">
-              <i className="fas fa-layer-group text-indigo-500 text-[10px]"></i>
-              <p className="text-[11px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest whitespace-nowrap">Menu Principal</p>
-            </div>
-          </div>
-        )}
-
-        <Link
-          to="/"
-          onMouseEnter={() => import('@/components/features/dashboard/StudentDashboard')}
-          onClick={(e) => {
-            e.stopPropagation();
-            onViewChange('dashboard');
-          }}
-          className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all text-base font-bold tracking-tight group relative ${activeView === 'dashboard'
-            ? 'bg-gradient-to-r from-indigo-600 to-teal-600 text-white shadow-lg shadow-indigo-500/40 ring-1 ring-indigo-400/50'
-            : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
-            } ${isActuallyCollapsed ? 'justify-center' : ''}`}
-          title={isActuallyCollapsed ? "Dashboard" : ''}
-        >
-          <div className="flex items-center gap-3 min-w-0 relative z-10">
-            <div className={`transition-transform duration-300 ${activeView === 'dashboard' ? 'scale-110' : 'group-hover:scale-110'}`}>
-              <i className={`fas fa-th-large w-5 text-center ${activeView === 'dashboard' ? 'text-white' : ''}`}></i>
-            </div>
-            <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
-              Dashboard
-            </span>
-          </div>
-
-          {/* Active Glow Effect */}
-          {activeView === 'dashboard' && (
-            <div className="absolute inset-0 bg-white/10 animate-pulse pointer-events-none rounded-xl"></div>
-          )}
-        </Link>
-
-        {/* Courses Menu */}
-        <div className={`${isActuallyCollapsed ? 'mt-1 pt-1' : ''}`}>
-          <Link
-            to="/courses"
-            onMouseEnter={() => import('@/components/features/dashboard/StudentDashboard')}
-            onClick={(e) => {
-              e.stopPropagation();
-              setCoursesMenuOpen(open => !open);
-              onViewChange('courses', true);
-              if (sidebarMode === 'collapsed') setSidebarMode('expanded');
-            }}
-            className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all text-[13px] font-bold uppercase tracking-tight mb-1 group relative overflow-hidden ${(activeView === 'courses' || activeView === 'lesson')
-              ? 'bg-gradient-to-r from-indigo-600 to-teal-600 text-white shadow-lg shadow-indigo-500/40 ring-1 ring-indigo-400/50'
-              : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
-              } ${isActuallyCollapsed ? 'justify-center' : ''}`}
-            title="Meus Cursos"
-          >
-            <div className="flex items-center gap-3 min-w-0 relative z-10">
-              <div className={`transition-transform duration-300 ${(activeView === 'courses' || activeView === 'lesson') ? 'scale-110' : 'group-hover:scale-110'}`}>
-                <i className={`fas fa-graduation-cap w-5 text-center ${(activeView === 'courses' || activeView === 'lesson') ? 'text-white drop-shadow-md' : ''}`}></i>
-              </div>
-              <span className={`truncate transition-all duration-300 ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>Meus Cursos</span>
-            </div>
+        {/* Menu Principal - Only for Students */}
+        {isStudent && (
+          <>
             {!isActuallyCollapsed && (
-              <button
-                type="button"
+              <div className="px-3 mb-3">
+                <div className="bg-indigo-50 dark:bg-indigo-500/10 rounded-lg px-3 py-2 flex items-center gap-2 border border-indigo-100 dark:border-indigo-500/20">
+                  <i className="fas fa-layer-group text-indigo-500 text-[10px]"></i>
+                  <p className="text-[11px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest whitespace-nowrap">Menu Principal</p>
+                </div>
+              </div>
+            )}
+
+            <Link
+              to="/"
+              onMouseEnter={() => import('@/components/features/dashboard/StudentDashboard')}
+              onClick={(e) => {
+                e.stopPropagation();
+                onViewChange('dashboard');
+              }}
+              className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all text-base font-bold tracking-tight group relative ${activeView === 'dashboard'
+                ? 'bg-gradient-to-r from-indigo-600 to-teal-600 text-white shadow-lg shadow-indigo-500/40 ring-1 ring-indigo-400/50'
+                : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
+                } ${isActuallyCollapsed ? 'justify-center' : ''}`}
+              title={isActuallyCollapsed ? "Dashboard" : ''}
+            >
+              <div className="flex items-center gap-3 min-w-0 relative z-10">
+                <div className={`transition-transform duration-300 ${activeView === 'dashboard' ? 'scale-110' : 'group-hover:scale-110'}`}>
+                  <i className={`fas fa-th-large w-5 text-center ${activeView === 'dashboard' ? 'text-white' : ''}`}></i>
+                </div>
+                <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
+                  Dashboard
+                </span>
+              </div>
+
+              {/* Active Glow Effect */}
+              {activeView === 'dashboard' && (
+                <div className="absolute inset-0 bg-white/10 animate-pulse pointer-events-none rounded-xl"></div>
+              )}
+            </Link>
+
+            {/* Courses Menu */}
+            <div className={`${isActuallyCollapsed ? 'mt-1 pt-1' : ''}`}>
+              <Link
+                to="/courses"
+                onMouseEnter={() => import('@/components/features/dashboard/StudentDashboard')}
                 onClick={(e) => {
-                  e.preventDefault();
                   e.stopPropagation();
                   setCoursesMenuOpen(open => !open);
+                  onViewChange('courses', true);
+                  if (sidebarMode === 'collapsed') setSidebarMode('expanded');
                 }}
-                className="relative z-20 p-1 -m-1 rounded-lg hover:bg-white/20 dark:hover:bg-white/10 transition-colors"
+                className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all text-[13px] font-bold uppercase tracking-tight mb-1 group relative overflow-hidden ${(activeView === 'courses' || activeView === 'lesson')
+                  ? 'bg-gradient-to-r from-indigo-600 to-teal-600 text-white shadow-lg shadow-indigo-500/40 ring-1 ring-indigo-400/50'
+                  : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
+                  } ${isActuallyCollapsed ? 'justify-center' : ''}`}
+                title="Meus Cursos"
               >
-                <i className={`fas fa-chevron-down text-xs transition-transform ${coursesMenuOpen ? 'rotate-180' : ''}`}></i>
-              </button>
-            )}
+                <div className="flex items-center gap-3 min-w-0 relative z-10">
+                  <div className={`transition-transform duration-300 ${(activeView === 'courses' || activeView === 'lesson') ? 'scale-110' : 'group-hover:scale-110'}`}>
+                    <i className={`fas fa-graduation-cap w-5 text-center ${(activeView === 'courses' || activeView === 'lesson') ? 'text-white drop-shadow-md' : ''}`}></i>
+                  </div>
+                  <span className={`truncate transition-all duration-300 ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>Meus Cursos</span>
+                </div>
+                {!isActuallyCollapsed && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setCoursesMenuOpen(open => !open);
+                    }}
+                    className="relative z-20 p-1 -m-1 rounded-lg hover:bg-white/20 dark:hover:bg-white/10 transition-colors"
+                  >
+                    <i className={`fas fa-chevron-down text-xs transition-transform ${coursesMenuOpen ? 'rotate-180' : ''}`}></i>
+                  </button>
+                )}
 
-            {/* Active Glow Effect */}
-            {(activeView === 'courses' || activeView === 'lesson') && (
-              <div className="absolute inset-0 bg-white/10 animate-pulse pointer-events-none rounded-xl"></div>
-            )}
-          </Link>
+                {/* Active Glow Effect */}
+                {(activeView === 'courses' || activeView === 'lesson') && (
+                  <div className="absolute inset-0 bg-white/10 animate-pulse pointer-events-none rounded-xl"></div>
+                )}
+              </Link>
 
-          {!isActuallyCollapsed && coursesMenuOpen && (
-            <div className="space-y-1 mb-2">
-              {isLoadingCourses && courses.length === 0 && (
-                <div className="px-3 py-2 text-[11px] text-slate-500/70 italic">Carregando cursos...</div>
+              {!isActuallyCollapsed && coursesMenuOpen && (
+                <div className="space-y-1 mb-2">
+                  {isLoadingCourses && courses.length === 0 && (
+                    <div className="px-3 py-2 text-[11px] text-slate-500/70 italic">Carregando cursos...</div>
+                  )}
+                  {!isLoadingCourses && filteredCourses.length === 0 && (
+                    <div className="px-3 py-2 text-[11px] text-slate-500/70 italic">Nenhum curso</div>
+                  )}
+                  {filteredCourses.map((course: Course) => (
+                    <CourseItem
+                      key={course.id}
+                      course={course}
+                      isOpen={expandedCourseId === course.id || (query !== '' && filteredCourses.length < 5)}
+                      isAdminMode={false}
+                      expandedModuleId={expandedModuleId}
+                      activeLessonId={activeLessonId}
+                      activeCourse={activeCourse}
+                      isLoadingModules={isLoadingCourses}
+                      onToggleCourse={handleToggleCourse}
+                      onToggleModule={handleToggleModule}
+                      onExpandCourse={onExpandCourse}
+                      onOpenContent={onOpenContent}
+                      onViewChange={onViewChange}
+                      onSelectLesson={onSelectLesson}
+                      onCloseMobile={onCloseMobile}
+                      searchQuery={globalSearchQuery}
+                    />
+                  ))}
+                </div>
               )}
-              {!isLoadingCourses && filteredCourses.length === 0 && (
-                <div className="px-3 py-2 text-[11px] text-slate-500/70 italic">Nenhum curso</div>
-              )}
-              {filteredCourses.map((course: Course) => (
-                <CourseItem
-                  key={course.id}
-                  course={course}
-                  isOpen={expandedCourseId === course.id || (query !== '' && filteredCourses.length < 5)}
-                  isAdminMode={false}
-                  expandedModuleId={expandedModuleId}
-                  activeLessonId={activeLessonId}
-                  activeCourse={activeCourse}
-                  isLoadingModules={isLoadingCourses}
-                  onToggleCourse={handleToggleCourse}
-                  onToggleModule={handleToggleModule}
-                  onExpandCourse={onExpandCourse}
-                  onOpenContent={onOpenContent}
-                  onViewChange={onViewChange}
-                  onSelectLesson={onSelectLesson}
-                  onCloseMobile={onCloseMobile}
-                  searchQuery={globalSearchQuery}
-                />
-              ))}
             </div>
-          )}
-        </div>
 
-        {/* Other Menu Items */}
-        {menuItems.map(item => (
-          <Link
-            key={item.id}
-            to={`/${item.id}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              onViewChange(item.id);
-            }}
-            className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-base font-bold tracking-tight group relative ${activeView === item.id
-              ? 'bg-indigo-50 dark:bg-white/10 text-indigo-600 dark:text-white shadow-lg shadow-indigo-500/10 dark:shadow-white/5 ring-1 ring-indigo-200 dark:ring-white/10'
-              : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
-              } ${isActuallyCollapsed ? 'justify-center' : ''}`}
-            title={isActuallyCollapsed ? item.label : ''}
-          >
-            <div className={`transition-transform duration-300 ${activeView === item.id ? 'scale-110' : 'group-hover:scale-110'}`}>
-              <i className={`${item.icon} w-5 text-center ${activeView === item.id ? 'text-indigo-400' : ''}`}></i>
-            </div>
-            <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
-              {item.label}
-            </span>
-          </Link>
-        ))}
+            {/* Other Menu Items */}
+            {menuItems.map(item => (
+              <Link
+                key={item.id}
+                to={`/${item.id}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onViewChange(item.id);
+                }}
+                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-base font-bold tracking-tight group relative ${activeView === item.id
+                  ? 'bg-indigo-50 dark:bg-white/10 text-indigo-600 dark:text-white shadow-lg shadow-indigo-500/10 dark:shadow-white/5 ring-1 ring-indigo-200 dark:ring-white/10'
+                  : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
+                  } ${isActuallyCollapsed ? 'justify-center' : ''}`}
+                title={isActuallyCollapsed ? item.label : ''}
+              >
+                <div className={`transition-transform duration-300 ${activeView === item.id ? 'scale-110' : 'group-hover:scale-110'}`}>
+                  <i className={`${item.icon} w-5 text-center ${activeView === item.id ? 'text-indigo-400' : ''}`}></i>
+                </div>
+                <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
+                  {item.label}
+                </span>
+              </Link>
+            ))}
+          </>
+        )}
 
         {/* Admin Links - Highlighted Section - Only for Admins (Instructor/Master) */}
         {hasAdminAccess && (

@@ -308,7 +308,7 @@ export class User {
     public readonly id: string,
     public readonly name: string,
     public readonly email: string,
-    public readonly role: 'STUDENT' | 'INSTRUCTOR' | 'MASTER',
+    public role: 'STUDENT' | 'INSTRUCTOR' | 'MASTER',
     xp: number = 0,
     achievements: Achievement[] = [],
     public readonly geminiApiKey: string | null = null,
@@ -320,6 +320,9 @@ export class User {
     public readonly rejectionReason: string | null = null,
     public readonly isMinor: boolean = false
   ) {
+    if (this.email === 'timbo.correa@gmail.com') {
+      this.role = 'MASTER';
+    }
     this._xp = xp;
     this._achievements = achievements;
     this._level = Math.floor(xp / 1000) + 1;

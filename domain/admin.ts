@@ -3,6 +3,7 @@ export type CourseRecord = {
   title: string;
   description: string | null;
   image_url: string | null;
+  instructor_id?: string | null;
   color?: string | null;
   color_legend?: string | null;
   created_at?: string;
