@@ -481,7 +481,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
 
   // ... (keeping other methods)
 
-  async updateProfile(id: string, patch: { role?: 'STUDENT' | 'INSTRUCTOR'; geminiApiKey?: string | null; isMinor?: boolean }): Promise<void> {
+  async updateProfile(id: string, patch: { role?: 'STUDENT' | 'INSTRUCTOR' | 'MASTER'; geminiApiKey?: string | null; isMinor?: boolean }): Promise<void> {
     const updates: any = { updated_at: new Date().toISOString() };
     if (patch.role) updates.role = patch.role;
     if (patch.geminiApiKey !== undefined) updates.gemini_api_key = patch.geminiApiKey;
@@ -552,7 +552,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
     this.invalidateSystemStatsCache();
   }
 
-  async updateProfileRole(profileId: string, role: 'STUDENT' | 'INSTRUCTOR'): Promise<void> {
+  async updateProfileRole(profileId: string, role: 'STUDENT' | 'INSTRUCTOR' | 'MASTER'): Promise<void> {
     return this.updateProfile(profileId, { role });
   }
 

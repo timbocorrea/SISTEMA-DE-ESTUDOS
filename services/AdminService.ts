@@ -169,11 +169,11 @@ export class AdminService {
     return this.adminRepository.listProfiles();
   }
 
-  updateProfileRole(profileId: string, role: 'STUDENT' | 'INSTRUCTOR'): Promise<void> {
+  updateProfileRole(profileId: string, role: 'STUDENT' | 'INSTRUCTOR' | 'MASTER'): Promise<void> {
     return this.adminRepository.updateProfileRole(profileId, role);
   }
-
-  updateProfile(id: string, patch: { role?: 'STUDENT' | 'INSTRUCTOR'; geminiApiKey?: string | null; isMinor?: boolean }): Promise<void> {
+ 
+  updateProfile(id: string, patch: { role?: 'STUDENT' | 'INSTRUCTOR' | 'MASTER'; geminiApiKey?: string | null; isMinor?: boolean }): Promise<void> {
     return this.adminRepository.updateProfile(id, patch);
   }
 

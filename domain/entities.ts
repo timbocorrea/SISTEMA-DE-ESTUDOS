@@ -308,7 +308,7 @@ export class User {
     public readonly id: string,
     public readonly name: string,
     public readonly email: string,
-    public readonly role: 'STUDENT' | 'INSTRUCTOR',
+    public readonly role: 'STUDENT' | 'INSTRUCTOR' | 'MASTER',
     xp: number = 0,
     achievements: Achievement[] = [],
     public readonly geminiApiKey: string | null = null,
@@ -328,6 +328,12 @@ export class User {
   get xp(): number { return this._xp; }
   get level(): number { return this._level; }
   get achievements(): Achievement[] { return [...this._achievements]; }
+  
+  // Access and Role Getters
+  get isStudent(): boolean { return this.role === 'STUDENT'; }
+  get isInstructor(): boolean { return this.role === 'INSTRUCTOR'; }
+  get isMaster(): boolean { return this.role === 'MASTER'; }
+  get hasAdminPanelAccess(): boolean { return this.role === 'INSTRUCTOR' || this.role === 'MASTER'; }
 
   public addXp(amount: number): void {
     if (amount < 0) throw new ValidationError('A quantidade de XP deve ser positiva.');

@@ -3,7 +3,7 @@ export interface IUserSession {
     id: string;
     name: string;
     email: string;
-    role: 'STUDENT' | 'INSTRUCTOR';
+    role: 'STUDENT' | 'INSTRUCTOR' | 'MASTER';
     approvalStatus?: 'pending' | 'approved' | 'rejected';
     xp?: number;
     level?: number;

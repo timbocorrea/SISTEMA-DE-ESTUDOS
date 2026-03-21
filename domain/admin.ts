@@ -71,7 +71,7 @@ export type ProfileRecord = {
   id: string;
   email: string;
   name: string | null;
-  role: 'STUDENT' | 'INSTRUCTOR';
+  role: 'STUDENT' | 'INSTRUCTOR' | 'MASTER';
   xp_total: number | null;
   current_level: number | null;
   gemini_api_key?: string | null;

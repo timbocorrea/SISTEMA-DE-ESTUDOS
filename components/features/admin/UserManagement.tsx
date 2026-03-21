@@ -28,7 +28,7 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
     id: string;
     name: string;
     email: string;
-    role: 'STUDENT' | 'INSTRUCTOR';
+    role: 'STUDENT' | 'INSTRUCTOR' | 'MASTER';
     apiKey: string;
     apiKeyLoaded: boolean;
   } | null>(null);
@@ -74,7 +74,7 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
         const list = await loadUsers();
 
         if (!adminId) {
-          const instructor = list.find(p => p.role === 'INSTRUCTOR');
+          const instructor = list.find(p => p.role === 'INSTRUCTOR' || p.role === 'MASTER');
           if (instructor) setAdminId(instructor.id);
         }
       } catch (e) {
@@ -87,9 +87,10 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
   }, [adminService, activeTab]);
 
   const stats = useMemo(() => {
+    const masters = users.filter(u => u.role === 'MASTER').length;
     const instructors = users.filter(u => u.role === 'INSTRUCTOR').length;
     const students = users.filter(u => u.role === 'STUDENT').length;
-    return { instructors, students, total: users.length };
+    return { masters, instructors, students, total: users.length };
   }, [users]);
 
   const filtered = useMemo(() => {
@@ -98,7 +99,7 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
     return users.filter(u => (u.email || '').toLowerCase().includes(q) || (u.name || '').toLowerCase().includes(q));
   }, [users, filter]);
 
-  const updateRole = async (profileId: string, role: 'STUDENT' | 'INSTRUCTOR') => {
+  const updateRole = async (profileId: string, role: 'STUDENT' | 'INSTRUCTOR' | 'MASTER') => {
     try {
       setBusyId(profileId);
       await adminService.updateProfileRole(profileId, role);
@@ -149,7 +150,7 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
 
     try {
       setIsSaving(true);
-      const patch: { role: 'STUDENT' | 'INSTRUCTOR'; geminiApiKey?: string | null } = {
+      const patch: { role: 'STUDENT' | 'INSTRUCTOR' | 'MASTER'; geminiApiKey?: string | null } = {
         role: editingUser.role
       };
 
@@ -303,7 +304,7 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
             Gestão de Usuários
           </h2>
           <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium">
-            Monitore perfis e permissões.
+            Monitore perfis e permissões conforme o papel.
           </p>
         </div>
 
@@ -339,15 +340,20 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group hover:border-indigo-500/30 transition-colors">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none group-hover:bg-indigo-500/20 transition-colors"></div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group hover:border-slate-400 transition-colors">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-slate-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none group-hover:bg-slate-500/20 transition-colors"></div>
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 relative z-10">Total</p>
           <p className="text-4xl font-black text-slate-800 dark:text-white relative z-10">{stats.total}</p>
         </div>
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group hover:border-purple-500/30 transition-colors">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none group-hover:bg-purple-500/20 transition-colors"></div>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 relative z-10">Master</p>
+          <p className="text-4xl font-black text-purple-600 dark:text-purple-400 relative z-10">{stats.masters}</p>
+        </div>
         <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group hover:border-cyan-500/30 transition-colors">
           <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none group-hover:bg-cyan-500/20 transition-colors"></div>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 relative z-10">Instrutores</p>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 relative z-10">Professores</p>
           <p className="text-4xl font-black text-cyan-600 dark:text-cyan-400 relative z-10">{stats.instructors}</p>
         </div>
         <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group hover:border-emerald-500/30 transition-colors">
@@ -421,7 +427,6 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
             // Verificar se todos os selecionados estão bloqueados
             const selectedUsers = filtered.filter(u => selectedUserIds.includes(u.id));
             const allBlocked = selectedUsers.every(u => (u as any).approval_status === 'rejected');
-            const someBlocked = selectedUsers.some(u => (u as any).approval_status === 'rejected');
 
             return (
               <div className="flex items-center gap-2 px-4 py-2 bg-indigo-500/10 rounded-2xl border border-indigo-500/30 backdrop-blur-md">
@@ -514,22 +519,26 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
 
               {/* Cabeçalho do Card */}
               <div className="flex items-start gap-4 mb-4">
-                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-xl shadow-lg ${u.role === 'INSTRUCTOR'
-                  ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shadow-cyan-500/10'
-                  : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shadow-indigo-500/10'
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-xl shadow-lg ${u.role === 'MASTER'
+                  ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20 shadow-purple-500/10'
+                  : u.role === 'INSTRUCTOR'
+                    ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shadow-cyan-500/10'
+                    : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shadow-indigo-500/10'
                   }`}>
-                  <i className={`fas ${u.role === 'INSTRUCTOR' ? 'fa-chalkboard-teacher' : 'fa-user-graduate'}`}></i>
+                  <i className={`fas ${u.role === 'MASTER' ? 'fa-crown' : u.role === 'INSTRUCTOR' ? 'fa-chalkboard-teacher' : 'fa-user-graduate'}`}></i>
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className={`font-bold text-lg truncate pr-6 ${isSelected ? 'text-indigo-200' : 'text-white'}`}>{u.name || 'Sem nome'}</h3>
                   <p className="text-sm text-slate-400 truncate">{u.email}</p>
 
                   <div className="flex items-center gap-2 mt-2">
-                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider border ${u.role === 'INSTRUCTOR'
-                      ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
-                      : 'bg-white/5 text-slate-300 border-white/10'
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider border ${u.role === 'MASTER'
+                      ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+                      : u.role === 'INSTRUCTOR'
+                        ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
+                        : 'bg-white/5 text-slate-300 border-white/10'
                       }`}>
-                      {u.role === 'INSTRUCTOR' ? 'Admin' : 'Aluno'}
+                      {u.role === 'MASTER' ? 'Master' : u.role === 'INSTRUCTOR' ? 'Professor' : 'Aluno'}
                     </span>
 
                     {isPending && (
@@ -667,11 +676,13 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
                     )}
                     <td className="p-4">
                       <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg shadow-lg ${u.role === 'INSTRUCTOR'
-                          ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
-                          : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg shadow-lg ${u.role === 'MASTER'
+                          ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
+                          : u.role === 'INSTRUCTOR'
+                            ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
+                            : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
                           }`}>
-                          <i className={`fas ${u.role === 'INSTRUCTOR' ? 'fa-chalkboard-teacher' : 'fa-user-graduate'}`}></i>
+                          <i className={`fas ${u.role === 'MASTER' ? 'fa-crown' : u.role === 'INSTRUCTOR' ? 'fa-chalkboard-teacher' : 'fa-user-graduate'}`}></i>
                         </div>
                         <div className="min-w-0">
                           <p className={`font-bold text-sm truncate max-w-[200px] ${isSelected ? 'text-indigo-600 dark:text-indigo-200' : 'text-slate-800 dark:text-slate-200'}`}>{u.name || 'Sem nome'}</p>
@@ -680,11 +691,13 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
                       </div>
                     </td>
                     <td className="p-4">
-                      <span className={`text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-wider border ${u.role === 'INSTRUCTOR'
-                        ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
-                        : 'bg-white/5 text-slate-400 border-white/10'
+                      <span className={`text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-wider border ${u.role === 'MASTER'
+                        ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+                        : u.role === 'INSTRUCTOR'
+                          ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
+                          : 'bg-white/5 text-slate-400 border-white/10'
                         }`}>
-                        {u.role === 'INSTRUCTOR' ? 'Admin' : 'Aluno'}
+                        {u.role === 'MASTER' ? 'Master' : u.role === 'INSTRUCTOR' ? 'Professor' : 'Aluno'}
                       </span>
                     </td>
                     <td className="p-4">
@@ -780,7 +793,6 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
             onClose={() => setResettingUser(null)}
             onSuccess={() => {
               setResettingUser(null);
-              // No need to reload users really, but ok
             }}
           />
         )
@@ -862,7 +874,6 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
       }
 
       {/* Modal de Edição */}
-      {/* Modal de Edição */}
       {
         editingUser && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
@@ -879,8 +890,8 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
 
               <form onSubmit={handleSaveUser} className="p-6 space-y-6">
                 <div className="flex items-center gap-4 mb-6">
-                  <div className="w-12 h-12 rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center text-xl shadow-[0_0_15px_rgba(99,102,241,0.2)]">
-                    <i className="fas fa-user-circle"></i>
+                  <div className={`w-12 h-12 rounded-full border flex items-center justify-center text-xl shadow-[0_0_15px_rgba(99,102,241,0.2)] ${editingUser.role === 'MASTER' ? 'bg-purple-500/20 text-purple-400 border-purple-500/30 shadow-purple-500/20' : editingUser.role === 'INSTRUCTOR' ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' : 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30'}`}>
+                    <i className={`fas ${editingUser.role === 'MASTER' ? 'fa-crown' : editingUser.role === 'INSTRUCTOR' ? 'fa-chalkboard-teacher' : 'fa-user-graduate'}`}></i>
                   </div>
                   <div>
                     <h4 className="font-bold text-white text-lg">{editingUser.name || 'Sem nome'}</h4>
@@ -890,73 +901,64 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
-                      Tipo de Acesso
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">
+                      Cargo / Nível de Acesso
                     </label>
-                    <div className="flex flex-col md:flex-row gap-2">
+                    <div className="flex flex-col md:flex-row gap-3">
                       <button
                         type="button"
-                        onClick={() => {
-                          if (editingUser) {
-                            setEditingUser({
-                              ...editingUser,
-                              role: 'STUDENT'
-                            });
-                          }
-                        }}
-                        className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold border transition-all ${editingUser.role === 'STUDENT'
-                          ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-300 shadow-[0_0_10px_rgba(99,102,241,0.2)]'
-                          : 'bg-black/20 border-white/5 text-slate-500 hover:bg-white/5 hover:text-slate-300'
+                        onClick={() => setEditingUser({ ...editingUser, role: 'STUDENT' })}
+                        className={`flex-1 py-4 px-4 rounded-2xl text-sm font-black border transition-all flex flex-col items-center gap-2 ${editingUser.role === 'STUDENT'
+                          ? 'bg-indigo-500 text-white border-indigo-400 shadow-[0_0_20px_rgba(99,102,241,0.4)]'
+                          : 'bg-black/40 border-white/5 text-slate-500 hover:bg-white/5 hover:text-slate-300'
                           }`}
                       >
-                        <i className="fas fa-user-graduate mr-2"></i> Estudante
+                        <i className={`fas fa-user-graduate text-lg ${editingUser.role === 'STUDENT' ? 'text-white' : 'text-slate-600'}`}></i>
+                        <span>Aluno</span>
                       </button>
                       <button
                         type="button"
-                        onClick={() => {
-                          if (editingUser) {
-                            setEditingUser({
-                              ...editingUser,
-                              role: 'INSTRUCTOR'
-                            });
-                          }
-                        }}
-                        className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold border transition-all ${editingUser.role === 'INSTRUCTOR'
-                          ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-300 shadow-[0_0_10px_rgba(6,182,212,0.2)]'
-                          : 'bg-black/20 border-white/5 text-slate-500 hover:bg-white/5 hover:text-slate-300'
+                        onClick={() => setEditingUser({ ...editingUser, role: 'INSTRUCTOR' })}
+                        className={`flex-1 py-4 px-4 rounded-2xl text-sm font-black border transition-all flex flex-col items-center gap-2 ${editingUser.role === 'INSTRUCTOR'
+                          ? 'bg-cyan-600 text-white border-cyan-500 shadow-[0_0_20px_rgba(6,182,212,0.4)]'
+                          : 'bg-black/40 border-white/5 text-slate-500 hover:bg-white/5 hover:text-slate-300'
                           }`}
                       >
-                        <i className="fas fa-chalkboard-teacher mr-2"></i> Admin / Instrutor
+                        <i className={`fas fa-chalkboard-teacher text-lg ${editingUser.role === 'INSTRUCTOR' ? 'text-white' : 'text-slate-600'}`}></i>
+                        <span>Professor</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingUser({ ...editingUser, role: 'MASTER' })}
+                        className={`flex-1 py-4 px-4 rounded-2xl text-sm font-black border transition-all flex flex-col items-center gap-2 ${editingUser.role === 'MASTER'
+                          ? 'bg-purple-600 text-white border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.4)]'
+                          : 'bg-black/40 border-white/5 text-slate-500 hover:bg-white/5 hover:text-slate-300'
+                          }`}
+                      >
+                        <i className={`fas fa-crown text-lg ${editingUser.role === 'MASTER' ? 'text-white' : 'text-slate-600'}`}></i>
+                        <span>Master</span>
                       </button>
                     </div>
-
                   </div>
 
                   <div>
                     <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
-                      AI API Key (Google / OpenAI / Z.ai / Groq)
+                      AI API Key (Google / OpenAI / Groq)
                     </label>
                     <div className="relative group">
                       <i className="fas fa-key absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors"></i>
                       <input
                         type="text"
                         value={editingUser.apiKey}
-                        onChange={e => {
-                          if (editingUser) {
-                            setEditingUser({
-                              ...editingUser,
-                              apiKey: e.target.value,
-                              apiKeyLoaded: true
-                            });
-                          }
-                        }}
-                        placeholder="AIza... | sk... | gsk... | id.secret"
-                        className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm font-mono text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all placeholder:text-slate-600"
+                        onChange={e => setEditingUser({
+                          ...editingUser,
+                          apiKey: e.target.value,
+                          apiKeyLoaded: true
+                        })}
+                        placeholder="AIza... | sk... | gsk..."
+                        className="w-full pl-11 pr-4 py-3.5 bg-black/40 border border-white/10 rounded-xl text-sm font-mono text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all placeholder:text-slate-600"
                       />
                     </div>
-                    <p className="mt-2 text-[10px] text-slate-500">
-                      Suporte: Google Gemini, OpenAI, Zhipu AI e Groq (Grátis: Llama 3).
-                    </p>
                   </div>
                 </div>
 
@@ -964,14 +966,14 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
                   <button
                     type="button"
                     onClick={() => setEditingUser(null)}
-                    className="flex-1 py-3 rounded-xl border border-white/10 text-slate-400 font-bold text-sm hover:bg-white/5 hover:text-white transition-colors"
+                    className="flex-1 py-4 rounded-2xl border border-white/10 text-slate-400 font-bold text-sm hover:bg-white/5 hover:text-white transition-colors"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
                     disabled={isSaving}
-                    className="flex-1 py-3 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-500 shadow-lg shadow-indigo-600/20 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 border border-indigo-400/20"
+                    className="flex-1 py-4 rounded-2xl bg-indigo-600 text-white font-black text-sm hover:bg-indigo-500 shadow-lg shadow-indigo-600/20 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 border border-indigo-400/20"
                   >
                     {isSaving && <i className="fas fa-circle-notch animate-spin"></i>}
                     Salvar Alterações

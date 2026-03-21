@@ -386,7 +386,10 @@ const Sidebar: React.FC<SidebarProps> = ({
   isLoadingAdminCourses = false,
   isHiddenOnDesktop = false
 }) => {
-  const isAdmin = session.user.role === 'INSTRUCTOR';
+  const isStudent = session.user.role === 'STUDENT';
+  const isInstructor = session.user.role === 'INSTRUCTOR';
+  const isMaster = session.user.role === 'MASTER';
+  const hasAdminAccess = isInstructor || isMaster;
 
   type SidebarMode = 'expanded' | 'collapsed' | 'hover';
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>(() => {
@@ -466,7 +469,6 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const menuItems = [
     { id: 'achievements', label: 'Conquistas', icon: 'fas fa-trophy' },
-    { id: 'audit', label: 'Auditoria (Pais)', icon: 'fas fa-shield-alt' },
     { id: 'buddy', label: 'Buddy AI', icon: 'fas fa-robot' }
   ];
 
@@ -554,7 +556,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             <div className="relative">
               <input
                 type="text"
-                placeholder={isAdmin && activeView === 'content' ? "Pesquisar (Administração)" : "Pesquisar resumo do curso"}
+                placeholder={hasAdminAccess && activeView === 'content' ? "Pesquisar (Administração)" : "Pesquisar resumo do curso"}
                 value={globalSearchQuery}
                 onChange={(e) => setGlobalSearchQuery(e.target.value)}
                 onClick={(e) => e.stopPropagation()}
@@ -568,8 +570,8 @@ const Sidebar: React.FC<SidebarProps> = ({
           </div>
         )}
 
-        {/* Menu Principal - Only for students */}
-        {!isAdmin && !isActuallyCollapsed && (
+        {/* Menu Principal */}
+        {!isActuallyCollapsed && (
           <div className="px-3 mb-3">
             <div className="bg-indigo-50 dark:bg-indigo-500/10 rounded-lg px-3 py-2 flex items-center gap-2 border border-indigo-100 dark:border-indigo-500/20">
               <i className="fas fa-layer-group text-indigo-500 text-[10px]"></i>
@@ -578,115 +580,111 @@ const Sidebar: React.FC<SidebarProps> = ({
           </div>
         )}
 
-        {!isAdmin && (
+        <Link
+          to="/"
+          onMouseEnter={() => import('@/components/features/dashboard/StudentDashboard')}
+          onClick={(e) => {
+            e.stopPropagation();
+            onViewChange('dashboard');
+          }}
+          className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all text-base font-bold tracking-tight group relative ${activeView === 'dashboard'
+            ? 'bg-gradient-to-r from-indigo-600 to-teal-600 text-white shadow-lg shadow-indigo-500/40 ring-1 ring-indigo-400/50'
+            : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
+            } ${isActuallyCollapsed ? 'justify-center' : ''}`}
+          title={isActuallyCollapsed ? "Dashboard" : ''}
+        >
+          <div className="flex items-center gap-3 min-w-0 relative z-10">
+            <div className={`transition-transform duration-300 ${activeView === 'dashboard' ? 'scale-110' : 'group-hover:scale-110'}`}>
+              <i className={`fas fa-th-large w-5 text-center ${activeView === 'dashboard' ? 'text-white' : ''}`}></i>
+            </div>
+            <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
+              Dashboard
+            </span>
+          </div>
+
+          {/* Active Glow Effect */}
+          {activeView === 'dashboard' && (
+            <div className="absolute inset-0 bg-white/10 animate-pulse pointer-events-none rounded-xl"></div>
+          )}
+        </Link>
+
+        {/* Courses Menu */}
+        <div className={`${isActuallyCollapsed ? 'mt-1 pt-1' : ''}`}>
           <Link
-            to="/"
+            to="/courses"
             onMouseEnter={() => import('@/components/features/dashboard/StudentDashboard')}
             onClick={(e) => {
               e.stopPropagation();
-              onViewChange('dashboard');
+              setCoursesMenuOpen(open => !open);
+              onViewChange('courses', true);
+              if (sidebarMode === 'collapsed') setSidebarMode('expanded');
             }}
-            className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all text-base font-bold tracking-tight group relative ${activeView === 'dashboard'
+            className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all text-[13px] font-bold uppercase tracking-tight mb-1 group relative overflow-hidden ${(activeView === 'courses' || activeView === 'lesson')
               ? 'bg-gradient-to-r from-indigo-600 to-teal-600 text-white shadow-lg shadow-indigo-500/40 ring-1 ring-indigo-400/50'
               : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
               } ${isActuallyCollapsed ? 'justify-center' : ''}`}
-            title={isActuallyCollapsed ? "Dashboard" : ''}
+            title="Meus Cursos"
           >
             <div className="flex items-center gap-3 min-w-0 relative z-10">
-              <div className={`transition-transform duration-300 ${activeView === 'dashboard' ? 'scale-110' : 'group-hover:scale-110'}`}>
-                <i className={`fas fa-th-large w-5 text-center ${activeView === 'dashboard' ? 'text-white' : ''}`}></i>
+              <div className={`transition-transform duration-300 ${(activeView === 'courses' || activeView === 'lesson') ? 'scale-110' : 'group-hover:scale-110'}`}>
+                <i className={`fas fa-graduation-cap w-5 text-center ${(activeView === 'courses' || activeView === 'lesson') ? 'text-white drop-shadow-md' : ''}`}></i>
               </div>
-              <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
-                Dashboard
-              </span>
+              <span className={`truncate transition-all duration-300 ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>Meus Cursos</span>
             </div>
+            {!isActuallyCollapsed && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setCoursesMenuOpen(open => !open);
+                }}
+                className="relative z-20 p-1 -m-1 rounded-lg hover:bg-white/20 dark:hover:bg-white/10 transition-colors"
+              >
+                <i className={`fas fa-chevron-down text-xs transition-transform ${coursesMenuOpen ? 'rotate-180' : ''}`}></i>
+              </button>
+            )}
 
             {/* Active Glow Effect */}
-            {activeView === 'dashboard' && (
+            {(activeView === 'courses' || activeView === 'lesson') && (
               <div className="absolute inset-0 bg-white/10 animate-pulse pointer-events-none rounded-xl"></div>
             )}
           </Link>
-        )}
 
-        {/* Courses Menu - Only for students */}
-        {!isAdmin && (
-          <div className={`${isActuallyCollapsed ? 'mt-1 pt-1' : ''}`}>
-            <Link
-              to="/courses"
-              onMouseEnter={() => import('@/components/features/dashboard/StudentDashboard')}
-              onClick={(e) => {
-                e.stopPropagation();
-                setCoursesMenuOpen(open => !open);
-                onViewChange('courses', true);
-                if (sidebarMode === 'collapsed') setSidebarMode('expanded');
-              }}
-              className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all text-[13px] font-bold uppercase tracking-tight mb-1 group relative overflow-hidden ${(activeView === 'courses' || activeView === 'lesson')
-                ? 'bg-gradient-to-r from-indigo-600 to-teal-600 text-white shadow-lg shadow-indigo-500/40 ring-1 ring-indigo-400/50'
-                : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
-                } ${isActuallyCollapsed ? 'justify-center' : ''}`}
-              title="Meus Cursos"
-            >
-              <div className="flex items-center gap-3 min-w-0 relative z-10">
-                <div className={`transition-transform duration-300 ${(activeView === 'courses' || activeView === 'lesson') ? 'scale-110' : 'group-hover:scale-110'}`}>
-                  <i className={`fas fa-graduation-cap w-5 text-center ${(activeView === 'courses' || activeView === 'lesson') ? 'text-white drop-shadow-md' : ''}`}></i>
-                </div>
-                <span className={`truncate transition-all duration-300 ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>Meus Cursos</span>
-              </div>
-              {!isActuallyCollapsed && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setCoursesMenuOpen(open => !open);
-                  }}
-                  className="relative z-20 p-1 -m-1 rounded-lg hover:bg-white/20 dark:hover:bg-white/10 transition-colors"
-                >
-                  <i className={`fas fa-chevron-down text-xs transition-transform ${coursesMenuOpen ? 'rotate-180' : ''}`}></i>
-                </button>
+          {!isActuallyCollapsed && coursesMenuOpen && (
+            <div className="space-y-1 mb-2">
+              {isLoadingCourses && courses.length === 0 && (
+                <div className="px-3 py-2 text-[11px] text-slate-500/70 italic">Carregando cursos...</div>
               )}
-
-              {/* Active Glow Effect */}
-              {(activeView === 'courses' || activeView === 'lesson') && (
-                <div className="absolute inset-0 bg-white/10 animate-pulse pointer-events-none rounded-xl"></div>
+              {!isLoadingCourses && filteredCourses.length === 0 && (
+                <div className="px-3 py-2 text-[11px] text-slate-500/70 italic">Nenhum curso</div>
               )}
-            </Link>
+              {filteredCourses.map((course: Course) => (
+                <CourseItem
+                  key={course.id}
+                  course={course}
+                  isOpen={expandedCourseId === course.id || (query !== '' && filteredCourses.length < 5)}
+                  isAdminMode={false}
+                  expandedModuleId={expandedModuleId}
+                  activeLessonId={activeLessonId}
+                  activeCourse={activeCourse}
+                  isLoadingModules={isLoadingCourses}
+                  onToggleCourse={handleToggleCourse}
+                  onToggleModule={handleToggleModule}
+                  onExpandCourse={onExpandCourse}
+                  onOpenContent={onOpenContent}
+                  onViewChange={onViewChange}
+                  onSelectLesson={onSelectLesson}
+                  onCloseMobile={onCloseMobile}
+                  searchQuery={globalSearchQuery}
+                />
+              ))}
+            </div>
+          )}
+        </div>
 
-            {!isActuallyCollapsed && coursesMenuOpen && (
-              <div className="space-y-1 mb-2">
-                {isLoadingCourses && courses.length === 0 && (
-                  <div className="px-3 py-2 text-[11px] text-slate-500/70 italic">Carregando cursos...</div>
-                )}
-                {!isLoadingCourses && filteredCourses.length === 0 && (
-                  <div className="px-3 py-2 text-[11px] text-slate-500/70 italic">Nenhum curso</div>
-                )}
-                {filteredCourses.map((course: Course) => (
-                  <CourseItem
-                    key={course.id}
-                    course={course}
-                    isOpen={expandedCourseId === course.id || (query !== '' && filteredCourses.length < 5)}
-                    isAdminMode={false}
-                    expandedModuleId={expandedModuleId}
-                    activeLessonId={activeLessonId}
-                    activeCourse={activeCourse}
-                    isLoadingModules={isLoadingCourses}
-                    onToggleCourse={handleToggleCourse}
-                    onToggleModule={handleToggleModule}
-                    onExpandCourse={onExpandCourse}
-                    onOpenContent={onOpenContent}
-                    onViewChange={onViewChange}
-                    onSelectLesson={onSelectLesson}
-                    onCloseMobile={onCloseMobile}
-                    searchQuery={globalSearchQuery}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Other Menu Items - Only for students */}
-        {!isAdmin && menuItems.map(item => (
+        {/* Other Menu Items */}
+        {menuItems.map(item => (
           <Link
             key={item.id}
             to={`/${item.id}`}
@@ -709,9 +707,9 @@ const Sidebar: React.FC<SidebarProps> = ({
           </Link>
         ))}
 
-        {/* Admin Links - Highlighted Section - Only for Admins */}
-        {isAdmin && (
-          <div className={`${!isAdmin ? 'mt-8' : ''} ${!isActuallyCollapsed ? 'bg-slate-100/50 dark:bg-slate-800/20 rounded-2xl p-3 border border-indigo-100 dark:border-indigo-500/10' : ''}`}>
+        {/* Admin Links - Highlighted Section - Only for Admins (Instructor/Master) */}
+        {hasAdminAccess && (
+          <div className={`mt-8 ${!isActuallyCollapsed ? 'bg-slate-100/50 dark:bg-slate-800/20 rounded-2xl p-3 border border-indigo-100 dark:border-indigo-500/10' : ''}`}>
             {!isActuallyCollapsed && (
               <div className="px-1 mb-4">
                 <div className="bg-indigo-50 dark:bg-indigo-500/10 rounded-lg px-3 py-2 flex items-center gap-2 border border-indigo-100 dark:border-indigo-500/20">
@@ -788,23 +786,25 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </div>
               )}
 
-              {/* Admin Users */}
-              <Link
-                to="/admin/users"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onViewChange('users');
-                }}
-                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-base font-bold tracking-tight group relative mb-1 ${activeView === 'users' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-slate-600 dark:text-slate-500 hover:bg-white dark:hover:bg-white/5 hover:text-indigo-600 dark:hover:text-indigo-400 shadow-sm hover:shadow-md bg-white dark:bg-slate-800/50'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
-                title="Controle de Usuários"
-              >
-                <div className={`transition-transform duration-300 ${activeView === 'users' ? 'scale-110' : 'group-hover:scale-110'}`}>
-                  <i className={`fas fa-users w-5 text-center ${activeView === 'users' ? 'text-white' : ''}`}></i>
-                </div>
-                <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
-                  Controle de Usuários
-                </span>
-              </Link>
+              {/* Master Only: User Control */}
+              {isMaster && (
+                <Link
+                  to="/admin/users"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onViewChange('users');
+                  }}
+                  className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-base font-bold tracking-tight group relative mb-1 ${activeView === 'users' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-slate-600 dark:text-slate-500 hover:bg-white dark:hover:bg-white/5 hover:text-indigo-600 dark:hover:text-indigo-400 shadow-sm hover:shadow-md bg-white dark:bg-slate-800/50'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
+                  title="Controle de Usuários"
+                >
+                  <div className={`transition-transform duration-300 ${activeView === 'users' ? 'scale-110' : 'group-hover:scale-110'}`}>
+                    <i className={`fas fa-users w-5 text-center ${activeView === 'users' ? 'text-white' : ''}`}></i>
+                  </div>
+                  <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
+                    Controle de Usuários
+                  </span>
+                </Link>
+              )}
 
               {/* Arquivos Menu with Subfolders */}
               <div>
@@ -813,7 +813,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   onClick={(e) => {
                     e.stopPropagation();
                     if (activeView === 'files') {
-                      // Only toggle menu?
+                      // Only toggle menu
                     }
                     onViewChange('files');
                   }}
@@ -847,8 +847,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                 )}
               </div>
 
-              {/* Audit Access - Only for Minors (Supervision) or Admins */}
-              {user && (user.role === 'INSTRUCTOR' || user.isMinor) && (
+              {/* Audit Access - Only for Minor Supervision or Master */}
+              {user && (isMaster || user.isMinor) && (
                 <Link
                   to="/audit"
                   onClick={(e) => {
@@ -867,7 +867,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </Link>
               )}
 
-              {/* Admin Access */}
+              {/* Course Access Management */}
               <Link
                 to="/admin/access"
                 onClick={(e) => {
@@ -885,6 +885,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </span>
               </Link>
 
+              {/* Question Bank */}
               <Link
                 to="/admin/questionnaire"
                 onClick={(e) => {
@@ -902,39 +903,44 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </span>
               </Link>
 
-              <Link
-                to="/admin/health"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onViewChange('system-health');
-                }}
-                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-base font-bold tracking-tight mb-1 group ${activeView === 'system-health' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-slate-600 dark:text-slate-500 hover:bg-white dark:hover:bg-white/5 hover:text-indigo-600 dark:hover:text-indigo-400 shadow-sm hover:shadow-md bg-white dark:bg-slate-800/50'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
-                title="Saúde do Sistema"
-              >
-                <div className={`transition-transform duration-300 ${activeView === 'system-health' ? 'scale-110' : 'group-hover:scale-110'}`}>
-                  <i className={`fas fa-heartbeat w-5 text-center ${activeView === 'system-health' ? 'text-white' : ''}`}></i>
-                </div>
-                <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
-                  Saúde do Sistema
-                </span>
-              </Link>
+              {/* Master Exclusive: System Health & Settings */}
+              {isMaster && (
+                <>
+                  <Link
+                    to="/admin/health"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onViewChange('system-health');
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-base font-bold tracking-tight mb-1 group ${activeView === 'system-health' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-slate-600 dark:text-slate-500 hover:bg-white dark:hover:bg-white/5 hover:text-indigo-600 dark:hover:text-indigo-400 shadow-sm hover:shadow-md bg-white dark:bg-slate-800/50'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
+                    title="Saúde do Sistema"
+                  >
+                    <div className={`transition-transform duration-300 ${activeView === 'system-health' ? 'scale-110' : 'group-hover:scale-110'}`}>
+                      <i className={`fas fa-heartbeat w-5 text-center ${activeView === 'system-health' ? 'text-white' : ''}`}></i>
+                    </div>
+                    <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
+                      Saúde do Sistema
+                    </span>
+                  </Link>
 
-              <Link
-                to="/admin/settings"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onViewChange('settings');
-                }}
-                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-base font-bold tracking-tight mb-1 group ${activeView === 'settings' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-slate-600 dark:text-slate-500 hover:bg-white dark:hover:bg-white/5 hover:text-indigo-600 dark:hover:text-indigo-400 shadow-sm hover:shadow-md bg-white dark:bg-slate-800/50'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
-                title="Configuração do Suporte"
-              >
-                <div className={`transition-transform duration-300 ${activeView === 'settings' ? 'scale-110' : 'group-hover:scale-110'}`}>
-                  <i className={`fas fa-cogs w-5 text-center ${activeView === 'settings' ? 'text-white' : ''}`}></i>
-                </div>
-                <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
-                  Configuração do Suporte
-                </span>
-              </Link>
+                  <Link
+                    to="/admin/settings"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onViewChange('settings');
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-base font-bold tracking-tight mb-1 group ${activeView === 'settings' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-slate-600 dark:text-slate-500 hover:bg-white dark:hover:bg-white/5 hover:text-indigo-600 dark:hover:text-indigo-400 shadow-sm hover:shadow-md bg-white dark:bg-slate-800/50'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
+                    title="Configuração do Suporte"
+                  >
+                    <div className={`transition-transform duration-300 ${activeView === 'settings' ? 'scale-110' : 'group-hover:scale-110'}`}>
+                      <i className={`fas fa-cogs w-5 text-center ${activeView === 'settings' ? 'text-white' : ''}`}></i>
+                    </div>
+                    <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
+                      Configuração do Suporte
+                    </span>
+                  </Link>
+                </>
+              )}
 
             </div>
           </div>
@@ -974,7 +980,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             {isPopoverOpen && (
               <div className={`absolute bottom-full mb-3 left-3 w-[240px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl p-2.5 z-[100] text-sm transform-gpu transition-all origin-bottom-left`}>
                 <div className="px-2 pt-1 pb-3 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 mb-2">
-                  Comportamento da Barra Lateral
+                   Comportamento da Barra Lateral
                 </div>
 
                 <button
