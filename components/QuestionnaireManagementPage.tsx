@@ -1,4 +1,4 @@
-﻿import { questionBankRepository, supabaseClient as supabase } from '../services/Dependencies';
+import { questionBankRepository, supabaseClient as supabase } from '../services/Dependencies';
 import React, { useEffect, useState, useMemo } from 'react';
 import { AdminService } from '../services/AdminService';
 import { QuizQuestion, QuestionDifficulty, Quiz, QuizAttemptResult } from '../domain/quiz-entities';
@@ -7,6 +7,7 @@ import QuizModal from './QuizModal';
 import QuizResultsModal from './QuizResultsModal';
 import { toast } from 'sonner';
 import { normalizeQuestions, parseMarkdownQuestions } from '../utils/quizUtils';
+import { useCourseHierarchy } from '../hooks/useCourseHierarchy';
 
 // Utility function to shuffle an array
 const shuffleArray = <T,>(array: T[]): T[] => {
@@ -23,13 +24,25 @@ interface Props {
 }
 
 const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
-    const [courses, setCourses] = useState<any[]>([]);
-    const [modules, setModules] = useState<any[]>([]);
-    const [lessons, setLessons] = useState<any[]>([]);
+    // Page Filter Hierarchy
+    const {
+        courses,
+        modules,
+        lessons,
+        selectedCourseId,
+        selectedModuleId,
+        selectedLessonId,
+        setSelectedCourseId,
+        setSelectedModuleId,
+        setSelectedLessonId,
+        resetHierarchy,
+        loadingModules,
+        loadingLessons
+    } = useCourseHierarchy({ adminService });
 
-    const [selectedCourseId, setSelectedCourseId] = useState<string>('');
-    const [selectedModuleId, setSelectedModuleId] = useState<string>('');
-    const [selectedLessonId, setSelectedLessonId] = useState<string>('');
+    // MD Import Modal Hierarchy
+    const importHierarchy = useCourseHierarchy({ adminService });
+
     const [selectedDifficulty, setSelectedDifficulty] = useState<QuestionDifficulty | ''>('');
     const [searchKeyword, setSearchKeyword] = useState<string>('');
 
@@ -66,12 +79,10 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
     const hasInitializedFilterEffect = React.useRef(false);
 
     useEffect(() => {
-        loadCourses();
         loadSystemStats();
     }, []);
 
     const loadSystemStats = async () => {
-        
         try {
             const [
                 { count: coursesCount },
@@ -93,41 +104,6 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
             });
         } catch (error) {
             console.error('Erro ao carregar estatísticas:', error);
-        }
-    };
-
-    const loadCourses = async () => {
-        try {
-            const list = await adminService.listCourses();
-            setCourses(list);
-        } catch (error) {
-            console.error(error);
-        }
-    };
-
-    const loadModules = async (courseId: string) => {
-        if (!courseId) {
-            setModules([]);
-            return;
-        }
-        try {
-            const list = await adminService.listModules(courseId);
-            setModules(list);
-        } catch (error) {
-            console.error(error);
-        }
-    };
-
-    const loadLessons = async (moduleId: string) => {
-        if (!moduleId) {
-            setLessons([]);
-            return;
-        }
-        try {
-            const list = await adminService.listLessons(moduleId, { summary: true });
-            setLessons(list);
-        } catch (error) {
-            console.error(error);
         }
     };
 
@@ -185,30 +161,14 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
         loadQuestions(currentPage, itemsPerPage);
     }, [currentPage, itemsPerPage]);
 
-    const handleCourseChange = (id: string) => {
-        setSelectedCourseId(id);
-        setSelectedModuleId('');
-        setSelectedLessonId('');
-        loadModules(id);
-    };
 
-    const handleModuleChange = (id: string) => {
-        setSelectedModuleId(id);
-        setSelectedLessonId('');
-        loadLessons(id);
-    };
-
-    const handleClearFilters = () => {
-        setSelectedCourseId('');
-        setSelectedModuleId('');
-        setSelectedLessonId('');
-        setSelectedDifficulty('');
-        setSearchKeyword('');
-        setModules([]);
-        setLessons([]);
-        setCurrentPage(1);
-        toast.success('Filtros limpos');
-    };
+const handleClearFilters = () => {
+    resetHierarchy();
+    setSelectedDifficulty('');
+    setSearchKeyword('');
+    setCurrentPage(1);
+    toast.success('Filtros limpos');
+};
 
     const handleSaveQuestion = async (question: QuizQuestion, h: { courseId?: string; moduleId?: string; lessonId?: string }) => {
         setIsBusy(true);
@@ -314,13 +274,13 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
                 return;
             }
 
-            setIsBusy(true);
-            try {
-                await repository.createQuestions(normalized, {
-                    courseId: selectedCourseId, // Mandatory course
-                    moduleId: selectedModuleId || undefined,
-                    lessonId: selectedLessonId || undefined
-                });
+        setIsBusy(true);
+        try {
+            await repository.createQuestions(normalized, {
+                courseId: importHierarchy.selectedCourseId, // Use modal selection
+                moduleId: importHierarchy.selectedModuleId || undefined,
+                lessonId: importHierarchy.selectedLessonId || undefined
+            });
 
                 toast.success(`${normalized.length} questões importadas e salvas no banco com sucesso!`);
                 setImportRawJson('');
@@ -527,7 +487,7 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Curso</label>
                             <select
                                 value={selectedCourseId}
-                                onChange={(e) => handleCourseChange(e.target.value)}
+                                onChange={(e) => setSelectedCourseId(e.target.value)}
                                 className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-3 text-sm font-bold text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none appearance-none cursor-pointer"
                             >
                                 <option value="">Todos os Cursos</option>
@@ -539,7 +499,7 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Módulo</label>
                             <select
                                 value={selectedModuleId}
-                                onChange={(e) => handleModuleChange(e.target.value)}
+                                onChange={(e) => setSelectedModuleId(e.target.value)}
                                 disabled={!selectedCourseId}
                                 className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-3 text-sm font-bold text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none appearance-none cursor-pointer disabled:opacity-50"
                             >
@@ -866,19 +826,51 @@ const QuestionnaireManagementPage: React.FC<Props> = ({ adminService }) => {
                                 </div>
 
                                 <div className="p-8 space-y-6 overflow-y-auto">
-                                    {/* Course Selector for Import */}
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">
-                                            Vincular ao Curso (Obrigatório)
-                                        </label>
-                                        <select
-                                            value={selectedCourseId}
-                                            onChange={(e) => handleCourseChange(e.target.value)}
-                                            className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-3 text-sm font-bold text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none appearance-none cursor-pointer"
-                                        >
-                                            <option value="">Selecione um curso...</option>
-                                            {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
-                                        </select>
+                                    {/* Hierarchy Selection for Import */}
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">
+                                                Curso (Obrigatório)
+                                            </label>
+                                            <select
+                                                value={importHierarchy.selectedCourseId}
+                                                onChange={(e) => importHierarchy.setSelectedCourseId(e.target.value)}
+                                                className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-3 text-[11px] font-bold text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none appearance-none cursor-pointer"
+                                            >
+                                                <option value="">Selecione...</option>
+                                                {importHierarchy.courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
+                                            </select>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">
+                                                Módulo
+                                            </label>
+                                            <select
+                                                value={importHierarchy.selectedModuleId}
+                                                onChange={(e) => importHierarchy.setSelectedModuleId(e.target.value)}
+                                                disabled={!importHierarchy.selectedCourseId || importHierarchy.loadingModules}
+                                                className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-3 text-[11px] font-bold text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none appearance-none cursor-pointer disabled:opacity-30"
+                                            >
+                                                <option value="">{importHierarchy.loadingModules ? 'Carregando...' : 'Selecione...'}</option>
+                                                {importHierarchy.modules.map(m => <option key={m.id} value={m.id}>{m.title}</option>)}
+                                            </select>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">
+                                                Aula
+                                            </label>
+                                            <select
+                                                value={importHierarchy.selectedLessonId}
+                                                onChange={(e) => importHierarchy.setSelectedLessonId(e.target.value)}
+                                                disabled={!importHierarchy.selectedModuleId || importHierarchy.loadingLessons}
+                                                className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-3 text-[11px] font-bold text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none appearance-none cursor-pointer disabled:opacity-30"
+                                            >
+                                                <option value="">{importHierarchy.loadingLessons ? 'Carregando...' : 'Selecione...'}</option>
+                                                {importHierarchy.lessons.map(l => <option key={l.id} value={l.id}>{l.title}</option>)}
+                                            </select>
+                                        </div>
                                     </div>
 
                                     <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl border border-indigo-100 dark:border-indigo-800/50">
@@ -937,7 +929,7 @@ Justificativa: Explicação opcional...
                                     </button>
                                     <button
                                         onClick={handleImportJson}
-                                        disabled={!importRawJson.trim() || isBusy || !selectedCourseId}
+                                        disabled={!importRawJson.trim() || isBusy || !importHierarchy.selectedCourseId}
                                         className="flex-1 py-4 rounded-2xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-indigo-600/20 transition-all active:scale-95 disabled:opacity-50"
                                     >
                                         {isBusy ? 'Processando...' : 'Importar questões'}

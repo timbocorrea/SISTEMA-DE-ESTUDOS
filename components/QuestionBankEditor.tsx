@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { QuizQuestion, QuizOption, QuestionDifficulty } from '../domain/quiz-entities';
 import { AdminService } from '../services/AdminService';
-import { CourseRecord, ModuleRecord, LessonRecord } from '../domain/admin';
 import { toast } from 'sonner';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
+import { useCourseHierarchy } from '../hooks/useCourseHierarchy';
 
 const containerVariants: Variants = {
     hidden: { opacity: 0, scale: 0.95, y: 30 },
@@ -38,15 +38,25 @@ interface QuestionBankEditorProps {
 }
 
 const QuestionBankEditor: React.FC<QuestionBankEditorProps> = ({ existingQuestion, hierarchy, adminService, onSave, onClose }) => {
-    // Current Hierarchy State - Prioritize existing question data over current filter
-    const [selectedCourseId, setSelectedCourseId] = useState(existingQuestion?.courseId || hierarchy.courseId || '');
-    const [selectedModuleId, setSelectedModuleId] = useState(existingQuestion?.moduleId || hierarchy.moduleId || '');
-    const [selectedLessonId, setSelectedLessonId] = useState(existingQuestion?.lessonId || hierarchy.lessonId || '');
-
-    // Lists for selectors
-    const [courses, setCourses] = useState<CourseRecord[]>([]);
-    const [modules, setModules] = useState<ModuleRecord[]>([]);
-    const [lessons, setLessons] = useState<LessonRecord[]>([]);
+    // Standardized Hierarchy logic using custom hook
+    const {
+        courses,
+        modules,
+        lessons,
+        selectedCourseId,
+        selectedModuleId,
+        selectedLessonId,
+        setSelectedCourseId,
+        setSelectedModuleId,
+        setSelectedLessonId,
+        loadingModules,
+        loadingLessons
+    } = useCourseHierarchy({
+        adminService,
+        initialCourseId: existingQuestion?.courseId || hierarchy.courseId || '',
+        initialModuleId: existingQuestion?.moduleId || hierarchy.moduleId || '',
+        initialLessonId: existingQuestion?.lessonId || hierarchy.lessonId || ''
+    });
 
     const [questionText, setQuestionText] = useState(existingQuestion?.questionText || '');
     const [difficulty, setDifficulty] = useState<QuestionDifficulty>(existingQuestion?.difficulty || 'medium');
@@ -65,46 +75,6 @@ const QuestionBankEditor: React.FC<QuestionBankEditorProps> = ({ existingQuestio
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [pendingQuestions, setPendingQuestions] = useState<any[] | null>(null);
 
-    // Load available data
-    useEffect(() => {
-        loadCourses();
-        if (selectedCourseId) loadModules(selectedCourseId);
-        if (selectedModuleId) loadLessons(selectedModuleId);
-    }, []);
-
-    const loadCourses = async () => {
-        try {
-            const list = await adminService.listCourses();
-            setCourses(list);
-        } catch (e) { console.error(e); }
-    };
-
-    const loadModules = async (cid: string) => {
-        try {
-            const list = await adminService.listModules(cid);
-            setModules(list);
-        } catch (e) { console.error(e); }
-    };
-
-    const loadLessons = async (mid: string) => {
-        try {
-            const list = await adminService.listLessons(mid, { summary: true });
-            setLessons(list);
-        } catch (e) { console.error(e); }
-    };
-
-    const handleCourseChange = (id: string) => {
-        setSelectedCourseId(id);
-        setSelectedModuleId('');
-        setSelectedLessonId('');
-        if (id) loadModules(id);
-    };
-
-    const handleModuleChange = (id: string) => {
-        setSelectedModuleId(id);
-        setSelectedLessonId('');
-        if (id) loadLessons(id);
-    };
 
     const addOption = () => {
         setOptions([...options, { optionText: '', isCorrect: false }]);
@@ -356,26 +326,39 @@ const QuestionBankEditor: React.FC<QuestionBankEditorProps> = ({ existingQuestio
                             </button>
                         </motion.div>
                     )}
-
-                    <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-3 gap-4 p-5 bg-slate-500/5 dark:bg-slate-400/5 rounded-[2rem] border border-white/10">
-                        <div className="flex flex-col gap-2">
+                                  <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="space-y-3">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Curso</label>
-                            <select value={selectedCourseId} onChange={(e) => handleCourseChange(e.target.value)} className="w-full bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-xs font-bold dark:text-white outline-none">
-                                <option value="">Global</option>
+                            <select
+                                value={selectedCourseId}
+                                onChange={(e) => setSelectedCourseId(e.target.value)}
+                                className="w-full px-4 py-3.5 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800/50 text-sm font-black dark:text-white outline-none focus:ring-2 focus:ring-indigo-500"
+                            >
+                                <option value="">Selecione...</option>
                                 {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
                             </select>
                         </div>
-                        <div className="flex flex-col gap-2">
+                        <div className="space-y-3">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Módulo</label>
-                            <select value={selectedModuleId} onChange={(e) => handleModuleChange(e.target.value)} disabled={!selectedCourseId} className="w-full bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-xs font-bold dark:text-white outline-none disabled:opacity-30">
-                                <option value="">Módulo</option>
+                            <select
+                                value={selectedModuleId}
+                                onChange={(e) => setSelectedModuleId(e.target.value)}
+                                disabled={!selectedCourseId || loadingModules}
+                                className="w-full px-4 py-3.5 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800/50 text-sm font-black dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+                            >
+                                <option value="">{loadingModules ? 'Carregando...' : 'Selecione...'}</option>
                                 {modules.map(m => <option key={m.id} value={m.id}>{m.title}</option>)}
                             </select>
                         </div>
-                        <div className="flex flex-col gap-2">
+                        <div className="space-y-3">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Aula</label>
-                            <select value={selectedLessonId} onChange={(e) => setSelectedLessonId(e.target.value)} disabled={!selectedModuleId} className="w-full bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-xs font-bold dark:text-white outline-none disabled:opacity-30">
-                                <option value="">Aula</option>
+                            <select
+                                value={selectedLessonId}
+                                onChange={(e) => setSelectedLessonId(e.target.value)}
+                                disabled={!selectedModuleId || loadingLessons}
+                                className="w-full px-4 py-3.5 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800/50 text-sm font-black dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+                            >
+                                <option value="">{loadingLessons ? 'Carregando...' : 'Selecione...'}</option>
                                 {lessons.map(l => <option key={l.id} value={l.id}>{l.title}</option>)}
                             </select>
                         </div>
