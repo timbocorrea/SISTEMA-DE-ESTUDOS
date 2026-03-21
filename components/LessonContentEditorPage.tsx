@@ -2,7 +2,8 @@ import { courseRepository, adminRepository, supabaseClient as supabase } from '.
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { LessonRecord, LessonResourceRecord } from '../domain/admin';
 import ResourceUploadForm from './ResourceUploadForm';
-import { LessonResource } from '../domain/entities';
+import { LessonResource, User, Course, Module, Lesson } from '../domain/entities';
+import { useAuth } from '../contexts/AuthContext';
 import QuizEditor from './QuizEditor';
 import { LessonRequirementsEditor } from './LessonRequirementsEditor';
 import { Quiz, QuizQuestion, QuizOption } from '../domain/quiz-entities';
@@ -14,6 +15,8 @@ import DropboxAudioBrowser, { DropboxFile } from './DropboxAudioBrowser';
 import { DropboxService } from '../services/dropbox/DropboxService';
 import DropboxFileBrowser from './DropboxFileBrowser';
 import BulkAudioSyncModal from './BulkAudioSyncModal';
+import ContentReader from './lesson/ContentReader';
+import LessonViewer from './features/classroom/LessonViewer';
 
 const FONT_FAMILIES = [
     { name: 'Padrão', value: 'inherit' },
@@ -769,10 +772,11 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
     onSave,
     onCancel
 }) => {
+    const { user } = useAuth();
     const [content, setContent] = useState(lesson.content || '');
     console.log('🔍 Editor inicializando - lesson.content:', lesson.content);
     console.log('🔍 Estado content:', content);
-
+    const [isPreviewMode, setIsPreviewMode] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const editorRef = useRef<HTMLDivElement>(null);
     const [activeFormats, setActiveFormats] = useState<string[]>([]);
@@ -856,6 +860,52 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
     // Content Blocks State
     const [blocks, setBlocks] = useState<any[]>(lesson.content_blocks || []);
     const [editingBlockForAudio, setEditingBlockForAudio] = useState<any | null>(null);
+
+    // Preview Mode Management
+    const [sidebarTab, setSidebarTab] = useState<'materials' | 'notes'>('materials');
+
+    // Construção dinâmica das entidades para o Preview exato
+    const displayLesson = React.useMemo(() => {
+        if (!isPreviewMode) return null;
+
+        return new Lesson({
+            id: lesson.id,
+            title: title || 'Sem título',
+            videoUrl: videoUrls[0]?.url || '',
+            videoUrls: videoUrls.map(v => ({
+                url: v.url,
+                title: v.title,
+                imageUrl: v.image_url,
+                type: v.type as any,
+                slides: v.slides,
+                fileUrl: v.fileUrl,
+                fileType: v.fileType as any
+            })),
+            content: content,
+            contentBlocks: blocks,
+            audioUrl: audioUrl,
+            imageUrl: imageUrl,
+            durationSeconds: parseInt(durationSeconds as any) || 0,
+            watchedSeconds: 0,
+            isCompleted: false,
+            position: lesson.position ?? 0,
+            isLoaded: true
+        });
+    }, [isPreviewMode, title, videoUrls, content, blocks, audioUrl, imageUrl, durationSeconds, lesson.id, lesson.position]);
+
+    const mockCourse = React.useMemo(() => {
+        if (!displayLesson) return null;
+
+        return new Course(
+            'preview-course',
+            'Curso em Edição',
+            'Modo de Visualização para Instrutores',
+            null,
+            '#6366f1',
+            'Preview',
+            [new Module('preview-module', 'Módulo Atual', [displayLesson])]
+        );
+    }, [displayLesson]);
     const [tempAudioUrl, setTempAudioUrl] = useState('');
     const [audioFilter, setAudioFilter] = useState<'all' | 'with-audio' | 'without-audio'>('all');
 
@@ -3413,6 +3463,29 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
 
                         {/* Botões de ação */}
                         <div className="flex items-center gap-6">
+                            {/* Toggle Modo de Visualização */}
+                            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 shadow-inner">
+                                <button
+                                    onClick={() => setIsPreviewMode(false)}
+                                    className={`h-8 px-3 rounded-lg flex items-center gap-2 transition-all duration-200 ${!isPreviewMode 
+                                        ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm font-bold' 
+                                        : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'}`}
+                                >
+                                    <i className="fas fa-pencil-alt text-[10px]"></i>
+                                    <span className="text-[10px] uppercase tracking-wider">Editor</span>
+                                </button>
+                                <button
+                                    onClick={() => setIsPreviewMode(true)}
+                                    className={`h-8 px-3 rounded-lg flex items-center gap-2 transition-all duration-200 ${isPreviewMode 
+                                        ? 'bg-amber-500 text-white shadow-md font-bold' 
+                                        : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'}`}
+                                >
+                                    <i className="fas fa-eye text-[10px]"></i>
+                                    <span className="text-[10px] uppercase tracking-wider">Preview</span>
+                                </button>
+                            </div>
+
+                            <Divider />
 
                             {/* Botão único para gestão de Quiz */}
                             <button
@@ -3568,7 +3641,8 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                     </div>
                 )}
 
-                <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 p-6 overflow-hidden">
+                {!isPreviewMode ? (
+                    <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 p-6 overflow-hidden">
                     {/* Coluna Esquerda: Prévia para Alunos */}
                     <div className="flex flex-col h-full min-h-0">
                         {/* Header Fixo */}
@@ -4251,6 +4325,39 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
                         </div>
                     </div>
                 </div>
+                ) : (
+                <div className="flex-1 flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-900/50">
+                    {/* Ambassador Banner - Unic for Preview Mode */}
+                    <div className="bg-gradient-to-r from-indigo-600 to-violet-600 text-white px-6 py-2 flex items-center justify-between shadow-lg z-50">
+                        <div className="flex items-center gap-3">
+                            <i className="fas fa-eye animate-pulse"></i>
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em]">Modo de Visualização (Visão do Aluno)</span>
+                        </div>
+                        <button 
+                            onClick={() => setIsPreviewMode(false)}
+                            className="px-4 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-[10px] font-bold uppercase transition-colors"
+                        >
+                            Sair da Prévia
+                        </button>
+                    </div>
+
+                    <div className="flex-1 relative overflow-hidden">
+                        <LessonViewer 
+                            course={mockCourse!}
+                            lesson={displayLesson!}
+                            user={user!}
+                            onLessonSelect={() => toast.info('Navegação desativada no modo de prévia.')}
+                            onProgressUpdate={async () => {}} 
+                            onBackToLessons={() => setIsPreviewMode(false)}
+                            onBackToModules={() => setIsPreviewMode(false)}
+                            sidebarTab={sidebarTab}
+                            setSidebarTab={setSidebarTab}
+                            onTrackAction={() => {}}
+                            onToggleSidebar={() => {}}
+                        />
+                    </div>
+                </div>
+                )}
             </div>
 
             {/* Modal de Áudio Minimalista */}
