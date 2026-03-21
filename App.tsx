@@ -5,6 +5,7 @@ import { Toaster, toast } from 'sonner';
 const Sidebar = React.lazy(() => import('./components/Sidebar'));
 const GeminiBuddy = React.lazy(() => import('./components/GeminiBuddy'));
 const AuthForm = React.lazy(() => import('./components/AuthForm'));
+const AdminAuthForm = React.lazy(() => import('./components/AdminAuthForm'));
 import { PresenceCheckModal } from './components/PresenceCheckModal';
 const PendingApprovalScreen = React.lazy(() => import('./components/PendingApprovalScreen'));
 import Breadcrumb from './components/Breadcrumb';
@@ -417,13 +418,25 @@ const App: React.FC = () => {
     );
   }
 
-  // Auth Screen
   if (!session || !user) {
+    const isAdminLogin = location.pathname === '/admin/login';
+    
     return (
       <React.Suspense fallback={<div className="h-screen w-full bg-[#050810] flex items-center justify-center"><ModernLoader message="Carregando Login..." /></div>}>
-        <AuthForm authService={authService} onSuccess={async () => { await refreshSession(); }} />
+        {isAdminLogin ? (
+          <AdminAuthForm authService={authService} onSuccess={async () => { await refreshSession(); }} />
+        ) : (
+          <AuthForm authService={authService} onSuccess={async () => { await refreshSession(); }} />
+        )}
       </React.Suspense>
     );
+  }
+
+  // Prevenir que alunos acessem o sistema se logaram via /admin/login (Check de segurança pós-login)
+  if (location.pathname === '/admin/login' && user.role !== 'INSTRUCTOR') {
+    toast.error('Acesso negado. Esta página é restrita para administradores.');
+    logout();
+    return null;
   }
 
 
@@ -665,6 +678,7 @@ const App: React.FC = () => {
               <Route path="/admin/files" element={<AdminRoute><FileManagement /></AdminRoute>} />
               <Route path="/admin/health" element={<AdminRoute><SystemHealth adminService={adminService} /></AdminRoute>} />
               <Route path="/admin/settings" element={<AdminRoute><AdminSettingsPage adminService={adminService} /></AdminRoute>} />
+              <Route path="/admin/login" element={<Navigate to="/admin/questionnaire" replace />} />
               <Route path="/oauth/dropbox" element={<DropboxCallbackPage />} />
 
               <Route path="*" element={<Navigate to="/" replace />} />

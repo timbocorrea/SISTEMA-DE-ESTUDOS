@@ -288,7 +288,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ authService, onSuccess }) => {
               </button>
             </p>
 
-            <div className="mt-4">
+            <div className="mt-4 flex flex-col gap-3">
               <button
                 onClick={() => setIsSupportOpen(true)}
                 className="text-[10px] text-slate-500 hover:text-emerald-400 transition-colors flex items-center justify-center gap-1.5 mx-auto group"
@@ -296,6 +296,14 @@ const AuthForm: React.FC<AuthFormProps> = ({ authService, onSuccess }) => {
                 <i className="fas fa-life-ring group-hover:rotate-12 transition-transform"></i>
                 Precisa de ajuda?
               </button>
+              
+              <a 
+                href="/admin/login"
+                className="text-[10px] text-slate-600 hover:text-slate-400 font-bold uppercase tracking-widest transition-colors flex items-center justify-center gap-1.5 mx-auto"
+              >
+                <i className="fas fa-lock text-[8px]"></i>
+                Acesso Administrativo
+              </a>
             </div>
           </div>
         </MagicCard>
