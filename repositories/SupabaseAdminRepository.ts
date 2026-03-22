@@ -1029,10 +1029,107 @@ export class SupabaseAdminRepository implements IAdminRepository {
 
     
     const profilesMap = new Map<string, ProfileRecord>();
-    (data || []).forEach((e: ProfileRecord) => {
-      profilesMap.set(e.id, e);
+    (data || []).forEach((e: any) => {
+      profilesMap.set(e.id, {
+        id: e.id,
+        name: e.name,
+        email: e.email,
+        role: e.role,
+        xp_total: e.xp_total,
+        current_level: e.current_level,
+        created_at: e.created_at,
+        updated_at: e.updated_at,
+        gemini_api_key: e.gemini_api_key,
+        is_minor: e.is_minor
+      });
     });
 
     return Array.from(profilesMap.values());
+  }
+
+  async assignLessonsToInstructor(userId: string, lessonIds: string[]): Promise<void> {
+    if (lessonIds.length === 0) return;
+
+    const { error } = await this.client
+      .from('instructor_lesson_assignments')
+      .upsert(
+        lessonIds.map(lessonId => ({ user_id: userId, lesson_id: lessonId })),
+        { onConflict: 'user_id,lesson_id' }
+      );
+
+    if (error) throw new DomainError(`Erro ao atribuir aulas ao instrutor: ${error.message}`);
+  }
+
+  async listInstructorLessonAssignments(userId: string): Promise<string[]> {
+    const { data, error } = await this.client
+      .from('instructor_lesson_assignments')
+      .select('lesson_id')
+      .eq('user_id', userId);
+
+    if (error) throw new DomainError(`Erro ao buscar atribuições de aulas: ${error.message}`);
+    return (data || []).map(row => row.lesson_id);
+  }
+
+  async removeInstructorLessonAssignment(userId: string, lessonId: string): Promise<void> {
+    const { error } = await this.client
+      .from('instructor_lesson_assignments')
+      .delete()
+      .eq('user_id', userId)
+      .eq('lesson_id', lessonId);
+
+    if (error) throw new DomainError(`Erro ao remover atribuição de aula: ${error.message}`);
+  }
+
+  async canEditLesson(userId: string, lessonId: string): Promise<boolean> {
+    // 1. Check if user is Master (Proprietário)
+    const { data: profile } = await this.client
+      .from('profiles')
+      .select('role, email')
+      .eq('id', userId)
+      .single();
+
+    if (profile?.role === 'MASTER' || profile?.email === 'timbo.correa@gmail.com') return true;
+
+    // 2. Check Granular Assignments
+    const { data: assignment } = await this.client
+      .from('instructor_lesson_assignments')
+      .select('lesson_id')
+      .eq('user_id', userId)
+      .eq('lesson_id', lessonId)
+      .single();
+
+    if (assignment) return true;
+
+    // 3. Fallback: Check if instructor is the primary instructor of the course
+    const { data: lesson } = await this.client
+      .from('lessons')
+      .select('module_id')
+      .eq('id', lessonId)
+      .single();
+
+    if (lesson) {
+      const { data: module } = await this.client
+        .from('modules')
+        .select('course_id')
+        .eq('id', lesson.module_id)
+        .single();
+      
+      if (module) {
+        const { data: course } = await this.client
+          .from('courses')
+          .select('instructor_id')
+          .eq('id', module.course_id)
+          .single();
+        
+        if (course?.instructor_id === userId) return true;
+      }
+    }
+
+    return false;
+  }
+
+  async getCurrentUserId(): Promise<string | null> {
+    const { data: { user } } = await this.client.auth.getUser();
+    return user?.id || null;
   }
 }

@@ -815,6 +815,7 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
             adminService={adminService}
             adminId={adminId}
             onClose={() => setViewingUser(null)}
+            onManageAccess={handleAccessClick}
             onRefresh={() => {
               setViewingUser(null);
               loadUsers();

@@ -39,10 +39,16 @@ BEGIN
     JOIN public.lessons l ON l.id = sa.lesson_id
     JOIN public.modules m ON m.id = l.module_id
     JOIN public.courses c ON c.id = m.course_id
-    WHERE (c.instructor_id = p_instructor_id OR EXISTS (
-        SELECT 1 FROM public.course_enrollments ce 
-        WHERE ce.course_id = c.id AND ce.user_id = p_instructor_id
-    ))
+    WHERE (
+        EXISTS (SELECT 1 FROM public.profiles WHERE id = p_instructor_id AND (role = 'MASTER' OR email = 'timbo.correa@gmail.com'))
+        OR
+        c.instructor_id = p_instructor_id
+        OR
+        EXISTS (
+            SELECT 1 FROM public.instructor_lesson_assignments ila 
+            WHERE ila.lesson_id = sa.lesson_id AND ila.user_id = p_instructor_id
+        )
+    )
     AND sa.feedback_text IS NULL
     ORDER BY sa.updated_at ASC;
 END;
@@ -87,10 +93,16 @@ BEGIN
     JOIN public.lessons l ON l.id = m.lesson_id
     JOIN public.modules mod ON mod.id = l.module_id
     JOIN public.courses c ON c.id = mod.course_id
-    WHERE (c.instructor_id = p_instructor_id OR EXISTS (
-        SELECT 1 FROM public.course_enrollments ce 
-        WHERE ce.course_id = c.id AND ce.user_id = p_instructor_id
-    ))
+    WHERE (
+        EXISTS (SELECT 1 FROM public.profiles WHERE id = p_instructor_id AND (role = 'MASTER' OR email = 'timbo.correa@gmail.com'))
+        OR
+        c.instructor_id = p_instructor_id
+        OR
+        EXISTS (
+            SELECT 1 FROM public.instructor_lesson_assignments ila 
+            WHERE ila.lesson_id = m.lesson_id AND ila.user_id = p_instructor_id
+        )
+    )
     AND m.parent_id IS NULL
     AND NOT EXISTS (
         SELECT 1 

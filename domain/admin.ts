@@ -76,6 +76,7 @@ export type ProfileRecord = {
   xp_total: number | null;
   current_level: number | null;
   gemini_api_key?: string | null;
+  created_at?: string;
   updated_at?: string;
   is_temp_password?: boolean;
   is_minor?: boolean;

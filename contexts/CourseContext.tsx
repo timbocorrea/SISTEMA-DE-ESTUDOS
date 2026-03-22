@@ -6,6 +6,7 @@ import { SupabaseCourseRepository } from '../repositories/SupabaseCourseReposito
 import { createSupabaseClient } from '../services/supabaseClient';
 import { useAuth } from './AuthContext';
 import { useCoursesList, useCourseDetails } from '../hooks/useCourses';
+import { adminService } from '../services/Dependencies';
 
 interface CourseContextType {
     availableCourses: any[]; // CourseSummary[] | Course[] - relaxed for transition
@@ -40,6 +41,15 @@ export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     // Initialize Service (Memoized)
     // We instantiate it once. Since repository is stateless, this is fine.
     const courseService = React.useMemo(() => new CourseService(new SupabaseCourseRepository(createSupabaseClient())), []);
+    const [lessonAssignments, setLessonAssignments] = useState<string[]>([]);
+
+    useEffect(() => {
+        if (user?.role === 'INSTRUCTOR' && user?.email !== 'timbo.correa@gmail.com') {
+            adminService.listInstructorLessonAssignments(user.id).then(setLessonAssignments);
+        } else {
+            setLessonAssignments([]);
+        }
+    }, [user]);
 
     // 1. Fetch Lists (Summary)
     const coursesListQuery = useCoursesList(courseService, user?.id, !!user);
@@ -50,7 +60,51 @@ export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const activeCourse = courseDetailsQuery.data || null;
 
     const isLoadingCourses = coursesListQuery.isLoading || courseDetailsQuery.isLoading;
-    const enrolledCourses = availableCourses; // Keeping simplified for now as per plan
+
+    const enrolledCourses = React.useMemo(() => {
+        const list = (coursesListQuery.data || []) as Course[];
+        if (user?.role !== 'INSTRUCTOR' || user?.email === 'timbo.correa@gmail.com') return list;
+
+        return list.map(c => {
+            if (lessonAssignments.length > 0) {
+                const filteredModules = (c.modules || []).map(m => {
+                    const lessons = (m.lessons || []).filter(l => lessonAssignments.includes(l.id));
+                    return new Module(m.id, m.title, lessons, m.position);
+                }).filter(m => m.lessons.length > 0);
+                
+                return new Course(
+                    c.id, c.title, c.description, c.imageUrl, c.color, c.colorLegend, 
+                    filteredModules, c.instructorId, c.language, c.estimatedHours,
+                    c.level, c.teachingType, c.startDate, c.endDate, c.instructorName
+                );
+            }
+            return c;
+        });
+    }, [coursesListQuery.data, user, lessonAssignments]);
+
+    const filteredActiveCourse = React.useMemo(() => {
+        if (!activeCourse || user?.role !== 'INSTRUCTOR' || user?.email === 'timbo.correa@gmail.com') return activeCourse;
+
+        // Se o instrutor for o dono do curso, ele vê tudo
+        // Infelizmente no activeCourse temos que verificar o instrutor.
+        // Se quisermos ser rigorosos:
+        // (Isso depende de ter instructorId no objeto Course retornado)
+        
+        const filteredModules = activeCourse.modules.map(m => {
+            const lessons = m.lessons.filter(l => lessonAssignments.includes(l.id) || (activeCourse as any).instructor_id === user.id);
+            return new Module(m.id, m.title, lessons, m.position);
+        }).filter(m => m.lessons.length > 0);
+        
+        if (filteredModules.length === 0 && (activeCourse as any).instructor_id !== user.id) return null;
+
+        return new Course(
+            activeCourse.id, activeCourse.title, activeCourse.description, activeCourse.imageUrl, 
+            activeCourse.color, activeCourse.colorLegend, filteredModules, 
+            activeCourse.instructorId, activeCourse.language, activeCourse.estimatedHours,
+            activeCourse.level, activeCourse.teachingType, activeCourse.startDate, 
+            activeCourse.endDate, activeCourse.instructorName
+        );
+    }, [activeCourse, user, lessonAssignments]);
 
     // Reset module/lesson when course changes (handled partly effectively by activeCourse changing, 
     // but explicit reset on ID change is good).
@@ -201,8 +255,8 @@ export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     const value = {
         availableCourses: availableCourses as any, // Type adaptation
-        enrolledCourses: availableCourses as any, // Simplified for now (all visible)
-        activeCourse,
+        enrolledCourses: enrolledCourses as any,
+        activeCourse: filteredActiveCourse,
         activeModule,
         activeLesson,
         isLoadingCourses,

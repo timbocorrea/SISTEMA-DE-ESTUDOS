@@ -47,6 +47,10 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, user, initialCo
   const [modulesByCourse, setModulesByCourse] = useState<Record<string, ModuleRecord[]>>({});
   const [lessonsByModule, setLessonsByModule] = useState<Record<string, LessonRecord[]>>({});
   const [lessonResources, setLessonResources] = useState<Record<string, LessonResourceRecord[]>>({});
+  const [allowedLessonIds, setAllowedLessonIds] = useState<string[]>([]);
+  const [allowedModuleIds, setAllowedModuleIds] = useState<string[]>([]);
+  const allowedLessonIdsRef = React.useRef<string[]>([]);
+  const allowedModuleIdsRef = React.useRef<string[]>([]);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -134,14 +138,26 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, user, initialCo
     try {
       // Usar outline para ter acesso aos módulos e aulas (para contadores)
       let list = await adminService.listCoursesOutline();
+      let lessonAssignments: string[] = [];
       
       // Filtragem: Professores (INSTRUCTOR) veem apenas seus cursos próprios ou atribuídos.
       if (user.role === 'INSTRUCTOR' && user.email !== 'timbo.correa@gmail.com') {
+        // Buscar atribuições granulares de aulas
+        lessonAssignments = await adminService.listInstructorLessonAssignments(user.id);
+        allowedLessonIdsRef.current = lessonAssignments;
+        setAllowedLessonIds(lessonAssignments);
+
         const assignedIds = await adminService.getUserCourseAssignments(user.id);
+
+        // Manter curso se for instrutor primário OU se o curso for atribuído ao professor
+        // (mesmo que sem aulas granulares, o curso aparece mas sem módulos/aulas se não houver atribuição)
         list = list.filter(c => 
           c.instructorId === user.id || 
           assignedIds.includes(c.id)
         );
+      } else {
+        setAllowedLessonIds([]); // Master tem acesso a tudo
+        setAllowedModuleIds([]);
       }
 
       // Converter de Course[] para CourseRecord[] para manter compatibilidade
@@ -160,19 +176,35 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, user, initialCo
       const newModulesByCourse: Record<string, ModuleRecord[]> = {};
       const newLessonsByModule: Record<string, LessonRecord[]> = {};
 
+      const currentAllowedModules: string[] = [];
+
       list.forEach(course => {
+        const isPrimaryInstructor = course.instructorId === user.id;
+        const isMaster = user.role === 'MASTER' || user.email === 'timbo.correa@gmail.com';
+
+        // Filter modules and lessons for non-master/non-primary instructors
+        let filteredModules: any[] = course.modules;
+        if (!isMaster && !isPrimaryInstructor) {
+          filteredModules = course.modules.map(m => ({
+            ...m,
+            lessons: m.lessons.filter(l => lessonAssignments.includes(l.id))
+          })).filter(m => m.lessons.length > 0);
+        }
+
         // Módulos do curso
-        const modules = course.modules.map(m => ({
+        const modules = filteredModules.map(m => ({
           id: m.id,
           course_id: course.id,
           title: m.title,
-          position: m.lessons.length > 0 ? 0 : 0 // position real não vem no Course mas pra contagem tá ok
+          position: m.position ?? 0
         } as any));
         newModulesByCourse[course.id] = modules;
+        
+        modules.forEach(m => currentAllowedModules.push(m.id));
 
         // Aulas de cada módulo
-        course.modules.forEach(module => {
-          const lessons = module.lessons.map(l => ({
+        filteredModules.forEach((module: any) => {
+          const lessons = module.lessons.map((l: any) => ({
             id: l.id,
             module_id: module.id,
             title: l.title,
@@ -182,6 +214,8 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, user, initialCo
         });
       });
 
+      setAllowedModuleIds(currentAllowedModules);
+      allowedModuleIdsRef.current = currentAllowedModules;
       setModulesByCourse(prev => ({ ...prev, ...newModulesByCourse }));
       setLessonsByModule(prev => ({ ...prev, ...newLessonsByModule }));
     } catch (e) {
@@ -191,15 +225,51 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, user, initialCo
     }
   };
 
+  const canManageLesson = (lesson: LessonRecord, courseId?: string) => {
+    if (user.role === 'MASTER' || user.email === 'timbo.correa@gmail.com') return true;
+    
+    // Check granular assignments
+    if (allowedLessonIds.includes(lesson.id)) return true;
+
+    // Check if user is primary instructor of the course
+    if (courseId) {
+       const course = courses.find(c => c.id === courseId);
+       if (course?.instructor_id === user.id) return true;
+    }
+
+    return false;
+  };
+
   const refreshModules = async (courseId: string) => {
     setError('');
-    const list = await adminService.listModules(courseId);
+    let list = await adminService.listModules(courseId);
+    
+    const isMaster = user.role === 'MASTER' || user.email === 'timbo.correa@gmail.com';
+    const course = courses.find(c => c.id === courseId);
+    const isPrimary = course?.instructor_id === user.id;
+
+    if (!isMaster && !isPrimary) {
+      // Use ref to get latest value (avoids stale closure bug)
+      list = list.filter(m => allowedModuleIdsRef.current.includes(m.id));
+    }
+
     setModulesByCourse(prev => ({ ...prev, [courseId]: list }));
   };
 
   const refreshLessons = async (moduleId: string) => {
     setError('');
-    const list = await adminService.listLessons(moduleId, { summary: true });
+    let list = await adminService.listLessons(moduleId, { summary: true });
+    
+    const isMaster = user.role === 'MASTER' || user.email === 'timbo.correa@gmail.com';
+    const module = Object.values(modulesByCourse).flat().find(m => m.id === moduleId);
+    const course = courses.find(c => c.id === module?.course_id);
+    const isPrimary = course?.instructor_id === user.id;
+
+    if (!isMaster && !isPrimary) {
+      // Use ref to get latest value (avoids stale closure bug)
+      list = list.filter(l => allowedLessonIdsRef.current.includes(l.id));
+    }
+
     setLessonsByModule(prev => ({ ...prev, [moduleId]: list }));
   };
 
@@ -697,51 +767,60 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, user, initialCo
             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Posicao: {module.position ?? 0}</p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={e => {
-                e.stopPropagation();
-                setEditingModule({ ...module });
-              }}
-              title="Editar modulo"
-            >
-              <Pencil size={18} className="text-slate-400" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={e => {
-                e.stopPropagation();
-                handleDeleteModule(module.course_id, module.id);
-              }}
-              title="Excluir modulo"
-            >
-              <Trash2 size={18} className="text-slate-400" />
-            </Button>
+            {(user.role === 'MASTER' || user.email === 'timbo.correa@gmail.com' || (courses.find(c => c.id === module.course_id)?.instructor_id === user.id)) && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={e => {
+                    e.stopPropagation();
+                    setEditingModule({ ...module });
+                  }}
+                  title="Editar modulo"
+                >
+                  <Pencil size={18} className="text-slate-400" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={e => {
+                    e.stopPropagation();
+                    handleDeleteModule(module.course_id, module.id);
+                  }}
+                  title="Excluir modulo"
+                >
+                  <Trash2 size={18} className="text-slate-400" />
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
         {isExpanded && (
           <div className="p-4 space-y-4 bg-slate-50/70 dark:bg-slate-950/20">
-            <div className="flex justify-end">
-              <Button
-                disabled={busy}
-                variant="cyan"
-                size="sm"
-                onClick={() => setActiveModuleIdForLessonCreation(module.id)}
-                className="flex items-center gap-2"
-              >
-                <Plus size={14} /> Criar aula
-              </Button>
-            </div>
+            {(user.role === 'MASTER' || user.email === 'timbo.correa@gmail.com' || (courses.find(c => c.id === module.course_id)?.instructor_id === user.id)) && (
+              <div className="flex justify-end">
+                <Button
+                  disabled={busy}
+                  variant="cyan"
+                  size="sm"
+                  onClick={() => setActiveModuleIdForLessonCreation(module.id)}
+                  className="flex items-center gap-2"
+                >
+                  <Plus size={14} /> Criar aula
+                </Button>
+              </div>
+            )}
 
             <div className="divide-y divide-slate-100 dark:divide-white/5 rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-[#1C1E23] overflow-hidden">
               {lessons.map(lesson => (
                 <div key={lesson.id} className="border-b border-slate-100 dark:border-white/5 last:border-0">
                   <div
-                    className="p-4 flex items-start justify-between gap-4 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition cursor-pointer"
-                    onClick={() => openLessonDetail(lesson)}
+                    className={cn(
+                      "p-4 flex items-start justify-between gap-4 transition",
+                      canManageLesson(lesson, module.course_id) ? "hover:bg-slate-50 dark:hover:bg-slate-800/30 cursor-pointer" : "opacity-80 cursor-default"
+                    )}
+                    onClick={() => canManageLesson(lesson, module.course_id) && openLessonDetail(lesson)}
                   >
                     <div className="min-w-0">
                       <p className="text-sm font-black text-slate-800 dark:text-white truncate">{lesson.title}</p>
@@ -753,88 +832,101 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, user, initialCo
                       </p>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={e => {
-                          e.stopPropagation();
-                          setMovingLesson({ ...lesson });
-                        }}
-                        title="Mover aula"
-                      >
-                        <Maximize2 size={16} className="text-slate-400" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={async e => {
-                          e.stopPropagation();
-                          try {
-                            setBusy(true);
-                            const detailedLesson = await ensureLessonDetails(lesson);
-                            setEditingLesson({ ...detailedLesson });
-                          } catch (err) {
-                            setError((err as Error).message);
-                          } finally {
-                            setBusy(false);
-                          }
-                        }}
-                        title="Editar"
-                      >
-                        <Pencil size={16} className="text-slate-400" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={e => {
-                          e.stopPropagation();
-                          handleDeleteLesson(module.id, lesson.id);
-                        }}
-                        title="Excluir"
-                      >
-                        <Trash2 size={16} className="text-slate-400" />
-                      </Button>
+                      {canManageLesson(lesson, module.course_id) && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={e => {
+                              e.stopPropagation();
+                              setMovingLesson({ ...lesson });
+                            }}
+                            title="Mover aula"
+                          >
+                            <Maximize2 size={16} className="text-slate-400" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={async e => {
+                              e.stopPropagation();
+                              try {
+                                setBusy(true);
+                                const detailedLesson = await ensureLessonDetails(lesson);
+                                setEditingLesson({ ...detailedLesson });
+                              } catch (err) {
+                                setError((err as Error).message);
+                              } finally {
+                                setBusy(false);
+                              }
+                            }}
+                            title="Editar"
+                          >
+                            <Pencil size={16} className="text-slate-400" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={e => {
+                              e.stopPropagation();
+                              handleDeleteLesson(module.id, lesson.id);
+                            }}
+                            title="Excluir"
+                          >
+                            <Trash2 size={16} className="text-slate-400" />
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </div>
 
                   {activeLessonId === lesson.id && activeLesson && (
                     <div className="px-4 pb-4 bg-slate-50 dark:bg-black/20">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-                        <input
-                          value={activeLesson.title}
-                          onChange={e => setActiveLesson({ ...activeLesson, title: e.target.value })}
-                          placeholder="Titulo"
-                          className="w-full bg-white dark:bg-[#0a0e14] border border-slate-200 dark:border-white/5 rounded-xl px-4 py-3 text-slate-700 dark:text-slate-200 text-sm outline-none"
-                        />
-                        <input
-                          value={activeLesson.position ?? 0}
-                          onChange={e => setActiveLesson({ ...activeLesson, position: Number(e.target.value) })}
-                          type="number"
-                          min={0}
-                          placeholder="Posicao"
-                          className="w-full bg-white dark:bg-[#0a0e14] border border-slate-200 dark:border-white/5 rounded-xl px-4 py-3 text-slate-700 dark:text-slate-200 text-sm outline-none"
-                        />
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Título da Aula</label>
+                          <input
+                            value={activeLesson.title}
+                            onChange={e => setActiveLesson({ ...activeLesson, title: e.target.value })}
+                            disabled={!canManageLesson(activeLesson, module.id)}
+                            placeholder="Titulo"
+                            className="w-full bg-white dark:bg-[#0a0e14] border border-slate-200 dark:border-white/5 rounded-xl px-4 py-3 text-slate-700 dark:text-slate-200 text-sm outline-none disabled:opacity-60"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Posição na Grade</label>
+                          <input
+                            value={activeLesson.position ?? 0}
+                            onChange={e => setActiveLesson({ ...activeLesson, position: Number(e.target.value) })}
+                            disabled={!canManageLesson(activeLesson, module.id)}
+                            type="number"
+                            min={0}
+                            placeholder="Posicao"
+                            className="w-full bg-white dark:bg-[#0a0e14] border border-slate-200 dark:border-white/5 rounded-xl px-4 py-3 text-slate-700 dark:text-slate-200 text-sm outline-none disabled:opacity-60"
+                          />
+                        </div>
                       </div>
 
-                      <Button
-                        onClick={() => onOpenContentEditor?.(activeLesson)}
-                        className="w-full bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white rounded-xl shadow-lg shadow-indigo-600/20 mb-3 h-auto py-4"
-                      >
-                        <Pencil className="mr-3" />
-                        <div className="text-left flex-1">
-                          <div className="font-black text-sm">Editar Conteúdo da Aula</div>
-                          <div className="text-[10px] font-normal opacity-80 uppercase tracking-wider">
-                            {activeLesson.content
-                              ? `${activeLesson.content.length} caracteres • Clique para editar`
-                              : 'Adicionar texto de apoio à aula'}
+                        <Button
+                          onClick={() => canManageLesson(activeLesson, module.id) && onOpenContentEditor?.(activeLesson)}
+                          disabled={!canManageLesson(activeLesson, module.id)}
+                          className="w-full bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white rounded-xl shadow-lg shadow-indigo-600/20 mb-3 h-auto py-4 disabled:grayscale disabled:opacity-50"
+                        >
+                          <Pencil className="mr-3" />
+                          <div className="text-left flex-1">
+                            <div className="font-black text-sm">Editar Conteúdo da Aula</div>
+                            <div className="text-[10px] font-normal opacity-80 uppercase tracking-wider">
+                              {activeLesson.content
+                                ? `${activeLesson.content.length} caracteres • Clique para editar`
+                                : 'Adicionar texto de apoio à aula'}
+                            </div>
                           </div>
-                        </div>
-                        <ChevronRight />
-                      </Button>
+                          <ChevronRight />
+                        </Button>
 
                       <div className="flex justify-end">
                         <Button
-                          disabled={busy}
+                          disabled={busy || !canManageLesson(activeLesson, module.id)}
                           variant="emerald"
                           onClick={handleSaveActiveLesson}
                         >
@@ -1017,13 +1109,15 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, user, initialCo
           <div className="flex items-center gap-4">
             <ViewModeToggle current={courseViewMode} onChange={toggleCourseViewMode} label="Visualização" />
             <div className="w-px h-8 bg-slate-200 dark:bg-white/5"></div>
-            <Button
-              disabled={busy}
-              onClick={() => setIsCreateCourseModalOpen(true)}
-              className="flex items-center gap-2"
-            >
-              <Plus size={16} /> Criar curso
-            </Button>
+            {(user.role === 'MASTER' || user.email === 'timbo.correa@gmail.com') && (
+              <Button
+                disabled={busy}
+                onClick={() => setIsCreateCourseModalOpen(true)}
+                className="flex items-center gap-2"
+              >
+                <Plus size={16} /> Criar curso
+              </Button>
+            )}
           </div>
         </div>
 
@@ -1060,14 +1154,18 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, user, initialCo
                       )}
                     </div>
                     <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button variant="secondary" size="icon" className="h-8 w-8 rounded-lg bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm"
-                        onClick={(e) => { e.stopPropagation(); setEditingCourse({ ...course }); }}>
-                        <Pencil size={14} className="text-slate-600 dark:text-slate-400" />
-                      </Button>
-                      <Button variant="destructive" size="icon" className="h-8 w-8 rounded-lg bg-red-500/90 backdrop-blur-sm"
-                        onClick={(e) => { e.stopPropagation(); handleDeleteCourse(course.id); }}>
-                        <Trash2 size={14} />
-                      </Button>
+                      {(user.role === 'MASTER' || user.email === 'timbo.correa@gmail.com' || course.instructor_id === user.id) && (
+                        <>
+                          <Button variant="secondary" size="icon" className="h-8 w-8 rounded-lg bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm"
+                            onClick={(e) => { e.stopPropagation(); setEditingCourse({ ...course }); }}>
+                            <Pencil size={14} className="text-slate-600 dark:text-slate-400" />
+                          </Button>
+                          <Button variant="destructive" size="icon" className="h-8 w-8 rounded-lg bg-red-500/90 backdrop-blur-sm"
+                            onClick={(e) => { e.stopPropagation(); handleDeleteCourse(course.id); }}>
+                            <Trash2 size={14} />
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </div>
 
@@ -1123,14 +1221,16 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, user, initialCo
                       </div>
 
                       <div className="space-y-4">
-                        <Button
-                          variant="outline"
-                          className="w-full border-dashed border-2 py-6 flex flex-col items-center gap-1 group"
-                          onClick={() => setActiveCourseIdForModuleCreation(course.id)}
-                        >
-                          <Plus size={20} className="group-hover:scale-110 transition-transform text-indigo-500" />
-                          <span className="text-[10px] font-black uppercase tracking-widest">Novo Modulo</span>
-                        </Button>
+                        {(user.role === 'MASTER' || user.email === 'timbo.correa@gmail.com' || course.instructor_id === user.id) && (
+                          <Button
+                            variant="outline"
+                            className="w-full border-dashed border-2 py-6 flex flex-col items-center gap-1 group"
+                            onClick={() => setActiveCourseIdForModuleCreation(course.id)}
+                          >
+                            <Plus size={20} className="group-hover:scale-110 transition-transform text-indigo-500" />
+                            <span className="text-[10px] font-black uppercase tracking-widest">Novo Modulo</span>
+                          </Button>
+                        )}
                         {renderModuleList(course)}
                       </div>
                     </div>
@@ -1170,12 +1270,16 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, user, initialCo
                     </div>
 
                     <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                      <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5" onClick={() => setEditingCourse({ ...course })}>
-                        <Pencil size={14} className="text-slate-400" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-red-500/10" onClick={() => handleDeleteCourse(course.id)}>
-                        <Trash2 size={14} className="text-red-400" />
-                      </Button>
+                      {(user.role === 'MASTER' || user.email === 'timbo.correa@gmail.com' || course.instructor_id === user.id) && (
+                        <>
+                          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5" onClick={() => setEditingCourse({ ...course })}>
+                            <Pencil size={14} className="text-slate-400" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-red-500/10" onClick={() => handleDeleteCourse(course.id)}>
+                            <Trash2 size={14} className="text-red-400" />
+                          </Button>
+                        </>
+                      )}
                       <div className={cn("w-8 h-8 flex items-center justify-center transition-transform duration-300", isExpanded && "rotate-90 text-indigo-500")}>
                         <ChevronRight size={18} className="text-slate-300" />
                       </div>
@@ -1186,15 +1290,17 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, user, initialCo
                     <div className="px-5 pb-6 bg-slate-50/70 dark:bg-slate-950/20 animate-in slide-in-from-top-2 duration-300">
                       <div className="pt-5 flex items-center justify-between gap-4 mb-4">
                         <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Modulos</h4>
-                        <Button
-                          disabled={busy}
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setActiveCourseIdForModuleCreation(course.id)}
-                          className="h-7 text-[10px] font-black uppercase tracking-widest gap-2 bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20"
-                        >
-                          <Plus size={12} /> Novo Modulo
-                        </Button>
+                        {(user.role === 'MASTER' || user.email === 'timbo.correa@gmail.com' || course.instructor_id === user.id) && (
+                          <Button
+                            disabled={busy}
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setActiveCourseIdForModuleCreation(course.id)}
+                            className="h-7 text-[10px] font-black uppercase tracking-widest gap-2 bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20"
+                          >
+                            <Plus size={12} /> Novo Modulo
+                          </Button>
+                        )}
                       </div>
                       <div className="space-y-3">
                         {renderModuleList(course)}
@@ -1251,28 +1357,32 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, user, initialCo
                       <p className="text-[10px] text-slate-400 mt-2">ID: {course.id}</p>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={e => {
-                          e.stopPropagation();
-                          setEditingCourse({ ...course });
-                        }}
-                        title="Editar curso"
-                      >
-                        <Pencil size={18} className="text-slate-400" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={e => {
-                          e.stopPropagation();
-                          handleDeleteCourse(course.id);
-                        }}
-                        title="Excluir curso"
-                      >
-                        <Trash2 size={18} className="text-slate-400" />
-                      </Button>
+                      {(user.role === 'MASTER' || user.email === 'timbo.correa@gmail.com' || course.instructor_id === user.id) && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={e => {
+                              e.stopPropagation();
+                              setEditingCourse({ ...course });
+                            }}
+                            title="Editar curso"
+                          >
+                            <Pencil size={18} className="text-slate-400" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={e => {
+                              e.stopPropagation();
+                              handleDeleteCourse(course.id);
+                            }}
+                            title="Excluir curso"
+                          >
+                            <Trash2 size={18} className="text-slate-400" />
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1285,15 +1395,17 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, user, initialCo
                         <div className="flex items-center gap-3">
                           <ViewModeToggle current={moduleViewMode} onChange={toggleModuleViewMode} label="Visualização" />
                           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{modules.length}</span>
-                          <Button
-                            disabled={busy}
-                            variant="cyan"
-                            size="sm"
-                            onClick={() => setActiveCourseIdForModuleCreation(course.id)}
-                            className="flex items-center gap-2"
-                          >
-                            <Plus size={14} /> Criar modulo
-                          </Button>
+                          {(user.role === 'MASTER' || user.email === 'timbo.correa@gmail.com' || course.instructor_id === user.id) && (
+                            <Button
+                              disabled={busy}
+                              variant="cyan"
+                              size="sm"
+                              onClick={() => setActiveCourseIdForModuleCreation(course.id)}
+                              className="flex items-center gap-2"
+                            >
+                              <Plus size={14} /> Criar modulo
+                            </Button>
+                          )}
                         </div>
                       </div>
 

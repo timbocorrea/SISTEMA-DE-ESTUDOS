@@ -95,4 +95,9 @@ export interface IAdminRepository {
 
   // Instructor Specific
   listEnrolledStudentsByInstructor(instructorId: string): Promise<ProfileRecord[]>;
+  assignLessonsToInstructor(userId: string, lessonIds: string[]): Promise<void>;
+  listInstructorLessonAssignments(userId: string): Promise<string[]>;
+  removeInstructorLessonAssignment(userId: string, lessonId: string): Promise<void>;
+  canEditLesson(userId: string, lessonId: string): Promise<boolean>;
+  getCurrentUserId(): Promise<string | null>;
 }

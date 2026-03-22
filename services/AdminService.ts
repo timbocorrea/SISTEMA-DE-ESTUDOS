@@ -31,8 +31,10 @@ export class AdminService {
           });
         });
 
-        return new Module(rm.id, rm.title, lessons);
+        return new Module(rm.id, rm.title, lessons, rm.position || 0);
       });
+
+      modules.sort((a, b) => a.position - b.position);
 
       return new Course(rc.id, rc.title, rc.description || '', rc.image_url || '', rc.color || null, rc.color_legend || null, modules, rc.instructor_id);
     });
@@ -60,8 +62,10 @@ export class AdminService {
           });
         });
 
-        return new Module(rm.id, rm.title, lessons);
+        return new Module(rm.id, rm.title, lessons, rm.position || 0);
       });
+
+      modules.sort((a, b) => a.position - b.position);
 
       return new Course(rc.id, rc.title, rc.description || '', rc.image_url || '', rc.color || null, rc.color_legend || null, modules, rc.instructor_id);
     });
@@ -271,5 +275,23 @@ export class AdminService {
 
   listEnrolledStudentsByInstructor(instructorId: string): Promise<ProfileRecord[]> {
     return this.adminRepository.listEnrolledStudentsByInstructor(instructorId);
+  }
+
+  assignLessonsToInstructor(userId: string, lessonIds: string[]): Promise<void> {
+    return this.adminRepository.assignLessonsToInstructor(userId, lessonIds);
+  }
+
+  listInstructorLessonAssignments(userId: string): Promise<string[]> {
+    return this.adminRepository.listInstructorLessonAssignments(userId);
+  }
+
+  removeInstructorLessonAssignment(userId: string, lessonId: string): Promise<void> {
+    return this.adminRepository.removeInstructorLessonAssignment(userId, lessonId);
+  }
+
+  async canEditLesson(lessonId: string): Promise<boolean> {
+    const userId = await this.adminRepository.getCurrentUserId();
+    if (!userId) return false;
+    return this.adminRepository.canEditLesson(userId, lessonId);
   }
 }

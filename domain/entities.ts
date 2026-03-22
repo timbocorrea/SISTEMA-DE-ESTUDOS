@@ -501,7 +501,8 @@ export class Module {
   constructor(
     public readonly id: string,
     public readonly title: string,
-    public readonly lessons: Lesson[]
+    public readonly lessons: Lesson[],
+    public readonly position: number = 0
   ) { }
 
   public isFullyCompleted(): boolean {

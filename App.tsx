@@ -12,6 +12,7 @@ import { PresenceCheckModal } from './components/PresenceCheckModal';
 const PendingApprovalScreen = React.lazy(() => import('./components/PendingApprovalScreen'));
 import Breadcrumb from './components/Breadcrumb';
 import { LessonRecord } from './domain/admin';
+import { Course, Module } from './domain/entities';
 import { ModernLoader } from './components/ModernLoader';
 
 // Lazy Imports
@@ -58,25 +59,57 @@ const LessonContentEditorWrapper: React.FC<{ adminService: AdminService }> = ({ 
   const navigate = useNavigate();
   const [lesson, setLesson] = useState<LessonRecord | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (lessonId) {
-      adminService.getLesson(lessonId)
-        .then(setLesson)
-        .catch((err) => {
+      setLoading(true);
+      
+      const checkAccess = async () => {
+        try {
+          const [lessonData, hasAccess] = await Promise.all([
+            adminService.getLesson(lessonId),
+            adminService.canEditLesson(lessonId)
+          ]);
+          setLesson(lessonData);
+          setIsAuthorized(hasAccess);
+        } catch (err) {
           console.error(err);
-          alert("Erro ao carregar aula");
+          toast.error("Erro ao verificar permissões da aula.");
           navigate('/admin/content');
-        })
-        .finally(() => setLoading(false));
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      checkAccess();
     }
   }, [lessonId, adminService, navigate]);
 
   if (loading) return (
     <div className="absolute inset-0 z-50 flex items-center justify-center bg-white dark:bg-[#0a0e14]">
-      <ModernLoader message="Carregando editor..." />
+      <ModernLoader message="Verificando permissões..." />
     </div>
   );
+
+  if (isAuthorized === false) return (
+    <div className="absolute inset-0 z-50 flex items-center justify-center bg-white dark:bg-[#0a0e14]">
+      <div className="text-center p-8 bg-red-500/10 rounded-2xl border border-red-500/20 max-w-sm">
+        <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+          <i className="fas fa-user-lock text-3xl text-red-500"></i>
+        </div>
+        <h2 className="text-xl font-black text-white mb-2">Acesso Negado</h2>
+        <p className="text-sm text-slate-400 mb-6 font-medium">Você não tem permissão para editar esta aula específica. Entre em contato com o Master para solicitar acesso.</p>
+        <button 
+          onClick={() => navigate('/admin/content')}
+          className="px-6 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-bold transition-all text-xs"
+        >
+          Voltar para Gestão
+        </button>
+      </div>
+    </div>
+  );
+
   if (!lesson) return <div className="p-8 text-slate-500">Aula não encontrada.</div>;
 
   return (
@@ -95,8 +128,6 @@ const LessonContentEditorWrapper: React.FC<{ adminService: AdminService }> = ({ 
             position: metadata?.position,
             contentBlocks: metadata?.content_blocks
           });
-          // Não exibir alert aqui para nao interromper fluxo, o editor ja tem seus logs
-          // Mas o editor espera Promise<void>, entao ok.
         }}
         onCancel={() => navigate('/admin/content')}
       />
@@ -221,10 +252,27 @@ const App: React.FC = () => {
           // Masters (MASTER) veem todos os cursos do sistema.
           if (user.role === 'INSTRUCTOR' && user.email !== 'timbo.correa@gmail.com') {
             const assignedIds = await adminService.getUserCourseAssignments(user.id);
+            const lessonAssignments = await adminService.listInstructorLessonAssignments(user.id);
+
             const filtered = courses.filter(c => 
               c.instructorId === user.id || 
               assignedIds.includes(c.id)
-            );
+            ).map(c => {
+               // Se não for o instrutor principal, filtragem granular de aulas/módulos
+               if (c.instructorId !== user.id) {
+                 const filteredModules = (c.modules || []).map(m => {
+                   const lessons = (m.lessons || []).filter((l: any) => lessonAssignments.includes(l.id));
+                   return new Module(m.id, m.title, lessons, m.position);
+                 }).filter(m => m.lessons.length > 0);
+                 
+                 return new Course(
+                   c.id, c.title, c.description, c.imageUrl, c.color, c.colorLegend,
+                   filteredModules, c.instructorId, c.language, c.estimatedHours,
+                   c.level, c.teachingType, c.startDate, c.endDate, c.instructorName
+                 );
+               }
+               return c;
+            });
             setAdminCourses(filtered);
           } else {
             setAdminCourses(courses);

@@ -15,9 +15,10 @@ interface UserDetailsModalProps {
     onRefresh: () => void;
     onApprove: (user: ProfileRecord) => void;
     onReject: (user: ProfileRecord) => void;
+    onManageAccess?: (user: ProfileRecord) => void;
 }
 
-const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, adminService, adminId, onClose, onRefresh, onApprove, onReject }) => {
+const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, adminService, adminId, onClose, onRefresh, onApprove, onReject, onManageAccess }) => {
     const [activeTab, setActiveTab] = useState<'overview' | 'progress' | 'audit'>('overview');
     const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
     const [msgTitle, setMsgTitle] = useState('Aviso do Professor');
@@ -158,7 +159,7 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, adminService,
 
                 {/* Footer */}
                 <div className="p-4 border-t border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-white/5 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2 text-nowrap">
                         {(user as any).approval_status === 'approved' && (
                             <button
                                 onClick={() => onReject(user)}
@@ -168,9 +169,18 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, adminService,
                                 Bloquear
                             </button>
                         )}
+                        {(user.role === 'INSTRUCTOR' || user.role === 'MASTER') && onManageAccess && (
+                            <button
+                                onClick={() => onManageAccess(user)}
+                                className="px-5 py-3 min-h-[44px] rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-bold text-sm hover:bg-indigo-500/20 transition-colors flex items-center justify-center gap-2 active:scale-95"
+                            >
+                                <i className="fas fa-lock text-xs"></i>
+                                Gerenciar Acesso
+                            </button>
+                        )}
                         <button
                             onClick={() => setIsMessageModalOpen(true)}
-                            className="px-5 py-3 min-h-[44px] rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-bold text-sm hover:bg-indigo-500/20 transition-colors flex items-center justify-center gap-2 active:scale-95"
+                            className="px-5 py-3 min-h-[44px] rounded-xl bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 font-bold text-sm hover:bg-slate-200 dark:hover:bg-white/20 transition-colors flex items-center justify-center gap-2 active:scale-95"
                         >
                             <i className="fas fa-paper-plane"></i>
                             Enviar Mensagem
