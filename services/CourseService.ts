@@ -30,6 +30,12 @@ export class CourseService {
     becameCompleted: boolean,
     lastBlockId?: string
   ): Promise<Achievement[]> {
+    // 🔍 Only Students can perform courses and earn points
+    if (user.role !== 'STUDENT') {
+      console.log(`[GAMIFICATION] Skipping update for role: ${user.role}`);
+      return [];
+    }
+
     // 1. Persist Progress (Core Responsibility)
     await this.courseRepository.updateLessonProgress(
       user.id,

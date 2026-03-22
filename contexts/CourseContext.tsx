@@ -145,6 +145,9 @@ export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const updateProgress = async (watchedSeconds: number, lastBlockId?: string) => {
         if (!activeLesson || !activeCourse || !user) return;
 
+        // 🔍 Admin/Instructor check: Non-students do not track progress
+        if (user.role !== 'STUDENT') return;
+
         // Optimistic: returns true only when lesson JUST became completed
         const becameCompleted = activeLesson.updateProgress(watchedSeconds);
 
@@ -161,7 +164,7 @@ export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
 
     const checkAndTriggerCompletion = async (lesson: Lesson) => {
-        if (!activeCourse || !user) return;
+        if (!activeCourse || !user || user.role !== 'STUDENT') return;
         const wasCompleted = lesson.isCompleted;
         // Check if dynamic progress just reached 90%
         if (!wasCompleted && lesson.calculateProgressPercentage() >= 90) {
@@ -176,7 +179,7 @@ export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
 
     const markBlockAsRead = (blockId: string) => {
-        if (!activeLesson || !user) return;
+        if (!activeLesson || !user || user.role !== 'STUDENT') return;
         activeLesson.markBlockAsRead(blockId);
         setActiveLesson(activeLesson.clone());
         // Persist (fire-and-forget)

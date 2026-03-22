@@ -72,21 +72,29 @@ export const useLessonQuiz = ({
         setIsSubmittingQuiz(true);
 
         try {
-            await courseRepository.submitQuizAttempt(
-                user.id,
-                quiz.id,
-                answers
-            );
+            // 🔍 Only Students persist quiz attempts
+            if (user.role === 'STUDENT') {
+                await courseRepository.submitQuizAttempt(
+                    user.id,
+                    quiz.id,
+                    answers
+                );
+            } else {
+                console.log(`[QUIZ] Skipping persistence for role: ${user.role}`);
+            }
 
             const result = quiz.validateAttempt(answers);
             setQuizResult(result);
             setShowQuizModal(false);
 
-            // Only show XP message if in evaluation mode
-            // Note: XP is handled by the parent component/system automatically
+            // Only show XP message if in evaluation mode and student
             if (quizMode === 'evaluation') {
-                const pointsEarned = result.passed ? result.earnedPoints : 0;
-                toast.success(`Quiz concluído! ${result.passed ? `${pointsEarned} pontos ganhos` : 'Tente novamente para ganhar XP'}`);
+                if (user.role === 'STUDENT') {
+                    const pointsEarned = result.passed ? result.earnedPoints : 0;
+                    toast.success(`Quiz concluído! ${result.passed ? `${pointsEarned} pontos ganhos` : 'Tente novamente para ganhar XP'}`);
+                } else {
+                    toast.success(`Simulação concluída! Resultados não persistentes para cargos ${user.role}.`);
+                }
             } else {
                 // Practice mode - no XP
                 toast.success('Modo Prática concluído! XP não concedido.');

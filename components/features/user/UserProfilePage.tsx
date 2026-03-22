@@ -202,38 +202,42 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({
                   {user.email}
                 </p>
 
-                <div className="grid grid-cols-2 gap-4 pt-6 border-t border-slate-100 dark:border-white/5">
-                  <div className="text-center">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">XP Total</p>
-                    <p className="text-xl font-black text-indigo-500">{user.xp}</p>
+                {user.role === 'STUDENT' && (
+                  <div className="grid grid-cols-2 gap-4 pt-6 border-t border-slate-100 dark:border-white/5">
+                    <div className="text-center">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">XP Total</p>
+                      <p className="text-xl font-black text-indigo-500">{user.xp}</p>
+                    </div>
+                    <div className="text-center border-l border-slate-100 dark:border-white/5">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Nível</p>
+                      <p className="text-xl font-black text-emerald-500">{user.level}</p>
+                    </div>
                   </div>
-                  <div className="text-center border-l border-slate-100 dark:border-white/5">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Nível</p>
-                    <p className="text-xl font-black text-emerald-500">{user.level}</p>
-                  </div>
-                </div>
+                )}
               </div>
             </motion.div>
 
-            {/* Achievements Snippet? */}
-            <motion.div 
-               initial={{ opacity: 0, y: 20 }}
-               animate={{ opacity: 1, y: 0 }}
-               transition={{ delay: 0.1 }}
-               className="bg-indigo-600 rounded-3xl p-6 text-white shadow-xl shadow-indigo-500/20 relative overflow-hidden group cursor-pointer"
-               onClick={() => navigate('/achievements')}
-            >
-               <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:scale-125 transition-transform duration-700"></div>
-               <div className="relative z-10 flex items-center justify-between">
-                  <div>
-                    <h4 className="font-black text-lg">Conquistas</h4>
-                    <p className="text-indigo-100 text-xs opacity-80">{user.achievements.length} medalhas desbloqueadas</p>
-                  </div>
-                  <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center">
-                     <i className="fas fa-medal text-xl"></i>
-                  </div>
-               </div>
-            </motion.div>
+            {/* Achievements Snippet (Students Only) */}
+            {user.role === 'STUDENT' && (
+              <motion.div 
+                 initial={{ opacity: 0, y: 20 }}
+                 animate={{ opacity: 1, y: 0 }}
+                 transition={{ delay: 0.1 }}
+                 className="bg-indigo-600 rounded-3xl p-6 text-white shadow-xl shadow-indigo-500/20 relative overflow-hidden group cursor-pointer"
+                 onClick={() => navigate('/achievements')}
+              >
+                 <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:scale-125 transition-transform duration-700"></div>
+                 <div className="relative z-10 flex items-center justify-between">
+                    <div>
+                      <h4 className="font-black text-lg">Conquistas</h4>
+                      <p className="text-indigo-100 text-xs opacity-80">{user.achievements.length} medalhas desbloqueadas</p>
+                    </div>
+                    <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center">
+                       <i className="fas fa-medal text-xl"></i>
+                    </div>
+                 </div>
+              </motion.div>
+            )}
           </div>
 
           {/* Right Column: Detailed Forms */}
