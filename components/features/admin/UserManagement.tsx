@@ -813,6 +813,7 @@ const UserManagement: React.FC<Props> = ({ adminService, currentAdminId = '' }) 
           <UserDetailsModal
             user={viewingUser}
             adminService={adminService}
+            adminId={adminId}
             onClose={() => setViewingUser(null)}
             onRefresh={() => {
               setViewingUser(null);

@@ -264,4 +264,8 @@ export class AdminService {
   async getNetworkUsage(): Promise<{ egress_bytes: number; storage_bytes: number; db_size_bytes: number; is_mock: boolean }> {
     return this.adminRepository.getNetworkUsage();
   }
+
+  sendNotification(userId: string, senderId: string, title: string, message: string, type: string = 'direct_message', link?: string): Promise<void> {
+    return this.adminRepository.sendNotification(userId, senderId, title, message, type, link);
+  }
 }

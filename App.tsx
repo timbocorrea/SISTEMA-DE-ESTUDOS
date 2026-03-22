@@ -40,6 +40,8 @@ import { useCourse } from './contexts/CourseContext';
 import { AnimatedThemeToggler } from './components/ui/animated-theme-toggler';
 import { useTheme } from './contexts/ThemeContext';
 import { SupportDialog } from './components/SupportDialog';
+import { NotificationProvider } from './contexts/NotificationContext';
+import NotificationBell from './components/ui/NotificationBell';
 
 
 
@@ -524,6 +526,7 @@ const App: React.FC = () => {
           <i className="fas fa-play"></i>
         </button>
       )}
+      <NotificationBell />
       <button
         onClick={toggleFullscreen}
         className="w-10 h-10 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg transition-colors"
@@ -555,8 +558,8 @@ const App: React.FC = () => {
   );
 
   return (
-
-    <div className="flex flex-col lg:flex-row lg:h-screen w-full bg-slate-100 dark:bg-[#050810] text-slate-800 dark:text-slate-100 transition-colors duration-300 font-lexend relative overflow-hidden">
+    <NotificationProvider>
+      <div className="flex flex-col lg:flex-row lg:h-screen w-full bg-slate-100 dark:bg-[#050810] text-slate-800 dark:text-slate-100 transition-colors duration-300 font-lexend relative overflow-hidden">
       {/* GLOBAL DYNAMIC BACKGROUND */}
       <div className="absolute inset-0 pointer-events-none z-0">
         <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-indigo-500/5 rounded-full blur-[150px] mix-blend-screen animate-pulse-slow"></div>
@@ -843,14 +846,16 @@ const App: React.FC = () => {
           onClose={() => setForumLesson(null)}
       />
 
-      <LessonMaterialsModal 
-          lessonId={materialsLesson?.id || ''}
-          lessonTitle={materialsLesson?.title || ''}
-          isOpen={!!materialsLesson}
-          onClose={() => setMaterialsLesson(null)}
-      />
-
+      {materialsLesson && (
+        <LessonMaterialsModal 
+          lessonId={materialsLesson.id} 
+          lessonTitle={materialsLesson.title} 
+          isOpen={true} 
+          onClose={() => setMaterialsLesson(null)} 
+        />
+      )}
     </div>
+    </NotificationProvider>
   );
 };
 

@@ -33,5 +33,7 @@ export {
     PinchToZoom
 } from './GestureComponents';
 
+export { default as NotificationBell } from './NotificationBell';
+
 // Re-export types for convenience
 export type { default as MobileModalProps } from './MobileModal';

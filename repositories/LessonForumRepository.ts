@@ -55,7 +55,38 @@ export class LessonForumRepository {
             return null;
         }
 
-        return data as ForumMessage;
+        const newMessage = data as ForumMessage;
+
+        // Se for uma resposta, notifica o dono da mensagem pai
+        if (parentId) {
+            try {
+                // Busca o dono da mensagem pai
+                const { data: parentMsg } = await this.client
+                    .from('lesson_forum_messages')
+                    .select('user_id, content')
+                    .eq('id', parentId)
+                    .single();
+
+                if (parentMsg && parentMsg.user_id !== userId) {
+                    // Busca o nome de quem está respondendo para o título
+                    const senderProfile = await this.getUserProfile(userId);
+                    const senderName = senderProfile?.name || 'Alguém';
+
+                    await this.client.from('notifications').insert({
+                        user_id: parentMsg.user_id,
+                        sender_id: userId,
+                        title: 'Resposta no Fórum',
+                        message: `${senderName} respondeu ao seu comentário: "${parentMsg.content.substring(0, 40)}${parentMsg.content.length > 40 ? '...' : ''}"`,
+                        type: 'forum_reply',
+                        link: `/course/unknown/lesson/${lessonId}` // O courseId não está fácil aqui, mas o link da aula ajuda
+                    });
+                }
+            } catch (notifyError) {
+                console.error('Erro ao criar notificação de fórum:', notifyError);
+            }
+        }
+
+        return newMessage;
     }
 
     /**

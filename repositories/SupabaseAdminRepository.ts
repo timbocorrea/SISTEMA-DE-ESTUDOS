@@ -938,4 +938,19 @@ export class SupabaseAdminRepository implements IAdminRepository {
       return { egress_bytes: 0, storage_bytes: 0, db_size_bytes: 0, is_mock: false };
     }
   }
+
+  async sendNotification(userId: string, senderId: string, title: string, message: string, type: string, link?: string): Promise<void> {
+    const { error } = await this.client
+      .from('notifications')
+      .insert({
+        user_id: userId,
+        sender_id: senderId,
+        title,
+        message,
+        type,
+        link
+      });
+
+    if (error) throw new DomainError(`Erro ao enviar notificação: ${error.message}`);
+  }
 }

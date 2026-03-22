@@ -544,3 +544,19 @@ export class CourseEnrollment {
     public readonly isActive: boolean = true
   ) { }
 }
+
+export type NotificationType = 'forum_reply' | 'direct_message' | 'system' | 'award';
+
+export class Notification {
+  constructor(
+    public readonly id: string,
+    public readonly userId: string,
+    public readonly title: string,
+    public readonly message: string,
+    public readonly type: NotificationType,
+    public readonly senderId: string | null = null,
+    public readonly link: string | null = null,
+    public readonly isRead: boolean = false,
+    public readonly createdAt: Date = new Date()
+  ) { }
+}
