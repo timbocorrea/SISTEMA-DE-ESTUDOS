@@ -125,8 +125,55 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
 
   const refreshCourses = async () => {
     setError('');
-    const list = await adminService.listCourses();
-    setCourses(list);
+    setBusy(true);
+    try {
+      // Usar outline para ter acesso aos módulos e aulas (para contadores)
+      const list = await adminService.listCoursesOutline();
+      
+      // Converter de Course[] para CourseRecord[] para manter compatibilidade
+      const courseRecords: CourseRecord[] = list.map(c => ({
+        id: c.id,
+        title: c.title,
+        description: c.description || null,
+        image_url: c.imageUrl || null,
+        color: c.color || null,
+        color_legend: c.colorLegend || null
+      }));
+      setCourses(courseRecords);
+
+      // Popular caches de contagem
+      const newModulesByCourse: Record<string, ModuleRecord[]> = {};
+      const newLessonsByModule: Record<string, LessonRecord[]> = {};
+
+      list.forEach(course => {
+        // Módulos do curso
+        const modules = course.modules.map(m => ({
+          id: m.id,
+          course_id: course.id,
+          title: m.title,
+          position: m.lessons.length > 0 ? 0 : 0 // position real não vem no Course mas pra contagem tá ok
+        } as any));
+        newModulesByCourse[course.id] = modules;
+
+        // Aulas de cada módulo
+        course.modules.forEach(module => {
+          const lessons = module.lessons.map(l => ({
+            id: l.id,
+            module_id: module.id,
+            title: l.title,
+            position: l.position
+          } as any));
+          newLessonsByModule[module.id] = lessons;
+        });
+      });
+
+      setModulesByCourse(prev => ({ ...prev, ...newModulesByCourse }));
+      setLessonsByModule(prev => ({ ...prev, ...newLessonsByModule }));
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const refreshModules = async (courseId: string) => {
@@ -969,10 +1016,10 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
           {courses.map(course => {
             const isExpanded = expandedCourseId === course.id;
             const modules = getModules(course.id);
-            
+
             if (courseViewMode === 'grid') {
               return (
-                <div 
+                <div
                   key={course.id}
                   className={cn(
                     "group relative bg-white dark:bg-[#1C1E23] border border-slate-200 dark:border-white/5 rounded-2xl overflow-hidden transition-all duration-300 hover:border-indigo-500/30 dark:hover:border-white/10 hover:shadow-xl hover:shadow-indigo-500/5",
@@ -988,7 +1035,7 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
                       </div>
                     )}
                     <div className="absolute top-3 left-3 flex gap-2">
-                       {course.color_legend && (
+                      {course.color_legend && (
                         <span
                           className="px-2 py-0.5 rounded-lg text-[10px] font-black text-white shadow-lg backdrop-blur-md"
                           style={{ backgroundColor: course.color || '#6366f1' }}
@@ -998,7 +1045,7 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
                       )}
                     </div>
                     <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button variant="secondary" size="icon" className="h-8 w-8 rounded-lg bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm" 
+                      <Button variant="secondary" size="icon" className="h-8 w-8 rounded-lg bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm"
                         onClick={(e) => { e.stopPropagation(); setEditingCourse({ ...course }); }}>
                         <Pencil size={14} className="text-slate-600 dark:text-slate-400" />
                       </Button>
@@ -1008,24 +1055,29 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
                       </Button>
                     </div>
                   </div>
-                  
+
                   <div className="p-5">
-                    <h3 className="text-base font-black text-slate-800 dark:text-white line-clamp-1 mb-1">{course.title}</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 min-h-[2.5rem] mb-4">
+                    <h3 className="text-lg font-black text-slate-800 dark:text-white line-clamp-1 mb-1">{course.title}</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 min-h-[3rem] mb-4">
                       {course.description || 'Sem descrição cadastrada'}
                     </p>
-                    
+
                     <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-white/5">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-4">
                         <div className="flex flex-col">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Aulas</span>
-                          <span className="text-sm font-black text-slate-700 dark:text-slate-200">{modules.reduce((acc, m) => acc + (lessonsByModule[m.id]?.length || 0), 0)}</span>
+                          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Modulos</span>
+                          <span className="text-base font-black text-slate-700 dark:text-slate-200">{modules.length}</span>
+                        </div>
+                        <div className="w-px h-6 bg-slate-100 dark:bg-white/10" />
+                        <div className="flex flex-col">
+                          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Aulas</span>
+                          <span className="text-base font-black text-slate-700 dark:text-slate-200">{modules.reduce((acc, m) => acc + (lessonsByModule[m.id]?.length || 0), 0)}</span>
                         </div>
                       </div>
-                      <Button 
+                      <Button
                         variant={isExpanded ? "secondary" : "default"}
-                        size="sm"
-                        className="rounded-xl font-bold"
+                        size="default"
+                        className="rounded-xl font-black px-6"
                         onClick={() => {
                           const next = isExpanded ? '' : course.id;
                           setExpandedCourseId(next);
@@ -1034,7 +1086,7 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
                         }}
                       >
                         {isExpanded ? 'Recolher' : 'Gerenciar'}
-                        <ChevronRight size={14} className={cn("ml-1 transition-transform", isExpanded && "rotate-90")} />
+                        <ChevronRight size={16} className={cn("ml-2 transition-transform", isExpanded && "rotate-90")} />
                       </Button>
                     </div>
                   </div>
@@ -1045,26 +1097,25 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
                         <h4 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-widest flex items-center gap-2">
                           <Layers size={16} className="text-indigo-500" /> Modulos
                         </h4>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           className="h-8 w-8"
                           onClick={() => setExpandedCourseId('')}
                         >
                           <List size={16} />
                         </Button>
                       </div>
-                      
+
                       <div className="space-y-4">
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           className="w-full border-dashed border-2 py-6 flex flex-col items-center gap-1 group"
                           onClick={() => setActiveCourseIdForModuleCreation(course.id)}
                         >
                           <Plus size={20} className="group-hover:scale-110 transition-transform text-indigo-500" />
                           <span className="text-[10px] font-black uppercase tracking-widest">Novo Modulo</span>
                         </Button>
-                        
                         {renderModuleList(course)}
                       </div>
                     </div>
@@ -1073,11 +1124,79 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
               );
             }
 
+            if (courseViewMode === 'minimal') {
+              return (
+                <div key={course.id} className="border-b border-slate-100 dark:border-white/5 last:border-0">
+                  <div
+                    onClick={() => {
+                      const next = isExpanded ? '' : course.id;
+                      setExpandedCourseId(next);
+                      setExpandedModuleId('');
+                      if (!modules.length) refreshModules(course.id);
+                    }}
+                    className={cn(
+                      "flex items-center justify-between gap-4 p-4 cursor-pointer transition-all",
+                      isExpanded ? "bg-indigo-50/50 dark:bg-indigo-500/10" : "hover:bg-slate-50 dark:hover:bg-white/[0.02]"
+                    )}
+                  >
+                    <div className="flex items-center gap-4 min-w-0 flex-1">
+                      <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400 flex-shrink-0 overflow-hidden">
+                        {course.image_url ? (
+                          <img src={course.image_url} className="w-full h-full object-cover" />
+                        ) : <GraduationCap size={24} />}
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="text-sm font-black text-slate-800 dark:text-white truncate">{course.title}</h4>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
+                          {modules.length} Modulos • {modules.reduce((acc, m) => acc + (lessonsByModule[m.id]?.length || 0), 0)} Aulas
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                      <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5" onClick={() => setEditingCourse({ ...course })}>
+                        <Pencil size={14} className="text-slate-400" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-red-500/10" onClick={() => handleDeleteCourse(course.id)}>
+                        <Trash2 size={14} className="text-red-400" />
+                      </Button>
+                      <div className={cn("w-8 h-8 flex items-center justify-center transition-transform duration-300", isExpanded && "rotate-90 text-indigo-500")}>
+                        <ChevronRight size={18} className="text-slate-300" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {isExpanded && (
+                    <div className="px-5 pb-6 bg-slate-50/70 dark:bg-slate-950/20 animate-in slide-in-from-top-2 duration-300">
+                      <div className="pt-5 flex items-center justify-between gap-4 mb-4">
+                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Modulos</h4>
+                        <Button
+                          disabled={busy}
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setActiveCourseIdForModuleCreation(course.id)}
+                          className="h-7 text-[10px] font-black uppercase tracking-widest gap-2 bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20"
+                        >
+                          <Plus size={12} /> Novo Modulo
+                        </Button>
+                      </div>
+                      <div className="space-y-3">
+                        {renderModuleList(course)}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            // Modo Lista (Padrão)
             return (
-              <div key={course.id}>
+              <div key={course.id} className="border-b border-slate-100 dark:border-white/5 last:border-0">
                 <div
-                  className={`p-5 flex items-start justify-between gap-4 cursor-pointer transition ${isExpanded ? 'bg-indigo-50 dark:bg-indigo-900/20' : 'hover:bg-slate-50 dark:hover:bg-slate-800/30'
-                    }`}
+                  className={cn(
+                    "p-6 flex items-start justify-between gap-6 cursor-pointer transition-all",
+                    isExpanded ? 'bg-indigo-50/50 dark:bg-indigo-900/20' : 'hover:bg-slate-50/50 dark:hover:bg-white/[0.01]'
+                  )}
                   onClick={() => {
                     const next = isExpanded ? '' : course.id;
                     setExpandedCourseId(next);
@@ -1085,51 +1204,60 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
                     if (!modules.length) refreshModules(course.id);
                   }}
                 >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3">
-                      {course.color && (
-                        <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: course.color }} title={course.color_legend || 'Categoria'}></div>
-                      )}
-                      <h3 className="text-sm font-black text-slate-800 dark:text-white truncate">
-                        {course.title}
-                      </h3>
-                      {course.color_legend && (
-                        <span
-                          className="px-2 py-0.5 rounded-full text-[10px] font-bold text-white shadow-sm"
-                          style={{ backgroundColor: course.color || '#6366f1' }}
-                        >
-                          {course.color_legend}
-                        </span>
+                  <div className="flex gap-6 flex-1 min-w-0">
+                    <div className="w-24 h-16 rounded-xl bg-slate-100 dark:bg-slate-800 flex-shrink-0 overflow-hidden shadow-sm">
+                      {course.image_url ? (
+                        <img src={course.image_url} alt={course.title} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-slate-300"><GraduationCap size={24} /></div>
                       )}
                     </div>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1 truncate">
-                      {course.description || 'SEM DESCRICAO'}
-                    </p>
-                    <p className="text-[10px] text-slate-400 mt-2">ID: {course.id}</p>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={e => {
-                        e.stopPropagation();
-                        setEditingCourse({ ...course });
-                      }}
-                      title="Editar curso"
-                    >
-                      <Pencil size={18} className="text-slate-400" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={e => {
-                        e.stopPropagation();
-                        handleDeleteCourse(course.id);
-                      }}
-                      title="Excluir curso"
-                    >
-                      <Trash2 size={18} className="text-slate-400" />
-                    </Button>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3 mb-1">
+                        {course.color && (
+                          <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: course.color }} />
+                        )}
+                        <h3 className="text-base font-black text-slate-800 dark:text-white truncate">
+                          {course.title}
+                        </h3>
+                        {course.color_legend && (
+                          <span
+                            className="px-2 py-0.5 rounded-lg text-[10px] font-black text-white shadow-sm"
+                            style={{ backgroundColor: course.color || '#6366f1' }}
+                          >
+                            {course.color_legend}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1 truncate">
+                        {course.description || 'SEM DESCRICAO'}
+                      </p>
+                      <p className="text-[10px] text-slate-400 mt-2">ID: {course.id}</p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={e => {
+                          e.stopPropagation();
+                          setEditingCourse({ ...course });
+                        }}
+                        title="Editar curso"
+                      >
+                        <Pencil size={18} className="text-slate-400" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={e => {
+                          e.stopPropagation();
+                          handleDeleteCourse(course.id);
+                        }}
+                        title="Excluir curso"
+                      >
+                        <Trash2 size={18} className="text-slate-400" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
 
