@@ -986,4 +986,53 @@ export class SupabaseAdminRepository implements IAdminRepository {
 
     if (error) throw new DomainError(`Erro ao enviar notificação: ${error.message}`);
   }
+
+  async listEnrolledStudentsByInstructor(instructorId: string): Promise<ProfileRecord[]> {
+    // 1. Get courses where instructor is the main instructor
+    const { data: mainCourses } = await this.client
+      .from('courses')
+      .select('id')
+      .eq('instructor_id', instructorId);
+
+    // 2. Get courses where instructor is assigned via enrollments (Course Editors/Co-Instructors)
+    const { data: assignedCourses } = await this.client
+      .from('course_enrollments')
+      .select('course_id')
+      .eq('user_id', instructorId);
+
+    const courseIds = Array.from(new Set([
+      ...(mainCourses || []).map(c => c.id),
+      ...(assignedCourses || []).map(ce => ce.course_id)
+    ]));
+
+    if (courseIds.length === 0) return [];
+
+    // 1. Get all user IDs from these courses
+    const { data: enrollments, error: enrollError } = await this.client
+      .from('course_enrollments')
+      .select('user_id')
+      .in('course_id', courseIds);
+
+    if (enrollError) throw new DomainError(`Erro ao buscar matrículas: ${enrollError.message}`);
+    
+    const userIds = (enrollments || []).map(e => e.user_id);
+    if (userIds.length === 0) return [];
+
+    // 2. Fetch profiles for these users (only columns known to exist)
+    const { data, error } = await this.client
+      .from('profiles')
+      .select('id, name, email, role, xp_total, current_level')
+      .in('id', userIds)
+      .eq('role', 'STUDENT');
+
+    if (error) throw new DomainError(`Erro ao buscar perfis dos alunos: ${error.message}`);
+
+    
+    const profilesMap = new Map<string, ProfileRecord>();
+    (data || []).forEach((e: ProfileRecord) => {
+      profilesMap.set(e.id, e);
+    });
+
+    return Array.from(profilesMap.values());
+  }
 }

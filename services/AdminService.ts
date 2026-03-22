@@ -268,4 +268,8 @@ export class AdminService {
   sendNotification(userId: string, senderId: string, title: string, message: string, type: string = 'direct_message', link?: string): Promise<void> {
     return this.adminRepository.sendNotification(userId, senderId, title, message, type, link);
   }
+
+  listEnrolledStudentsByInstructor(instructorId: string): Promise<ProfileRecord[]> {
+    return this.adminRepository.listEnrolledStudentsByInstructor(instructorId);
+  }
 }

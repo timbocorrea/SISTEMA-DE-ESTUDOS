@@ -20,7 +20,7 @@ interface ContentReaderProps {
     blockRefs?: React.MutableRefObject<{ [key: string]: HTMLDivElement | null }>;
     onSeek?: (percentage: number) => void;
     // Text Answer Block props
-    studentAnswers?: Map<string, string>;
+    studentAnswers?: Map<string, any>; // Use any to avoid complex type import if not easy, but it contains StudentAnswer objects
     onSaveAnswer?: (blockId: string, answerText: string) => Promise<void>;
     savingBlockIds?: Set<string>;
 }
@@ -108,12 +108,17 @@ const ContentReader: React.FC<ContentReaderProps> = React.memo(({
 
                 // --- Text Answer Block Rendering ---
                 if (isTextAnswer) {
-                    const savedAnswer = studentAnswers?.get(block.id) || '';
+                    const studentAnswerObj = studentAnswers?.get(block.id);
+                    const savedAnswer = studentAnswerObj?.answerText || '';
+                    const feedbackText = studentAnswerObj?.feedbackText;
+                    const grade = studentAnswerObj?.grade;
+                    
                     const localAnswer = localAnswers.get(block.id);
                     const isEditing = editingBlocks.has(block.id);
                     const isSaving = savingBlockIds?.has(block.id) || false;
                     const displayAnswer = localAnswer !== undefined ? localAnswer : savedAnswer;
                     const hasSavedAnswer = savedAnswer.length > 0;
+                    const isGraded = !!feedbackText || !!grade;
 
                     return (
                         <div
@@ -128,22 +133,38 @@ const ContentReader: React.FC<ContentReaderProps> = React.memo(({
                                 padding: '1.25rem',
                                 borderLeft: '4px solid #f59e0b',
                                 backgroundColor: contentTheme === 'dark' ? 'rgba(245, 158, 11, 0.08)' : 'rgba(245, 158, 11, 0.05)',
-                                borderRadius: '12px',
+                                borderRadius: '20px',
                                 transition: 'all 0.2s ease',
+                                border: isGraded ? (contentTheme === 'dark' ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid rgba(16, 185, 129, 0.3)') : 'none',
+                                borderLeftWidth: '4px',
+                                borderLeftColor: isGraded ? '#10b981' : '#f59e0b'
                             }}
                         >
                             {/* Header */}
                             <div style={{
-                                display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px',
-                                fontSize: '13px', fontWeight: 700,
-                                color: contentTheme === 'dark' ? '#fbbf24' : '#b45309'
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px'
                             }}>
-                                <i className="fas fa-pen-to-square"></i>
-                                <span>Sua Resposta</span>
+                                <div style={{
+                                    display: 'flex', alignItems: 'center', gap: '8px',
+                                    fontSize: '13px', fontWeight: 700,
+                                    color: isGraded ? '#10b981' : (contentTheme === 'dark' ? '#fbbf24' : '#b45309')
+                                }}>
+                                    <i className={isGraded ? "fas fa-check-circle" : "fas fa-pen-to-square"}></i>
+                                    <span>{isGraded ? 'Atividade Avaliada' : 'Sua Resposta'}</span>
+                                </div>
+                                {grade && (
+                                    <div style={{
+                                        padding: '4px 12px', borderRadius: '10px',
+                                        backgroundColor: '#10b98120', color: '#10b981',
+                                        fontSize: '11px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em'
+                                    }}>
+                                        Nota: {grade}
+                                    </div>
+                                )}
                             </div>
 
                             {/* Textarea or Saved Answer */}
-                            {(!hasSavedAnswer || isEditing) ? (
+                            {(!hasSavedAnswer || isEditing) && !isGraded ? (
                                 <>
                                     <textarea
                                         value={displayAnswer}
@@ -255,37 +276,61 @@ const ContentReader: React.FC<ContentReaderProps> = React.memo(({
                                     <div style={{
                                         padding: '12px 16px',
                                         borderRadius: '10px',
-                                        backgroundColor: contentTheme === 'dark' ? '#1e293b' : '#f8fafc',
+                                        backgroundColor: contentTheme === 'dark' ? 'rgba(15, 23, 42, 0.4)' : '#fff',
                                         border: `1px solid ${contentTheme === 'dark' ? '#334155' : '#e2e8f0'}`,
                                         color: contentTheme === 'dark' ? '#e2e8f0' : '#334155',
                                         fontSize: '14px',
                                         lineHeight: '1.7',
                                         whiteSpace: 'pre-wrap',
-                                    }}>{savedAnswer}</div>
-                                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
-                                        <button
-                                            onClick={() => {
-                                                const newEditing = new Set(editingBlocks);
-                                                newEditing.add(block.id);
-                                                setEditingBlocks(newEditing);
-                                                // Pre-populate local with saved
-                                                const newMap = new Map(localAnswers);
-                                                newMap.set(block.id, savedAnswer);
-                                                setLocalAnswers(newMap);
-                                            }}
-                                            style={{
-                                                padding: '8px 20px', borderRadius: '8px',
-                                                fontSize: '12px', fontWeight: 700,
-                                                border: `1px solid ${contentTheme === 'dark' ? '#475569' : '#cbd5e1'}`,
-                                                backgroundColor: 'transparent',
-                                                color: contentTheme === 'dark' ? '#fbbf24' : '#b45309',
-                                                cursor: 'pointer',
-                                            }}
-                                        >
-                                            <i className="fas fa-edit" style={{ marginRight: '6px' }}></i>
-                                            Editar Resposta
-                                        </button>
-                                    </div>
+                                    }}>{savedAnswer || 'Sem resposta enviada.'}</div>
+                                    
+                                    {/* Feedback Area */}
+                                    {feedbackText && (
+                                        <div style={{
+                                            marginTop: '16px',
+                                            padding: '16px',
+                                            borderRadius: '16px',
+                                            backgroundColor: '#10b98110',
+                                            border: '1px dashed #10b98140',
+                                            position: 'relative'
+                                        }}>
+                                            <div style={{
+                                                fontSize: '10px', fontWeight: 900, color: '#10b981',
+                                                textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '8px'
+                                            }}>Feedback do Instrutor</div>
+                                            <p style={{
+                                                fontSize: '13px', color: contentTheme === 'dark' ? '#d1d5db' : '#4b5563',
+                                                lineHeight: '1.6', margin: 0
+                                            }}>{feedbackText}</p>
+                                        </div>
+                                    )}
+
+                                    {!isGraded && (
+                                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
+                                            <button
+                                                onClick={() => {
+                                                    const newEditing = new Set(editingBlocks);
+                                                    newEditing.add(block.id);
+                                                    setEditingBlocks(newEditing);
+                                                    // Pre-populate local with saved
+                                                    const newMap = new Map(localAnswers);
+                                                    newMap.set(block.id, savedAnswer);
+                                                    setLocalAnswers(newMap);
+                                                }}
+                                                style={{
+                                                    padding: '8px 20px', borderRadius: '8px',
+                                                    fontSize: '12px', fontWeight: 700,
+                                                    border: `1px solid ${contentTheme === 'dark' ? '#475569' : '#cbd5e1'}`,
+                                                    backgroundColor: 'transparent',
+                                                    color: contentTheme === 'dark' ? '#fbbf24' : '#b45309',
+                                                    cursor: 'pointer',
+                                                }}
+                                            >
+                                                <i className="fas fa-edit" style={{ marginRight: '6px' }}></i>
+                                                Editar Resposta
+                                            </button>
+                                        </div>
+                                    )}
                                 </>
                             )}
                         </div>

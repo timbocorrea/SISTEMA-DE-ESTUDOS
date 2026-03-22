@@ -92,4 +92,7 @@ export interface IAdminRepository {
 
   // Notifications
   sendNotification(userId: string, senderId: string, title: string, message: string, type: string, link?: string): Promise<void>;
+
+  // Instructor Specific
+  listEnrolledStudentsByInstructor(instructorId: string): Promise<ProfileRecord[]>;
 }

@@ -5,6 +5,10 @@ interface StudentAnswer {
     blockId: string;
     answerText: string;
     updatedAt: string;
+    grade?: string | null;
+    feedbackText?: string | null;
+    gradedBy?: string | null;
+    gradedAt?: string | null;
 }
 
 interface UseStudentAnswersProps {
@@ -13,7 +17,7 @@ interface UseStudentAnswersProps {
 }
 
 export const useStudentAnswers = ({ userId, lessonId }: UseStudentAnswersProps) => {
-    const [answers, setAnswers] = useState<Map<string, string>>(new Map());
+    const [answers, setAnswers] = useState<Map<string, StudentAnswer>>(new Map());
     const [loading, setLoading] = useState(true);
     const [savingBlocks, setSavingBlocks] = useState<Set<string>>(new Set());
     const loadedRef = useRef(false);
@@ -33,7 +37,7 @@ export const useStudentAnswers = ({ userId, lessonId }: UseStudentAnswersProps) 
             try {
                 const { data, error } = await supabase
                     .from('student_answers')
-                    .select('block_id, answer_text')
+                    .select('block_id, answer_text, updated_at, grade, feedback_text, graded_by, graded_at')
                     .eq('user_id', userId)
                     .eq('lesson_id', lessonId);
 
@@ -43,9 +47,17 @@ export const useStudentAnswers = ({ userId, lessonId }: UseStudentAnswersProps) 
                 }
 
                 if (data && data.length > 0) {
-                    const answersMap = new Map<string, string>();
+                    const answersMap = new Map<string, StudentAnswer>();
                     data.forEach((row: any) => {
-                        answersMap.set(row.block_id, row.answer_text);
+                        answersMap.set(row.block_id, {
+                            blockId: row.block_id,
+                            answerText: row.answer_text,
+                            updatedAt: row.updated_at,
+                            grade: row.grade,
+                            feedbackText: row.feedback_text,
+                            gradedBy: row.graded_by,
+                            gradedAt: row.graded_at
+                        });
                     });
                     setAnswers(answersMap);
                 }
@@ -69,9 +81,17 @@ export const useStudentAnswers = ({ userId, lessonId }: UseStudentAnswersProps) 
     const saveAnswer = useCallback(async (blockId: string, answerText: string) => {
         if (!userId || !lessonId) return false;
 
+        // Se já foi avaliado, não permitimos editar via este hook de aluno (opcional mas seguro)
+        const existing = answers.get(blockId);
+        if (existing?.feedbackText) {
+            console.warn('Cannot edit a graded answer');
+            return false;
+        }
+
         setSavingBlocks(prev => new Set(prev).add(blockId));
 
         try {
+            const now = new Date().toISOString();
             const { error } = await supabase
                 .from('student_answers')
                 .upsert({
@@ -79,7 +99,7 @@ export const useStudentAnswers = ({ userId, lessonId }: UseStudentAnswersProps) 
                     lesson_id: lessonId,
                     block_id: blockId,
                     answer_text: answerText,
-                    updated_at: new Date().toISOString()
+                    updated_at: now
                 }, {
                     onConflict: 'user_id,lesson_id,block_id'
                 });
@@ -92,7 +112,12 @@ export const useStudentAnswers = ({ userId, lessonId }: UseStudentAnswersProps) 
             // Update local state
             setAnswers(prev => {
                 const next = new Map(prev);
-                next.set(blockId, answerText);
+                next.set(blockId, {
+                    ...existing,
+                    blockId,
+                    answerText,
+                    updatedAt: now
+                });
                 return next;
             });
 
@@ -107,9 +132,9 @@ export const useStudentAnswers = ({ userId, lessonId }: UseStudentAnswersProps) 
                 return next;
             });
         }
-    }, [userId, lessonId]);
+    }, [userId, lessonId, answers]);
 
-    const getAnswer = useCallback((blockId: string): string | undefined => {
+    const getAnswer = useCallback((blockId: string): StudentAnswer | undefined => {
         return answers.get(blockId);
     }, [answers]);
 

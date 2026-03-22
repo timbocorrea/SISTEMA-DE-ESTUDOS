@@ -178,4 +178,21 @@ export class LessonForumRepository {
 
         return data as ForumMessage;
     }
+
+    /**
+     * Busca mensagens pendentes (não respondidas por um instrutor) de cursos do professor
+     */
+    async getPendingMessages(instructorId: string): Promise<any[]> {
+        const { data, error } = await this.client
+            .rpc('get_pending_forum_messages', {
+                p_instructor_id: instructorId
+            });
+
+        if (error) {
+            console.error('Erro ao buscar mensagens pendentes:', error);
+            return [];
+        }
+
+        return data || [];
+    }
 }

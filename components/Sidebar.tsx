@@ -847,6 +847,24 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </div>
               )}
 
+              {/* Central do Professor (Instructor Hub) */}
+              <Link
+                to="/instructor/interact"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onViewChange('instructor-interact');
+                }}
+                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-base font-bold tracking-tight group relative mb-1 ${activeView === 'instructor-interact' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-slate-600 dark:text-slate-500 hover:bg-white dark:hover:bg-white/5 hover:text-indigo-600 dark:hover:text-indigo-400 shadow-sm hover:shadow-md bg-white dark:bg-slate-800/50'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
+                title="Central do Professor"
+              >
+                <div className={`transition-transform duration-300 ${activeView === 'instructor-interact' ? 'scale-110' : 'group-hover:scale-110'}`}>
+                  <i className={`fas fa-chalkboard-teacher w-5 text-center ${activeView === 'instructor-interact' ? 'text-white' : ''}`}></i>
+                </div>
+                <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
+                  Central do Professor
+                </span>
+              </Link>
+
               {/* Master Only: User Control */}
               {isMaster && (
                 <Link
@@ -930,23 +948,25 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </Link>
               )}
 
-              {/* Course Access Management */}
-              <Link
-                to="/admin/access"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onViewChange('access');
-                }}
-                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-base font-bold tracking-tight mb-1 group ${activeView === 'access' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-slate-600 dark:text-slate-500 hover:bg-white dark:hover:bg-white/5 hover:text-indigo-600 dark:hover:text-indigo-400 shadow-sm hover:shadow-md bg-white dark:bg-slate-800/50'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
-                title="Acesso aos Cursos"
-              >
-                <div className={`transition-transform duration-300 ${activeView === 'access' ? 'scale-110' : 'group-hover:scale-110'}`}>
-                  <i className={`fas fa-lock w-5 text-center ${activeView === 'access' ? 'text-white' : ''}`}></i>
-                </div>
-                <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
-                  Acesso aos Cursos
-                </span>
-              </Link>
+              {/* Course Access Management - MASTER ONLY */}
+              {isMaster && (
+                <Link
+                  to="/admin/access"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onViewChange('access');
+                  }}
+                  className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-base font-bold tracking-tight mb-1 group ${activeView === 'access' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-slate-600 dark:text-slate-500 hover:bg-white dark:hover:bg-white/5 hover:text-indigo-600 dark:hover:text-indigo-400 shadow-sm hover:shadow-md bg-white dark:bg-slate-800/50'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
+                  title="Acesso aos Cursos"
+                >
+                  <div className={`transition-transform duration-300 ${activeView === 'access' ? 'scale-110' : 'group-hover:scale-110'}`}>
+                    <i className={`fas fa-lock w-5 text-center ${activeView === 'access' ? 'text-white' : ''}`}></i>
+                  </div>
+                  <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
+                    Acesso aos Cursos
+                  </span>
+                </Link>
+              )}
 
               {/* Question Bank */}
               <Link

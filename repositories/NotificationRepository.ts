@@ -157,4 +157,36 @@ export class NotificationRepository {
             )
             .subscribe();
     }
+
+    /**
+     * Envia notificações em massa para uma lista de usuários
+     */
+    async sendNotificationToUsers(
+        userIds: string[],
+        title: string,
+        message: string,
+        instructorId: string,
+        type: NotificationType = 'system'
+    ): Promise<boolean> {
+        if (!userIds || userIds.length === 0) return true;
+
+        const rows = userIds.map(userId => ({
+            user_id: userId,
+            sender_id: instructorId,
+            title,
+            message,
+            type
+        }));
+
+        const { error } = await this.client
+            .from('notifications')
+            .insert(rows);
+
+        if (error) {
+            console.error('Erro ao enviar notificações em lote:', error);
+            return false;
+        }
+
+        return true;
+    }
 }

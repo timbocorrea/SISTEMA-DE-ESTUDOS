@@ -21,6 +21,7 @@ const UserManagement = React.lazy(() => import('@/components/features/admin/User
 const FileManagement = React.lazy(() => import('./components/FileManagement'));
 const AdminSettingsPage = React.lazy(() => import('@/components/features/admin/AdminSettingsPage').then(module => ({ default: module.AdminSettingsPage })));
 const AdminCourseAccessPage = React.lazy(() => import('./components/AdminCourseAccessPage'));
+const InstructorInteractionCenter = React.lazy(() => import('./components/features/instructor/InstructorInteractionCenter'));
 const AchievementsPage = React.lazy(() => import('./components/AchievementsPage'));
 const AuditPage = React.lazy(() => import('@/components/features/admin/AuditPage'));
 const UserDetailsModal = React.lazy(() => import('@/components/features/admin/UserDetailsModal'));
@@ -107,7 +108,13 @@ const LessonContentEditorWrapper: React.FC<{ adminService: AdminService }> = ({ 
 // Extracted outside `App` to prevent React from unmounting all children on every App re-render
 const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
-  return user?.hasAdminPanelAccess ? <>{children}</> : <div className="p-8 flex items-center justify-center min-h-screen text-slate-500">Acesso negado. Somente Instrutores podem acessar esta área.</div>;
+  return user?.hasAdminPanelAccess ? <>{children}</> : <div className="p-8 flex items-center justify-center min-h-screen text-slate-500 font-bold">Acesso negado. Somente Instrutores podem acessar esta área.</div>;
+};
+
+const MasterRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
+  const isMaster = user?.role === 'MASTER' || user?.email === 'timbo.correa@gmail.com';
+  return isMaster ? <>{children}</> : <div className="p-8 flex items-center justify-center min-h-screen text-slate-500 font-bold tracking-tight">🚫 Acesso restrito ao perfil Master (Proprietário).</div>;
 };
 
 const App: React.FC = () => {
@@ -709,12 +716,13 @@ const App: React.FC = () => {
                 </AdminRoute>
               } />
               <Route path="/admin/lesson/:lessonId/edit" element={<AdminRoute><LessonContentEditorWrapper adminService={adminService} /></AdminRoute>} />
-              <Route path="/admin/users" element={<AdminRoute><UserManagement adminService={adminService} /></AdminRoute>} />
-              <Route path="/admin/access" element={<AdminRoute><AdminCourseAccessPage adminService={adminService} /></AdminRoute>} />
+              <Route path="/admin/users" element={<MasterRoute><UserManagement adminService={adminService} /></MasterRoute>} />
+              <Route path="/admin/access" element={<MasterRoute><AdminCourseAccessPage adminService={adminService} /></MasterRoute>} />
               <Route path="/admin/questionnaire" element={<AdminRoute><QuestionnaireManagementPage adminService={adminService} /></AdminRoute>} />
               <Route path="/admin/files" element={<AdminRoute><FileManagement /></AdminRoute>} />
               <Route path="/admin/health" element={<AdminRoute><SystemHealth adminService={adminService} /></AdminRoute>} />
               <Route path="/admin/settings" element={<AdminRoute><AdminSettingsPage adminService={adminService} /></AdminRoute>} />
+              <Route path="/instructor/interact" element={<AdminRoute><InstructorInteractionCenter /></AdminRoute>} />
               <Route path="/admin/login" element={<Navigate to="/admin/questionnaire" replace />} />
               <Route path="/oauth/dropbox" element={<DropboxCallbackPage />} />
 
