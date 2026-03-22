@@ -118,7 +118,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({
 
   return (
     <div className="flex-1 min-h-screen bg-slate-50 dark:bg-[#0a0e14] p-4 lg:p-8">
-      <div className="max-w-4xl mx-auto space-y-8 pb-20">
+      <div className="max-w-7xl mx-auto space-y-8 pb-20">
         
         {/* Header Section */}
         <div className="flex items-center justify-between">
