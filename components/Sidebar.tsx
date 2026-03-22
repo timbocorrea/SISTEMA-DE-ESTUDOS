@@ -867,46 +867,48 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </Link>
               )}
 
-              {/* Arquivos Menu with Subfolders */}
-              <div>
-                <Link
-                  to="/admin/files"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (activeView === 'files') {
-                      // Only toggle menu
-                    }
-                    onViewChange('files');
-                  }}
-                  className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all text-base font-bold tracking-tight mb-1 group ${activeView === 'files' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-slate-600 dark:text-slate-500 hover:bg-white dark:hover:bg-white/5 hover:text-indigo-600 dark:hover:text-indigo-400 shadow-sm hover:shadow-md bg-white dark:bg-slate-800/50'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
-                  title="Gerenciar Arquivos"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className={`transition-transform duration-300 ${activeView === 'files' ? 'scale-110' : 'group-hover:scale-110'}`}>
-                      <i className={`fas fa-folder-open w-5 text-center ${activeView === 'files' ? 'text-white' : ''}`}></i>
+              {/* Arquivos Menu with Subfolders - MASTER ONLY */}
+              {isMaster && (
+                <div>
+                  <Link
+                    to="/admin/files"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (activeView === 'files') {
+                        // Only toggle menu
+                      }
+                      onViewChange('files');
+                    }}
+                    className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all text-base font-bold tracking-tight mb-1 group ${activeView === 'files' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-slate-600 dark:text-slate-500 hover:bg-white dark:hover:bg-white/5 hover:text-indigo-600 dark:hover:text-indigo-400 shadow-sm hover:shadow-md bg-white dark:bg-slate-800/50'} ${isActuallyCollapsed ? 'justify-center' : ''}`}
+                    title="Gerenciar Arquivos"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`transition-transform duration-300 ${activeView === 'files' ? 'scale-110' : 'group-hover:scale-110'}`}>
+                        <i className={`fas fa-folder-open w-5 text-center ${activeView === 'files' ? 'text-white' : ''}`}></i>
+                      </div>
+                      <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
+                        Arquivos
+                      </span>
                     </div>
-                    <span className={`transition-all duration-300 whitespace-nowrap ${isActuallyCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
-                      Arquivos
-                    </span>
-                  </div>
-                  {!isActuallyCollapsed && activeView === 'files' && <i className="fas fa-chevron-down text-xs"></i>}
-                </Link>
+                    {!isActuallyCollapsed && activeView === 'files' && <i className="fas fa-chevron-down text-xs"></i>}
+                  </Link>
 
-                {!isActuallyCollapsed && activeView === 'files' && (
-                  <div className="ml-3 pl-4 border-l-2 border-indigo-200 dark:border-indigo-500/20 space-y-1 mb-3 mt-2">
-                    {['audios', 'course-covers', 'images', 'pdfs'].map(folder => (
-                      <button
-                        key={folder}
-                        onClick={() => onNavigateFile?.(folder)}
-                        className="w-full text-left px-3 py-2 rounded-lg transition-all text-base font-medium text-slate-600 dark:text-slate-500 hover:bg-indigo-50 dark:hover:bg-white/5 hover:text-indigo-600 dark:hover:text-indigo-400 capitalize"
-                      >
-                        <i className="fas fa-folder mr-2 text-indigo-400"></i>
-                        {folder}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+                  {!isActuallyCollapsed && activeView === 'files' && (
+                    <div className="ml-3 pl-4 border-l-2 border-indigo-200 dark:border-indigo-500/20 space-y-1 mb-3 mt-2">
+                      {['audios', 'course-covers', 'images', 'pdfs'].map(folder => (
+                        <button
+                          key={folder}
+                          onClick={() => onNavigateFile?.(folder)}
+                          className="w-full text-left px-3 py-2 rounded-lg transition-all text-base font-medium text-slate-600 dark:text-slate-500 hover:bg-indigo-50 dark:hover:bg-white/5 hover:text-indigo-600 dark:hover:text-indigo-400 capitalize"
+                        >
+                          <i className="fas fa-folder mr-2 text-indigo-400"></i>
+                          {folder}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Audit Access - Only for Minor Supervision or Master */}
               {user && (isMaster || user.isMinor) && (
