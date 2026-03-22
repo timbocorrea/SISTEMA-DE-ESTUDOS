@@ -318,10 +318,16 @@ const CourseItem = memo<{
 
   const baseColor = course.color || '#10b981';
 
-  const itemClasses = `w-full text-left px-3 py-2 rounded-lg transition-colors duration-150 text-[13px] font-medium tracking-wide whitespace-normal break-words block ${isOpen
-    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-    : 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
+  const itemClasses = `w-full text-left px-3 py-2 rounded-lg transition-all duration-150 text-[13px] font-medium tracking-wide whitespace-normal break-words block ${!isOpen
+    ? 'text-slate-600 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-300'
+    : 'font-bold'
     }`;
+
+  const activeStyles = isOpen ? { 
+    backgroundColor: `${baseColor}1a`, 
+    color: baseColor,
+    boxShadow: `0 0 0 1px ${baseColor}33`
+  } : {};
 
   return (
     <div className="space-y-2 relative pb-2 border-b border-slate-200/60 dark:border-white/5 last:border-b-0">
@@ -332,6 +338,7 @@ const CourseItem = memo<{
           onClick={handleAdminClick}
           data-sidebar-casing="normal"
           className={itemClasses}
+          style={activeStyles}
         >
           <div className="flex items-start gap-3">
             <div className="w-5 shrink-0 flex justify-center">
@@ -351,6 +358,7 @@ const CourseItem = memo<{
           onClick={handleToggle}
           data-sidebar-casing="normal"
           className={itemClasses}
+          style={activeStyles}
         >
           <div className="flex items-start gap-3">
             <div className="w-5 shrink-0 flex justify-center">
@@ -721,6 +729,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                       onSelectLesson={onSelectLesson}
                       onCloseMobile={onCloseMobile}
                       searchQuery={globalSearchQuery}
+                      onOpenForum={onOpenForum}
+                      onOpenMaterials={onOpenMaterials}
                     />
                   ))}
                 </div>
@@ -827,6 +837,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                       onSelectLesson={onSelectLesson}
                       onCloseMobile={onCloseMobile}
                       searchQuery={globalSearchQuery}
+                      onOpenForum={onOpenForum}
+                      onOpenMaterials={onOpenMaterials}
                     />
                   ))}
                 </div>

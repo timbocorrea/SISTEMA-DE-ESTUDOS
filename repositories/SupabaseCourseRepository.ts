@@ -272,6 +272,8 @@ export class SupabaseCourseRepository implements ICourseRepository {
           title,
           description,
           image_url,
+          color,
+          color_legend,
           modules:modules (
             id,
             title,
@@ -299,7 +301,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
         .sort((a: any, b: any) => (a.position || 0) - (b.position || 0))
         .map((m: any) => this.mapModule(m, progressMap, true));
 
-      return new Course(courseData.id, courseData.title, courseData.description, courseData.image_url || null, null, null, modules);
+      return new Course(courseData.id, courseData.title, courseData.description, courseData.image_url || null, courseData.color, courseData.color_legend, modules);
     } catch (err) {
       if (err instanceof NotFoundError) throw err;
       throw new DomainError(`Erro ao carregar estrutura do curso: ${(err as Error).message}`);
@@ -594,6 +596,8 @@ export class SupabaseCourseRepository implements ICourseRepository {
           title, 
           description, 
           image_url,
+          color,
+          color_legend,
           modules:modules (
             id,
             title,
@@ -612,6 +616,8 @@ export class SupabaseCourseRepository implements ICourseRepository {
         title: row.title,
         description: row.description,
         imageUrl: row.image_url,
+        color: row.color,
+        color_legend: row.color_legend,
         modules: row.modules || []
       }));
     }
@@ -627,6 +633,8 @@ export class SupabaseCourseRepository implements ICourseRepository {
         title, 
         description, 
         image_url,
+        color,
+        color_legend,
         modules:modules (
           id,
           title,
@@ -670,6 +678,8 @@ export class SupabaseCourseRepository implements ICourseRepository {
       title: row.title,
       description: row.description,
       imageUrl: row.image_url,
+      color: row.color,
+      color_legend: row.color_legend,
       modules: (row.modules || []).map((m: any) => ({
         ...m,
         lessons: (m.lessons || []).map((l: any) => ({
@@ -690,6 +700,8 @@ export class SupabaseCourseRepository implements ICourseRepository {
         title,
         description,
         image_url,
+        color,
+        color_legend,
         modules:modules (
           id,
           title,

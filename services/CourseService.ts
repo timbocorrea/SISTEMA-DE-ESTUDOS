@@ -121,6 +121,8 @@ export class CourseService {
     title: string;
     description: string;
     imageUrl: string | null;
+    color?: string | null;
+    color_legend?: string | null;
     modules: {
       id: string;
       title?: string | null;

@@ -70,8 +70,12 @@ const CourseCard: React.FC<CourseCardProps> = ({
                         </div>
                         <div className="w-full h-1.5 bg-slate-200 dark:bg-white/5 rounded-full overflow-hidden">
                             <div
-                                className="h-full bg-gradient-to-r from-emerald-400 to-teal-400 shadow-[0_0_10px_rgba(52,211,153,0.4)] transition-all duration-500 rounded-full"
-                                style={{ width: `${progress}%` }}
+                                className="h-full transition-all duration-500 rounded-full"
+                                style={{ 
+                                    width: `${progress}%`, 
+                                    backgroundColor: course.color || '#10b981',
+                                    boxShadow: `0 0 10px ${(course.color || '#10b981')}66`
+                                }}
                             ></div>
                         </div>
                     </div>

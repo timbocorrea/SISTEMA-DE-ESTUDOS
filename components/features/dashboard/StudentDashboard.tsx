@@ -205,7 +205,13 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             <span>{percent}%</span>
                           </div>
                           <div className="w-full h-1.5 bg-slate-200 dark:bg-white/5 rounded-full overflow-hidden">
-                            <div className="h-full bg-gradient-to-r from-emerald-400 to-teal-400" style={{ width: `${percent}%` }}></div>
+                            <div 
+                              className="h-full transition-all duration-500" 
+                              style={{ 
+                                width: `${percent}%`, 
+                                backgroundColor: course.color || '#10b981' 
+                              }}
+                            ></div>
                           </div>
                         </div>
 
@@ -237,7 +243,13 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                         </h4>
                         <div className="mt-auto space-y-3 pt-4 border-t border-slate-200 dark:border-white/5">
                           <div className="w-full h-1.5 bg-slate-200 dark:bg-white/5 rounded-full overflow-hidden">
-                            <div className="h-full bg-gradient-to-r from-emerald-400 to-teal-400" style={{ width: `${percent}%` }}></div>
+                            <div 
+                              className="h-full transition-all duration-500" 
+                              style={{ 
+                                width: `${percent}%`, 
+                                backgroundColor: course.color || '#10b981' 
+                              }}
+                            ></div>
                           </div>
                         </div>
                       </div>

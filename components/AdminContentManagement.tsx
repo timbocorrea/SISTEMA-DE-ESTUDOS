@@ -1134,9 +1134,10 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
                       setExpandedModuleId('');
                       if (!modules.length) refreshModules(course.id);
                     }}
+                    style={isExpanded ? { backgroundColor: `${course.color || '#6366f1'}1a`, borderLeft: `4px solid ${course.color || '#6366f1'}` } : {}}
                     className={cn(
-                      "flex items-center justify-between gap-4 p-4 cursor-pointer transition-all",
-                      isExpanded ? "bg-indigo-50/50 dark:bg-indigo-500/10" : "hover:bg-slate-50 dark:hover:bg-white/[0.02]"
+                      "flex items-center justify-between gap-4 p-4 cursor-pointer transition-all border-l-4 border-transparent",
+                      !isExpanded && "hover:bg-slate-50 dark:hover:bg-white/[0.02]"
                     )}
                   >
                     <div className="flex items-center gap-4 min-w-0 flex-1">

@@ -106,6 +106,9 @@ export interface ForumMessage {
   content: string;
   created_at: string;
   is_edited: boolean;
+  is_pinned?: boolean;
+  parent_id?: string;
+  image_url?: string;
   profiles?: {
     name: string | null;
     role: 'STUDENT' | 'INSTRUCTOR' | 'MASTER' | null;

@@ -88,6 +88,35 @@ export function useForumMessages(lessonId: string) {
           setMessages((prev) => prev.filter((msg) => msg.id !== payload.old.id));
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'lesson_forum_messages',
+          filter: `lesson_id=eq.${lessonId}`,
+        },
+        async (payload) => {
+          const updatedMsgRaw = payload.new as any;
+          
+          setMessages((prev) => {
+            const index = prev.findIndex(m => m.id === updatedMsgRaw.id);
+            if (index === -1) return prev;
+
+            // Se mudou o conteúdo, fixa ou edição, fazemos o refresh do perfil apenas se necessário
+            // ou injetamos o perfil que já tínhamos no estado anterior
+            const existingMsg = prev[index];
+            const updatedMessage: ForumMessage = {
+                ...updatedMsgRaw,
+                profiles: existingMsg.profiles
+            };
+
+            const newList = [...prev];
+            newList[index] = updatedMessage;
+            return newList;
+          });
+        }
+      )
       .subscribe();
 
     return () => {
@@ -98,8 +127,8 @@ export function useForumMessages(lessonId: string) {
   /**
    * Envio de nova mensagem
    */
-  const sendMessage = async (content: string, userId: string) => {
-    const sentMsg = await forumRepo.current.createMessage(lessonId, userId, content);
+  const sendMessage = async (content: string, userId: string, parentId?: string, imageUrl?: string) => {
+    const sentMsg = await forumRepo.current.createMessage(lessonId, userId, content, parentId, imageUrl);
     if (sentMsg) {
       setMessages(prev => {
         if (prev.some(m => m.id === sentMsg.id)) return prev;
@@ -112,10 +141,74 @@ export function useForumMessages(lessonId: string) {
     }
   };
 
+  /**
+   * Deleta uma mensagem
+   */
+  const deleteMessage = async (messageId: string) => {
+    const success = await forumRepo.current.deleteMessage(messageId);
+    if (success) {
+        setMessages(prev => prev.filter(m => m.id !== messageId));
+    }
+    return success;
+  };
+
+  /**
+   * Edita uma mensagem
+   */
+  const editMessage = async (messageId: string, content: string) => {
+    const updated = await forumRepo.current.updateMessage(messageId, content);
+    if (updated) {
+        setMessages(prev => prev.map(m => m.id === messageId ? updated : m));
+    }
+    return updated;
+  };
+
+  /**
+   * Fixa/Desfixa uma mensagem
+   */
+  const togglePin = async (messageId: string, isPinned: boolean) => {
+    const updated = await forumRepo.current.togglePin(messageId, isPinned);
+    if (updated) {
+        setMessages(prev => prev.map(m => m.id === messageId ? updated : m));
+    }
+    return updated;
+  };
+
+  /**
+   * Upload de imagem para o fórum
+   */
+  const uploadImage = async (file: File) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Usuário não autenticado');
+
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
+    const filePath = `forum/${lessonId}/${user.id}/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('lesson-forum-attachments')
+      .upload(filePath, file);
+
+    if (uploadError) {
+      console.error('Upload error:', uploadError);
+      throw uploadError;
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('lesson-forum-attachments')
+      .getPublicUrl(filePath);
+
+    return publicUrl;
+  };
+
   return {
     messages,
     isLoading,
     error,
-    sendMessage
+    sendMessage,
+    deleteMessage,
+    editMessage,
+    togglePin,
+    uploadImage
   };
 }
