@@ -140,21 +140,12 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, user, initialCo
       let list = await adminService.listCoursesOutline();
       let lessonAssignments: string[] = [];
       
-      // Filtragem: Professores (INSTRUCTOR) veem apenas seus cursos próprios ou atribuídos.
+      // Filtragem: Professores (INSTRUCTOR) agora já recebem dados filtrados pelo RLS.
+      // Mantemos apenas a lista de IDs permitidos para controle visual de botões de edição/exclusão.
       if (user.role === 'INSTRUCTOR' && user.email !== 'timbo.correa@gmail.com') {
-        // Buscar atribuições granulares de aulas
-        lessonAssignments = await adminService.listInstructorLessonAssignments(user.id);
+        const lessonAssignments = await adminService.listInstructorLessonAssignments(user.id);
         allowedLessonIdsRef.current = lessonAssignments;
         setAllowedLessonIds(lessonAssignments);
-
-        const assignedIds = await adminService.getUserCourseAssignments(user.id);
-
-        // Manter curso se for instrutor primário OU se o curso for atribuído ao professor
-        // (mesmo que sem aulas granulares, o curso aparece mas sem módulos/aulas se não houver atribuição)
-        list = list.filter(c => 
-          c.instructorId === user.id || 
-          assignedIds.includes(c.id)
-        );
       } else {
         setAllowedLessonIds([]); // Master tem acesso a tudo
         setAllowedModuleIds([]);

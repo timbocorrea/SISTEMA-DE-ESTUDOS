@@ -245,38 +245,10 @@ const App: React.FC = () => {
       
       const loadAdminCourses = async () => {
         try {
+          // Agora o RLS se encarrega de retornar apenas os cursos autorizados.
+          // Não precisamos mais de atribuições de lições via JS lateral aqui.
           const courses = await adminService.listCoursesOutline();
-          
-          // Filtragem: Professores (INSTRUCTOR) veem seus próprios cursos (como instrutor principal)
-          // OU cursos atribuídos a eles via painel de cursos.
-          // Masters (MASTER) veem todos os cursos do sistema.
-          if (user.role === 'INSTRUCTOR' && user.email !== 'timbo.correa@gmail.com') {
-            const assignedIds = await adminService.getUserCourseAssignments(user.id);
-            const lessonAssignments = await adminService.listInstructorLessonAssignments(user.id);
-
-            const filtered = courses.filter(c => 
-              c.instructorId === user.id || 
-              assignedIds.includes(c.id)
-            ).map(c => {
-               // Se não for o instrutor principal, filtragem granular de aulas/módulos
-               if (c.instructorId !== user.id) {
-                 const filteredModules = (c.modules || []).map(m => {
-                   const lessons = (m.lessons || []).filter((l: any) => lessonAssignments.includes(l.id));
-                   return new Module(m.id, m.title, lessons, m.position);
-                 }).filter(m => m.lessons.length > 0);
-                 
-                 return new Course(
-                   c.id, c.title, c.description, c.imageUrl, c.color, c.colorLegend,
-                   filteredModules, c.instructorId, c.language, c.estimatedHours,
-                   c.level, c.teachingType, c.startDate, c.endDate, c.instructorName
-                 );
-               }
-               return c;
-            });
-            setAdminCourses(filtered);
-          } else {
-            setAdminCourses(courses);
-          }
+          setAdminCourses(courses);
         } catch (err) {
           console.error("Failed to load admin courses", err);
         } finally {
