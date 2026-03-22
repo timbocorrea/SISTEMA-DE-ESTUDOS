@@ -1,7 +1,8 @@
-﻿
+
 import React, { useEffect, useMemo, useState } from 'react';
 import { AdminService } from '../services/AdminService';
 import { toast } from 'sonner';
+import { cn } from '../lib/utils';
 import { CourseRecord, LessonRecord, LessonResourceRecord, ModuleRecord, SystemStats } from '../domain/admin';
 import { fileUploadService } from '../services/FileUploadService';
 import { supabaseClient as supabase } from '../services/Dependencies';
@@ -10,6 +11,25 @@ import CreateCourseModal from './CreateCourseModal';
 import CreateModuleModal from './CreateModuleModal';
 import CreateLessonModal from './CreateLessonModal';
 import MoveLessonModal from './MoveLessonModal';
+import { Button } from './ui/Button';
+import { 
+  Plus, 
+  Search, 
+  GraduationCap, 
+  Layers, 
+  PlayCircle, 
+  Pencil, 
+  Trash2, 
+  ChevronRight, 
+  LayoutGrid, 
+  List, 
+  Maximize2,
+  Calendar,
+  MoreVertical,
+  Settings,
+  Eye,
+  FileText
+} from 'lucide-react';
 
 type Props = {
   adminService: AdminService;
@@ -65,27 +85,29 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
     const saved = localStorage.getItem('lessonViewMode');
     return (saved as ViewMode) || 'list';
   });
+  const [courseViewMode, setCourseViewMode] = useState<ViewMode>(() => {
+    const saved = localStorage.getItem('courseViewMode');
+    return (saved as ViewMode) || 'grid'; // Default to grid for modernized view
+  });
 
 
   const [systemStats, setSystemStats] = useState<SystemStats | null>(null);
 
   const stats = useMemo(() => {
-    // Se tivermos as estatisticas do sistema, usamos elas para o total global
     if (systemStats) {
       return [
-        { label: 'Cursos', value: systemStats.course_count || courses.length, icon: 'fas fa-graduation-cap', color: 'bg-indigo-600/10 text-indigo-500' },
-        { label: 'Modulos', value: systemStats.module_count || 0, icon: 'fas fa-layer-group', color: 'bg-cyan-600/10 text-cyan-500' },
-        { label: 'Aulas', value: systemStats.lesson_count || 0, icon: 'fas fa-play-circle', color: 'bg-cyan-600/10 text-cyan-500' }
+        { label: 'Cursos', value: systemStats.course_count || courses.length, icon: GraduationCap, color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
+        { label: 'Modulos', value: systemStats.module_count || 0, icon: Layers, color: 'text-cyan-500', bg: 'bg-cyan-500/10' },
+        { label: 'Aulas', value: systemStats.lesson_count || 0, icon: PlayCircle, color: 'text-emerald-500', bg: 'bg-emerald-500/10' }
       ];
     }
 
-    // Fallback para contagem local (que pode estar incorreta se não carregou tudo)
     const totalModules = Object.values(modulesByCourse).reduce((acc, list) => acc + list.length, 0);
     const totalLessons = Object.values(lessonsByModule).reduce((acc, list) => acc + list.length, 0);
     return [
-      { label: 'Cursos', value: courses.length, icon: 'fas fa-graduation-cap', color: 'bg-indigo-600/10 text-indigo-500' },
-      { label: 'Modulos', value: totalModules, icon: 'fas fa-layer-group', color: 'bg-cyan-600/10 text-cyan-500' },
-      { label: 'Aulas', value: totalLessons, icon: 'fas fa-play-circle', color: 'bg-cyan-600/10 text-cyan-500' }
+      { label: 'Cursos', value: courses.length, icon: GraduationCap, color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
+      { label: 'Modulos', value: totalModules, icon: Layers, color: 'text-cyan-500', bg: 'bg-cyan-500/10' },
+      { label: 'Aulas', value: totalLessons, icon: PlayCircle, color: 'text-emerald-500', bg: 'bg-emerald-500/10' }
     ];
   }, [courses.length, modulesByCourse, lessonsByModule, systemStats]);
 
@@ -547,6 +569,11 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
     localStorage.setItem('lessonViewMode', mode);
   };
 
+  const toggleCourseViewMode = (mode: ViewMode) => {
+    setCourseViewMode(mode);
+    localStorage.setItem('courseViewMode', mode);
+  };
+
   // Componente de toggle de visualização
   const ViewModeToggle: React.FC<{ current: ViewMode; onChange: (mode: ViewMode) => void; label: string }> = ({ current, onChange, label }) => (
     <div className="flex items-center gap-2">
@@ -554,33 +581,36 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
       <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
         <button
           onClick={() => onChange('list')}
-          className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${current === 'list'
+          className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${current === 'list'
             ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
             : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
             }`}
           title="Lista"
         >
-          <i className="fas fa-list"></i>
+          <List className="w-3.5 h-3.5" />
+          <span>Lista</span>
         </button>
         <button
           onClick={() => onChange('grid')}
-          className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${current === 'grid'
+          className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${current === 'grid'
             ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
             : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
             }`}
           title="Grade"
         >
-          <i className="fas fa-th"></i>
+          <LayoutGrid className="w-3.5 h-3.5" />
+          <span>Cards</span>
         </button>
         <button
           onClick={() => onChange('minimal')}
-          className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${current === 'minimal'
+          className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${current === 'minimal'
             ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
             : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
             }`}
           title="Minimalista"
         >
-          <i className="fas fa-square"></i>
+          <Maximize2 className="w-3.5 h-3.5" />
+          <span>Minimal</span>
         </button>
       </div>
     </div>
@@ -605,44 +635,48 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Posicao: {module.position ?? 0}</p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={e => {
                 e.stopPropagation();
                 setEditingModule({ ...module });
               }}
-              className="p-2 text-slate-400 hover:text-cyan-500 transition-colors"
               title="Editar modulo"
             >
-              <i className="fas fa-pen"></i>
-            </button>
-            <button
+              <Pencil size={18} className="text-slate-400" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={e => {
                 e.stopPropagation();
                 handleDeleteModule(module.course_id, module.id);
               }}
-              className="p-2 text-slate-400 hover:text-red-500 transition-colors"
               title="Excluir modulo"
             >
-              <i className="fas fa-trash"></i>
-            </button>
+              <Trash2 size={18} className="text-slate-400" />
+            </Button>
           </div>
         </div>
 
         {isExpanded && (
           <div className="p-4 space-y-4 bg-slate-50/70 dark:bg-slate-950/20">
             <div className="flex justify-end">
-              <button
+              <Button
                 disabled={busy}
+                variant="cyan"
+                size="sm"
                 onClick={() => setActiveModuleIdForLessonCreation(module.id)}
-                className="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white px-4 py-2 rounded-xl font-black text-xs transition-all active:scale-[0.98] flex items-center gap-2"
+                className="flex items-center gap-2"
               >
-                <i className="fas fa-plus"></i> Criar aula
-              </button>
+                <Plus size={14} /> Criar aula
+              </Button>
             </div>
 
-            <div className="divide-y divide-slate-100 dark:divide-slate-800 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+            <div className="divide-y divide-slate-100 dark:divide-white/5 rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-[#1C1E23] overflow-hidden">
               {lessons.map(lesson => (
-                <div key={lesson.id} className="border-b border-slate-100 dark:border-slate-800 last:border-0">
+                <div key={lesson.id} className="border-b border-slate-100 dark:border-white/5 last:border-0">
                   <div
                     className="p-4 flex items-start justify-between gap-4 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition cursor-pointer"
                     onClick={() => openLessonDetail(lesson)}
@@ -652,20 +686,25 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
                       <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">
                         Posicao: {lesson.position ?? 0}
                       </p>
-                      <p className="text-[10px] text-slate-400 mt-2 truncate">Video: {lesson.video_url || '-'}</p>
+                      <p className="text-[10px] text-slate-400 mt-2 truncate flex items-center gap-1.5">
+                        <PlayCircle size={10} /> {lesson.video_url || 'Nenhum vídeo'}
+                      </p>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <button
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={e => {
                           e.stopPropagation();
                           setMovingLesson({ ...lesson });
                         }}
-                        className="p-2 text-slate-400 hover:text-amber-500 transition-colors"
-                        title="Mover aula para outro módulo"
+                        title="Mover aula"
                       >
-                        <i className="fas fa-arrow-right-arrow-left"></i>
-                      </button>
-                      <button
+                        <Maximize2 size={16} className="text-slate-400" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={async e => {
                           e.stopPropagation();
                           try {
@@ -678,77 +717,73 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
                             setBusy(false);
                           }
                         }}
-                        className="p-2 text-slate-400 hover:text-cyan-500 transition-colors"
-                        title="Editar aula"
+                        title="Editar"
                       >
-                        <i className="fas fa-pen"></i>
-                      </button>
-                      <button
+                        <Pencil size={16} className="text-slate-400" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={e => {
                           e.stopPropagation();
                           handleDeleteLesson(module.id, lesson.id);
                         }}
-                        className="p-2 text-slate-400 hover:text-red-500 transition-colors"
-                        title="Excluir aula"
+                        title="Excluir"
                       >
-                        <i className="fas fa-trash"></i>
-                      </button>
+                        <Trash2 size={16} className="text-slate-400" />
+                      </Button>
                     </div>
                   </div>
 
                   {activeLessonId === lesson.id && activeLesson && (
-                    <div className="px-4 pb-4 bg-slate-50 dark:bg-slate-950/40">
+                    <div className="px-4 pb-4 bg-slate-50 dark:bg-black/20">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                         <input
                           value={activeLesson.title}
                           onChange={e => setActiveLesson({ ...activeLesson, title: e.target.value })}
                           placeholder="Titulo"
-                          className="w-full bg-white dark:bg-[#0a0e14] border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-slate-700 dark:text-slate-200 text-sm outline-none"
+                          className="w-full bg-white dark:bg-[#0a0e14] border border-slate-200 dark:border-white/5 rounded-xl px-4 py-3 text-slate-700 dark:text-slate-200 text-sm outline-none"
                         />
-
                         <input
                           value={activeLesson.position ?? 0}
                           onChange={e => setActiveLesson({ ...activeLesson, position: Number(e.target.value) })}
                           type="number"
                           min={0}
                           placeholder="Posicao"
-                          className="w-full bg-white dark:bg-[#0a0e14] border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-slate-700 dark:text-slate-200 text-sm outline-none"
+                          className="w-full bg-white dark:bg-[#0a0e14] border border-slate-200 dark:border-white/5 rounded-xl px-4 py-3 text-slate-700 dark:text-slate-200 text-sm outline-none"
                         />
-
                       </div>
 
-                      {/* Botão para abrir editor de conteúdo */}
-                      <button
+                      <Button
                         onClick={() => onOpenContentEditor?.(activeLesson)}
-                        className="w-full bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white px-6 py-4 rounded-xl font-black text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-3 shadow-lg shadow-indigo-600/20 mb-3"
+                        className="w-full bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white rounded-xl shadow-lg shadow-indigo-600/20 mb-3 h-auto py-4"
                       >
-                        <i className="fas fa-pen-to-square text-lg"></i>
+                        <Pencil className="mr-3" />
                         <div className="text-left flex-1">
-                          <div>Editar Conteúdo da Aula</div>
-                          <div className="text-xs font-normal opacity-80">
+                          <div className="font-black text-sm">Editar Conteúdo da Aula</div>
+                          <div className="text-[10px] font-normal opacity-80 uppercase tracking-wider">
                             {activeLesson.content
                               ? `${activeLesson.content.length} caracteres • Clique para editar`
                               : 'Adicionar texto de apoio à aula'}
                           </div>
                         </div>
-                        <i className="fas fa-arrow-right"></i>
-                      </button>
+                        <ChevronRight />
+                      </Button>
 
                       <div className="flex justify-end">
-                        <button
+                        <Button
                           disabled={busy}
+                          variant="emerald"
                           onClick={handleSaveActiveLesson}
-                          className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white px-4 py-3 rounded-xl font-black text-sm transition-all active:scale-[0.98]"
                         >
                           Salvar aula
-                        </button>
+                        </Button>
                       </div>
 
-                      {/* Formulário de Upload de Recursos removido - agora apenas no Editor de Conteúdo */}
-                      <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 text-center border border-dashed border-slate-300 dark:border-slate-700">
-                        <p className="text-xs text-slate-500 font-medium">
-                          Gerencie os materiais desta aula através do <br />
-                          <span className="text-indigo-500 font-bold">Editor de Conteúdo da Aula</span>
+                      <div className="mt-3 bg-slate-100 dark:bg-white/5 rounded-xl p-4 text-center border border-dashed border-slate-300 dark:border-white/10">
+                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+                          Materiais & Downloads <br />
+                          <span className="text-indigo-500">Gerenciar no Editor</span>
                         </p>
                       </div>
                     </div>
@@ -758,9 +793,8 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
               {lessons.length === 0 && <div className="p-6 text-center text-sm text-slate-400">Nenhuma aula para este modulo.</div>}
             </div>
           </div>
-        )
-        }
-      </div >
+        )}
+      </div>
     );
   };
   const renderModuleList = (course: CourseRecord) => {
@@ -770,41 +804,50 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
     // Modo Grade
     if (moduleViewMode === 'grid') {
       return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {modules.map(m => (
-            <div key={m.id} className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 hover:border-cyan-400 dark:hover:border-cyan-500 transition-all">
-              <div className="flex items-start justify-between gap-3 mb-3">
+            <div key={m.id} className="group rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-[#1C1E23] p-5 hover:border-cyan-400/50 dark:hover:border-cyan-500/50 transition-all duration-300 shadow-sm hover:shadow-xl hover:shadow-cyan-500/5">
+              <div className="flex items-start justify-between gap-3 mb-4">
                 <div className="min-w-0 flex-1">
-                  <h5 className="text-sm font-black text-slate-800 dark:text-white truncate">{m.title}</h5>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Posição: {m.position ?? 0}</p>
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-2 h-2 rounded-full bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.5)]"></div>
+                    <h5 className="text-sm font-black text-slate-800 dark:text-white truncate">{m.title}</h5>
+                  </div>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Módulo {m.position ?? 0}</p>
                 </div>
-                <div className="flex gap-1 flex-shrink-0">
-                  <button
+                <div className="flex gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
                     onClick={() => setEditingModule({ ...m })}
-                    className="p-1.5 text-slate-400 hover:text-cyan-500 transition-colors"
                     title="Editar">
-                    <i className="fas fa-pen text-xs"></i>
-                  </button>
-                  <button
+                    <Pencil size={14} className="text-slate-400" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 hover:text-red-500"
                     onClick={() => handleDeleteModule(m.course_id, m.id)}
-                    className="p-1.5 text-slate-400 hover:text-red-500 transition-colors"
                     title="Excluir">
-                    <i className="fas fa-trash text-xs"></i>
-                  </button>
+                    <Trash2 size={14} className="text-slate-400" />
+                  </Button>
                 </div>
               </div>
-              <button
+              <Button
+                variant="secondary"
+                className="w-full bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-500 border-0"
                 onClick={() => {
                   setExpandedModuleId(expandedModuleId === m.id ? '' : m.id);
                   if (!getLessons(m.id).length) refreshLessons(m.id);
                 }}
-                className="w-full bg-cyan-50 dark:bg-cyan-900/20 hover:bg-cyan-100 dark:hover:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400 px-3 py-2 rounded-lg text-xs font-bold transition-all">
-                <i className="fas fa-layer-group mr-2"></i>
+              >
+                <Layers size={14} className="mr-2" />
                 {expandedModuleId === m.id ? 'Ocultar Aulas' : 'Ver Aulas'}
-              </button>
+              </Button>
             </div>
           ))}
-          {modules.length === 0 && <div className="col-span-full p-6 text-center text-sm text-slate-400">{isExpanded ? 'Nenhum modulo' : ''}</div>}
+          {modules.length === 0 && <div className="col-span-full p-12 text-center text-sm text-slate-400 border-2 border-dashed border-slate-200 dark:border-white/5 rounded-3xl">{isExpanded ? 'Nenhum modulo cadastrado' : ''}</div>}
         </div>
       );
     }
@@ -820,24 +863,24 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
                 setExpandedModuleId(expandedModuleId === m.id ? '' : m.id);
                 if (!getLessons(m.id).length) refreshLessons(m.id);
               }}
-              className={`flex items-center justify-between gap-3 px-4 py-3 rounded-lg cursor-pointer transition-all ${expandedModuleId === m.id
+              className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all ${expandedModuleId === m.id
                 ? 'bg-cyan-50 dark:bg-cyan-900/20 border border-cyan-200 dark:border-cyan-800'
-                : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-cyan-300 dark:hover:border-cyan-700'
+                : 'bg-white dark:bg-[#1C1E23] border border-slate-200 dark:border-white/5 hover:border-cyan-300 dark:hover:border-cyan-700'
                 }`}>
               <div className="flex items-center gap-3 min-w-0 flex-1">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${expandedModuleId === m.id ? 'bg-cyan-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${expandedModuleId === m.id ? 'bg-cyan-600 text-white' : 'bg-slate-100 dark:bg-white/5 text-slate-400'
                   }`}>
-                  <i className="fas fa-layer-group text-xs"></i>
+                  <Layers size={14} />
                 </div>
                 <span className="text-sm font-bold text-slate-800 dark:text-white truncate">{m.title}</span>
               </div>
-              <div className="flex items-center gap-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
-                <button onClick={() => setEditingModule({ ...m })} className="p-1.5 text-slate-400 hover:text-cyan-500 transition" title="Editar">
-                  <i className="fas fa-pen text-xs"></i>
-                </button>
-                <button onClick={() => handleDeleteModule(m.course_id, m.id)} className="p-1.5 text-slate-400 hover:text-red-500 transition" title="Excluir">
-                  <i className="fas fa-trash text-xs"></i>
-                </button>
+              <div className="flex items-center gap-1.5 flex-shrink-0" onClick={e => e.stopPropagation()}>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingModule({ ...m })} title="Editar">
+                  <Pencil size={12} className="text-slate-400" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-red-500" onClick={() => handleDeleteModule(m.course_id, m.id)} title="Excluir">
+                  <Trash2 size={12} className="text-slate-400" />
+                </Button>
               </div>
             </div>
           ))}
@@ -846,9 +889,9 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
       );
     }
 
-    // Modo Lista (padrão/atual)
+    // Modo Lista (padrão)
     return (
-      <div className="divide-y divide-slate-100 dark:divide-slate-800 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+      <div className="divide-y divide-slate-100 dark:divide-white/5 rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-[#1C1E23] overflow-hidden">
         {modules.map(m => (
           <div key={m.id} className="p-3">
             {renderLessonList(m)}
@@ -883,14 +926,14 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
         {stats.map(stat => (
           <div
             key={stat.label}
-            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl flex items-center justify-between group hover:border-indigo-500/30 transition-all shadow-sm"
+            className="bg-white dark:bg-[#1C1E23] border border-slate-200 dark:border-white/5 p-6 rounded-3xl flex items-center justify-between group hover:border-indigo-500/30 transition-all shadow-sm"
           >
             <div className="space-y-1">
               <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{stat.label}</p>
               <span className="text-3xl font-black text-slate-800 dark:text-white">{stat.value}</span>
             </div>
-            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl ${stat.color}`}>
-              <i className={stat.icon}></i>
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl ${stat.bg} ${stat.color}`}>
+              <stat.icon size={24} />
             </div>
           </div>
         ))}
@@ -904,27 +947,132 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
       </div>
 
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm">
-        <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4">
+        <div className="p-6 border-b border-slate-200 dark:border-white/5 flex items-center justify-between gap-4">
           <div>
             <h3 className="text-lg font-black text-slate-800 dark:text-white">Cursos</h3>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-bold">Cada card expande modulos e aulas.</p>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-bold">Gerencie seus cursos e conteúdos educativos.</p>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{courses.length}</span>
-            <button
+            <ViewModeToggle current={courseViewMode} onChange={toggleCourseViewMode} label="Visualização" />
+            <div className="w-px h-8 bg-slate-200 dark:bg-white/5"></div>
+            <Button
               disabled={busy}
               onClick={() => setIsCreateCourseModalOpen(true)}
-              className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white px-4 py-2 rounded-xl font-black text-sm transition-all active:scale-[0.98] flex items-center gap-2"
+              className="flex items-center gap-2"
             >
-              <i className="fas fa-plus"></i> Criar curso
-            </button>
+              <Plus size={16} /> Criar curso
+            </Button>
           </div>
         </div>
 
-        <div className="divide-y divide-slate-100 dark:divide-slate-800">
+        <div className={courseViewMode === 'grid' ? "p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "divide-y divide-slate-100 dark:divide-white/5"}>
           {courses.map(course => {
             const isExpanded = expandedCourseId === course.id;
             const modules = getModules(course.id);
+            
+            if (courseViewMode === 'grid') {
+              return (
+                <div 
+                  key={course.id}
+                  className={cn(
+                    "group relative bg-white dark:bg-[#1C1E23] border border-slate-200 dark:border-white/5 rounded-2xl overflow-hidden transition-all duration-300 hover:border-indigo-500/30 dark:hover:border-white/10 hover:shadow-xl hover:shadow-indigo-500/5",
+                    isExpanded && "ring-2 ring-indigo-500/50 border-indigo-500/50"
+                  )}
+                >
+                  <div className="aspect-video relative overflow-hidden bg-slate-100 dark:bg-slate-800/50">
+                    {course.image_url ? (
+                      <img src={course.image_url} alt={course.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-slate-300 dark:text-slate-700">
+                        <GraduationCap size={48} />
+                      </div>
+                    )}
+                    <div className="absolute top-3 left-3 flex gap-2">
+                       {course.color_legend && (
+                        <span
+                          className="px-2 py-0.5 rounded-lg text-[10px] font-black text-white shadow-lg backdrop-blur-md"
+                          style={{ backgroundColor: course.color || '#6366f1' }}
+                        >
+                          {course.color_legend}
+                        </span>
+                      )}
+                    </div>
+                    <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button variant="secondary" size="icon" className="h-8 w-8 rounded-lg bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm" 
+                        onClick={(e) => { e.stopPropagation(); setEditingCourse({ ...course }); }}>
+                        <Pencil size={14} className="text-slate-600 dark:text-slate-400" />
+                      </Button>
+                      <Button variant="destructive" size="icon" className="h-8 w-8 rounded-lg bg-red-500/90 backdrop-blur-sm"
+                        onClick={(e) => { e.stopPropagation(); handleDeleteCourse(course.id); }}>
+                        <Trash2 size={14} />
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="p-5">
+                    <h3 className="text-base font-black text-slate-800 dark:text-white line-clamp-1 mb-1">{course.title}</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 min-h-[2.5rem] mb-4">
+                      {course.description || 'Sem descrição cadastrada'}
+                    </p>
+                    
+                    <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-white/5">
+                      <div className="flex items-center gap-3">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Aulas</span>
+                          <span className="text-sm font-black text-slate-700 dark:text-slate-200">{modules.reduce((acc, m) => acc + (lessonsByModule[m.id]?.length || 0), 0)}</span>
+                        </div>
+                      </div>
+                      <Button 
+                        variant={isExpanded ? "secondary" : "default"}
+                        size="sm"
+                        className="rounded-xl font-bold"
+                        onClick={() => {
+                          const next = isExpanded ? '' : course.id;
+                          setExpandedCourseId(next);
+                          setExpandedModuleId('');
+                          if (!modules.length) refreshModules(course.id);
+                        }}
+                      >
+                        {isExpanded ? 'Recolher' : 'Gerenciar'}
+                        <ChevronRight size={14} className={cn("ml-1 transition-transform", isExpanded && "rotate-90")} />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {isExpanded && (
+                    <div className="absolute inset-0 z-10 bg-white/95 dark:bg-[#1C1E23]/95 backdrop-blur-md overflow-y-auto p-5 animate-in fade-in zoom-in-95 duration-200">
+                      <div className="flex items-center justify-between mb-6">
+                        <h4 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-widest flex items-center gap-2">
+                          <Layers size={16} className="text-indigo-500" /> Modulos
+                        </h4>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8"
+                          onClick={() => setExpandedCourseId('')}
+                        >
+                          <List size={16} />
+                        </Button>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        <Button 
+                          variant="outline" 
+                          className="w-full border-dashed border-2 py-6 flex flex-col items-center gap-1 group"
+                          onClick={() => setActiveCourseIdForModuleCreation(course.id)}
+                        >
+                          <Plus size={20} className="group-hover:scale-110 transition-transform text-indigo-500" />
+                          <span className="text-[10px] font-black uppercase tracking-widest">Novo Modulo</span>
+                        </Button>
+                        
+                        {renderModuleList(course)}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
             return (
               <div key={course.id}>
                 <div
@@ -939,14 +1087,12 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3">
-                      {/* Indicador de cor */}
                       {course.color && (
                         <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: course.color }} title={course.color_legend || 'Categoria'}></div>
                       )}
                       <h3 className="text-sm font-black text-slate-800 dark:text-white truncate">
                         {course.title}
                       </h3>
-                      {/* Badge de Legenda */}
                       {course.color_legend && (
                         <span
                           className="px-2 py-0.5 rounded-full text-[10px] font-bold text-white shadow-sm"
@@ -962,26 +1108,28 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
                     <p className="text-[10px] text-slate-400 mt-2">ID: {course.id}</p>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       onClick={e => {
                         e.stopPropagation();
                         setEditingCourse({ ...course });
                       }}
-                      className="p-2 text-slate-400 hover:text-indigo-500 transition-colors"
                       title="Editar curso"
                     >
-                      <i className="fas fa-pen"></i>
-                    </button>
-                    <button
+                      <Pencil size={18} className="text-slate-400" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       onClick={e => {
                         e.stopPropagation();
                         handleDeleteCourse(course.id);
                       }}
-                      className="p-2 text-slate-400 hover:text-red-500 transition-colors"
                       title="Excluir curso"
                     >
-                      <i className="fas fa-trash"></i>
-                    </button>
+                      <Trash2 size={18} className="text-slate-400" />
+                    </Button>
                   </div>
                 </div>
 
@@ -993,13 +1141,15 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
                         <div className="flex items-center gap-3">
                           <ViewModeToggle current={moduleViewMode} onChange={toggleModuleViewMode} label="Visualização" />
                           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{modules.length}</span>
-                          <button
+                          <Button
                             disabled={busy}
+                            variant="cyan"
+                            size="sm"
                             onClick={() => setActiveCourseIdForModuleCreation(course.id)}
-                            className="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg font-bold text-xs transition-all active:scale-[0.98] flex items-center gap-2"
+                            className="flex items-center gap-2"
                           >
-                            <i className="fas fa-plus"></i> Criar modulo
-                          </button>
+                            <Plus size={14} /> Criar modulo
+                          </Button>
                         </div>
                       </div>
 
