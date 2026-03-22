@@ -99,6 +99,19 @@ export class UserProgress {
   }
 }
 
+export interface ForumMessage {
+  id: string;
+  lesson_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  is_edited: boolean;
+  profiles?: {
+    name: string | null;
+    role: 'STUDENT' | 'INSTRUCTOR' | 'MASTER' | null;
+  };
+}
+
 export class Lesson {
   private _id: string;
   private _title: string;

@@ -23,6 +23,7 @@ import { useLessonQuiz } from '@/hooks/useLessonQuiz';
 import { useLessonNavigation } from '@/hooks/useLessonNavigation';
 import { MobileToolsFab } from '@/components/lesson/MobileToolsFab';
 import { useStudentAnswers } from '@/hooks/useStudentAnswers';
+import LessonForum from './LessonForum';
 import { toast } from 'sonner';
 import { isDocumentFile } from '@/utils/mediaUtils';
 
@@ -37,8 +38,8 @@ interface LessonViewerProps {
     onAudioListened?: (blockId: string) => void;
     onBackToLessons: () => void;
     onBackToModules: () => void;
-    sidebarTab: 'materials' | 'notes';
-    setSidebarTab: (tab: 'materials' | 'notes') => void;
+    sidebarTab: 'materials' | 'notes' | 'forum';
+    setSidebarTab: (tab: 'materials' | 'notes' | 'forum') => void;
     userProgress?: UserProgress[];
     onTrackAction?: (action: string) => void;
     onToggleSidebar?: () => void;
@@ -570,6 +571,20 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                     >
                         <i className="fas fa-sticky-note"></i>
                         <span className="hidden sm:inline">Notas</span>
+                    </button>
+
+                    {/* Forum Button */}
+                    <button
+                        onClick={() => {
+                            setSidebarTab('forum');
+                            setIsMaterialsPanelOpen(true);
+                            onTrackAction?.('Abriu Fórum');
+                        }}
+                        className={`flex items-center justify-center gap-1.5 h-6 px-2.5 rounded-md transition-colors text-[10px] font-bold border uppercase tracking-wider ${sidebarTab === 'forum' && isMaterialsPanelOpen ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800'}`}
+                        title="Fórum de Discussão"
+                    >
+                        <i className="fas fa-comments"></i>
+                        <span className="hidden sm:inline">Fórum</span>
                     </button>
 
                     {/* Video Index Indicator */}
@@ -1292,6 +1307,18 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                 >
                                     Minhas Notas
                                 </button>
+                                <button
+                                    onClick={() => {
+                                        setSidebarTab('forum');
+                                        onTrackAction?.('Acessou o Fórum');
+                                    }}
+                                    className={`flex-1 px-3 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition ${sidebarTab === 'forum'
+                                        ? 'bg-indigo-600 text-white'
+                                        : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/40'
+                                        }`}
+                                >
+                                    Fórum
+                                </button>
                             </div>
                             <button
                                 onClick={() => setIsMaterialsPanelOpen(false)}
@@ -1305,7 +1332,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                         <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin p-4 flex flex-col gap-4">
                             {sidebarTab === 'materials' ? (
                                 <LessonMaterialsSidebar lesson={lesson} onTrackAction={onTrackAction} onAudioStateChange={handleAudioStateChange} />
-                            ) : (
+                            ) : sidebarTab === 'notes' ? (
                                 <NotesPanelPrototype
                                     userId={user.id}
                                     lessonId={lesson.id}
@@ -1313,6 +1340,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                     externalDraft={noteDraftWithRange}
                                     onNotesChange={handleNotesChange}
                                 />
+                            ) : (
+                                <LessonForum lessonId={lesson.id} user={user} />
                             )}
 
                         </div>
@@ -1323,7 +1352,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
             {/* Mobile Footer Navigation */}
             <div className="lg:hidden fixed bottom-0 left-0 right-0 z-[70] bg-slate-100 dark:bg-slate-950 border-t border-slate-300 dark:border-slate-800 pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
-                <div className="grid grid-cols-3 h-16">
+                <div className="grid grid-cols-4 h-16">
                     <button
                         onClick={() => handleOpenDrawer('materials')}
                         className={`flex flex-col items-center justify-center gap-1 transition-colors ${activeMobileTab === 'materials'
@@ -1355,6 +1384,17 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                     >
                         <i className="fas fa-graduation-cap text-lg"></i>
                         <span className="text-[10px] font-bold uppercase tracking-wider">Quiz</span>
+                    </button>
+
+                    <button
+                        onClick={() => handleOpenDrawer('forum')}
+                        className={`flex flex-col items-center justify-center gap-1 transition-colors ${activeMobileTab === 'forum'
+                            ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20'
+                            : 'text-slate-500 dark:text-slate-400'
+                            }`}
+                    >
+                        <i className="fas fa-comments text-lg"></i>
+                        <span className="text-[10px] font-bold uppercase tracking-wider">Fórum</span>
                     </button>
                 </div>
             </div>
@@ -1401,6 +1441,11 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                     />
                                 )}
 
+                                {activeMobileTab === 'forum' && (
+                                    <div className="h-[60vh]">
+                                        <LessonForum lessonId={lesson.id} user={user} />
+                                    </div>
+                                )}
                                 {activeMobileTab === 'quiz' && (
                                     <div className="space-y-4">
                                         <h3 className="text-lg font-bold text-center text-slate-800 dark:text-white">Quiz da Aula</h3>

@@ -1,15 +1,19 @@
 import React, { useState } from 'react';
 import { Course, Module, Lesson } from '../domain/entities';
+import LessonForumModal from './features/classroom/LessonForumModal';
+import LessonMaterialsModal from './features/classroom/LessonMaterialsModal';
 import { AchievementsList } from './AchievementsList';
 
 interface CourseOverviewProps {
     user: any;
     activeCourse: Course | null;
-    onSelectLesson: (lesson: Lesson) => void;
+    onSelectLesson: (lesson: Lesson, tab?: 'materials' | 'forum') => void;
     onSelectModule: (module: Module) => void;
+    onOpenForum?: (lesson: { id: string, title: string }) => void;
+    onOpenMaterials?: (lesson: { id: string, title: string }) => void;
 }
 
-const CourseOverview: React.FC<CourseOverviewProps> = ({ user, activeCourse, onSelectLesson }) => {
+const CourseOverview: React.FC<CourseOverviewProps> = ({ user, activeCourse, onSelectLesson, onSelectModule, onOpenForum, onOpenMaterials }) => {
     const [activeTab, setActiveTab] = useState<'overview' | 'curriculum' | 'achievements'>('overview');
     const [expandedModuleId, setExpandedModuleId] = useState<string | null>(null);
 
@@ -193,10 +197,10 @@ const CourseOverview: React.FC<CourseOverviewProps> = ({ user, activeCourse, onS
                                                 {expandedModuleId === module.id && module.lessons.length > 0 && (
                                                     <div className="ml-11 mt-1 mb-2 space-y-1 animate-in fade-in slide-in-from-top-2 duration-200">
                                                         {module.lessons.map((lesson) => (
-                                                            <button
+                                                            <div
                                                                 key={lesson.id}
                                                                 onClick={() => onSelectLesson(lesson)}
-                                                                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors group/lesson"
+                                                                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors group/lesson cursor-pointer"
                                                             >
                                                                 <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${lesson.isCompleted
                                                                     ? 'bg-emerald-500 text-white'
@@ -204,13 +208,38 @@ const CourseOverview: React.FC<CourseOverviewProps> = ({ user, activeCourse, onS
                                                                     }`}>
                                                                     {lesson.isCompleted && <i className="fas fa-check text-[8px]" />}
                                                                 </div>
-                                                                <span className={`text-xs font-medium ${lesson.isCompleted
+                                                                <span className={`text-xs font-medium flex-1 min-w-0 ${lesson.isCompleted
                                                                     ? 'text-slate-400 line-through'
                                                                     : 'text-slate-600 dark:text-slate-300 group-hover/lesson:text-indigo-600 dark:group-hover/lesson:text-indigo-400'
                                                                     }`}>
                                                                     {lesson.title}
                                                                 </span>
-                                                            </button>
+                                                                
+                                                                <div className="flex items-center gap-2 ml-2">
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            onOpenMaterials?.({ id: lesson.id, title: lesson.title });
+                                                                        }}
+                                                                        className="p-1.5 px-3 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-[9px] font-black uppercase tracking-widest text-indigo-500 dark:text-indigo-400 transition-all flex items-center gap-2 border border-indigo-500/20"
+                                                                        title="Materiais de Apoio"
+                                                                    >
+                                                                      <i className="fas fa-file-download text-[10px]" />
+                                                                      <span>Materiais</span>
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            onOpenForum?.({ id: lesson.id, title: lesson.title });
+                                                                        }}
+                                                                        className="p-1.5 px-3 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-[9px] font-black uppercase tracking-widest text-indigo-500 dark:text-indigo-400 transition-all flex items-center gap-2 border border-indigo-500/20"
+                                                                        title="Fórum da Aula"
+                                                                    >
+                                                                      <i className="fas fa-comments text-[10px]" />
+                                                                      <span>Fórum</span>
+                                                                    </button>
+                                                                </div>
+                                                            </div>
                                                         ))}
                                                     </div>
                                                 )}
@@ -260,27 +289,49 @@ const CourseOverview: React.FC<CourseOverviewProps> = ({ user, activeCourse, onS
                                             {/* Lessons List */}
                                             <div className="flex-1 p-4 space-y-1.5 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600 scrollbar-track-transparent">
                                                 {module.lessons?.map((lesson: Lesson) => (
-                                                    <button
-                                                        key={lesson.id}
-                                                        onClick={() => onSelectLesson(lesson)}
-                                                        className="w-full text-left group/lesson px-3 py-2 rounded-lg border border-transparent hover:border-indigo-500/20 bg-white/50 dark:bg-slate-800/30 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-all flex items-center gap-2.5"
-                                                    >
-                                                        <div className={`w-5 h-5 flex-shrink-0 flex items-center justify-center rounded-full transition-all ${lesson.isCompleted
-                                                            ? 'bg-emerald-500 text-white'
-                                                            : 'bg-slate-200 dark:bg-white/10 text-slate-400 group-hover/lesson:bg-indigo-500 group-hover/lesson:text-white'
-                                                            }`}>
-                                                            {lesson.isCompleted
-                                                                ? <i className="fas fa-check text-[8px]" />
-                                                                : <i className="fas fa-play text-[8px] ml-0.5" />
-                                                            }
+                                                        <div
+                                                            key={lesson.id}
+                                                            onClick={() => onSelectLesson(lesson)}
+                                                            className="w-full text-left group/lesson px-3 py-2 rounded-lg border border-transparent hover:border-indigo-500/20 bg-white/50 dark:bg-slate-800/30 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-all flex items-center gap-2.5 cursor-pointer"
+                                                        >
+                                                            <div className={`w-5 h-5 flex-shrink-0 flex items-center justify-center rounded-full transition-all ${lesson.isCompleted
+                                                                ? 'bg-emerald-500 text-white'
+                                                                : 'bg-slate-200 dark:bg-white/10 text-slate-400 group-hover/lesson:bg-indigo-500 group-hover/lesson:text-white'
+                                                                }`}>
+                                                                {lesson.isCompleted
+                                                                    ? <i className="fas fa-check text-[8px]" />
+                                                                    : <i className="fas fa-play text-[8px] ml-0.5" />
+                                                                }
+                                                            </div>
+                                                            <span className={`text-xs font-medium flex-1 min-w-0 ${lesson.isCompleted
+                                                                ? 'text-slate-400 line-through'
+                                                                : 'text-slate-600 dark:text-slate-300 group-hover/lesson:text-indigo-600 dark:group-hover/lesson:text-indigo-400'
+                                                                }`}>
+                                                                {lesson.title}
+                                                            </span>
+                                                            <div className="flex items-center gap-1.5">
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        onOpenMaterials?.({ id: lesson.id, title: lesson.title });
+                                                                    }}
+                                                                    className="p-1 px-2 rounded-md hover:bg-white/10 text-[8px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-500 transition-colors"
+                                                                    title="Materiais"
+                                                                >
+                                                                    <i className="fas fa-file-download" />
+                                                                </button>
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        onOpenForum?.({ id: lesson.id, title: lesson.title });
+                                                                    }}
+                                                                    className="p-1 px-2 rounded-md hover:bg-white/10 text-[8px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-500 transition-colors"
+                                                                    title="Fórum"
+                                                                >
+                                                                    <i className="fas fa-comments" />
+                                                                </button>
+                                                            </div>
                                                         </div>
-                                                        <span className={`text-xs font-medium line-clamp-2 ${lesson.isCompleted
-                                                            ? 'text-slate-400 line-through'
-                                                            : 'text-slate-600 dark:text-slate-300 group-hover/lesson:text-indigo-600 dark:group-hover/lesson:text-indigo-400'
-                                                            }`}>
-                                                            {lesson.title}
-                                                        </span>
-                                                    </button>
                                                 ))}
                                                 {(!module.lessons || module.lessons.length === 0) && (
                                                     <div className="text-center py-6 text-slate-400 text-xs italic">Nenhuma aula neste módulo</div>

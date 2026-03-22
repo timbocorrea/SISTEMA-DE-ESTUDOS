@@ -3,6 +3,8 @@ import { Routes, Route, Navigate, useLocation, useNavigate, useParams } from 're
 import { Toaster, toast } from 'sonner';
 // Lazy Load Heavy UI Components
 const Sidebar = React.lazy(() => import('./components/Sidebar'));
+import LessonForumModal from './components/features/classroom/LessonForumModal';
+import LessonMaterialsModal from './components/features/classroom/LessonMaterialsModal';
 const GeminiBuddy = React.lazy(() => import('./components/GeminiBuddy'));
 const AuthForm = React.lazy(() => import('./components/AuthForm'));
 const AdminAuthForm = React.lazy(() => import('./components/AdminAuthForm'));
@@ -171,7 +173,12 @@ const App: React.FC = () => {
   // Admin Data (Managed Courses with full structure)
   const [adminCourses, setAdminCourses] = useState<import('./domain/entities').Course[]>([]);
   const [isAdminCoursesLoading, setIsAdminCoursesLoading] = useState(false);
+  
+  // Lesson Modals Global State
+  const [forumLesson, setForumLesson] = useState<{ id: string, title: string } | null>(null);
+  const [materialsLesson, setMaterialsLesson] = useState<{ id: string, title: string } | null>(null);
 
+  const isAdmin = user?.role === 'MASTER' || user?.role === 'INSTRUCTOR' || user?.email === 'timbo.correa@gmail.com';
   // Network Connection Monitoring
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [showOfflineModal, setShowOfflineModal] = useState(false);
@@ -582,6 +589,8 @@ const App: React.FC = () => {
           isLoadingCourses={isLoadingCourses}
           isLoadingAdminCourses={isAdminCoursesLoading}
           isHiddenOnDesktop={isLessonRoute}
+          onOpenForum={(l) => setForumLesson(l)}
+          onOpenMaterials={(l) => setMaterialsLesson(l)}
         />
       </React.Suspense>
 
@@ -657,11 +666,13 @@ const App: React.FC = () => {
                 <Route index element={
                   // Course Overview (Module List)
                   // Reusing logic from old App.tsx where we showed module list if no lesson selected
-                  <CourseOverview
+                   <CourseOverview
                     user={user}
                     activeCourse={activeCourse}
                     onSelectModule={(m: any) => selectModule(m.id)}
-                    onSelectLesson={(l: any) => navigate(`/course/${activeCourse?.id}/lesson/${l.id}`)}
+                    onSelectLesson={(l: any, tab?: string) => navigate(`/course/${activeCourse?.id}/lesson/${l.id}${tab ? `?tab=${tab}` : ''}`)}
+                    onOpenForum={(l) => setForumLesson(l)}
+                    onOpenMaterials={(l) => setMaterialsLesson(l)}
                   />
                 } />
                 <Route path="lesson/:lessonId" element={
@@ -821,6 +832,22 @@ const App: React.FC = () => {
         isOpen={isSupportOpen}
         onClose={() => setIsSupportOpen(false)}
         adminService={user?.role === 'INSTRUCTOR' ? adminService : undefined}
+      />
+
+      {/* GLOBAL MODALS */}
+      <LessonForumModal 
+          lessonId={forumLesson?.id || ''}
+          lessonTitle={forumLesson?.title || ''}
+          user={user}
+          isOpen={!!forumLesson}
+          onClose={() => setForumLesson(null)}
+      />
+
+      <LessonMaterialsModal 
+          lessonId={materialsLesson?.id || ''}
+          lessonTitle={materialsLesson?.title || ''}
+          isOpen={!!materialsLesson}
+          onClose={() => setMaterialsLesson(null)}
       />
 
     </div>

@@ -2,18 +2,18 @@ import { useState, useEffect } from 'react';
 
 interface UseLessonNavigationReturn {
     // State
-    activeMobileTab: 'materials' | 'notes' | 'quiz' | null;
+    activeMobileTab: 'materials' | 'notes' | 'quiz' | 'forum' | null;
     focusedNoteId: string | null;
 
     // Actions
-    handleOpenDrawer: (tab: 'materials' | 'notes' | 'quiz') => void;
+    handleOpenDrawer: (tab: 'materials' | 'notes' | 'quiz' | 'forum') => void;
     handleCloseDrawer: () => void;
     setFocusedNoteId: (id: string | null) => void;
 }
 
 export const useLessonNavigation = (): UseLessonNavigationReturn => {
     // State
-    const [activeMobileTab, setActiveMobileTab] = useState<'materials' | 'notes' | 'quiz' | null>(null);
+    const [activeMobileTab, setActiveMobileTab] = useState<'materials' | 'notes' | 'quiz' | 'forum' | null>(null);
     const [focusedNoteId, setFocusedNoteId] = useState<string | null>(null);
 
     // History & Drawer Management
@@ -28,7 +28,7 @@ export const useLessonNavigation = (): UseLessonNavigationReturn => {
         return () => window.removeEventListener('popstate', handlePopState);
     }, [activeMobileTab]);
 
-    const handleOpenDrawer = (tab: 'materials' | 'notes' | 'quiz') => {
+    const handleOpenDrawer = (tab: 'materials' | 'notes' | 'quiz' | 'forum') => {
         if (activeMobileTab === tab) {
             handleCloseDrawer();
         } else {

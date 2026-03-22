@@ -24,6 +24,8 @@ interface SidebarProps {
   isLoadingCourses?: boolean;
   isLoadingAdminCourses?: boolean;
   isHiddenOnDesktop?: boolean;
+  onOpenForum?: (lesson: { id: string, title: string }) => void;
+  onOpenMaterials?: (lesson: { id: string, title: string }) => void;
 }
 
 // Memoized LessonItem Component for instant rendering
@@ -36,7 +38,9 @@ const LessonItem = memo<{
   courseColor?: string | null;
   onSelect?: (courseId: string, moduleId: string, lessonId: string) => void;
   onCloseMobile?: () => void;
-}>(({ lesson, isActive, isAdminMode, courseId, moduleId, courseColor, onSelect, onCloseMobile }) => {
+  onOpenForum?: (lesson: { id: string, title: string }) => void;
+  onOpenMaterials?: (lesson: { id: string, title: string }) => void;
+}>(({ lesson, isActive, isAdminMode, courseId, moduleId, courseColor, onSelect, onCloseMobile, onOpenForum, onOpenMaterials }) => {
   const handleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isAdminMode && onSelect) {
@@ -98,6 +102,34 @@ const LessonItem = memo<{
         >
           {lesson.title}
         </span>
+
+        {/* Action Buttons for Students */}
+        {!isAdminMode && (
+          <div className="flex items-center gap-1 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenMaterials?.({ id: lesson.id, title: lesson.title });
+                    onCloseMobile?.();
+                }}
+                className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/10 text-slate-400 hover:text-indigo-400 transition-all border border-transparent hover:border-indigo-500/20"
+                title="Materiais"
+            >
+                <i className="fas fa-file-download text-[11px]"></i>
+            </button>
+            <button
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenForum?.({ id: lesson.id, title: lesson.title });
+                    onCloseMobile?.();
+                }}
+                className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/10 text-slate-400 hover:text-indigo-400 transition-all border border-transparent hover:border-indigo-500/20"
+                title="Fórum"
+            >
+                <i className="fas fa-comments text-[11px]"></i>
+            </button>
+          </div>
+        )}
       </div>
     </button>
   );
@@ -116,7 +148,9 @@ const ModuleItem = memo<{
   onViewChange: (view: string) => void;
   onSelectLesson?: (courseId: string, moduleId: string, lessonId: string) => void;
   onCloseMobile?: () => void;
-}>(({ module, isOpen, isAdminMode, courseId, courseColor, activeLessonId, onToggle, onOpenContent, onViewChange, onSelectLesson, onCloseMobile }) => {
+  onOpenForum?: (lesson: { id: string, title: string }) => void;
+  onOpenMaterials?: (lesson: { id: string, title: string }) => void;
+}>(({ module, isOpen, isAdminMode, courseId, courseColor, activeLessonId, onToggle, onOpenContent, onViewChange, onSelectLesson, onCloseMobile, onOpenForum, onOpenMaterials }) => {
   const lessons = module.lessons || [];
 
   const completedLessons = lessons.filter((l: any) => l.isCompleted).length;
@@ -211,6 +245,8 @@ const ModuleItem = memo<{
                 courseColor={courseColor}
                 onSelect={onSelectLesson}
                 onCloseMobile={onCloseMobile}
+                onOpenForum={onOpenForum}
+                onOpenMaterials={onOpenMaterials}
               />
             ))}
           </div>
@@ -240,8 +276,10 @@ const CourseItem = memo<{
   onViewChange: (view: string) => void;
   onSelectLesson?: (courseId: string, moduleId: string, lessonId: string) => void;
   onCloseMobile?: () => void;
+  onOpenForum?: (lesson: { id: string, title: string }) => void;
+  onOpenMaterials?: (lesson: { id: string, title: string }) => void;
   searchQuery?: string;
-}>(({ course, isOpen, isAdminMode, expandedModuleId, activeLessonId, activeCourse, isLoadingModules = false, onToggleCourse, onToggleModule, onExpandCourse, onOpenContent, onViewChange, onSelectLesson, onCloseMobile, searchQuery = '' }) => {
+}>(({ course, isOpen, isAdminMode, expandedModuleId, activeLessonId, activeCourse, isLoadingModules = false, onToggleCourse, onToggleModule, onExpandCourse, onOpenContent, onViewChange, onSelectLesson, onCloseMobile, onOpenForum, onOpenMaterials, searchQuery = '' }) => {
   const rawModules = (activeCourse?.id === course.id && activeCourse.modules?.length)
     ? activeCourse.modules
     : (course.modules || []);
@@ -352,6 +390,8 @@ const CourseItem = memo<{
                 onViewChange={onViewChange}
                 onSelectLesson={onSelectLesson}
                 onCloseMobile={onCloseMobile}
+                onOpenForum={onOpenForum}
+                onOpenMaterials={onOpenMaterials}
               />
             ))}
           </div>
@@ -384,7 +424,9 @@ const Sidebar: React.FC<SidebarProps> = ({
   isOnline = true,
   isLoadingCourses = false,
   isLoadingAdminCourses = false,
-  isHiddenOnDesktop = false
+  isHiddenOnDesktop = false,
+  onOpenForum,
+  onOpenMaterials
 }) => {
   const isStudent = session.user.role === 'STUDENT' && session.user.email !== 'timbo.correa@gmail.com';
   const isInstructor = session.user.role === 'INSTRUCTOR' && session.user.email !== 'timbo.correa@gmail.com';

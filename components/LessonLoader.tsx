@@ -27,7 +27,16 @@ const LessonLoader: React.FC<LessonLoaderProps> = ({ user, onTrackAction, onTogg
         isLoadingCourses
     } = useCourse();
 
-    const [sidebarTab, setSidebarTab] = React.useState<'materials' | 'notes'>('materials');
+    const [sidebarTab, setSidebarTab] = React.useState<'materials' | 'notes' | 'forum'>('materials');
+
+    // Sync URL tab -> sidebarTab
+    useEffect(() => {
+        const queryParams = new URLSearchParams(window.location.search);
+        const tab = queryParams.get('tab');
+        if (tab === 'forum' || tab === 'materials' || tab === 'notes') {
+            setSidebarTab(tab as any);
+        }
+    }, [lessonId]);
     const { contentTheme, setContentTheme } = useLessonStore();
     const { theme } = useTheme();
 
