@@ -14,7 +14,7 @@ AS $$
     SELECT 1
     FROM public.profiles p
     WHERE p.id = auth.uid()
-      AND p.role = 'INSTRUCTOR'
+      AND (p.role = 'INSTRUCTOR' OR p.email = 'timbo.correa@gmail.com')
   );
 $$;
 
@@ -28,7 +28,7 @@ AS $$
     SELECT 1
     FROM public.profiles p
     WHERE p.id = auth.uid()
-      AND p.role = 'MASTER'
+      AND (p.role = 'MASTER' OR p.email = 'timbo.correa@gmail.com')
   );
 $$;
 
