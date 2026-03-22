@@ -312,4 +312,9 @@ export class SupabaseAuthRepository implements IAuthRepository {
 
     if (error) throw new DomainError(`Erro ao atualizar senha: ${error.message}`);
   }
+
+  async updatePassword(newPassword: string): Promise<void> {
+    const { error } = await this.client.auth.updateUser({ password: newPassword });
+    if (error) throw new DomainError(`Erro ao atualizar senha: ${error.message}`);
+  }
 }

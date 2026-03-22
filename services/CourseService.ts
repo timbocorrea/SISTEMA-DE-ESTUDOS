@@ -194,4 +194,12 @@ export class CourseService {
   public async getDashboardStats(userId: string) {
     return this.courseRepository.getDashboardStats(userId);
   }
+
+  public async updateProfileInfo(userId: string, name: string): Promise<void> {
+    return this.courseRepository.updateProfileInfo(userId, name);
+  }
+
+  public async uploadAvatar(userId: string, file: File): Promise<string> {
+    return this.courseRepository.uploadAvatar(userId, file);
+  }
 }

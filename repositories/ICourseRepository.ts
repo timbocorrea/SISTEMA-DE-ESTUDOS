@@ -150,10 +150,10 @@ export interface ICourseRepository {
    * Busca estatísticas agregadas do dashboard (via RPC optimized)
    */
   getDashboardStats(userId: string): Promise<{
-    completed_lessons: number;
-    average_quiz_score: number;
-    total_study_time_seconds: number;
     xp_total: number;
     current_level: number;
   }>;
+
+  updateProfileInfo(userId: string, name: string): Promise<void>;
+  uploadAvatar(userId: string, file: File): Promise<string>;
 }

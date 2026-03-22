@@ -334,7 +334,8 @@ export class User {
     public readonly approvedAt: Date | null = null,
     public readonly approvedBy: string | null = null,
     public readonly rejectionReason: string | null = null,
-    public readonly isMinor: boolean = false
+    public readonly isMinor: boolean = false,
+    public readonly avatarUrl: string | null = null // ADICIONADO
   ) {
     if (this.email === 'timbo.correa@gmail.com') {
       this.role = 'MASTER';

@@ -31,4 +31,8 @@ export class AuthService {
   async completePasswordReset(newPassword: string): Promise<void> {
     return this.authRepo.completePasswordReset(newPassword);
   }
+
+  async updatePassword(newPassword: string): Promise<void> {
+    return this.authRepo.updatePassword(newPassword);
+  }
 }

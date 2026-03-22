@@ -23,6 +23,7 @@ const FileManagement = React.lazy(() => import('./components/FileManagement'));
 const AdminSettingsPage = React.lazy(() => import('@/components/features/admin/AdminSettingsPage').then(module => ({ default: module.AdminSettingsPage })));
 const AdminCourseAccessPage = React.lazy(() => import('./components/AdminCourseAccessPage'));
 const InstructorInteractionCenter = React.lazy(() => import('./components/features/instructor/InstructorInteractionCenter'));
+const UserProfilePage = React.lazy(() => import('./components/features/user/UserProfilePage'));
 const AchievementsPage = React.lazy(() => import('./components/AchievementsPage'));
 const AuditPage = React.lazy(() => import('@/components/features/admin/AuditPage'));
 const UserDetailsModal = React.lazy(() => import('@/components/features/admin/UserDetailsModal'));
@@ -582,6 +583,26 @@ const App: React.FC = () => {
       >
         <i className="fas fa-headset"></i>
       </button>
+      
+      {/* Botão de Perfil */}
+      <button
+        onClick={() => navigate('/profile')}
+        className="w-10 h-10 flex items-center justify-center rounded-lg transition-all hover:bg-slate-200 dark:hover:bg-slate-800 overflow-hidden group"
+        title="Meu Perfil"
+      >
+        {user?.avatarUrl ? (
+          <img 
+            src={user.avatarUrl} 
+            alt={user.name} 
+            className="w-7 h-7 rounded-full object-cover ring-2 ring-indigo-500/20 group-hover:ring-indigo-500/50 transition-all shadow-sm"
+          />
+        ) : (
+          <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400 group-hover:text-indigo-500 transition-colors">
+            <i className="fas fa-user text-xs"></i>
+          </div>
+        )}
+      </button>
+
       <AnimatedThemeToggler
         type="button"
         onClick={toggleTheme}
@@ -701,6 +722,7 @@ const App: React.FC = () => {
               } />
 
               {/* Feature Routes */}
+              <Route path="/profile" element={<UserProfilePage user={user} authService={authService} onUpdate={refreshSession} />} />
               <Route path="/achievements" element={<AchievementsPage user={user} course={activeCourse} adminService={adminService} />} />
               <Route path="/buddy" element={<BuddyFullPage />} />
               <Route path="/audit" element={<AuditPage />} />

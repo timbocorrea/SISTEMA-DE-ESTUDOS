@@ -8,4 +8,5 @@ export interface IAuthRepository {
   getCurrentSession(): Promise<IUserSession | null>;
   logout(): Promise<void>;
   completePasswordReset(newPassword: string): Promise<void>;
+  updatePassword(newPassword: string): Promise<void>;
 }

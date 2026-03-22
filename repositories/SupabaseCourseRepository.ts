@@ -466,7 +466,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
     // 1. Fetch Profile
     const { data: profile, error } = await this.client
       .from('profiles')
-      .select('id, name, email, role, xp_total, current_level, approval_status, last_access_at, is_temp_password')
+      .select('id, name, email, role, xp_total, current_level, approval_status, last_access_at, is_temp_password, avatar_url')
       .eq('id', userId)
       .single();
 
@@ -500,7 +500,8 @@ export class SupabaseCourseRepository implements ICourseRepository {
       null, // approvedAt
       null, // approvedBy
       null, // rejectionReason
-      false // no is_minor in db currently
+      false, // isMinor
+      profile.avatar_url || null // ADICIONADO
     );
   }
 
@@ -1527,5 +1528,42 @@ export class SupabaseCourseRepository implements ICourseRepository {
 
     this.setDashboardStatsCache(userId, data as DashboardStats);
     return data as DashboardStats;
+  }
+
+  async updateProfileInfo(userId: string, name: string): Promise<void> {
+    const { error } = await this.client
+      .from('profiles')
+      .update({ name, updated_at: new Date().toISOString() })
+      .eq('id', userId);
+
+    if (error) throw new DomainError(`Erro ao atualizar nome: ${error.message}`);
+  }
+
+  async uploadAvatar(userId: string, file: File): Promise<string> {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${userId}/${Date.now()}.${fileExt}`;
+    const filePath = `${fileName}`;
+
+    // 1. Upload
+    const { error: uploadError } = await this.client.storage
+      .from('avatars')
+      .upload(filePath, file);
+
+    if (uploadError) throw new DomainError(`Erro ao fazer upload da foto: ${uploadError.message}`);
+
+    // 2. Get Public URL
+    const { data: { publicUrl } } = this.client.storage
+      .from('avatars')
+      .getPublicUrl(filePath);
+
+    // 3. Update Profile
+    const { error: updateError } = await this.client
+      .from('profiles')
+      .update({ avatar_url: publicUrl, updated_at: new Date().toISOString() })
+      .eq('id', userId);
+
+    if (updateError) throw new DomainError(`Erro ao atualizar perfil com a foto: ${updateError.message}`);
+
+    return publicUrl;
   }
 }
