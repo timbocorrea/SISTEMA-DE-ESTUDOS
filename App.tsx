@@ -204,18 +204,32 @@ const App: React.FC = () => {
   useEffect(() => {
     if (user?.hasAdminPanelAccess) {
       setIsAdminCoursesLoading(true);
-      adminService.listCoursesOutline()
-        .then(courses => {
-          // Filtragem: Professores (INSTRUCTOR) veem apenas seus cursos.
-          // Masters (MASTER) veem todos.
-          if (user.role === 'INSTRUCTOR') {
-            setAdminCourses(courses.filter(c => (c as any).instructor_id === user.id));
+      
+      const loadAdminCourses = async () => {
+        try {
+          const courses = await adminService.listCoursesOutline();
+          
+          // Filtragem: Professores (INSTRUCTOR) veem seus próprios cursos (como instrutor principal)
+          // OU cursos atribuídos a eles via painel de cursos.
+          // Masters (MASTER) veem todos os cursos do sistema.
+          if (user.role === 'INSTRUCTOR' && user.email !== 'timbo.correa@gmail.com') {
+            const assignedIds = await adminService.getUserCourseAssignments(user.id);
+            const filtered = courses.filter(c => 
+              c.instructorId === user.id || 
+              assignedIds.includes(c.id)
+            );
+            setAdminCourses(filtered);
           } else {
             setAdminCourses(courses);
           }
-        })
-        .catch(err => console.error("Failed to load admin courses", err))
-        .finally(() => setIsAdminCoursesLoading(false));
+        } catch (err) {
+          console.error("Failed to load admin courses", err);
+        } finally {
+          setIsAdminCoursesLoading(false);
+        }
+      };
+
+      loadAdminCourses();
     } else {
       setAdminCourses([]);
     }
@@ -688,6 +702,7 @@ const App: React.FC = () => {
                 <AdminRoute>
                   <AdminContentManagement
                     adminService={adminService}
+                    user={user}
                     initialCourseId={undefined}
                     onOpenContentEditor={(lesson) => navigate(`/admin/lesson/${lesson.id}/edit`)}
                   />

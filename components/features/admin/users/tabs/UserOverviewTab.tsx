@@ -26,11 +26,14 @@ export const UserOverviewTab: React.FC<UserOverviewTabProps> = ({ user }) => {
                     Nível de Acesso
                 </p>
                 <div className="flex items-center gap-2">
-                    <span className={`px-3 py-1 rounded-lg text-sm font-black border ${user.role === 'INSTRUCTOR'
-                        ? 'bg-cyan-50 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-500/30'
-                        : 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-500/30'
+                    <span className={`px-3 py-1 rounded-lg text-sm font-black border ${
+                        user.role === 'MASTER'
+                            ? 'bg-purple-50 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-500/30'
+                            : user.role === 'INSTRUCTOR'
+                                ? 'bg-cyan-50 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-500/30'
+                                : 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-500/30'
                         }`}>
-                        {user.role === 'INSTRUCTOR' ? '👨‍🏫 Administrador' : '👨‍🎓 Estudante'}
+                        {user.role === 'MASTER' ? '👑 Master' : user.role === 'INSTRUCTOR' ? '👨‍🏫 Professor' : '👨‍🎓 Aluno'}
                     </span>
                 </div>
             </div>

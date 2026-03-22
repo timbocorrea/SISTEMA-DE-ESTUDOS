@@ -18,6 +18,20 @@ AS $$
   );
 $$;
 
+CREATE OR REPLACE FUNCTION public.is_master()
+RETURNS boolean
+LANGUAGE sql
+STABLE SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.profiles p
+    WHERE p.id = auth.uid()
+      AND p.role = 'MASTER'
+  );
+$$;
+
 -- 2. SCHEMA CHANGES (is_public for content access)
 -- ------------------------------------------------------------
 ALTER TABLE public.courses ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT false;
@@ -57,7 +71,11 @@ DROP POLICY IF EXISTS courses_read_all ON public.courses;
 CREATE POLICY courses_select_secure ON public.courses 
   FOR SELECT USING (
     is_public = true OR 
-    public.is_instructor() OR
+    public.is_master() OR
+    (public.is_instructor() AND (instructor_id = auth.uid() OR EXISTS (
+      SELECT 1 FROM public.course_enrollments ce 
+      WHERE ce.course_id = id AND ce.user_id = auth.uid() AND ce.is_active = true
+    ))) OR
     EXISTS (
       SELECT 1 FROM public.course_enrollments ce 
       WHERE ce.course_id = id AND ce.user_id = auth.uid() AND ce.is_active = true
@@ -68,11 +86,15 @@ CREATE POLICY courses_select_secure ON public.courses
 DROP POLICY IF EXISTS modules_read_all ON public.modules;
 CREATE POLICY modules_select_secure ON public.modules 
   FOR SELECT USING (
-    public.is_instructor() OR
+    public.is_master() OR
     EXISTS (
       SELECT 1 FROM public.courses c
       LEFT JOIN public.course_enrollments ce ON ce.course_id = c.id AND ce.user_id = auth.uid()
-      WHERE c.id = course_id AND (c.is_public = true OR ce.is_active = true)
+      WHERE c.id = course_id AND (
+        c.is_public = true OR 
+        ce.is_active = true OR 
+        (public.is_instructor() AND (c.instructor_id = auth.uid() OR ce.user_id = auth.uid()))
+      )
     )
   );
 
@@ -81,12 +103,16 @@ DROP POLICY IF EXISTS lessons_read_all ON public.lessons;
 CREATE POLICY lessons_select_secure ON public.lessons 
   FOR SELECT USING (
     is_public = true OR
-    public.is_instructor() OR
+    public.is_master() OR
     EXISTS (
       SELECT 1 FROM public.modules m
       JOIN public.courses c ON c.id = m.course_id
       LEFT JOIN public.course_enrollments ce ON ce.course_id = c.id AND ce.user_id = auth.uid()
-      WHERE m.id = module_id AND (c.is_public = true OR ce.is_active = true)
+      WHERE m.id = module_id AND (
+        c.is_public = true OR 
+        ce.is_active = true OR 
+        (public.is_instructor() AND (c.instructor_id = auth.uid() OR ce.user_id = auth.uid()))
+      )
     )
   );
 

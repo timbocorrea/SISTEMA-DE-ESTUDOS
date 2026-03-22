@@ -518,6 +518,7 @@ export class Course {
     public readonly color: string | null = null,
     public readonly colorLegend: string | null = null,
     public readonly modules: Module[],
+    public readonly instructorId: string | null = null,
     public readonly language: string | null = null,
     public readonly estimatedHours: number | null = null,
     public readonly level: string | null = null,

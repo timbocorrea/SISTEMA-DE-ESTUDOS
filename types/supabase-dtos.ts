@@ -128,6 +128,7 @@ export interface DatabaseCourseResponse {
     description: string;
     image_url: string | null;
     instructor_id: string;
+    instructor?: { name: string | null };
     created_at: string;
     updated_at: string;
 }

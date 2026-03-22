@@ -34,7 +34,7 @@ export class AdminService {
         return new Module(rm.id, rm.title, lessons);
       });
 
-      return new Course(rc.id, rc.title, rc.description || '', rc.image_url || '', rc.color || null, rc.color_legend || null, modules);
+      return new Course(rc.id, rc.title, rc.description || '', rc.image_url || '', rc.color || null, rc.color_legend || null, modules, rc.instructor_id);
     });
   }
 
@@ -63,7 +63,7 @@ export class AdminService {
         return new Module(rm.id, rm.title, lessons);
       });
 
-      return new Course(rc.id, rc.title, rc.description || '', rc.image_url || '', rc.color || null, rc.color_legend || null, modules);
+      return new Course(rc.id, rc.title, rc.description || '', rc.image_url || '', rc.color || null, rc.color_legend || null, modules, rc.instructor_id);
     });
   }
 

@@ -862,7 +862,7 @@ const LessonContentEditorPage: React.FC<LessonContentEditorPageProps> = ({
     const [editingBlockForAudio, setEditingBlockForAudio] = useState<any | null>(null);
 
     // Preview Mode Management
-    const [sidebarTab, setSidebarTab] = useState<'materials' | 'notes'>('materials');
+    const [sidebarTab, setSidebarTab] = useState<'materials' | 'notes' | 'forum'>('materials');
 
     // Construção dinâmica das entidades para o Preview exato
     const displayLesson = React.useMemo(() => {

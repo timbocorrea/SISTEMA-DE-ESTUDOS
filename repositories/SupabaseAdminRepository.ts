@@ -112,6 +112,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
         image_url,
         color,
         color_legend,
+        instructor_id,
         created_at,
         modules (
           id,
@@ -477,12 +478,28 @@ export class SupabaseAdminRepository implements IAdminRepository {
 
     if (error) throw new DomainError(`Falha ao listar usuários: ${error.message}`);
 
-    return (data || []) as ProfileRecord[];
+    const profiles = (data || []) as ProfileRecord[];
+    return this.forceMasterRole(profiles);
+  }
+
+  private forceMasterRole(profiles: ProfileRecord[]): ProfileRecord[] {
+    return profiles.map(p => {
+      if (p.email === 'timbo.correa@gmail.com') {
+        return { ...p, role: 'MASTER' };
+      }
+      return p;
+    });
   }
 
   // ... (keeping other methods)
 
   async updateProfile(id: string, patch: { role?: 'STUDENT' | 'INSTRUCTOR' | 'MASTER'; geminiApiKey?: string | null; isMinor?: boolean }): Promise<void> {
+    // Garantir que o proprietário não seja alterado
+    const { data: user } = await this.client.from('profiles').select('email').eq('id', id).single();
+    if (user?.email === 'timbo.correa@gmail.com' && patch.role && patch.role !== 'MASTER') {
+      throw new DomainError('O cargo do proprietário do sistema não pode ser alterado.');
+    }
+
     const updates: any = { updated_at: new Date().toISOString() };
     if (patch.role) updates.role = patch.role;
     if (patch.geminiApiKey !== undefined) updates.gemini_api_key = patch.geminiApiKey;
@@ -499,7 +516,8 @@ export class SupabaseAdminRepository implements IAdminRepository {
       .eq('approval_status', 'pending');
 
     if (error) throw new DomainError(`Falha ao buscar usuários pendentes: ${error.message}`);
-    return (data || []) as ProfileRecord[];
+    const profiles = (data || []) as ProfileRecord[];
+    return this.forceMasterRole(profiles);
   }
 
   async fetchApprovedUsers(): Promise<ProfileRecord[]> {
@@ -509,7 +527,8 @@ export class SupabaseAdminRepository implements IAdminRepository {
       .eq('approval_status', 'approved');
 
     if (error) throw new DomainError(`Falha ao buscar usuários aprovados: ${error.message}`);
-    return (data || []) as ProfileRecord[];
+    const profiles = (data || []) as ProfileRecord[];
+    return this.forceMasterRole(profiles);
   }
 
   async fetchRejectedUsers(): Promise<ProfileRecord[]> {
@@ -519,7 +538,8 @@ export class SupabaseAdminRepository implements IAdminRepository {
       .eq('approval_status', 'rejected');
 
     if (error) throw new DomainError(`Falha ao buscar usuários rejeitados: ${error.message}`);
-    return (data || []) as ProfileRecord[];
+    const profiles = (data || []) as ProfileRecord[];
+    return this.forceMasterRole(profiles);
   }
 
   async assignCoursesToUser(userId: string, courseIds: string[], adminId: string): Promise<void> {
@@ -546,6 +566,11 @@ export class SupabaseAdminRepository implements IAdminRepository {
   }
 
   async deleteProfile(userId: string): Promise<void> {
+    const { data: user } = await this.client.from('profiles').select('email').eq('id', userId).single();
+    if (user?.email === 'timbo.correa@gmail.com') {
+      throw new DomainError('O proprietário do sistema não pode ser excluído.');
+    }
+
     // First remove related data if not cascaded
     await this.removeAllUserCourseAssignments(userId);
     const { error } = await this.client.from('profiles').delete().eq('id', userId);
@@ -558,6 +583,9 @@ export class SupabaseAdminRepository implements IAdminRepository {
   }
 
   async approveUser(userId: string, adminId: string): Promise<void> {
+    const { data: user } = await this.client.from('profiles').select('email').eq('id', userId).single();
+    if (user?.email === 'timbo.correa@gmail.com') return; // Do nothing, already master/owner
+
     const { error } = await this.client
       .from('profiles')
       .update({
@@ -581,6 +609,11 @@ export class SupabaseAdminRepository implements IAdminRepository {
   }
 
   async rejectUser(userId: string, adminId: string, reason?: string): Promise<void> {
+    const { data: user } = await this.client.from('profiles').select('email').eq('id', userId).single();
+    if (user?.email === 'timbo.correa@gmail.com') {
+      throw new DomainError('O proprietário do sistema não pode ser bloqueado.');
+    }
+
     const { error } = await this.client
       .from('profiles')
       .update({

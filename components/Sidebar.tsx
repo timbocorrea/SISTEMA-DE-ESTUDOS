@@ -75,10 +75,13 @@ const LessonItem = memo<{
   }
 
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={handleClick}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleClick(e as any); }}
       data-sidebar-casing="normal"
-      className={`relative z-10 w-full text-left px-3 py-3 rounded-lg transition-all duration-200 text-[13px] font-medium tracking-wide whitespace-normal break-words flex items-start gap-3 group ${!isActive ? 'hover:bg-slate-50 dark:hover:bg-slate-800/40' : ''}`}
+      className={`relative z-10 w-full text-left px-3 py-3 rounded-lg transition-all duration-200 text-[13px] font-medium tracking-wide whitespace-normal break-words flex items-start gap-3 group cursor-pointer ${!isActive ? 'hover:bg-slate-50 dark:hover:bg-slate-800/40' : ''}`}
       style={isActive ? { backgroundColor: `${baseColor}1a` } : {}}
     >
       <div className="relative flex flex-col items-center mt-0.5 shrink-0 w-5">
@@ -131,7 +134,7 @@ const LessonItem = memo<{
           </div>
         )}
       </div>
-    </button>
+    </div>
   );
 });
 

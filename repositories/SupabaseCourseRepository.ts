@@ -211,6 +211,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
           title,
           description,
           image_url,
+          instructor_id,
           modules:modules (
             id,
             title,
@@ -252,7 +253,23 @@ export class SupabaseCourseRepository implements ICourseRepository {
         .sort((a: any, b: any) => (a.position || 0) - (b.position || 0))
         .map((m: any) => this.mapModule(m, progressMap));
 
-      return new Course(courseData.id, courseData.title, courseData.description, courseData.image_url || null, null, null, modules);
+      let instructorName = null;
+      if ((courseData as any).instructor_id) {
+        const { data: profData } = await this.client.from('profiles').select('name').eq('id', (courseData as any).instructor_id).single();
+        if (profData) instructorName = profData.name;
+      }
+
+      return new Course(
+        courseData.id,
+        courseData.title,
+        courseData.description,
+        courseData.image_url || null,
+        null,
+        null,
+        modules,
+        null, null, null, null, null, null,
+        instructorName
+      );
     } catch (err) {
       if (err instanceof NotFoundError) throw err;
       throw new DomainError(`Erro ao carregar curso: ${(err as Error).message}`);
@@ -274,6 +291,7 @@ export class SupabaseCourseRepository implements ICourseRepository {
           image_url,
           color,
           color_legend,
+          instructor_id,
           modules:modules (
             id,
             title,
@@ -301,7 +319,23 @@ export class SupabaseCourseRepository implements ICourseRepository {
         .sort((a: any, b: any) => (a.position || 0) - (b.position || 0))
         .map((m: any) => this.mapModule(m, progressMap, true));
 
-      return new Course(courseData.id, courseData.title, courseData.description, courseData.image_url || null, courseData.color, courseData.color_legend, modules);
+      let instructorName = null;
+      if ((courseData as any).instructor_id) {
+        const { data: profData } = await this.client.from('profiles').select('name').eq('id', (courseData as any).instructor_id).single();
+        if (profData) instructorName = profData.name;
+      }
+
+      return new Course(
+        courseData.id,
+        courseData.title,
+        courseData.description,
+        courseData.image_url || null,
+        courseData.color || null,
+        courseData.color_legend || null,
+        modules,
+        null, null, null, null, null, null,
+        instructorName
+      );
     } catch (err) {
       if (err instanceof NotFoundError) throw err;
       throw new DomainError(`Erro ao carregar estrutura do curso: ${(err as Error).message}`);

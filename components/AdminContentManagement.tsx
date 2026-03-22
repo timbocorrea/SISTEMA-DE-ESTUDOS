@@ -36,10 +36,11 @@ type Props = {
   initialCourseId?: string;
   initialModuleId?: string;
   initialLessonId?: string;
-  onOpenContentEditor?: (lesson: LessonRecord) => void; // NOVO: callback para abrir editor
+  onOpenContentEditor?: (lesson: LessonRecord) => void;
+  user: { id: string, role: string, email: string };
 };
 
-const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId, initialModuleId, onOpenContentEditor }) => {
+const AdminContentManagement: React.FC<Props> = ({ adminService, user, initialCourseId, initialModuleId, onOpenContentEditor }) => {
   const [courses, setCourses] = useState<CourseRecord[]>([]);
   const [expandedCourseId, setExpandedCourseId] = useState<string>('');
   const [expandedModuleId, setExpandedModuleId] = useState<string>('');
@@ -94,7 +95,11 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
   const [systemStats, setSystemStats] = useState<SystemStats | null>(null);
 
   const stats = useMemo(() => {
-    if (systemStats) {
+    // Para Master, usar estatísticas globais do sistema se disponíveis.
+    // Para Instrutores comuns, calcular com base apenas no que é visível nesta página (segurança + atribuições).
+    const isMaster = user?.role === 'MASTER' || user?.email === 'timbo.correa@gmail.com';
+
+    if (systemStats && isMaster) {
       return [
         { label: 'Cursos', value: systemStats.course_count || courses.length, icon: GraduationCap, color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
         { label: 'Modulos', value: systemStats.module_count || 0, icon: Layers, color: 'text-cyan-500', bg: 'bg-cyan-500/10' },
@@ -109,7 +114,7 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
       { label: 'Modulos', value: totalModules, icon: Layers, color: 'text-cyan-500', bg: 'bg-cyan-500/10' },
       { label: 'Aulas', value: totalLessons, icon: PlayCircle, color: 'text-emerald-500', bg: 'bg-emerald-500/10' }
     ];
-  }, [courses.length, modulesByCourse, lessonsByModule, systemStats]);
+  }, [courses.length, modulesByCourse, lessonsByModule, systemStats, user]);
 
   const refreshSystemStats = async () => {
     try {
@@ -128,8 +133,17 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
     setBusy(true);
     try {
       // Usar outline para ter acesso aos módulos e aulas (para contadores)
-      const list = await adminService.listCoursesOutline();
+      let list = await adminService.listCoursesOutline();
       
+      // Filtragem: Professores (INSTRUCTOR) veem apenas seus cursos próprios ou atribuídos.
+      if (user.role === 'INSTRUCTOR' && user.email !== 'timbo.correa@gmail.com') {
+        const assignedIds = await adminService.getUserCourseAssignments(user.id);
+        list = list.filter(c => 
+          c.instructorId === user.id || 
+          assignedIds.includes(c.id)
+        );
+      }
+
       // Converter de Course[] para CourseRecord[] para manter compatibilidade
       const courseRecords: CourseRecord[] = list.map(c => ({
         id: c.id,
@@ -137,7 +151,8 @@ const AdminContentManagement: React.FC<Props> = ({ adminService, initialCourseId
         description: c.description || null,
         image_url: c.imageUrl || null,
         color: c.color || null,
-        color_legend: c.colorLegend || null
+        color_legend: c.colorLegend || null,
+        instructor_id: c.instructorId || null
       }));
       setCourses(courseRecords);
 

@@ -702,9 +702,17 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                         </button>
                         <div className="min-w-0">
                             <h2 className="text-sm md:text-xl font-black text-slate-800 dark:text-white tracking-tight leading-tight truncate">{lesson.title}</h2>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5 truncate">
-                                {course.title}
-                            </p>
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 mt-0.5">
+                                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate">
+                                    {course.title}
+                                </p>
+                                {course.instructorName && (
+                                    <div className="flex items-center gap-1.5 text-[10px] md:text-xs font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-widest shrink-0">
+                                        <i className="fas fa-user-tie text-[10px]"></i>
+                                        <span>Instrutor: {course.instructorName}</span>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
 
