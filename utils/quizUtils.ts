@@ -125,10 +125,11 @@ export const normalizeQuestions = (parsed: any[] | any) => {
 export const parseMarkdownQuestions = (markdown: string): any[] => {
     const questions: any[] = [];
 
-    // Improved block splitting: Look for standard headers, question numbers, or metadata headers as primary delimiters
-    // We split by "###", "##", or lines starting with numeric questions "1." 
-    // AND ALSO split by the specific format "### Questão" if present
-    const blocks = markdown.split(/\n\s*(?=#{1,3}\s+Questão|#{1,3}\s+Question|\d+[\)\.]\s+)/i).filter(b => b.trim().length > 0);
+    // Improved block splitting: Look for standard headers, question numbers, horizontal rules, or metadata headers as primary delimiters
+    // We split by any header level (# to ######), horizontal rules (---), "Questão", "Question", or numeric lists (1., 2...)
+    // Improved block splitting: Look for standard headers, question numbers, horizontal rules, or metadata headers as primary delimiters
+    // We split by any header level (# to ######), horizontal rules (---), "Questão", "Question", or numeric lists (1., 2...)
+    const blocks = markdown.split(/\r?\n\s*(?=#{1,6}\s+|---\s*(?:\r?\n|$)|(?:\*\*?)?(?:Questão|Question|Pergunta|Q)\s*[:\d]|(?:\*\*?)?\d+[\)\.]\s+)/i).filter(b => b.trim().length > 0);
 
     for (const block of blocks) {
         const lines = block.split('\n').map(l => l.trimRight());
@@ -277,6 +278,7 @@ export const parseMarkdownQuestions = (markdown: string): any[] => {
             if (isParsingStructure !== 'justification' && isParsingStructure !== 'options') {
                 if (cleanLine.match(/^(?:Data|Questão|Question)\s*[:\d]/i)) continue;
                 if (line.match(/^#{1,3}\s+Questão/i)) continue;
+                if (line.match(/^---+\s*$/)) continue;
 
                 const cleanQuestionLine = line.replace(/^#{1,6}\s+/, '').replace(/^\d+[\)\.]\s+/, '');
                 if (cleanQuestionLine) {
