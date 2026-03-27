@@ -256,7 +256,7 @@ const handleClearFilters = () => {
     };
 
     const handleImportJson = async () => {
-        if (!selectedCourseId) {
+        if (!importHierarchy.selectedCourseId) {
             toast.error('Por favor, selecione um curso para as questões.');
             return;
         }
